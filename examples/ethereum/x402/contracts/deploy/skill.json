@@ -1,0 +1,145 @@
+{
+  "name": "deploy",
+  "version": "1.2.0",
+  "uri": "ethereum/x402/contracts/deploy",
+  "type": "sub",
+  "context": "Deploy a smart contract to an EVM chain via x402 payment protocol",
+  "info": "Full deployment pipeline: takes Solidity source, compiles with solc, generates ABI, constructs deployment transaction, optionally negotiates x402 payment for gas/service fees, broadcasts to target chain, and returns deployed address + ABI. Supports CREATE2 for deterministic addresses. Works with Base, Mainnet, Optimism, Arbitrum, and any EVM chain.",
+  "parent": "ethereum/x402/contracts",
+  "tags": ["deploy", "smart-contract", "solidity", "evm", "x402", "base", "mainnet", "create2"],
+  "triggers": [
+    "deploy a contract",
+    "deploy solidity to base",
+    "push contract to chain",
+    "deploy with x402",
+    "deploy smart contract to ethereum"
+  ],
+  "more": {
+    "docs": "https://docs.x402.org/deploy",
+    "examples": "https://github.com/dojo-registry/ethereum/tree/main/x402/contracts/deploy/examples"
+  },
+  "sub": [
+    "ethereum/x402/contracts/deploy/base",
+    "ethereum/x402/contracts/deploy/mainnet",
+    "ethereum/x402/contracts/deploy/testnet"
+  ],
+  "scripts": [
+    {
+      "id": "compile",
+      "name": "Compile Solidity",
+      "description": "Compile Solidity source to bytecode + ABI",
+      "lang": "javascript",
+      "runtime": "node>=18",
+      "packages": ["solc@0.8.28"],
+      "inline": "const solc = require('solc');\n\nfunction compile(source, contractName) {\n  const input = {\n    language: 'Solidity',\n    sources: { 'contract.sol': { content: source } },\n    settings: { outputSelection: { '*': { '*': ['abi', 'evm.bytecode'] } } }\n  };\n  const output = JSON.parse(solc.compile(JSON.stringify(input)));\n  if (output.errors?.some(e => e.severity === 'error')) {\n    throw new Error(output.errors.map(e => e.message).join('\\n'));\n  }\n  const contract = output.contracts['contract.sol'][contractName];\n  return {\n    abi: contract.abi,\n    bytecode: contract.evm.bytecode.object\n  };\n}\n\nmodule.exports = { compile };",
+      "env": {}
+    },
+    {
+      "id": "deploy-contract",
+      "name": "Deploy Contract",
+      "description": "Deploy compiled contract to target EVM chain",
+      "lang": "javascript",
+      "runtime": "node>=18",
+      "packages": ["ethers@6"],
+      "inline": "const { ethers } = require('ethers');\n\nasync function deploy({ rpcUrl, privateKey, abi, bytecode, constructorArgs = [], value = '0' }) {\n  const provider = new ethers.JsonRpcProvider(rpcUrl);\n  const wallet = new ethers.Wallet(privateKey, provider);\n  const factory = new ethers.ContractFactory(abi, bytecode, wallet);\n  \n  const contract = await factory.deploy(...constructorArgs, {\n    value: ethers.parseEther(value)\n  });\n  \n  const receipt = await contract.deploymentTransaction().wait();\n  \n  return {\n    address: await contract.getAddress(),\n    tx_hash: receipt.hash,\n    block_number: receipt.blockNumber,\n    gas_used: receipt.gasUsed.toString(),\n    abi\n  };\n}\n\nmodule.exports = { deploy };",
+      "env": {
+        "RPC_URL": {
+          "required": true,
+          "description": "Chain RPC endpoint (e.g. https://mainnet.base.org)"
+        },
+        "PRIVATE_KEY": {
+          "required": true,
+          "secret": true,
+          "description": "Deployer wallet private key"
+        },
+        "CHAIN_ID": {
+          "required": false,
+          "default": "8453",
+          "description": "Target chain ID (8453=Base, 1=Mainnet)"
+        }
+      }
+    },
+    {
+      "id": "deploy-create2",
+      "name": "Deploy with CREATE2",
+      "description": "Deploy to deterministic address using CREATE2",
+      "lang": "javascript",
+      "runtime": "node>=18",
+      "packages": ["ethers@6"],
+      "inline": "const { ethers } = require('ethers');\n\nasync function deployCreate2({ rpcUrl, privateKey, bytecode, salt, factoryAddress }) {\n  const provider = new ethers.JsonRpcProvider(rpcUrl);\n  const wallet = new ethers.Wallet(privateKey, provider);\n  \n  // Compute deterministic address\n  const initCodeHash = ethers.keccak256(bytecode);\n  const predicted = ethers.getCreate2Address(factoryAddress, salt, initCodeHash);\n  \n  // Deploy via factory\n  const factory = new ethers.Contract(factoryAddress, [\n    'function deploy(bytes32 salt, bytes calldata bytecode) returns (address)'\n  ], wallet);\n  \n  const tx = await factory.deploy(salt, bytecode);\n  const receipt = await tx.wait();\n  \n  return { address: predicted, tx_hash: receipt.hash };\n}\n\nmodule.exports = { deployCreate2 };",
+      "env": {
+        "RPC_URL": { "required": true },
+        "PRIVATE_KEY": { "required": true, "secret": true },
+        "CREATE2_FACTORY": { "required": false, "default": "0x4e59b44847b379578588920cA78FbF26c0B4956C" }
+      }
+    },
+    {
+      "id": "verify",
+      "name": "Verify on Explorer",
+      "description": "Verify deployed contract source on block explorer",
+      "lang": "bash",
+      "inline": "#!/bin/bash\nset -e\nforge verify-contract \\\n  \"$CONTRACT_ADDRESS\" \\\n  \"$CONTRACT_NAME\" \\\n  --chain \"$CHAIN_ID\" \\\n  --etherscan-api-key \"$ETHERSCAN_API_KEY\" \\\n  --watch",
+      "env": {
+        "CONTRACT_ADDRESS": { "required": true },
+        "CONTRACT_NAME": { "required": true },
+        "CHAIN_ID": { "required": true },
+        "ETHERSCAN_API_KEY": { "required": true, "secret": true }
+      }
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "contract_source": {
+          "type": "string",
+          "description": "Solidity source code"
+        },
+        "contract_name": {
+          "type": "string",
+          "description": "Name of the contract to deploy"
+        },
+        "chain": {
+          "type": "string",
+          "enum": ["base", "mainnet", "sepolia", "optimism", "arbitrum", "polygon"],
+          "description": "Target chain"
+        },
+        "constructor_args": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Constructor arguments"
+        },
+        "value": {
+          "type": "string",
+          "default": "0",
+          "description": "ETH value to send with deployment"
+        },
+        "deterministic": {
+          "type": "boolean",
+          "default": false,
+          "description": "Use CREATE2 for deterministic address"
+        }
+      },
+      "required": ["contract_source", "contract_name", "chain"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "address": { "type": "string", "description": "Deployed contract address" },
+        "tx_hash": { "type": "string", "description": "Deployment transaction hash" },
+        "abi": { "type": "array", "description": "Contract ABI" },
+        "block_number": { "type": "integer" },
+        "gas_used": { "type": "string" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "ethereum/x402", "optional": false, "reason": "Payment protocol for gas services" },
+    { "uri": "ethereum/erc20", "optional": true, "reason": "Token interactions in constructor" }
+  ],
+  "author": "dojo-community",
+  "license": "MIT",
+  "status": "verified",
+  "created": "2026-04-05T00:00:00Z",
+  "updated": "2026-04-05T00:00:00Z"
+}

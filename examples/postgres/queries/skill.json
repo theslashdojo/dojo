@@ -1,0 +1,78 @@
+{
+  "name": "queries",
+  "version": "1.0.0",
+  "uri": "postgres/queries",
+  "type": "skill",
+  "context": "Execute SQL queries \u2014 parameterized, transactions, EXPLAIN ANALYZE",
+  "parent": "postgres",
+  "tags": [
+    "query",
+    "sql",
+    "select",
+    "insert",
+    "transaction"
+  ],
+  "scripts": [
+    {
+      "id": "query",
+      "name": "Run Query",
+      "description": "Execute a parameterized SQL query",
+      "lang": "javascript",
+      "packages": [
+        "pg@8"
+      ],
+      "inline": "const { Pool } = require('pg');\nasync function query({ sql, params = [] }) {\n  const pool = new Pool({ connectionString: process.env.DATABASE_URL });\n  try {\n    const result = await pool.query(sql, params);\n    return { rows: result.rows, rowCount: result.rowCount };\n  } finally { await pool.end(); }\n}\nmodule.exports = { query };",
+      "env": {
+        "DATABASE_URL": {
+          "required": true,
+          "description": "PostgreSQL connection string"
+        }
+      }
+    },
+    {
+      "id": "explain",
+      "name": "EXPLAIN ANALYZE",
+      "description": "Analyze query performance",
+      "lang": "bash",
+      "inline": "psql $DATABASE_URL -c \"EXPLAIN (ANALYZE, BUFFERS, FORMAT TEXT) $QUERY\"",
+      "env": {
+        "DATABASE_URL": {
+          "required": true
+        },
+        "QUERY": {
+          "required": true
+        }
+      }
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "sql": {
+          "type": "string"
+        },
+        "params": {
+          "type": "array"
+        }
+      },
+      "required": [
+        "sql"
+      ]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "rows": {
+          "type": "array"
+        },
+        "rowCount": {
+          "type": "integer"
+        }
+      }
+    }
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "status": "verified"
+}

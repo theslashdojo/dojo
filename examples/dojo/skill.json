@@ -1,0 +1,109 @@
+{
+  "name": "dojo",
+  "version": "1.2.0",
+  "uri": "dojo",
+  "type": "ecosystem",
+  "content_type": "explainer",
+  "context": "Dojo registry ecosystem — spec, PR-based contribution flow, knowledge endpoints, and runtime architecture",
+  "info": "Top-level map of the Dojo skill registry and knowledge graph. Dojo indexes agent-facing capabilities as a tree of manifests, exposes rich knowledge endpoints for search, learning, backlinks, and graph traversal, and accepts contributions through a standard GitHub pull-request workflow. Start here to navigate the spec, contributor guide, or architecture reference.",
+  "parent": null,
+  "tags": ["dojo", "registry", "agents", "skills", "spec", "contributing", "openapi", "search", "knowledge-graph", "manifests"],
+  "aliases": [
+    "dojo registry",
+    "dojo spec",
+    "dojo skills",
+    "dojo overview",
+    "check dojo spec",
+    "skill registry",
+    "agent capability registry",
+    "dojo knowledge graph",
+    "skill tree"
+  ],
+  "triggers": [
+    "how do i contribute to dojo",
+    "check the dojo spec",
+    "show dojo api docs",
+    "explain dojo search indexing",
+    "how does dojo load skill trees",
+    "what is a dojo manifest",
+    "open a pr for dojo",
+    "how do dojo backlinks work",
+    "what is a good dojo node",
+    "how does the knowledge graph work"
+  ],
+  "body": "# Dojo\n\nDojo is both a skill registry and a knowledge graph for agent-facing capabilities. Every capability — from deploying an AWS Lambda to transferring an ERC-20 token — lives as a `skill.json` manifest in the `examples/` tree.\n\n## Quick navigation\n\n- [[dojo/spec]] — manifest schema, hierarchy rules, and API contract\n- [[dojo/contributing]] — fork, branch, PR contributor workflow\n- [[dojo/architecture]] — runtime loading, search indexing, and knowledge endpoint model\n\n## How it works\n\nThe `examples/` tree is the runtime source of truth. The registry server walks it on boot, indexes every manifest, and serves the result through a REST API. The web app reads from that API — it never touches the filesystem directly.\n\nRich fields like `body`, `sections`, `aliases`, `links`, and `related` are not cosmetic: they drive the web knowledge view, backlinks, and agent learning flows. A manifest with only `context` and `tags` will resolve and execute, but it won't teach agents anything through `/v1/learn` or appear in backlink graphs.\n\n## Design principles\n\n1. **Manifests are the API.** A well-written `skill.json` is discoverable by agents, readable by humans, and indexable by search — no separate docs layer needed.\n2. **Knowledge is first-class.** Nodes carry long-form prose (`body`, `sections`), semantic links (`links`, `related`), and alternate names (`aliases`) that power `/v1/learn`, `/v1/backlinks`, and `/v1/graph`.\n3. **Contributions go through GitHub PRs.** Every change — new ecosystems, new skills, edits — lands via pull request against the `examples/` tree. There is no separate publish command.\n4. **The tree is the product.** Ecosystems like [[ethereum]], [[aws]], [[docker]], and [[github]] are peers. Dojo itself is just another ecosystem that documents how the registry works.\n\n## Example: a minimal vs rich manifest\n\nA **minimal** manifest passes validation but doesn't teach:\n```json\n{\"name\": \"my-skill\", \"version\": \"1.0.0\", \"uri\": \"my-eco/my-skill\",\n \"type\": \"skill\", \"context\": \"Does something\", \"info\": \"More detail\",\n \"tags\": [\"example\"], \"parent\": \"my-eco\"}\n```\n\nA **rich** manifest teaches agents and humans:\n```json\n{\"name\": \"my-skill\", \"version\": \"1.0.0\", \"uri\": \"my-eco/my-skill\",\n \"type\": \"skill\", \"context\": \"Does something specific and useful\",\n \"info\": \"Detailed explanation of when and why to use this...\",\n \"tags\": [\"example\", \"tutorial\"], \"parent\": \"my-eco\",\n \"aliases\": [\"the thing that does X\"],\n \"triggers\": [\"how do i do X\", \"set up X for me\"],\n \"body\": \"# My Skill\\nLong-form explanation...\",\n \"sections\": [{\"id\": \"usage\", \"title\": \"Usage\", \"body\": \"...\", \"tags\": [\"howto\"]}],\n \"links\": [{\"uri\": \"my-eco/related-skill\", \"context\": \"Depends on this\"}],\n \"related\": [{\"uri\": \"other-eco/similar\", \"relation\": \"alternative\"}]}\n```\n\nThe second manifest appears in search, teaches through `/v1/learn`, generates backlinks, and helps agents route to it via natural-language triggers.",
+  "sections": [
+    {
+      "id": "start-here",
+      "title": "Start here",
+      "body": "If the question is about manifest shape or parent rules, go to [[dojo/spec]]. If the question is about opening a PR or validating locally, go to [[dojo/contributing]]. If the question is about why something shows up in the UI or search, go to [[dojo/architecture]].",
+      "tags": ["overview", "navigation", "start", "routing"]
+    },
+    {
+      "id": "what-makes-a-good-node",
+      "title": "What makes a good Dojo node",
+      "body": "A strong node has: (1) a short `context` (max 200 chars) that lets an agent decide in one glance whether this node is relevant, (2) a fuller `info` that explains when and why to use it, (3) natural-language `aliases` and `triggers` so agents and humans can find it by how they think about it — not just by its URI, (4) long-form knowledge in `body` plus `sections` that teaches the concept, (5) `links` for directed navigation to prerequisites and related nodes, and (6) `related` for softer semantic ties like alternatives or evolutions. Executable nodes also need `scripts` with `schema` for input/output contracts. Compare the [[ethereum/erc20]] manifest (rich) with a bare minimum manifest to see the difference in practice.",
+      "tags": ["quality", "body", "sections", "aliases", "triggers", "links", "related", "best-practices"]
+    },
+    {
+      "id": "recommended-layout",
+      "title": "Recommended layout vs allowed layout",
+      "body": "For human contributors, the easiest default is ecosystem -> standard -> skill -> sub. Example: `ethereum` (ecosystem) -> `ethereum/erc20` (standard) -> `ethereum/erc20/transfer` (skill) -> `ethereum/erc20/transfer/batch` (sub). The spec is more flexible: `standard`, `skill`, and `context` nodes may live under any non-`sub` parent, while `sub` still requires a `skill` parent. See [[dojo/spec#hierarchy]] for the full rule set.",
+      "tags": ["hierarchy", "parent-rules", "non-sub-parent", "layout"]
+    },
+    {
+      "id": "knowledge-api",
+      "title": "Knowledge API surface",
+      "body": "The registry exposes two layers of API:\n\n**Core routes** handle execution: `/v1/resolve` (manifest lookup), `/v1/skills/*` (CRUD), `/v1/search` (full-text), `/v1/tree/*` (subtree traversal), `/v1/agent/ask` (agent query endpoint).\n\n**Knowledge routes** handle learning: `/v1/ecosystems` (list roots), `/v1/learn/*` (rendered body + sections), `/v1/backlinks/*` (who links here), `/v1/graph/*` (local neighborhood), `/v1/alias/:alias` (resolve alternate name), `/v1/agent/learn` (agent knowledge query).\n\nSearch quality depends on index coverage. If `aliases`, `body`, and `sections` aren't indexed, richer manifests won't improve search results. See [[dojo/architecture#search-index]] for details.",
+      "tags": ["api", "knowledge", "search", "learn", "backlinks", "graph", "resolve", "endpoints"]
+    },
+    {
+      "id": "contribution-model",
+      "title": "Contribution model",
+      "body": "All changes to the skill tree land through GitHub pull requests. The workflow: fork `keychain-inc/dojo`, create a feature branch, add or edit manifests under `examples/`, validate with `dojo validate`, smoke-test against the local registry server, and open a PR. Maintainers review for schema validity, content quality, and search coverage. Squash-merge lands the node into the live registry. See [[dojo/contributing]] for the complete step-by-step guide.",
+      "tags": ["github", "pr", "contributing", "fork", "workflow"]
+    },
+    {
+      "id": "ecosystem-peers",
+      "title": "Ecosystem peers",
+      "body": "Dojo is one ecosystem among many. Current peers include [[ethereum]] (smart contracts, tokens, DeFi), [[aws]] (Lambda, S3, IAM), [[docker]] (containers, images, compose), [[github]] (repos, auth), [[stripe]] (payments, subscriptions), [[postgres]] (queries, migrations), [[redis]] (cache, pubsub), [[openai]] (chat, embeddings), [[slack]] (messages, channels), [[notion]] (pages, databases), [[vercel]] (deployments, domains), and [[twilio]] (SMS, voice). Each ecosystem follows the same manifest schema and can cross-link via `links` and `related`.",
+      "tags": ["ecosystems", "peers", "cross-links", "registry"]
+    },
+    {
+      "id": "troubleshooting",
+      "title": "Troubleshooting",
+      "body": "**My node doesn't appear in search.** Check that `tags`, `aliases`, and `body` are populated — thin manifests rank low. Restart the server to re-index. See [[dojo/architecture#search-index]].\n\n**My node fails validation.** Run `dojo validate ./skill.json` and check for: `context` over 200 chars, invalid `type`/`parent` combo, missing required fields, or bad URI pattern. See [[dojo/spec#manifest-core]].\n\n**My backlinks are missing.** Backlinks are computed from `links` and `related` fields. If node A links to node B, B's backlinks page shows A. Check that your `links[].uri` values are correct and that the target node exists.\n\n**My ecosystem doesn't show in the web UI.** The web app reads from `/v1/ecosystems`. Make sure your root `skill.json` has `type: ecosystem` and `parent: null`, and that the server has restarted. See [[dojo/architecture#ecosystems-endpoint]].",
+      "tags": ["troubleshooting", "faq", "debug", "search", "validation", "backlinks"]
+    }
+  ],
+  "links": [
+    { "uri": "dojo/spec", "context": "Manifest schema, hierarchy rules, and API contract" },
+    { "uri": "dojo/contributing", "context": "Fork, branch, PR contributor workflow" },
+    { "uri": "dojo/architecture", "context": "Runtime loading, search, and UI behavior" },
+    { "uri": "ethereum/erc20", "context": "Example of a rich, well-documented skill manifest" }
+  ],
+  "related": [
+    { "uri": "github", "relation": "implements", "note": "GitHub ecosystem skills used by the PR-based contribution workflow" },
+    { "uri": "ethereum", "relation": "see-also", "note": "Most feature-complete ecosystem — good reference for manifest richness" },
+    { "uri": "aws", "relation": "see-also", "note": "Ecosystem with executable skills (Lambda, S3, IAM)" }
+  ],
+  "more": {
+    "repo": "https://github.com/keychain-inc/dojo",
+    "spec": "https://github.com/keychain-inc/dojo/blob/master/SPEC.md",
+    "contributing": "https://github.com/keychain-inc/dojo/blob/master/CONTRIBUTING.md",
+    "docs": "https://github.com/keychain-inc/dojo/wiki",
+    "examples": "https://github.com/keychain-inc/dojo/tree/master/examples"
+  },
+  "sub": ["dojo/spec", "dojo/contributing", "dojo/architecture"],
+  "frontmatter": {
+    "audience": "contributors",
+    "estimated_reading_time": "5 min",
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "status": "published",
+  "created": "2026-04-05T00:00:00Z",
+  "updated": "2026-04-07T00:00:00Z"
+}

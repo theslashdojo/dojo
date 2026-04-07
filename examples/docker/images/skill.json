@@ -1,0 +1,42 @@
+{
+  "name": "images",
+  "version": "1.0.0",
+  "uri": "docker/images",
+  "type": "skill",
+  "context": "Build, tag, push Docker images",
+  "parent": "docker",
+  "tags": [
+    "images",
+    "build",
+    "push",
+    "registry",
+    "dockerfile"
+  ],
+  "scripts": [
+    {
+      "id": "build",
+      "name": "Build Image",
+      "lang": "bash",
+      "inline": "docker build -t $IMAGE_TAG ${CONTEXT:-.}",
+      "env": {
+        "IMAGE_TAG": {
+          "required": true
+        }
+      }
+    },
+    {
+      "id": "push",
+      "name": "Push to Registry",
+      "lang": "bash",
+      "inline": "docker push $IMAGE_TAG",
+      "env": {
+        "IMAGE_TAG": {
+          "required": true
+        }
+      }
+    }
+  ],
+  "author": "dojo-community",
+  "license": "MIT",
+  "status": "verified"
+}

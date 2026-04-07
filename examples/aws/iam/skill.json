@@ -1,0 +1,29 @@
+{
+  "name": "iam",
+  "version": "1.0.0",
+  "uri": "aws/iam",
+  "type": "standard",
+  "context": "AWS IAM identity management — roles, policies, users, and access control",
+  "info": "Manage AWS Identity and Access Management: create/delete users, manage roles and policies, handle access keys, configure MFA, and set up cross-account access. Includes policy document generation and least-privilege analysis.",
+  "parent": "aws",
+  "tags": ["iam", "identity", "access", "roles", "policies", "security", "aws"],
+  "triggers": ["create iam role", "manage aws permissions", "set up access control"],
+  "sub": ["aws/iam/roles", "aws/iam/policies", "aws/iam/users"],
+  "scripts": [
+    {
+      "id": "create-role",
+      "name": "Create IAM Role",
+      "description": "Create an IAM role with a trust policy",
+      "lang": "bash",
+      "inline": "#!/bin/bash\nset -e\naws iam create-role \\\n  --role-name \"$ROLE_NAME\" \\\n  --assume-role-policy-document \"$TRUST_POLICY\" \\\n  --description \"${ROLE_DESC:-Created by Dojo}\"",
+      "env": {
+        "ROLE_NAME": { "required": true, "description": "Name for the IAM role" },
+        "TRUST_POLICY": { "required": true, "description": "JSON trust policy document" },
+        "ROLE_DESC": { "required": false }
+      }
+    }
+  ],
+  "author": "dojo-community",
+  "license": "MIT",
+  "status": "published"
+}

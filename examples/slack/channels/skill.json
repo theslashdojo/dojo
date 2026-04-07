@@ -1,0 +1,34 @@
+{
+  "name": "channels",
+  "version": "1.0.0",
+  "uri": "slack/channels",
+  "type": "skill",
+  "context": "Manage channels \u2014 create, archive, invite users, set topic",
+  "parent": "slack",
+  "tags": [
+    "channels",
+    "create",
+    "archive",
+    "topic"
+  ],
+  "scripts": [
+    {
+      "id": "create",
+      "name": "Create Channel",
+      "lang": "javascript",
+      "packages": [
+        "@slack/web-api@7"
+      ],
+      "inline": "const { WebClient } = require('@slack/web-api');\nasync function create({ name, is_private = false }) {\n  const client = new WebClient(process.env.SLACK_TOKEN);\n  const result = await client.conversations.create({ name, is_private });\n  return { id: result.channel.id, name: result.channel.name };\n}\nmodule.exports = { create };",
+      "env": {
+        "SLACK_TOKEN": {
+          "required": true,
+          "secret": true
+        }
+      }
+    }
+  ],
+  "author": "dojo-community",
+  "license": "MIT",
+  "status": "published"
+}

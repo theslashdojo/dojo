@@ -1,0 +1,22 @@
+{
+  "name": "embeddings",
+  "version": "1.0.0",
+  "uri": "openai/embeddings",
+  "type": "skill",
+  "context": "Generate text embeddings for search, RAG, clustering, and classification",
+  "parent": "openai",
+  "tags": ["embeddings", "vectors", "rag", "search", "similarity"],
+  "scripts": [
+    {
+      "id": "embed",
+      "name": "Generate Embeddings",
+      "description": "Convert text to vector embeddings using text-embedding-3-small",
+      "lang": "javascript",
+      "packages": ["openai@4"],
+      "inline": "const OpenAI = require('openai');\n\nasync function embed({ texts, model = 'text-embedding-3-small' }) {\n  const openai = new OpenAI();\n  const response = await openai.embeddings.create({ model, input: texts });\n  return { vectors: response.data.map(d => d.embedding), dimensions: response.data[0].embedding.length, usage: response.usage };\n}\n\nmodule.exports = { embed };",
+      "env": { "OPENAI_API_KEY": { "required": true, "secret": true } }
+    }
+  ],
+  "related": [{ "uri": "database/vector", "relation": "see-also", "note": "Store embeddings in a vector database" }],
+  "author": "dojo-community", "license": "MIT", "status": "verified"
+}

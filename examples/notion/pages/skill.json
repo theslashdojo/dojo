@@ -1,0 +1,35 @@
+{
+  "name": "pages",
+  "version": "1.0.0",
+  "uri": "notion/pages",
+  "type": "skill",
+  "context": "Create and update Notion pages with rich content",
+  "parent": "notion",
+  "tags": [
+    "pages",
+    "create",
+    "update",
+    "content"
+  ],
+  "scripts": [
+    {
+      "id": "create",
+      "name": "Create Page",
+      "description": "Create a new Notion page with blocks",
+      "lang": "javascript",
+      "packages": [
+        "@notionhq/client@2"
+      ],
+      "inline": "const { Client } = require('@notionhq/client');\nasync function create({ parent_id, title, children = [] }) {\n  const notion = new Client({ auth: process.env.NOTION_TOKEN });\n  const page = await notion.pages.create({\n    parent: { page_id: parent_id },\n    properties: { title: { title: [{ text: { content: title } }] } },\n    children\n  });\n  return { id: page.id, url: page.url };\n}\nmodule.exports = { create };",
+      "env": {
+        "NOTION_TOKEN": {
+          "required": true,
+          "secret": true
+        }
+      }
+    }
+  ],
+  "author": "dojo-community",
+  "license": "MIT",
+  "status": "published"
+}

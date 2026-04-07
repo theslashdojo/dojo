@@ -1,0 +1,34 @@
+{
+  "name": "pubsub",
+  "version": "1.0.0",
+  "uri": "redis/pubsub",
+  "type": "skill",
+  "context": "Pub/Sub messaging \u2014 publish events, subscribe to channels",
+  "parent": "redis",
+  "tags": [
+    "pubsub",
+    "publish",
+    "subscribe",
+    "messaging",
+    "events"
+  ],
+  "scripts": [
+    {
+      "id": "publish",
+      "name": "Publish Message",
+      "lang": "javascript",
+      "packages": [
+        "redis@4"
+      ],
+      "inline": "const { createClient } = require('redis');\nasync function publish({ channel, message }) {\n  const client = createClient({ url: process.env.REDIS_URL });\n  await client.connect();\n  const subscribers = await client.publish(channel, JSON.stringify(message));\n  await client.disconnect();\n  return { channel, subscribers };\n}\nmodule.exports = { publish };",
+      "env": {
+        "REDIS_URL": {
+          "required": true
+        }
+      }
+    }
+  ],
+  "author": "dojo-community",
+  "license": "MIT",
+  "status": "published"
+}

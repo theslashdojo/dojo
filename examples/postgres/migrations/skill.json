@@ -1,0 +1,43 @@
+{
+  "name": "migrations",
+  "version": "1.0.0",
+  "uri": "postgres/migrations",
+  "type": "skill",
+  "context": "Schema migrations \u2014 create, run, rollback, and generate migration files",
+  "parent": "postgres",
+  "tags": [
+    "migrations",
+    "schema",
+    "alter",
+    "ddl",
+    "up",
+    "down"
+  ],
+  "scripts": [
+    {
+      "id": "create",
+      "name": "Create Migration",
+      "lang": "bash",
+      "inline": "mkdir -p migrations && touch migrations/$(date +%Y%m%d%H%M%S)_${NAME}.sql",
+      "env": {
+        "NAME": {
+          "required": true
+        }
+      }
+    },
+    {
+      "id": "up",
+      "name": "Run Migrations",
+      "lang": "bash",
+      "inline": "for f in migrations/*.sql; do psql $DATABASE_URL -f $f; done",
+      "env": {
+        "DATABASE_URL": {
+          "required": true
+        }
+      }
+    }
+  ],
+  "author": "dojo-community",
+  "license": "MIT",
+  "status": "published"
+}

@@ -1,0 +1,42 @@
+{
+  "name": "vector",
+  "version": "1.0.0",
+  "uri": "database/vector",
+  "type": "standard",
+  "context": "Vector database operations — embed, index, search, and manage vector stores for AI/RAG pipelines",
+  "info": "Supports Pinecone, pgvector, Chroma, Weaviate, and Qdrant. Skills cover: generating embeddings (OpenAI, Cohere, local models), upserting vectors with metadata, similarity search (cosine, L2, dot product), namespace management, and hybrid search combining vector + keyword filters. Designed for RAG, recommendation, and semantic search use cases.",
+  "parent": "database",
+  "tags": ["vector", "embeddings", "rag", "search", "similarity", "pinecone", "pgvector", "ai"],
+  "triggers": ["vector search", "store embeddings", "similarity search", "semantic search", "rag pipeline"],
+  "sub": ["database/vector/embed", "database/vector/search", "database/vector/upsert"],
+  "scripts": [
+    {
+      "id": "embed-and-upsert",
+      "name": "Embed and Upsert",
+      "description": "Generate embeddings and upsert to vector store",
+      "lang": "javascript",
+      "packages": ["openai@4", "@pinecone-database/pinecone@2"],
+      "inline": "const OpenAI = require('openai');\nconst { Pinecone } = require('@pinecone-database/pinecone');\n\nasync function embedAndUpsert({ texts, namespace = 'default', indexName }) {\n  const openai = new OpenAI();\n  const pc = new Pinecone();\n  const index = pc.index(indexName);\n\n  const response = await openai.embeddings.create({\n    model: 'text-embedding-3-small',\n    input: texts\n  });\n\n  const vectors = response.data.map((item, i) => ({\n    id: `vec_${Date.now()}_${i}`,\n    values: item.embedding,\n    metadata: { text: texts[i] }\n  }));\n\n  await index.namespace(namespace).upsert(vectors);\n  return { upserted: vectors.length, namespace };\n}\n\nmodule.exports = { embedAndUpsert };",
+      "env": {
+        "OPENAI_API_KEY": { "required": true, "secret": true },
+        "PINECONE_API_KEY": { "required": true, "secret": true }
+      }
+    },
+    {
+      "id": "search",
+      "name": "Similarity Search",
+      "description": "Search vector store by text query",
+      "lang": "javascript",
+      "packages": ["openai@4", "@pinecone-database/pinecone@2"],
+      "inline": "const OpenAI = require('openai');\nconst { Pinecone } = require('@pinecone-database/pinecone');\n\nasync function search({ query, indexName, namespace = 'default', topK = 5 }) {\n  const openai = new OpenAI();\n  const pc = new Pinecone();\n\n  const embedding = await openai.embeddings.create({\n    model: 'text-embedding-3-small',\n    input: query\n  });\n\n  const results = await pc.index(indexName).namespace(namespace).query({\n    vector: embedding.data[0].embedding,\n    topK,\n    includeMetadata: true\n  });\n\n  return results.matches.map(m => ({ id: m.id, score: m.score, text: m.metadata?.text }));\n}\n\nmodule.exports = { search };",
+      "env": {
+        "OPENAI_API_KEY": { "required": true, "secret": true },
+        "PINECONE_API_KEY": { "required": true, "secret": true }
+      }
+    }
+  ],
+  "depends": [],
+  "author": "dojo-community",
+  "license": "MIT",
+  "status": "verified"
+}

@@ -1,0 +1,60 @@
+{
+  "name": "x402",
+  "version": "0.3.0",
+  "uri": "ethereum/x402",
+  "type": "standard",
+  "context": "x402 HTTP payment protocol — machine-to-machine crypto payments via 402 status codes",
+  "info": "The x402 protocol enables AI agents and services to negotiate and execute crypto payments inline with HTTP requests. When a server returns HTTP 402 Payment Required, the x402 header contains payment details (amount, token, chain, recipient). The client agent constructs and signs the payment transaction, then retries the request with a payment proof header. Supports ERC-20 and native ETH payments across EVM chains.",
+  "parent": "ethereum",
+  "tags": ["x402", "payment", "http", "machine-payment", "402", "agent-payment", "micropayment"],
+  "triggers": [
+    "pay for API with crypto",
+    "x402 payment",
+    "machine to machine payment",
+    "handle 402 payment required",
+    "agent payment protocol"
+  ],
+  "more": {
+    "docs": "https://docs.x402.org",
+    "spec": "https://x402.org/spec",
+    "repo": "https://github.com/coinbase/x402"
+  },
+  "sub": [
+    "ethereum/x402/contracts",
+    "ethereum/x402/client",
+    "ethereum/x402/server"
+  ],
+  "scripts": [
+    {
+      "id": "negotiate",
+      "name": "Negotiate Payment",
+      "description": "Parse a 402 response and construct payment parameters",
+      "lang": "javascript",
+      "runtime": "node>=18",
+      "inline": "// Parse x402 payment header from 402 response\nfunction parseX402(response) {\n  const header = response.headers.get('x-402-payment');\n  if (!header) throw new Error('No x402 payment header');\n  return JSON.parse(Buffer.from(header, 'base64').toString());\n}\n\n// Returns: { amount, token, chain, recipient, memo }",
+      "packages": []
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "response_headers": { "type": "object", "description": "HTTP response headers from 402" },
+        "max_amount": { "type": "string", "description": "Maximum payment amount willing to pay" }
+      }
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "payment_tx": { "type": "string", "description": "Signed payment transaction" },
+        "proof_header": { "type": "string", "description": "x402 proof header for retry" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "ethereum/erc20", "optional": true, "reason": "ERC-20 token payments" }
+  ],
+  "author": "dojo-community",
+  "license": "MIT",
+  "status": "published"
+}

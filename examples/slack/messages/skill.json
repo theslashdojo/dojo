@@ -1,0 +1,36 @@
+{
+  "name": "messages",
+  "version": "1.0.0",
+  "uri": "slack/messages",
+  "type": "skill",
+  "context": "Send messages \u2014 plain text, rich blocks, threads, and ephemeral",
+  "parent": "slack",
+  "tags": [
+    "messages",
+    "send",
+    "blocks",
+    "threads"
+  ],
+  "scripts": [
+    {
+      "id": "send",
+      "name": "Send Message",
+      "description": "Send a message to a Slack channel",
+      "lang": "javascript",
+      "packages": [
+        "@slack/web-api@7"
+      ],
+      "inline": "const { WebClient } = require('@slack/web-api');\nasync function send({ channel, text, blocks }) {\n  const client = new WebClient(process.env.SLACK_TOKEN);\n  const result = await client.chat.postMessage({ channel, text, blocks });\n  return { ts: result.ts, channel: result.channel };\n}\nmodule.exports = { send };",
+      "env": {
+        "SLACK_TOKEN": {
+          "required": true,
+          "secret": true,
+          "description": "Slack Bot OAuth token"
+        }
+      }
+    }
+  ],
+  "author": "dojo-community",
+  "license": "MIT",
+  "status": "verified"
+}

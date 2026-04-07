@@ -1,0 +1,84 @@
+{
+  "name": "repos",
+  "version": "1.0.0",
+  "uri": "github/repos",
+  "type": "skill",
+  "context": "GitHub repository management — create, clone, configure, and manage repos",
+  "info": "Full repository lifecycle management via GitHub API. Create repos, manage settings, configure branch protection, set up webhooks, manage collaborators, and handle releases.",
+  "parent": "github",
+  "tags": ["repos", "repository", "create", "clone", "manage", "github"],
+  "triggers": [
+    "create a repo",
+    "make a github repository",
+    "clone a repo",
+    "set up a new project on github"
+  ],
+  "sub": [
+    "github/repos/create",
+    "github/repos/clone",
+    "github/repos/settings"
+  ],
+  "scripts": [
+    {
+      "id": "create-repo",
+      "name": "Create Repository",
+      "description": "Create a new GitHub repository",
+      "lang": "bash",
+      "inline": "#!/bin/bash\nset -e\ncurl -s -X POST \\\n  -H \"Authorization: token $GITHUB_TOKEN\" \\\n  -H \"Accept: application/vnd.github+json\" \\\n  https://api.github.com/user/repos \\\n  -d \"{\n    \\\"name\\\": \\\"$REPO_NAME\\\",\n    \\\"description\\\": \\\"$REPO_DESC\\\",\n    \\\"private\\\": ${PRIVATE:-false},\n    \\\"auto_init\\\": true\n  }\"",
+      "env": {
+        "GITHUB_TOKEN": { "required": true, "secret": true, "description": "GitHub personal access token" },
+        "REPO_NAME": { "required": true, "description": "Repository name" },
+        "REPO_DESC": { "required": false, "default": "", "description": "Repository description" },
+        "PRIVATE": { "required": false, "default": "false" }
+      }
+    },
+    {
+      "id": "list-repos",
+      "name": "List Repositories",
+      "description": "List repositories for authenticated user",
+      "lang": "bash",
+      "inline": "#!/bin/bash\ncurl -s -H \"Authorization: token $GITHUB_TOKEN\" \\\n  \"https://api.github.com/user/repos?sort=updated&per_page=${LIMIT:-30}\"",
+      "env": {
+        "GITHUB_TOKEN": { "required": true, "secret": true },
+        "LIMIT": { "required": false, "default": "30" }
+      }
+    },
+    {
+      "id": "init-push",
+      "name": "Init and Push",
+      "description": "Initialize a local directory and push to a new GitHub repo",
+      "lang": "bash",
+      "inline": "#!/bin/bash\nset -e\ncd \"$PROJECT_DIR\"\ngit init\ngit add .\ngit commit -m \"${COMMIT_MSG:-Initial commit}\"\ngit branch -M main\ngit remote add origin \"https://$GITHUB_TOKEN@github.com/$GITHUB_USER/$REPO_NAME.git\"\ngit push -u origin main",
+      "env": {
+        "PROJECT_DIR": { "required": true, "description": "Local project directory" },
+        "GITHUB_TOKEN": { "required": true, "secret": true },
+        "GITHUB_USER": { "required": true },
+        "REPO_NAME": { "required": true },
+        "COMMIT_MSG": { "required": false, "default": "Initial commit" }
+      }
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "action": { "type": "string", "enum": ["create", "list", "clone", "delete", "configure"] },
+        "name": { "type": "string" },
+        "private": { "type": "boolean", "default": false }
+      },
+      "required": ["action"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "url": { "type": "string" },
+        "clone_url": { "type": "string" },
+        "ssh_url": { "type": "string" }
+      }
+    }
+  },
+  "depends": [],
+  "author": "dojo-community",
+  "license": "MIT",
+  "status": "verified"
+}

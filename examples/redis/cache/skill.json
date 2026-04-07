@@ -1,0 +1,36 @@
+{
+  "name": "cache",
+  "version": "1.0.0",
+  "uri": "redis/cache",
+  "type": "skill",
+  "context": "Cache operations \u2014 get, set, delete, TTL, invalidation patterns",
+  "parent": "redis",
+  "tags": [
+    "cache",
+    "get",
+    "set",
+    "ttl",
+    "invalidation"
+  ],
+  "scripts": [
+    {
+      "id": "get-set",
+      "name": "Get/Set Cache",
+      "description": "Cache a value with optional TTL",
+      "lang": "javascript",
+      "packages": [
+        "redis@4"
+      ],
+      "inline": "const { createClient } = require('redis');\nasync function cache({ key, value, ttl = 3600 }) {\n  const client = createClient({ url: process.env.REDIS_URL });\n  await client.connect();\n  if (value !== undefined) {\n    await client.set(key, JSON.stringify(value), { EX: ttl });\n    await client.disconnect();\n    return { key, cached: true, ttl };\n  }\n  const result = await client.get(key);\n  await client.disconnect();\n  return { key, value: result ? JSON.parse(result) : null, hit: !!result };\n}\nmodule.exports = { cache };",
+      "env": {
+        "REDIS_URL": {
+          "required": true,
+          "default": "redis://localhost:6379"
+        }
+      }
+    }
+  ],
+  "author": "dojo-community",
+  "license": "MIT",
+  "status": "verified"
+}

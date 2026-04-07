@@ -1,0 +1,44 @@
+{
+  "name": "containers",
+  "version": "1.0.0",
+  "uri": "docker/containers",
+  "type": "skill",
+  "context": "Run, stop, inspect, and manage Docker containers",
+  "parent": "docker",
+  "tags": [
+    "containers",
+    "run",
+    "exec",
+    "logs"
+  ],
+  "scripts": [
+    {
+      "id": "run",
+      "name": "Run Container",
+      "lang": "bash",
+      "inline": "docker run -d --name $CONTAINER_NAME -p ${HOST_PORT:-8080}:${CONTAINER_PORT:-80} $IMAGE_NAME",
+      "env": {
+        "IMAGE_NAME": {
+          "required": true
+        },
+        "CONTAINER_NAME": {
+          "required": true
+        }
+      }
+    },
+    {
+      "id": "logs",
+      "name": "View Logs",
+      "lang": "bash",
+      "inline": "docker logs -f --tail 100 $CONTAINER_NAME",
+      "env": {
+        "CONTAINER_NAME": {
+          "required": true
+        }
+      }
+    }
+  ],
+  "author": "dojo-community",
+  "license": "MIT",
+  "status": "verified"
+}

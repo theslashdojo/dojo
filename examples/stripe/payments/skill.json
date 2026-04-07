@@ -1,0 +1,27 @@
+{
+  "name": "payments",
+  "version": "1.0.0",
+  "uri": "stripe/payments",
+  "type": "standard",
+  "context": "Stripe payment processing — one-time charges, payment intents, and refunds",
+  "info": "Handles the full payment flow: create PaymentIntents, confirm payments, process refunds, handle disputes. Supports card, bank transfer, and wallet payment methods. Includes 3D Secure handling and SCA compliance.",
+  "parent": "stripe",
+  "tags": ["payments", "charge", "refund", "payment-intent", "stripe"],
+  "sub": ["stripe/payments/charge", "stripe/payments/refund"],
+  "scripts": [
+    {
+      "id": "create-payment-intent",
+      "name": "Create Payment Intent",
+      "description": "Create a Stripe PaymentIntent for a charge",
+      "lang": "javascript",
+      "packages": ["stripe@14"],
+      "inline": "const Stripe = require('stripe');\n\nasync function createPaymentIntent({ amount, currency = 'usd', description, metadata = {} }) {\n  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);\n  const intent = await stripe.paymentIntents.create({\n    amount: Math.round(amount * 100),\n    currency,\n    description,\n    metadata,\n    automatic_payment_methods: { enabled: true }\n  });\n  return { id: intent.id, client_secret: intent.client_secret, status: intent.status };\n}\n\nmodule.exports = { createPaymentIntent };",
+      "env": {
+        "STRIPE_SECRET_KEY": { "required": true, "secret": true, "description": "Stripe secret API key" }
+      }
+    }
+  ],
+  "author": "dojo-community",
+  "license": "MIT",
+  "status": "verified"
+}

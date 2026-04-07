@@ -1,0 +1,28 @@
+{
+  "name": "subscriptions",
+  "version": "1.0.0",
+  "uri": "stripe/subscriptions",
+  "type": "standard",
+  "context": "Stripe recurring billing — create, manage, and cancel subscriptions",
+  "info": "Full subscription lifecycle: create subscription plans/prices, subscribe customers, handle trials, manage upgrades/downgrades, process cancellations, and handle billing webhooks. Supports metered billing, tiered pricing, and proration.",
+  "parent": "stripe",
+  "tags": ["subscriptions", "billing", "recurring", "plan", "stripe"],
+  "triggers": ["create subscription", "manage billing", "set up recurring payments"],
+  "sub": ["stripe/subscriptions/create", "stripe/subscriptions/cancel"],
+  "scripts": [
+    {
+      "id": "create-subscription",
+      "name": "Create Subscription",
+      "description": "Subscribe a customer to a price/plan",
+      "lang": "javascript",
+      "packages": ["stripe@14"],
+      "inline": "const Stripe = require('stripe');\n\nasync function createSubscription({ customerId, priceId, trialDays }) {\n  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);\n  const sub = await stripe.subscriptions.create({\n    customer: customerId,\n    items: [{ price: priceId }],\n    trial_period_days: trialDays || undefined,\n    payment_behavior: 'default_incomplete',\n    expand: ['latest_invoice.payment_intent']\n  });\n  return {\n    id: sub.id,\n    status: sub.status,\n    client_secret: sub.latest_invoice?.payment_intent?.client_secret\n  };\n}\n\nmodule.exports = { createSubscription };",
+      "env": {
+        "STRIPE_SECRET_KEY": { "required": true, "secret": true }
+      }
+    }
+  ],
+  "author": "dojo-community",
+  "license": "MIT",
+  "status": "published"
+}

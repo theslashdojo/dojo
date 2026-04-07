@@ -1,0 +1,36 @@
+{
+  "name": "databases",
+  "version": "1.0.0",
+  "uri": "notion/databases",
+  "type": "skill",
+  "context": "Query and manage Notion databases \u2014 filter, sort, create entries",
+  "parent": "notion",
+  "tags": [
+    "databases",
+    "query",
+    "filter",
+    "sort",
+    "entries"
+  ],
+  "scripts": [
+    {
+      "id": "query",
+      "name": "Query Database",
+      "description": "Query a Notion database with filters",
+      "lang": "javascript",
+      "packages": [
+        "@notionhq/client@2"
+      ],
+      "inline": "const { Client } = require('@notionhq/client');\nasync function query({ database_id, filter, sorts }) {\n  const notion = new Client({ auth: process.env.NOTION_TOKEN });\n  const response = await notion.databases.query({ database_id, filter, sorts });\n  return { results: response.results.map(p => ({ id: p.id, properties: p.properties })), has_more: response.has_more };\n}\nmodule.exports = { query };",
+      "env": {
+        "NOTION_TOKEN": {
+          "required": true,
+          "secret": true
+        }
+      }
+    }
+  ],
+  "author": "dojo-community",
+  "license": "MIT",
+  "status": "published"
+}

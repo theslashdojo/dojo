@@ -1,0 +1,27 @@
+{
+  "name": "sql",
+  "version": "1.0.0",
+  "uri": "database/sql",
+  "type": "standard",
+  "context": "SQL database operations — query, migrate, seed, and manage relational databases",
+  "info": "Covers PostgreSQL, MySQL, and SQLite. Skills include: raw query execution, parameterized queries, schema migrations (up/down), seed data insertion, index management, connection pooling, and transaction handling. Supports both direct connections and connection strings.",
+  "parent": "database",
+  "tags": ["sql", "postgres", "mysql", "sqlite", "query", "migration", "relational"],
+  "sub": ["database/sql/query", "database/sql/migrate", "database/sql/seed"],
+  "scripts": [
+    {
+      "id": "query",
+      "name": "Execute SQL Query",
+      "description": "Run a parameterized SQL query against a database",
+      "lang": "javascript",
+      "packages": ["pg@8"],
+      "inline": "const { Pool } = require('pg');\n\nasync function query({ sql, params = [], connectionString }) {\n  const pool = new Pool({ connectionString: connectionString || process.env.DATABASE_URL });\n  try {\n    const result = await pool.query(sql, params);\n    return { rows: result.rows, rowCount: result.rowCount, fields: result.fields.map(f => f.name) };\n  } finally {\n    await pool.end();\n  }\n}\n\nmodule.exports = { query };",
+      "env": {
+        "DATABASE_URL": { "required": true, "description": "PostgreSQL connection string" }
+      }
+    }
+  ],
+  "author": "dojo-community",
+  "license": "MIT",
+  "status": "verified"
+}

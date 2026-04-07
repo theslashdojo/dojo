@@ -1,0 +1,57 @@
+{
+  "name": "chat",
+  "version": "1.0.0",
+  "uri": "openai/chat",
+  "type": "skill",
+  "context": "Chat completions — send messages, stream responses, manage conversations",
+  "info": "Create chat completions with GPT-4o, GPT-4, or GPT-3.5. Supports streaming, function calling, JSON mode, system prompts, and multi-turn conversations. Handles token counting and context window management.",
+  "parent": "openai",
+  "tags": ["chat", "completions", "gpt", "streaming", "function-calling"],
+  "scripts": [
+    {
+      "id": "complete",
+      "name": "Chat Completion",
+      "description": "Send messages and get a completion response",
+      "lang": "javascript",
+      "runtime": "node>=18",
+      "packages": ["openai@4"],
+      "inline": "const OpenAI = require('openai');\n\nasync function complete({ messages, model = 'gpt-4o', temperature = 0.7, max_tokens = 1000 }) {\n  const openai = new OpenAI();\n  const response = await openai.chat.completions.create({\n    model, messages, temperature, max_tokens\n  });\n  return {\n    content: response.choices[0].message.content,\n    usage: response.usage,\n    model: response.model,\n    finish_reason: response.choices[0].finish_reason\n  };\n}\n\nmodule.exports = { complete };",
+      "env": {
+        "OPENAI_API_KEY": { "required": true, "secret": true, "description": "OpenAI API key" }
+      }
+    },
+    {
+      "id": "stream",
+      "name": "Streaming Completion",
+      "description": "Stream a chat completion token by token",
+      "lang": "javascript",
+      "runtime": "node>=18",
+      "packages": ["openai@4"],
+      "inline": "const OpenAI = require('openai');\n\nasync function* stream({ messages, model = 'gpt-4o' }) {\n  const openai = new OpenAI();\n  const stream = await openai.chat.completions.create({\n    model, messages, stream: true\n  });\n  for await (const chunk of stream) {\n    const content = chunk.choices[0]?.delta?.content;\n    if (content) yield content;\n  }\n}\n\nmodule.exports = { stream };",
+      "env": {
+        "OPENAI_API_KEY": { "required": true, "secret": true }
+      }
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "messages": { "type": "array", "description": "Array of {role, content} message objects" },
+        "model": { "type": "string", "default": "gpt-4o" },
+        "temperature": { "type": "number", "default": 0.7 }
+      },
+      "required": ["messages"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "content": { "type": "string" },
+        "usage": { "type": "object" }
+      }
+    }
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "status": "verified"
+}

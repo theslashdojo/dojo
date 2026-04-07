@@ -1,0 +1,126 @@
+{
+  "name": "spec",
+  "version": "1.2.0",
+  "uri": "dojo/spec",
+  "type": "context",
+  "content_type": "reference",
+  "context": "Dojo specification — manifest schema, hierarchy rules, knowledge fields, and API surface",
+  "info": "Authoritative reference for Dojo manifests and runtime behavior. Covers valid node types and their parent rules, URI structure, all core and knowledge fields with concrete examples, content types, semantic relationship types, script and schema contracts, the full API surface including knowledge endpoints, and a FAQ for common questions.",
+  "parent": "dojo",
+  "tags": ["dojo", "spec", "schema", "api", "manifests", "hierarchy", "knowledge", "json-schema", "reference"],
+  "aliases": [
+    "dojo spec",
+    "check dojo spec",
+    "manifest schema",
+    "dojo hierarchy rules",
+    "dojo api reference",
+    "skill json format",
+    "dojo node types",
+    "skill.json spec",
+    "dojo manifest reference"
+  ],
+  "triggers": [
+    "check the dojo spec",
+    "what parent is valid for a dojo skill",
+    "how does dojo model hierarchy",
+    "what fields go in skill json",
+    "what are dojo node types",
+    "what content types does dojo support",
+    "how do related and links differ",
+    "what is the uri format for dojo",
+    "what fields are required in a manifest"
+  ],
+  "body": "# Dojo Spec\n\nDojo skill trees are loaded from the `examples/` directory. Every node is defined by a `skill.json` manifest validated against `schema/skill.schema.json`.\n\n## Node types\n\n| Type | Purpose | Can execute scripts? | Valid parents |\n|------|---------|---------------------|---------------|\n| `ecosystem` | Root of a skill tree | No | `null` (root only) |\n| `standard` | Category grouping | No* | Any non-`sub` |\n| `skill` | Executable capability | Yes | Any non-`sub` |\n| `context` | Knowledge/docs node | No | Any non-`sub` |\n| `sub` | Sub-step of a skill | Yes | `skill` only |\n\n*Standards can carry scripts in the schema but conventionally delegate execution to child skills.\n\n## URI format\n\nURIs are lowercase, slash-separated, matching `^[a-z0-9-]+(/[a-z0-9-]+)*$`. Each segment corresponds to the `name` at that level:\n\n```\nethereum                    # ecosystem root\nethereum/erc20              # standard under ethereum\nethereum/erc20/transfer     # skill under erc20\nethereum/erc20/transfer/batch  # sub under transfer\n```\n\n## Required vs optional fields\n\n**Always required:** `name`, `version`, `uri`, `type`, `context` (max 200 chars), `info`, `tags` (at least one).\n\n**Strongly recommended:** `parent` (null for ecosystems, URI string otherwise), `triggers`, `aliases`, `body`, `sections`, `links`.\n\n**For executable nodes:** `scripts`, `schema` (input/output contracts), `depends` (cross-skill dependencies).\n\n**For knowledge nodes:** `content_type`, `body`, `sections`, `links`, `related`, `frontmatter`.\n\n**Metadata:** `author`, `license`, `status` (draft/published/verified/trusted), `created`, `updated`.\n\nSee [[dojo/contributing]] for the happy-path workflow and [[dojo/architecture]] for runtime behavior.",
+  "sections": [
+    {
+      "id": "hierarchy",
+      "title": "Hierarchy rules",
+      "body": "The spec allows flexible nesting with one strict constraint:\n\n- `ecosystem` — always root, `parent: null`\n- `standard`, `skill`, `context` — may sit below **any non-`sub` parent** (ecosystem, standard, skill, or context)\n- `sub` — **must** have a `skill` parent\n\nThis means a `context` node can live directly under an `ecosystem` (like `dojo/spec` under `dojo`), and a `skill` can live under a `context` if that makes sense for the tree. The contributor guide ([[dojo/contributing]]) recommends the simpler ecosystem -> standard -> skill -> sub layout for clarity, but the spec is the source of truth for what's valid.\n\nExamples of **valid** hierarchies:\n- `ecosystem/standard/skill/sub` (recommended default)\n- `ecosystem/context` (docs node at ecosystem level, like `dojo/spec`)\n- `ecosystem/skill` (skill directly under ecosystem)\n- `ecosystem/standard/context` (docs under a standard)\n- `ecosystem/context/skill` (executable under a knowledge node)\n\nExamples of **invalid** hierarchies:\n- `sub/anything` (sub cannot be a parent)\n- `ecosystem/sub` (sub must have a skill parent, not an ecosystem)",
+      "tags": ["hierarchy", "parents", "non-sub-parent", "ecosystem", "sub", "valid", "invalid"]
+    },
+    {
+      "id": "manifest-core",
+      "title": "Core manifest fields",
+      "body": "Every manifest needs these fields:\n\n- `name` — lowercase with hyphens, unique within parent scope. Pattern: `^[a-z0-9][a-z0-9-]*$`\n- `version` — semver string like `1.0.0` or `1.0.0-beta.1`\n- `uri` — full slash-separated path: `ethereum/erc20/transfer`\n- `type` — one of: `ecosystem`, `standard`, `skill`, `context`, `sub`\n- `context` — one-line description for agent routing, max 200 characters. This is the single most important field for discovery — write it like a commit subject line.\n- `info` — longer explanation. Think of `context` as the subject and `info` as the first paragraph of the README.\n- `tags` — at least one, lowercase with hyphens. Used for search and categorization.\n\nOptional but high-value: `triggers` (natural-language activation phrases), `aliases` (alternate names for search/resolution).",
+      "tags": ["manifest", "required-fields", "name", "version", "uri", "type", "context", "info", "tags"]
+    },
+    {
+      "id": "knowledge-fields",
+      "title": "Knowledge fields",
+      "body": "`aliases` — alternate names for search and agent resolution via `/v1/alias/:alias`. Example: `[\"ERC-20\", \"fungible token standard\", \"token contract\"]` for the `ethereum/erc20` node.\n\n`body` — long-form markdown. Supports `[[uri]]` wiki-links that become clickable in the knowledge UI and generate backlinks. Use headings, code blocks, and tables freely.\n\n`sections` — array of `{id, title, body, tags}`. Each section is independently addressable via `uri#section-id` and independently searchable by its `tags`. Use sections to break long content into scannable chunks.\n\n`links` — directed outgoing navigation: `{uri, context}`. These generate backlinks on the target node. Use for prerequisites, dependencies, and \"see also\" within the same ecosystem.\n\n`related` — semantic relationships: `{uri, relation, note}`. Relation types: `similar`, `evolution`, `equivalent`, `prerequisite`, `alternative`, `implements`, `extends`, `see-also`. Use for cross-ecosystem ties and softer connections.\n\nThe difference between `links` and `related`: links are navigational (\"go read this next\"), related are semantic (\"this is an alternative to that\"). Both generate backlinks, but `related` carries a typed relationship that agents can reason about.",
+      "tags": ["aliases", "body", "sections", "links", "related", "wiki-links", "backlinks", "knowledge"]
+    },
+    {
+      "id": "content-types",
+      "title": "Content types",
+      "body": "The `content_type` field categorizes knowledge nodes:\n\n- `reference` — API docs, specs, schemas (like this node)\n- `guide` — step-by-step how-to walkthroughs (like [[dojo/contributing]])\n- `explainer` — concept explanations, overviews (like the [[dojo]] root)\n- `comparison` — X vs Y analysis (like [[ethereum/l2-comparison]])\n- `changelog` — version history and release notes\n- `faq` — frequently asked questions\n- `glossary` — term definitions (like [[ethereum/glossary]])\n\nContent type helps agents and UIs render content appropriately — a glossary renders as a definition list, a comparison as a table, a guide as numbered steps.",
+      "tags": ["content-type", "reference", "guide", "explainer", "comparison", "changelog", "faq", "glossary"]
+    },
+    {
+      "id": "uri-rules",
+      "title": "URI rules",
+      "body": "URIs are the primary identifier for every node. Rules:\n\n1. Pattern: `^[a-z0-9-]+(/[a-z0-9-]+)*$` — lowercase, hyphens allowed, slash-separated\n2. Each segment matches the `name` field at that tree level\n3. Names must be unique within their parent scope (two skills under the same standard can't share a name)\n4. URIs encode the full tree path, so `ethereum/erc20/transfer` means the `transfer` skill under the `erc20` standard under the `ethereum` ecosystem\n5. Keep segments short and descriptive — they appear in API URLs, wiki-links, and UI breadcrumbs",
+      "tags": ["uri", "naming", "path", "uniqueness", "pattern"]
+    },
+    {
+      "id": "scripts-and-execution",
+      "title": "Scripts and execution",
+      "body": "Only `skill` and `sub` nodes may carry `scripts`. Each script object has:\n\n- `id` — unique identifier, lowercase with hyphens\n- `name` — human-readable label\n- `lang` — one of: `javascript`, `typescript`, `python`, `bash`, `rust`, `go`, `solidity`\n- `runtime` — optional requirement like `node>=18` or `python>=3.10`\n- `entry` — path to script file relative to the skill directory, **or**\n- `inline` — inline source code (use for short scripts)\n- `env` — environment variable requirements, each with `required`, `secret`, `default`, `description`\n- `packages` — required packages like `[\"ethers@6\", \"viem\"]`\n\nThe `schema` field defines `input` and `output` contracts as JSON Schema objects. Agents use these to validate arguments before calling a skill and to parse results after.\n\nSee [[ethereum/erc20]] for a real example with two scripts (deploy and transfer) and full input/output schemas.",
+      "tags": ["scripts", "execution", "lang", "env", "schema", "packages", "runtime", "inline"]
+    },
+    {
+      "id": "dependencies",
+      "title": "Dependencies",
+      "body": "The `depends` field declares cross-skill dependencies:\n\n```json\n\"depends\": [\n  {\"uri\": \"ethereum/erc20\", \"version\": \">=1.0.0\", \"reason\": \"Needs ERC-20 transfer capability\"},\n  {\"uri\": \"github/auth\", \"optional\": true, \"reason\": \"GitHub auth for private repos\"}\n]\n```\n\nEach dependency has `uri` (required), `version` (semver range), `optional` (boolean, default false), and `reason` (human-readable explanation). The runtime can use dependencies to pre-check availability before executing a skill.",
+      "tags": ["depends", "dependencies", "version", "optional", "cross-skill"]
+    },
+    {
+      "id": "frontmatter",
+      "title": "Frontmatter",
+      "body": "Obsidian-style `frontmatter` carries editorial metadata:\n\n- `audience` — who this is for: `contributors`, `developers`, `end-users`\n- `estimated_reading_time` — like `5 min`\n- `status` — editorial status: `draft`, `living`, `stable`, `archived`\n- `confidence` — `low`, `medium`, `high` — how settled the content is\n- `prerequisites` — array of things the reader should know first\n- Custom string fields are allowed\n\nThis is distinct from the top-level `status` field (draft/published/verified/trusted) which tracks publication state in the registry, not content maturity.",
+      "tags": ["frontmatter", "metadata", "confidence", "audience", "prerequisites"]
+    },
+    {
+      "id": "api-surface",
+      "title": "API surface",
+      "body": "**Core routes:**\n- `GET /v1/resolve?uri=<uri>` — look up a single manifest\n- `GET /v1/skills/*` — CRUD operations on manifests\n- `GET /v1/search?q=<query>` — full-text search across all indexed fields\n- `GET /v1/tree/<uri>` — subtree rooted at the given URI\n- `POST /v1/agent/ask` — agent query endpoint (structured input/output)\n\n**Knowledge routes:**\n- `GET /v1/ecosystems` — list all ecosystem roots\n- `GET /v1/learn/<uri>` — rendered body + sections for a node\n- `GET /v1/backlinks/<uri>` — all nodes whose links/related point here\n- `GET /v1/graph/<uri>` — local neighborhood (parent, children, linked, related)\n- `GET /v1/alias/:alias` — resolve an alias string to canonical URI\n- `POST /v1/agent/learn` — agent knowledge query endpoint\n\nSearch quality depends on index coverage — see [[dojo/architecture#search-index]].",
+      "tags": ["api", "openapi", "routes", "learn", "search", "backlinks", "graph", "resolve", "agent"]
+    },
+    {
+      "id": "faq",
+      "title": "Frequently asked questions",
+      "body": "**Can a `context` node have children?** Yes — `context` is non-`sub`, so any non-`sub` type can sit under it.\n\n**Can a `standard` execute scripts?** The schema allows it, but by convention standards delegate execution to child `skill` nodes.\n\n**What's the difference between `links` and `related`?** Links are navigational (directed, \"go here next\"). Related are semantic (typed, \"this is an alternative to that\"). Both generate backlinks.\n\n**Do I need `body` for executable skills?** No, but adding `body` makes your skill appear in `/v1/learn` and teaches agents what it does beyond the one-line `context`.\n\n**What happens if two nodes have the same alias?** The `/v1/alias/:alias` endpoint returns the first match. Use specific aliases to avoid collisions — `ERC-20 transfer` is better than `transfer`.\n\n**Can I use `content_type` on a `skill` node?** The schema doesn't restrict it, but `content_type` is designed for `context` nodes. Skills are primarily defined by their `scripts`, not their content type.",
+      "tags": ["faq", "questions", "answers", "common"]
+    }
+  ],
+  "links": [
+    { "uri": "dojo", "context": "Dojo ecosystem overview and design principles" },
+    { "uri": "dojo/contributing", "context": "PR workflow that applies these rules in practice" },
+    { "uri": "dojo/architecture", "context": "How the runtime enforces and serves these rules" },
+    { "uri": "ethereum/erc20", "context": "Real example of a rich executable manifest with scripts and schema" },
+    { "uri": "ethereum/glossary", "context": "Example of a glossary content-type node" },
+    { "uri": "ethereum/l2-comparison", "context": "Example of a comparison content-type node" }
+  ],
+  "related": [
+    { "uri": "dojo/architecture", "relation": "see-also", "note": "Spec defines the rules; architecture explains how they're enforced at runtime" },
+    { "uri": "dojo/contributing", "relation": "see-also", "note": "Spec is the reference; contributing is the practical guide" },
+    { "uri": "ethereum/gas", "relation": "see-also", "note": "Example of a well-structured context node with sections, links, and related" }
+  ],
+  "more": {
+    "spec": "https://github.com/keychain-inc/dojo/blob/master/SPEC.md",
+    "schema": "https://github.com/keychain-inc/dojo/blob/master/schema/skill.schema.json",
+    "api": "https://github.com/keychain-inc/dojo/blob/master/api/openapi.yaml",
+    "repo": "https://github.com/keychain-inc/dojo"
+  },
+  "frontmatter": {
+    "audience": "contributors",
+    "estimated_reading_time": "8 min",
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "status": "verified",
+  "created": "2026-04-05T00:00:00Z",
+  "updated": "2026-04-07T00:00:00Z"
+}

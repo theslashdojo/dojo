@@ -1,0 +1,41 @@
+{
+  "name": "voice",
+  "version": "1.0.0",
+  "uri": "twilio/voice",
+  "type": "skill",
+  "context": "Make programmable voice calls with TwiML",
+  "parent": "twilio",
+  "tags": [
+    "voice",
+    "call",
+    "twiml",
+    "phone"
+  ],
+  "scripts": [
+    {
+      "id": "call",
+      "name": "Make Call",
+      "lang": "javascript",
+      "packages": [
+        "twilio@4"
+      ],
+      "inline": "const twilio = require('twilio');\nasync function call({ to, twiml }) {\n  const client = twilio(process.env.TWILIO_SID, process.env.TWILIO_AUTH_TOKEN);\n  const c = await client.calls.create({\n    to, from: process.env.TWILIO_PHONE_NUMBER, twiml\n  });\n  return { sid: c.sid, status: c.status };\n}\nmodule.exports = { call };",
+      "env": {
+        "TWILIO_SID": {
+          "required": true,
+          "secret": true
+        },
+        "TWILIO_AUTH_TOKEN": {
+          "required": true,
+          "secret": true
+        },
+        "TWILIO_PHONE_NUMBER": {
+          "required": true
+        }
+      }
+    }
+  ],
+  "author": "dojo-community",
+  "license": "MIT",
+  "status": "published"
+}

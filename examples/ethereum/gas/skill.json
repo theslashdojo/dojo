@@ -1,0 +1,126 @@
+{
+  "name": "gas",
+  "version": "1.0.0",
+  "uri": "ethereum/gas",
+  "type": "context",
+  "content_type": "explainer",
+  "context": "How gas works on Ethereum and L2s \u2014 pricing, estimation, and optimization",
+  "info": "Gas is the unit of computation on the EVM. Every operation has a fixed gas cost. Transactions specify a gas limit and fee. Understanding gas is essential before deploying contracts or interacting with DeFi.",
+  "parent": "ethereum",
+  "aliases": [
+    "gas fees",
+    "ethereum gas",
+    "gwei",
+    "gas price",
+    "gas limit",
+    "transaction fees",
+    "evm gas"
+  ],
+  "tags": [
+    "gas",
+    "eip-1559",
+    "l2",
+    "costs",
+    "optimization",
+    "gwei",
+    "base-fee",
+    "priority-fee"
+  ],
+  "body": "# Gas on Ethereum\n\nGas is the unit of computation on the Ethereum Virtual Machine. Every opcode \u2014 from adding two numbers (3 gas) to storing a value in contract storage (20,000 gas) \u2014 has a fixed gas cost defined in the Yellow Paper.\n\nA transaction's total gas cost = gas used \u00d7 gas price. The gas price itself has two components since [[ethereum/gas#eip-1559]].\n\n## Why Gas Exists\n\nGas prevents infinite loops and spam. Without it, anyone could submit a contract that runs forever, halting the network. Gas ensures every computation has a cost, aligning incentives between users and validators.\n\n## Common Gas Costs\n\n| Operation | Gas | Notes |\n|-----------|-----|-------|\n| ETH transfer | 21,000 | Fixed, simplest tx |\n| ERC-20 transfer | ~65,000 | Depends on token contract |\n| ERC-20 approve | ~46,000 | One-time per spender |\n| Uniswap swap | ~150,000 | Multi-hop swaps cost more |\n| Contract deploy | 200k\u20132M+ | Proportional to bytecode size |\n| NFT mint | ~80,000 | Varies by contract |\n\nSee [[ethereum/erc20/transfer]] for token transfer specifics, [[ethereum/contracts/deploy]] for deployment optimization.",
+  "sections": [
+    {
+      "id": "eip-1559",
+      "title": "EIP-1559 fee model",
+      "body": "Since the London upgrade (Aug 2021), Ethereum uses a dual-fee model:\n\n**Base fee** \u2014 Set by the protocol, adjusts up/down by 12.5% per block based on utilization. This ETH is burned, reducing supply.\n\n**Priority fee (tip)** \u2014 Optional fee paid directly to the validator. Higher tips = faster inclusion.\n\nTotal fee = (base fee + priority fee) \u00d7 gas used.\n\nThe base fee creates a price floor that prevents spam while the burning mechanism makes ETH deflationary during high usage.\n\n```\nmax_fee = base_fee + max_priority_fee\nactual_cost = (base_fee + effective_priority_fee) \u00d7 gas_used\nrefund = (max_fee - actual_cost_per_gas) \u00d7 gas_used\n```",
+      "tags": [
+        "eip-1559",
+        "base-fee",
+        "priority-fee",
+        "burning",
+        "london"
+      ]
+    },
+    {
+      "id": "l2-gas",
+      "title": "Gas on L2s",
+      "body": "Layer 2 rollups have two cost components:\n\n1. **Execution cost** \u2014 Running your transaction on the L2 (very cheap, ~0.001\u00d7 L1)\n2. **Data availability cost** \u2014 Posting transaction data to L1 as calldata (the dominant cost)\n\nAfter EIP-4844 (Dencun upgrade), L2s use blob transactions instead of calldata, reducing costs by 10-100\u00d7.\n\n| Chain | Typical transfer cost | Relative to L1 |\n|-------|----------------------|----------------|\n| Base | $0.001\u20130.01 | ~100\u20131000\u00d7 cheaper |\n| Optimism | $0.001\u20130.01 | ~100\u20131000\u00d7 cheaper |\n| Arbitrum | $0.005\u20130.05 | ~50\u2013500\u00d7 cheaper |\n| zkSync | $0.01\u20130.10 | ~20\u2013200\u00d7 cheaper |",
+      "tags": [
+        "l2",
+        "rollup",
+        "base",
+        "optimism",
+        "arbitrum",
+        "eip-4844",
+        "blobs"
+      ]
+    },
+    {
+      "id": "estimation",
+      "title": "Gas estimation",
+      "body": "Use `eth_estimateGas` to simulate a transaction and get the expected gas consumption:\n\n```javascript\nconst gasEstimate = await provider.estimateGas({\n  to: contractAddress,\n  data: encodedFunctionCall\n});\n// Add 20% buffer for safety\nconst gasLimit = gasEstimate * 120n / 100n;\n```\n\nEstimation can be inaccurate when:\n- Contract state changes between estimation and execution\n- The transaction depends on block-level variables (timestamp, basefee)\n- Storage slots are warm vs cold (first access costs 2,100 gas, subsequent 100)\n\nFor deployments, see [[ethereum/contracts/deploy]] which handles gas estimation automatically.",
+      "tags": [
+        "estimation",
+        "eth_estimateGas",
+        "gas-limit",
+        "buffer"
+      ]
+    },
+    {
+      "id": "optimization",
+      "title": "Gas optimization",
+      "body": "Key strategies for reducing gas costs:\n\n- **Pack storage variables** \u2014 Solidity packs variables into 32-byte slots. Two `uint128`s in one slot cost less than two `uint256`s in two slots.\n- **Use calldata over memory** \u2014 `calldata` for read-only function args saves ~600 gas per parameter.\n- **Batch operations** \u2014 One transaction with N transfers beats N separate transactions.\n- **Deploy on L2** \u2014 Same contracts, 100-1000\u00d7 cheaper. See [[ethereum/gas#l2-gas]].\n- **Off-peak timing** \u2014 Gas prices follow usage patterns. Weekends and early UTC mornings are cheapest.\n- **Use EIP-2930 access lists** \u2014 Pre-declare storage slots to avoid cold access penalties.",
+      "tags": [
+        "optimization",
+        "storage-packing",
+        "calldata",
+        "batching"
+      ]
+    }
+  ],
+  "links": [
+    {
+      "uri": "ethereum/erc20/transfer",
+      "context": "Token transfers consume ~65k gas"
+    },
+    {
+      "uri": "ethereum/contracts/deploy",
+      "context": "Deployment gas and estimation"
+    },
+    {
+      "uri": "ethereum/gas#eip-1559",
+      "context": "Fee model section"
+    }
+  ],
+  "related": [
+    {
+      "uri": "ethereum/erc20",
+      "relation": "see-also",
+      "note": "Token operations are the most common gas consumers"
+    }
+  ],
+  "more": {
+    "spec": "https://eips.ethereum.org/EIPS/eip-1559",
+    "spec2": "https://eips.ethereum.org/EIPS/eip-4844",
+    "docs": "https://ethereum.org/en/developers/docs/gas/"
+  },
+  "depends": [
+    {
+      "uri": "ethereum/contracts/deploy",
+      "optional": true,
+      "reason": "Gas estimation for deployments"
+    }
+  ],
+  "frontmatter": {
+    "author": "dojo-community",
+    "status": "living",
+    "confidence": "high",
+    "audience": "developers",
+    "prerequisites": [
+      "ethereum"
+    ],
+    "estimated_reading_time": "6 min"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "status": "verified"
+}

@@ -1,0 +1,144 @@
+{
+  "name": "erc20",
+  "version": "1.0.0",
+  "uri": "ethereum/erc20",
+  "type": "standard",
+  "context": "ERC-20 fungible token standard \u2014 transfer, approve, query balances",
+  "info": "Full support for the ERC-20 token standard. Covers balance queries, transfers, approvals, allowance management, and event listening. Works with any ERC-20 compliant token on any EVM chain.",
+  "parent": "ethereum",
+  "tags": [
+    "erc20",
+    "token",
+    "fungible",
+    "transfer",
+    "approve",
+    "balance"
+  ],
+  "triggers": [
+    "send tokens",
+    "check token balance",
+    "approve token spending",
+    "transfer erc20",
+    "work with tokens"
+  ],
+  "more": {
+    "spec": "https://eips.ethereum.org/EIPS/eip-20"
+  },
+  "sub": [
+    "ethereum/erc20/transfer",
+    "ethereum/erc20/approve",
+    "ethereum/erc20/balance"
+  ],
+  "scripts": [
+    {
+      "id": "balance",
+      "name": "Get Token Balance",
+      "description": "Query ERC-20 token balance for an address",
+      "lang": "javascript",
+      "runtime": "node>=18",
+      "packages": [
+        "ethers@6"
+      ],
+      "inline": "const { ethers } = require('ethers');\n\nconst ERC20_ABI = ['function balanceOf(address) view returns (uint256)', 'function decimals() view returns (uint8)', 'function symbol() view returns (string)'];\n\nasync function getBalance({ rpcUrl, tokenAddress, walletAddress }) {\n  const provider = new ethers.JsonRpcProvider(rpcUrl);\n  const token = new ethers.Contract(tokenAddress, ERC20_ABI, provider);\n  const [balance, decimals, symbol] = await Promise.all([\n    token.balanceOf(walletAddress),\n    token.decimals(),\n    token.symbol()\n  ]);\n  return {\n    raw: balance.toString(),\n    formatted: ethers.formatUnits(balance, decimals),\n    symbol,\n    decimals\n  };\n}\n\nmodule.exports = { getBalance };"
+    },
+    {
+      "id": "transfer",
+      "name": "Transfer Tokens",
+      "description": "Transfer ERC-20 tokens to a recipient",
+      "lang": "javascript",
+      "runtime": "node>=18",
+      "packages": [
+        "ethers@6"
+      ],
+      "inline": "const { ethers } = require('ethers');\n\nconst ERC20_ABI = ['function transfer(address to, uint256 amount) returns (bool)', 'function decimals() view returns (uint8)'];\n\nasync function transfer({ rpcUrl, privateKey, tokenAddress, to, amount }) {\n  const provider = new ethers.JsonRpcProvider(rpcUrl);\n  const wallet = new ethers.Wallet(privateKey, provider);\n  const token = new ethers.Contract(tokenAddress, ERC20_ABI, wallet);\n  const decimals = await token.decimals();\n  const tx = await token.transfer(to, ethers.parseUnits(amount, decimals));\n  const receipt = await tx.wait();\n  return { tx_hash: receipt.hash, status: receipt.status === 1 ? 'success' : 'failed' };\n}\n\nmodule.exports = { transfer };"
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "token_address": {
+          "type": "string",
+          "description": "ERC-20 contract address"
+        },
+        "chain": {
+          "type": "string"
+        },
+        "action": {
+          "type": "string",
+          "enum": [
+            "balance",
+            "transfer",
+            "approve"
+          ]
+        }
+      }
+    }
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "status": "verified",
+  "aliases": [
+    "ERC-20",
+    "erc 20",
+    "fungible token",
+    "token standard",
+    "EIP-20"
+  ],
+  "body": "# ERC-20: Fungible Token Standard\n\nERC-20 is the standard interface for fungible tokens on Ethereum. Published in 2015 as EIP-20, it defines six functions and two events that every compliant token must implement.\n\n## The Interface\n\n```solidity\ninterface IERC20 {\n    function totalSupply() external view returns (uint256);\n    function balanceOf(address account) external view returns (uint256);\n    function transfer(address to, uint256 amount) external returns (bool);\n    function allowance(address owner, address spender) external view returns (uint256);\n    function approve(address spender, uint256 amount) external returns (bool);\n    function transferFrom(address from, address to, uint256 amount) external returns (bool);\n\n    event Transfer(address indexed from, address indexed to, uint256 value);\n    event Approval(address indexed owner, address indexed spender, uint256 value);\n}\n```\n\n## Key Concepts\n\n**Approve + TransferFrom pattern**: Before a contract can move your tokens, you must first approve it to spend a specific amount. This two-step process prevents contracts from draining wallets. See [[ethereum/erc20/approve]] and [[ethereum/erc20/transfer]].\n\n**Decimals**: Most tokens use 18 decimals (like ETH). USDC and USDT use 6. Always check decimals before displaying or computing amounts.\n\n## Common Tokens\n\n| Token | Decimals | Type |\n|-------|----------|------|\n| USDC | 6 | Stablecoin |\n| USDT | 6 | Stablecoin |\n| DAI | 18 | Stablecoin |\n| WETH | 18 | Wrapped ETH |\n| LINK | 18 | Oracle token |\n\n## Gas Costs\n\nA standard ERC-20 transfer costs ~65,000 gas. Approval costs ~46,000 gas. See [[ethereum/gas]] for current pricing.\n\n## See Also\n\n- [[ethereum/erc721]] \u2014 Non-fungible token standard (NFTs)\n- [[ethereum/erc1155]] \u2014 Multi-token standard",
+  "sections": [
+    {
+      "id": "approve-pattern",
+      "title": "Approve + TransferFrom",
+      "body": "The two-step approval pattern is the most important ERC-20 concept. A user approves a spender (usually a DEX or lending protocol) for a specific amount. The spender then calls transferFrom to move tokens. Infinite approvals (type(uint256).max) are common but risky \u2014 revoke unused approvals.",
+      "tags": [
+        "approve",
+        "transferFrom",
+        "allowance",
+        "security"
+      ]
+    },
+    {
+      "id": "decimals",
+      "title": "Decimals and precision",
+      "body": "ERC-20 amounts are always in the smallest unit (like wei for ETH). A token with 18 decimals stores 1.0 as 1000000000000000000. Use ethers.formatUnits() or similar to convert for display. Never do math on formatted strings.",
+      "tags": [
+        "decimals",
+        "precision",
+        "formatting"
+      ]
+    }
+  ],
+  "related": [
+    {
+      "uri": "ethereum/erc721",
+      "relation": "similar",
+      "note": "NFT standard \u2014 non-fungible counterpart"
+    },
+    {
+      "uri": "ethereum/erc1155",
+      "relation": "evolution",
+      "note": "Multi-token standard that handles both fungible and non-fungible"
+    }
+  ],
+  "links": [
+    {
+      "uri": "ethereum/erc20/transfer",
+      "context": "Token transfer skill"
+    },
+    {
+      "uri": "ethereum/gas",
+      "context": "Gas costs for token operations"
+    },
+    {
+      "uri": "ethereum/erc721",
+      "context": "NFT standard comparison"
+    }
+  ],
+  "frontmatter": {
+    "status": "living",
+    "confidence": "high",
+    "audience": "developers",
+    "estimated_reading_time": "5 min"
+  }
+}

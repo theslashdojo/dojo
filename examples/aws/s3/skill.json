@@ -1,0 +1,49 @@
+{
+  "name": "s3",
+  "version": "1.0.0",
+  "uri": "aws/s3",
+  "type": "standard",
+  "context": "AWS S3 object storage — upload, download, list, and manage buckets and objects",
+  "info": "Full S3 operations: create/delete buckets, upload/download objects, set ACLs, configure lifecycle policies, enable versioning, generate presigned URLs. Supports multipart uploads for large files and server-side encryption.",
+  "parent": "aws",
+  "tags": ["s3", "storage", "upload", "download", "bucket", "object", "aws"],
+  "triggers": ["upload file to s3", "download from s3", "create s3 bucket", "list s3 objects"],
+  "sub": ["aws/s3/upload", "aws/s3/download", "aws/s3/presign"],
+  "scripts": [
+    {
+      "id": "upload",
+      "name": "Upload Object",
+      "description": "Upload a file to an S3 bucket",
+      "lang": "javascript",
+      "runtime": "node>=18",
+      "packages": ["@aws-sdk/client-s3"],
+      "inline": "const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');\nconst { readFileSync } = require('fs');\n\nasync function upload({ bucket, key, filePath, region = 'us-east-1' }) {\n  const client = new S3Client({ region });\n  const body = readFileSync(filePath);\n  await client.send(new PutObjectCommand({ Bucket: bucket, Key: key, Body: body }));\n  return { bucket, key, url: `https://${bucket}.s3.${region}.amazonaws.com/${key}` };\n}\n\nmodule.exports = { upload };",
+      "env": {
+        "AWS_ACCESS_KEY_ID": { "required": true, "secret": true },
+        "AWS_SECRET_ACCESS_KEY": { "required": true, "secret": true },
+        "AWS_REGION": { "required": false, "default": "us-east-1" }
+      }
+    },
+    {
+      "id": "list",
+      "name": "List Objects",
+      "description": "List objects in an S3 bucket",
+      "lang": "bash",
+      "inline": "aws s3 ls s3://$BUCKET_NAME/ --recursive"
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "bucket": { "type": "string" },
+        "key": { "type": "string" },
+        "file_path": { "type": "string" }
+      },
+      "required": ["bucket"]
+    }
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "status": "published"
+}

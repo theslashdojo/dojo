@@ -1,0 +1,40 @@
+{
+  "name": "lambda",
+  "version": "1.0.0",
+  "uri": "aws/lambda",
+  "type": "standard",
+  "context": "AWS Lambda serverless functions — create, deploy, invoke, and manage",
+  "info": "Full Lambda lifecycle: create functions from zip or container, configure triggers (API Gateway, S3, SQS, EventBridge), manage layers, set environment variables, configure VPC access, and monitor with CloudWatch.",
+  "parent": "aws",
+  "tags": ["lambda", "serverless", "function", "invoke", "deploy", "aws"],
+  "triggers": ["create lambda function", "deploy serverless function", "invoke lambda"],
+  "sub": ["aws/lambda/deploy", "aws/lambda/invoke", "aws/lambda/layers"],
+  "scripts": [
+    {
+      "id": "deploy",
+      "name": "Deploy Function",
+      "description": "Package and deploy a Lambda function",
+      "lang": "bash",
+      "inline": "#!/bin/bash\nset -e\ncd \"$FUNCTION_DIR\"\nzip -r /tmp/function.zip .\naws lambda update-function-code \\\n  --function-name \"$FUNCTION_NAME\" \\\n  --zip-file fileb:///tmp/function.zip \\\n  --region \"${AWS_REGION:-us-east-1}\"",
+      "env": {
+        "FUNCTION_DIR": { "required": true, "description": "Directory containing function code" },
+        "FUNCTION_NAME": { "required": true },
+        "AWS_REGION": { "required": false, "default": "us-east-1" }
+      }
+    },
+    {
+      "id": "invoke",
+      "name": "Invoke Function",
+      "description": "Invoke a Lambda function with a payload",
+      "lang": "bash",
+      "inline": "aws lambda invoke --function-name \"$FUNCTION_NAME\" --payload \"$PAYLOAD\" /tmp/response.json && cat /tmp/response.json",
+      "env": {
+        "FUNCTION_NAME": { "required": true },
+        "PAYLOAD": { "required": false, "default": "{}" }
+      }
+    }
+  ],
+  "author": "dojo-community",
+  "license": "MIT",
+  "status": "published"
+}

@@ -1,0 +1,41 @@
+{
+  "name": "sms",
+  "version": "1.0.0",
+  "uri": "twilio/sms",
+  "type": "skill",
+  "context": "Send and receive SMS messages",
+  "parent": "twilio",
+  "tags": [
+    "sms",
+    "text",
+    "messaging"
+  ],
+  "scripts": [
+    {
+      "id": "send",
+      "name": "Send SMS",
+      "description": "Send an SMS message",
+      "lang": "javascript",
+      "packages": [
+        "twilio@4"
+      ],
+      "inline": "const twilio = require('twilio');\nasync function send({ to, body }) {\n  const client = twilio(process.env.TWILIO_SID, process.env.TWILIO_AUTH_TOKEN);\n  const message = await client.messages.create({\n    to, body, from: process.env.TWILIO_PHONE_NUMBER\n  });\n  return { sid: message.sid, status: message.status };\n}\nmodule.exports = { send };",
+      "env": {
+        "TWILIO_SID": {
+          "required": true,
+          "secret": true
+        },
+        "TWILIO_AUTH_TOKEN": {
+          "required": true,
+          "secret": true
+        },
+        "TWILIO_PHONE_NUMBER": {
+          "required": true
+        }
+      }
+    }
+  ],
+  "author": "dojo-community",
+  "license": "MIT",
+  "status": "verified"
+}
