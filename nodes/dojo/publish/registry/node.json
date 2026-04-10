@@ -1,0 +1,89 @@
+{
+  "name": "registry",
+  "version": "1.1.1",
+  "uri": "dojo/publish/registry",
+  "type": "sub",
+  "context": "Registry publish - POST a versioned manifest with auth to /v1/skills",
+  "info": "This is the final write step in the release flow. It sends a versioned manifest to the registry with authentication and assumes validation and a local rehearsal already happened. The package-style entry script returns normalized JSON in both dry-run and live flows so automation can treat it as a stable contract.",
+  "parent": "dojo/publish",
+  "tags": ["dojo", "publish", "registry", "post", "auth", "release"],
+  "aliases": ["publish to dojo registry", "dojo registry publish"],
+  "triggers": [
+    "post to dojo registry",
+    "publish to dojo registry",
+    "how do i call post v1 skills"
+  ],
+  "body": "# Registry Publish\n\nRegistry publish is the final write step: send a versioned manifest to `POST /v1/skills` with auth, then re-check resolution and learnability.\n\nNever reuse a version string with different content. If the content changes, bump the version.",
+  "sections": [
+    {
+      "id": "request-shape",
+      "title": "Request shape",
+      "body": "The request body is the manifest itself and the auth token travels in the `Authorization` header. Keep release metadata in the manifest and secrets out of it. The script returns normalized JSON containing `published`, `uri`, and `version` so the caller does not need to infer success from raw curl output.",
+      "tags": ["request", "authorization", "manifest"]
+    },
+    {
+      "id": "release-hygiene",
+      "title": "Release hygiene",
+      "body": "After the request succeeds, verify the new version through search and learn routes. A successful `201` only proves the registry accepted the manifest, not that the ecosystem reads well.",
+      "tags": ["release", "search", "learn", "verification"]
+    }
+  ],
+  "links": [
+    { "uri": "dojo/api", "context": "Mutation route contract" },
+    { "uri": "dojo/spec", "context": "Version and manifest semantics" },
+    { "uri": "dojo/validate", "context": "Validation that should happen before the POST" },
+    { "uri": "dojo/contributing", "context": "Contributor workflow around release" }
+  ],
+  "related": [
+    { "uri": "dojo/api", "relation": "implements", "note": "This sub-skill exercises the API standard's publish route" }
+  ],
+  "scripts": [
+    {
+      "id": "publish-registry",
+      "name": "Publish to Registry",
+      "description": "POST a manifest to the registry with bearer auth",
+      "lang": "bash",
+      "entry": "./scripts/publish-registry.sh",
+      "env": {
+        "DOJO_TOKEN": { "required": true, "secret": true, "description": "Registry auth token" },
+        "DOJO_REGISTRY_URL": { "required": false, "description": "Registry base URL" },
+        "DOJO_DRY_RUN": { "required": false, "description": "Whether to emit a dry-run preview instead of a live publish" }
+      }
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "path": { "type": "string" },
+        "registry_url": { "type": "string" },
+        "token": { "type": "string" }
+      },
+      "required": ["path"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "uri": { "type": "string" },
+        "version": { "type": "string" },
+        "status": { "type": "string" },
+        "published": { "type": "boolean" }
+      }
+    }
+  },
+  "frontmatter": {
+    "created": "2026-04-05",
+    "updated": "2026-04-10",
+    "audience": "contributors",
+    "estimated_reading_time": "3 min",
+    "prerequisites": ["dojo/publish/local"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://github.com/dojo-registry/dojo",
+  "created": "2026-04-05T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "verified"
+}

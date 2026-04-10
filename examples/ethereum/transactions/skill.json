@@ -1,0 +1,75 @@
+{
+  "name": "transactions",
+  "version": "1.0.0",
+  "uri": "ethereum/transactions",
+  "type": "standard",
+  "context": "Ethereum transaction workflows - send native ETH, reason about fees, and manage nonce-sensitive execution",
+  "info": "This branch covers how agents should send and inspect Ethereum transactions safely. It focuses on native ETH transfers first because they are the simplest executable transaction shape, but it also links out to gas mechanics, nonce handling, and token-specific flows.",
+  "parent": "ethereum",
+  "aliases": [
+    "ethereum transactions",
+    "eth transaction",
+    "send eth",
+    "native eth transfer",
+    "ethereum send"
+  ],
+  "tags": [
+    "transactions",
+    "eth",
+    "send",
+    "nonce",
+    "eip-1559",
+    "gas"
+  ],
+  "triggers": [
+    "send an ethereum transaction",
+    "transfer native eth",
+    "send eth to an address",
+    "broadcast a transaction",
+    "pay someone in eth"
+  ],
+  "body": "# Ethereum Transactions\n\nAgents need two things before sending a transaction: the right execution handle and the right mental model. The execution handle lives in [[ethereum/transactions/send]]. The mental model lives in [[ethereum/gas]] and [[ethereum/glossary#nonce]].\n\nA safe transaction flow is:\n\n1. Confirm the target chain and RPC endpoint.\n2. Decide whether the asset is native ETH or a token. Native ETH uses [[ethereum/transactions/send]]; ERC-20 transfers use [[ethereum/erc20]].\n3. Estimate or cap fees using [[ethereum/gas#eip-1559]].\n4. Be explicit about nonce-sensitive workflows when multiple transactions may be pending from the same wallet.\n\nThe node under this branch is optimized for agents that need to act, not just explain. The send skill exposes execution requirements, schema, and a direct script for broadcasting a native ETH transfer.",
+  "sections": [
+    {
+      "id": "native-vs-token",
+      "title": "Native ETH versus token transfers",
+      "body": "Native ETH transfers have no calldata beyond the optional `data` field and use the base transaction cost of roughly 21,000 gas. ERC-20 transfers are contract calls, so they cost more gas and require token ABI semantics. Use [[ethereum/transactions/send]] for native ETH and [[ethereum/erc20]] for token workflows.",
+      "tags": ["native-eth", "erc20", "transfer"]
+    },
+    {
+      "id": "nonce-discipline",
+      "title": "Nonce discipline",
+      "body": "Each account has a single transaction sequence. Two concurrent sends from the same wallet can conflict if they reuse the same nonce. Agents running multiple operations should either let the provider assign nonces serially or coordinate explicit nonce values. See [[ethereum/glossary#nonce]].",
+      "tags": ["nonce", "pending", "sequencing"]
+    },
+    {
+      "id": "fee-choice",
+      "title": "Fee choice",
+      "body": "On EIP-1559 chains, prefer `maxFeePerGas` and `maxPriorityFeePerGas` over a legacy `gasPrice`. Legacy pricing still works on many chains, but EIP-1559 fields make intent clearer and avoid underpriced transactions during fee spikes. The send skill accepts either style and applies a gas estimate buffer automatically.",
+      "tags": ["eip-1559", "gas-price", "fees"]
+    }
+  ],
+  "links": [
+    { "uri": "ethereum/transactions/send", "context": "Executable native ETH transfer skill" },
+    { "uri": "ethereum/gas", "context": "Understand fee selection and estimation" },
+    { "uri": "ethereum/glossary#nonce", "context": "Nonce handling for pending transaction workflows" },
+    { "uri": "ethereum/erc20", "context": "Token transfer workflows when the asset is not native ETH" }
+  ],
+  "related": [
+    { "uri": "ethereum/gas", "relation": "prerequisite", "note": "Fee reasoning is part of every transaction workflow" },
+    { "uri": "ethereum/erc20", "relation": "see-also", "note": "Use the token standard when the value transfer is not native ETH" }
+  ],
+  "frontmatter": {
+    "author": "dojo-community",
+    "status": "living",
+    "confidence": "high",
+    "audience": "agents and developers",
+    "prerequisites": ["ethereum/gas"],
+    "estimated_reading_time": "4 min"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "status": "verified",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z"
+}

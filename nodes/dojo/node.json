@@ -1,0 +1,130 @@
+{
+  "name": "dojo",
+  "version": "1.7.0",
+  "uri": "dojo",
+  "type": "ecosystem",
+  "context": "Dojo - the universal knowledge layer for AI agents",
+  "info": "Dojo defines a universal format for AI agent skills and knowledge: discoverable, composable, hierarchical units of capability. Any agent, any framework, any LLM can query the registry and get back executable skills and knowledge with full context. This root explains what Dojo is, how to navigate the canonical `nodes/dojo` tree, where the spec lives, why the manifest contract in `[[dojo/spec#manifest-core]]` is the starting point for almost every workflow, and how the packaged [[dojo/skill]] turns the registry into a portable skill bundle for other agents.",
+  "parent": null,
+  "tags": [
+    "dojo",
+    "ecosystem",
+    "overview",
+    "format",
+    "registry",
+    "skills",
+    "knowledge",
+    "manifests",
+    "api",
+    "validation",
+    "publishing"
+  ],
+  "aliases": [
+    "dojo",
+    "dojo overview",
+    "what is dojo",
+    "how to use dojo",
+    "dojo spec overview",
+    "dojo node tree",
+    "dojo manifest format",
+    "dojo knowledge graph",
+    "dojo manifest core"
+  ],
+  "triggers": [
+    "what is dojo",
+    "whats dojo",
+    "how do i use dojo",
+    "show dojo overview",
+    "explain the dojo ecosystem",
+    "where do i start in dojo",
+    "where is the dojo spec",
+    "why start with manifest core",
+    "why does dojo link to manifest core"
+  ],
+  "body": "# Dojo Overview\n\nDojo defines a universal format for AI agent skills and knowledge, discoverable, composable, hierarchical units of capability. Any agent, any framework, any LLM can query the registry and get back executable skills and knowledge with full context.\n\nThe knowledge layer is what makes Dojo more than npm. Every node in the tree eco, standard, skill, context, sub can carry rich, linked, wiki-like content. They are the Obsidian notes of the agent world. Context nodes are how agents learn.\n\nDojo is a knowledge graph with executable skills. The spec starts from hierarchical capability units, but the important extension is the knowledge layer: nodes can carry `context`, `info`, `body`, `sections`, `aliases`, `links`, `related`, and scripts. That lets an agent discover, learn, and execute from the same graph instead of jumping between disconnected docs and tools.\n\nAt the base level, Dojo defines the manifest in `node.json`. At runtime, it becomes a searchable graph spanning five node types: `ecosystem`, `standard`, `skill`, `context`, and `sub`. The spec explicitly treats `context` nodes as first-class citizens, which is why Dojo is better understood as a knowledge-native registry than as a package catalog with docs bolted on.\n\n## Design\n\n1. **Hierarchical** — Nodes form trees, ecosystem → standard → skill → sub-skill\n2. **Self-describing** — Every node carries its own context, docs, and schema\n3. **Composable** — Skills reference and depend on other skills\n4. **Agent-native** — Designed for LLM agents to discover and execute, not just humans\n5. **Wiki-like** — Rich info fields, linked references, living documentation\n6. **Executable** — Scripts are first-class: agents run them, not just read them\n\nFive node types. The nesting is **flexible** — any type can appear at any depth, with a few constraints.\n\n```\necosystem (root)\n│   Broad domain. No parent. The top of the tree.\n│   Examples: openai, github, docker, aws, postgres\n│\n├── standard\n│   A protocol, spec, or convention. Can live under an eco,\n│   a skill, or even another standard.\n│   Examples: rest, graphql, oauth2, openapi\n│\n├── skill\n│   A concrete, executable capability with scripts.\n│   Can live under an eco, a standard, or another skill.\n│   Examples: query, deploy, send, build\n│\n├── context\n│   An info-only node. Wiki-like documentation with no scripts.\n│   Used for reference material, guides, specs, or grouping.\n│   Can live anywhere in the tree.\n│   Examples: indexing-guide, caching-strategies, troubleshooting\n│\n└── sub\n    A specialized variant of a skill.\n    Must have a skill parent.\n    Examples: deploy-preview, query-explain, build-multi-stage\n```\n\n```\nopenai                                eco\n├── chat                              skill\n│   ├── complete                      sub\n│   └── stream                        sub\n├── embeddings                        skill\n├── assistants                        skill\n│   └── threads                       skill (skill under skill)\n│       ├── create                    sub\n│       └── run                       sub\n├── models                            context (info about available models)\n└── rate-limits                       context (guide to rate limit handling)\n```\n\n## Why dojo\n\nDojo is the Google, NPM, and wiki for AI capabilities. It is a knowledge layer and simple source for any knowledge and skills an agent might need. It is designed to be the canonical source of truth for agent-facing capabilities, with a standard format that any framework can implement and any agent can query.\n\nAgents need a source for not just what but how. As agents proliferate, they need a way to discover what they can do and how to do it. Dojo provides a universal layer for skills and knowledge: discoverable, composable, hierarchical units of capability.\n\n",
+  "sections": [
+    {
+      "id": "how-to-use-dojo",
+      "title": "How to use Dojo",
+      "body": "Use the tree by goal. If you are new, start at [[dojo/spec#manifest-core]] and then [[dojo/knowledge#body-and-sections]]. If you are authoring, move to [[dojo/contributing#quickstart]] and then [[dojo/validate#when-to-run]]. If you are integrating a client, read [[dojo/api#discovery-routes]], execute [[dojo/api/query#knowledge-workflow]], and fetch [[dojo/skill#bundle-workflow]] if another agent needs the portable package. If you are debugging runtime behavior, open [[dojo/architecture#source-of-truth]]. If you are releasing changes, finish with [[dojo/publish#release-flow]].",
+      "tags": ["workflow", "learning", "authoring", "integration", "release"]
+    },
+    {
+      "id": "spec",
+      "title": "Spec",
+      "body": "The source specification lives in `SPEC.md` and is summarized in [[dojo/spec]]. Read section 1 for the high-level overview, section 2 for the `node.json` contract, section 3 for type hierarchy and parent rules, and section 4 for the knowledge layer. The `dojo/spec` node turns those ideas into addressable sections that the rest of this tree can link to precisely.",
+      "tags": ["spec", "schema", "contract", "source-of-truth"]
+    },
+    {
+      "id": "why-manifest-core",
+      "title": "Why `manifest-core` comes first",
+      "body": "`[[dojo/spec#manifest-core]]` is the fastest stable starting point because every other Dojo workflow depends on it. That section defines the minimum contract every node shares: identity (`name`, `version`, `uri`, `type`), decision text (`context`, `info`), and discovery metadata (`tags`, optional `triggers`). Until that contract is clear, the knowledge layer, API shape, validation rules, and publish flow are all downstream details.",
+      "tags": ["manifest-core", "reading-path", "required-fields", "why"]
+    },
+    {
+      "id": "workflow-map",
+      "title": "Workflow map",
+      "body": "The practical path through Dojo is: understand the contract in [[dojo/spec#manifest-core]], deepen the authoring model in [[dojo/knowledge#authoring-patterns]], inspect the HTTP surface in [[dojo/api#response-shapes]], validate with [[dojo/validate#tree-aware-checks]], and only then release with [[dojo/publish#release-flow]]. The focused skill nodes under those references are the execution handles for the same flow: [[dojo/api/query]] for the read side, [[dojo/validate/schema]] and [[dojo/validate/knowledge]] for review, and [[dojo/publish/local]] or [[dojo/publish/registry]] for release.",
+      "tags": ["workflow", "map", "api", "validate", "publish"]
+    },
+    {
+      "id": "next-step-by-goal",
+      "title": "Next step by goal",
+      "body": "Open [[dojo/contributing#quickstart]] if you need to create or edit a node. Open [[dojo/knowledge#authoring-patterns]] if the content feels thin or hard to search. Open [[dojo/api#knowledge-routes]] if you need the read-side HTTP surface. Open [[dojo/skill#bundle-workflow]] if you need the packaged skill for another agent runtime. Run [[dojo/validate#what-gets-checked]] if you are reviewing quality. Use [[dojo/glossary#reading-path]] if the vocabulary around sections, backlinks, or learn flows is slowing you down.",
+      "tags": ["navigation", "entry-points", "roles"]
+    }
+  ],
+  "links": [
+    { "uri": "dojo/spec#manifest-core", "context": "Start here for the minimum manifest contract every node shares" },
+    { "uri": "dojo/spec#knowledge-fields", "context": "How long-form knowledge fields extend the base contract" },
+    { "uri": "dojo/spec#file-layout", "context": "How the canonical package-style tree is stored" },
+    { "uri": "dojo/knowledge#body-and-sections", "context": "Why body text and sections matter for learning" },
+    { "uri": "dojo/knowledge#authoring-patterns", "context": "How to make nodes teach well" },
+    { "uri": "dojo/knowledge#learn-and-graph-endpoints", "context": "How agents consume the knowledge graph" },
+    { "uri": "dojo/contributing#quickstart", "context": "Authoring entry point" },
+    { "uri": "dojo/architecture#source-of-truth", "context": "Why `nodes/` is the runtime source of truth" },
+    { "uri": "dojo/api#discovery-routes", "context": "Discovery endpoints for tree and skill lookup" },
+    { "uri": "dojo/api#knowledge-routes", "context": "Knowledge endpoints for learn, graph, alias, and backlinks" },
+    { "uri": "dojo/api#agent-routes", "context": "Agent ask and learn routes for do-path and learn-path workflows" },
+    { "uri": "dojo/api/query#knowledge-workflow", "context": "Executable read-side client workflow" },
+    { "uri": "dojo/skill#bundle-workflow", "context": "Portable skill package for external agents and frameworks" },
+    { "uri": "dojo/validate#what-gets-checked", "context": "Validation path before release" },
+    { "uri": "dojo/publish#release-flow", "context": "Release flow after validation" },
+    { "uri": "dojo/glossary#reading-path", "context": "Definitions for reading-path and knowledge vocabulary" }
+  ],
+  "related": [
+    { "uri": "dojo/spec", "relation": "prerequisite", "note": "The spec is the source of truth for the structure modeled by this tree" },
+    { "uri": "dojo/knowledge", "relation": "see-also", "note": "The knowledge guide explains why the tree carries richer graph fields" },
+    { "uri": "dojo/api", "relation": "implements", "note": "The API is the operational surface of the model introduced here" },
+    { "uri": "dojo/skill", "relation": "see-also", "note": "The packaged dojo skill makes the registry portable across agent runtimes" },
+    { "uri": "dojo/architecture", "relation": "see-also", "note": "Architecture explains how the runtime loads and assembles the tree" },
+    { "uri": "dojo/validate", "relation": "prerequisite", "note": "Validation is the operational checkpoint before release" },
+    { "uri": "dojo/publish", "relation": "evolution", "note": "Publishing closes the workflow that starts from the spec and authoring guidance" }
+  ],
+  "more": {
+    "docs": "https://github.com/dojo-registry/dojo/blob/master/nodes/dojo/README.md",
+    "spec": "https://github.com/dojo-registry/dojo/blob/master/SPEC.md",
+    "schema": "https://github.com/dojo-registry/dojo/blob/master/schema/node.schema.json",
+    "server": "https://github.com/dojo-registry/dojo/blob/master/server/src/server.js",
+    "sdk": "https://github.com/dojo-registry/dojo/tree/master/sdk/src",
+    "web": "https://github.com/dojo-registry/dojo/tree/master/web/src",
+    "examples": "https://github.com/dojo-registry/dojo/tree/master/nodes/dojo",
+    "repo": "https://github.com/dojo-registry/dojo"
+  },
+  "frontmatter": {
+    "created": "2026-04-05",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "contributors, integrators, and agent authors",
+    "estimated_reading_time": "7 min",
+    "prerequisites": [],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://github.com/dojo-registry/dojo",
+  "created": "2026-04-05T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

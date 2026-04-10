@@ -9,10 +9,23 @@
  */
 
 const DEFAULT_REGISTRY = 'https://api.dojo.dev';
+const LOCAL_FALLBACK_REGISTRY = 'http://localhost:3000';
+
+function dedupe(values = []) {
+  return Array.from(new Set(values.filter(Boolean)));
+}
 
 export class Dojo {
   constructor(opts = {}) {
-    this.registry = opts.registry || process.env.DOJO_REGISTRY || DEFAULT_REGISTRY;
+    const explicitRegistries = dedupe([
+      opts.registry,
+      ...(opts.registries || []),
+      process.env.DOJO_REGISTRY
+    ]);
+    this.registryCandidates = explicitRegistries.length
+      ? explicitRegistries
+      : [DEFAULT_REGISTRY, LOCAL_FALLBACK_REGISTRY];
+    this.registry = this.registryCandidates[0];
     this.token = opts.token || process.env.DOJO_TOKEN || null;
     this.cache = new Map();
     this.capabilities = opts.capabilities || [];
@@ -33,6 +46,8 @@ export class Dojo {
     const params = new URLSearchParams({ need: description });
     if (opts.tags) params.set('tags', Array.isArray(opts.tags) ? opts.tags.join(',') : opts.tags);
     if (opts.type) params.set('type', opts.type);
+    params.set('mode', opts.mode || 'do');
+    params.set('executable', String(opts.executable ?? !opts.type));
     params.set('limit', String(opts.limit || 3));
 
     const data = await this._fetch(`/v1/resolve?${params}`);
@@ -141,7 +156,7 @@ export class Dojo {
     }
 
     // Check env requirements
-    const missing = this._checkEnv(script);
+    const missing = this._checkEnv(script, input);
     if (missing.length) {
       throw new Error(
         `Missing required environment variables for ${script.id}: ${missing.join(', ')}`
@@ -169,7 +184,7 @@ export class Dojo {
 
   /**
    * Publish a skill to the registry.
-   * @param {Skill} skill - Full skill manifest
+   * @param {Skill} skill - Full node manifest
    * @returns {Promise<{ uri: string, version: string }>}
    */
   async publish(skill) {
@@ -232,7 +247,26 @@ export class Dojo {
   // ─── Internal ────────────────────────────────────────
 
   async _fetch(path, opts = {}) {
-    const url = path.startsWith('http') ? path : `${this.registry}${path}`;
+    if (path.startsWith('http')) {
+      return this._fetchOne(path, opts);
+    }
+
+    const errors = [];
+    for (const registry of this.registryCandidates) {
+      const url = `${registry}${path}`;
+      try {
+        const data = await this._fetchOne(url, opts);
+        this.registry = registry;
+        return data;
+      } catch (error) {
+        errors.push(`${registry}: ${error.message}`);
+      }
+    }
+
+    throw new Error(errors.join(' | '));
+  }
+
+  async _fetchOne(url, opts = {}) {
     const headers = { 'Content-Type': 'application/json' };
     if (opts.auth && this.token) {
       headers['Authorization'] = `Bearer ${this.token}`;
@@ -260,10 +294,16 @@ export class Dojo {
     return skill;
   }
 
-  _checkEnv(script) {
+  _checkEnv(script, input = {}) {
     if (!script.env) return [];
+    const hasInputValue = (key) => {
+      const lower = key.toLowerCase();
+      const camel = lower.replace(/_([a-z])/g, (_, char) => char.toUpperCase());
+      return input[key] != null || input[lower] != null || input[camel] != null;
+    };
+
     return Object.entries(script.env)
-      .filter(([, meta]) => meta.required && !process.env[_k])
+      .filter(([key, meta]) => meta.required && !hasInputValue(key) && process.env[key] == null)
       .map(([key]) => key);
   }
 
@@ -279,16 +319,24 @@ export class Dojo {
     }
 
     if (['javascript', 'typescript'].includes(script.lang) && script.inline) {
-      // Create a temporary module and execute
+      // Use the caller workspace so inline scripts can resolve local node_modules.
       const { writeFileSync, unlinkSync } = await import('fs');
       const { join } = await import('path');
-      const tmpFile = join(process.env.HOME || '/tmp', `.dojo_${script.id}_${Date.now()}.js`);
+      const { pathToFileURL } = await import('url');
+      const tmpFile = join(process.cwd(), `.dojo_${script.id}_${Date.now()}.cjs`);
+
       try {
         writeFileSync(tmpFile, script.inline);
-        const mod = await import(tmpFile);
+        const mod = await import(pathToFileURL(tmpFile).href);
         const fn = mod.default || mod[Object.keys(mod)[0]];
         if (typeof fn === 'function') return await fn(input);
-        return mod;
+        if (mod.default && typeof mod.default === 'object') {
+          const exported = mod.default;
+          const candidate = exported.default || exported[Object.keys(exported)[0]];
+          if (typeof candidate === 'function') return await candidate(input);
+          return exported;
+        }
+        return mod.default || mod;
       } finally {
         try { unlinkSync(tmpFile); } catch {}
       }

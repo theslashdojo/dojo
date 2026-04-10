@@ -1,0 +1,277 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://dojo.dev/schema/node.schema.json",
+  "title": "Dojo Node Manifest",
+  "description": "Schema for a Dojo node.json manifest file",
+  "type": "object",
+  "required": ["name", "version", "uri", "type", "context", "info", "tags"],
+  "properties": {
+    "name": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]*$",
+      "description": "Unique name within parent scope (lowercase, hyphens allowed)"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+(-[a-zA-Z0-9.]+)?$",
+      "description": "Semantic version"
+    },
+    "uri": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]+(/[a-z0-9-]+)*$",
+      "description": "Full slash-separated path in the node tree"
+    },
+    "type": {
+      "type": "string",
+      "enum": ["ecosystem", "standard", "skill", "context", "sub"],
+      "description": "Position in the hierarchy"
+    },
+    "context": {
+      "type": "string",
+      "maxLength": 200,
+      "description": "One-line description for agent discovery"
+    },
+    "info": {
+      "type": "string",
+      "description": "Detailed wiki-style description"
+    },
+    "parent": {
+      "type": ["string", "null"],
+      "description": "URI of the parent node (null for ecosystem roots)"
+    },
+    "skills": {
+      "type": "array",
+      "items": { "$ref": "#" },
+      "description": "Inline child node manifests"
+    },
+    "sub": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "URI references to sub-skills"
+    },
+    "tags": {
+      "type": "array",
+      "items": { "type": "string", "pattern": "^[a-z0-9-]+$" },
+      "minItems": 1,
+      "description": "Searchable tags"
+    },
+    "triggers": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Natural language phrases that activate this node"
+    },
+    "more": {
+      "type": "object",
+      "properties": {
+        "docs": { "type": "string", "format": "uri" },
+        "spec": { "type": "string", "format": "uri" },
+        "examples": { "type": "string", "format": "uri" },
+        "wiki": { "type": "string", "format": "uri" },
+        "repo": { "type": "string", "format": "uri" }
+      },
+      "additionalProperties": { "type": "string", "format": "uri" },
+      "description": "Links and references"
+    },
+    "scripts": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/Script" },
+      "description": "Executable code blocks"
+    },
+    "schema": {
+      "type": "object",
+      "properties": {
+        "input": { "$ref": "http://json-schema.org/draft-07/schema#" },
+        "output": { "$ref": "http://json-schema.org/draft-07/schema#" }
+      },
+      "description": "Input/output contract"
+    },
+    "depends": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/Dependency" },
+      "description": "Cross-skill dependencies"
+    },
+    "author": { "type": "string" },
+    "license": { "type": "string" },
+    "repository": { "type": "string", "format": "uri" },
+    "created": { "type": "string", "format": "date-time" },
+    "updated": { "type": "string", "format": "date-time" },
+    "status": {
+      "type": "string",
+      "enum": ["draft", "published", "verified", "trusted"],
+      "default": "draft"
+    },
+    "body": {
+      "type": "string",
+      "description": "Long-form markdown content with wiki-links via [[uri]] syntax"
+    },
+    "sections": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/Section" },
+      "description": "Addressable sub-sections of the body"
+    },
+    "aliases": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Alternative names for discovery"
+    },
+    "links": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "uri": { "type": "string" },
+          "context": { "type": "string" }
+        },
+        "required": ["uri"]
+      },
+      "description": "Outgoing wiki-links to other nodes"
+    },
+    "related": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/Related" },
+      "description": "Semantic relationships to other nodes"
+    },
+    "content_type": {
+      "type": "string",
+      "enum": ["reference", "guide", "explainer", "comparison", "changelog", "faq", "glossary"],
+      "description": "Content type for context nodes"
+    },
+    "frontmatter": {
+      "type": "object",
+      "description": "Obsidian-style frontmatter metadata",
+      "properties": {
+        "created": { "type": "string" },
+        "updated": { "type": "string" },
+        "author": { "type": "string" },
+        "status": { "type": "string" },
+        "confidence": { "type": "string", "enum": ["low", "medium", "high"] },
+        "audience": { "type": "string" },
+        "prerequisites": { "type": "array", "items": { "type": "string" } },
+        "estimated_reading_time": { "type": "string" }
+      },
+      "additionalProperties": { "type": "string" }
+    }
+  },
+  "$defs": {
+    "Script": {
+      "type": "object",
+      "required": ["id", "name", "lang"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9-]+$",
+          "description": "Unique script identifier"
+        },
+        "name": {
+          "type": "string",
+          "description": "Human-readable script name"
+        },
+        "description": {
+          "type": "string",
+          "description": "What this script does"
+        },
+        "lang": {
+          "type": "string",
+          "enum": ["javascript", "typescript", "python", "bash", "rust", "go", "solidity"],
+          "description": "Script language"
+        },
+        "runtime": {
+          "type": "string",
+          "description": "Runtime requirement (e.g. node>=18, python>=3.10)"
+        },
+        "entry": {
+          "type": "string",
+          "description": "Path to script file relative to skill root"
+        },
+        "inline": {
+          "type": ["string", "null"],
+          "description": "Inline script source code"
+        },
+        "env": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "required": { "type": "boolean", "default": false },
+              "secret": { "type": "boolean", "default": false },
+              "default": { "type": "string" },
+              "description": { "type": "string" }
+            }
+          },
+          "description": "Environment variable requirements"
+        },
+        "packages": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Required packages (e.g. ['ethers@6', 'viem'])"
+        }
+      }
+    },
+    "Dependency": {
+      "type": "object",
+      "required": ["uri"],
+      "properties": {
+        "uri": {
+          "type": "string",
+          "description": "URI of the dependency skill"
+        },
+        "version": {
+          "type": "string",
+          "description": "Version range (semver)"
+        },
+        "optional": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether this dependency is optional"
+        },
+        "reason": {
+          "type": "string",
+          "description": "Why this dependency is needed"
+        }
+      }
+    },
+    "Section": {
+      "type": "object",
+      "required": ["id", "title", "body"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9-]+$",
+          "description": "Section identifier, used in uri#id addressing"
+        },
+        "title": {
+          "type": "string",
+          "description": "Human-readable section title"
+        },
+        "body": {
+          "type": "string",
+          "description": "Markdown content with [[uri]] wiki-links"
+        },
+        "tags": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Section-level tags for granular search"
+        }
+      }
+    },
+    "Related": {
+      "type": "object",
+      "required": ["uri", "relation"],
+      "properties": {
+        "uri": {
+          "type": "string",
+          "description": "URI of the related node"
+        },
+        "relation": {
+          "type": "string",
+          "enum": ["similar", "evolution", "equivalent", "prerequisite", "alternative", "implements", "extends", "see-also"],
+          "description": "Type of semantic relationship"
+        },
+        "note": {
+          "type": "string",
+          "description": "Explanation of the relationship"
+        }
+      }
+    }
+  }
+}

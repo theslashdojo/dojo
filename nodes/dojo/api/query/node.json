@@ -1,0 +1,161 @@
+{
+  "name": "query",
+  "version": "1.3.1",
+  "uri": "dojo/api/query",
+  "type": "skill",
+  "context": "Query the Dojo registry - call discovery, learn, bundle, retrieval, and agent routes from one client helper",
+  "info": "Wraps the registry server's read-heavy and agent-oriented API surface for agents and tooling. Use this skill when you want to inspect registry metadata, resolve a need, search nodes, retrieve a URI, walk a tree, discover the best read-versus-do path, load learn payloads, fetch bundled skill files, inspect graph context, or call the agent ask and learn endpoints without hard-coding route logic. The helper also passes through agent-oriented ranking controls like `mode` and `executable` so callers can bias for runnable skills or knowledge-heavy answers, and the packaged script now works both as a JavaScript import and a direct CLI entrypoint for external agent runtimes.",
+  "parent": "dojo/api",
+  "tags": ["dojo", "api", "query", "resolve", "search", "discover", "learn", "bundle", "tree", "alias", "agent", "index"],
+  "aliases": ["dojo api client", "query dojo registry", "call dojo api", "dojo query helper", "dojo registry client"],
+  "triggers": [
+    "query the dojo registry",
+    "search dojo registry",
+    "load dojo learn payload",
+    "inspect dojo tree",
+    "call dojo agent ask"
+  ],
+  "body": "# Query the Registry\n\nThis skill wraps the server's route map for agents and tooling. It resolves natural-language needs, discovers the best learn-versus-do path, searches nodes, loads URIs, pulls trees, reads knowledge payloads, fetches bundled skill files, and calls the agent-oriented recommendation endpoints without hard-coding the whole server.\n\nThe manifest uses an `entry` script because the operation map is large enough to deserve its own file and tests. Use this skill after reading [[dojo/api#response-shapes]] and before building automation that depends on [[dojo/knowledge]], bundled skills, or the publish flow.",
+  "sections": [
+    {
+      "id": "operation-matrix",
+      "title": "Operation matrix",
+      "body": "The client supports `index`, `resolve`, `discover`, `search`, `skill`, `bundle`, `tree`, `learn`, `backlinks`, `graph`, `alias`, `ecosystems`, `agent_ask`, and `agent_learn`. That covers the registry metadata route, the grouped discovery route for learn-versus-do decisions, the bundle export route, the read side of the URI and graph APIs, and the two agent-facing helper endpoints. `resolve` and `search` also accept `mode` (`do`, `learn`, or `all`) plus `executable` when you want the registry to prioritize runnable nodes, while the response payload now echoes `query_variants`, `routes`, and `excerpt` fields for better agent explanations. The CLI also accepts structured JSON input so another agent can call it without rebuilding long shell commands.",
+      "tags": ["operations", "discover", "bundle", "resolve", "agent"]
+    },
+    {
+      "id": "resolve-vs-search",
+      "title": "Resolve versus search",
+      "body": "Use `resolve` when you want the highest-confidence recommendation for a need, often with `tags`, `type`, `eco`, `mode`, or `executable` filters. Use `search` when you want broader recall plus paging controls like `limit` and `offset`. In both cases, follow the ranked result with `skill`, `tree`, or `learn` before acting.",
+      "tags": ["resolve", "search", "ranking", "filters"]
+    },
+    {
+      "id": "skill-tree-learn",
+      "title": "Skill, tree, and learn flow",
+      "body": "Inspect a chosen URI with `skill`, expand an ecosystem with `tree`, and use `depth` when a shallow tree is enough. Once a node looks relevant, call `learn` to load its long-form payload and optionally pass `section` when you want one addressable section rather than the whole document. Pass `question` to `learn` when you want the server to rank relevant sections for that node.",
+      "tags": ["skill", "tree", "learn", "depth", "section"]
+    },
+    {
+      "id": "discover-and-bundle",
+      "title": "Discover and bundle flow",
+      "body": "Use `discover` when you want the registry to split the answer into `learn_first`, `then_do`, and `alternatives` in one response. Use `bundle` when you want the source package for a node: manifest, `SKILL.md`, `agents/openai.yaml`, references, scripts, and tests when present. This is the route pair that turns Dojo from a search index into a portable skill registry.",
+      "tags": ["discover", "bundle", "skill-package", "agent"]
+    },
+    {
+      "id": "knowledge-workflow",
+      "title": "Knowledge workflow",
+      "body": "Use `learn` for the full node payload, `backlinks` for inbound references, `graph` for local neighborhood inspection, `alias` when you need to resolve human phrasing to a canonical URI, and `bundle` when understanding is not enough and you need the packaged skill files. This is the path from discovery to understanding and then reuse.",
+      "tags": ["learn", "backlinks", "graph", "alias"]
+    },
+    {
+      "id": "agent-workflows",
+      "title": "Agent workflows",
+      "body": "Not every useful route is a GET. `agent_ask` sends a `message` plus optional `agent_context` to get a recommended executable node, while `agent_learn` sends a `question` plus optional `current_context` to get context-heavy answers, excerpts, and `then_do` suggestions. This helper wraps both POST shapes behind the same `operation` switch.",
+      "tags": ["agent", "post", "ask", "learn", "request-body"]
+    },
+    {
+      "id": "error-model",
+      "title": "Error model",
+      "body": "The helper does not hide transport failures behind fake success values. Missing required fields fail before the request, and the response object preserves the HTTP `status`, `method`, `url`, and parsed JSON body so callers can make their own retry or fallback decisions. Search-like payloads now also expose `reasons`, `execution`, `knowledge`, and `routes` summaries from the registry so an agent can explain why a node matched, then pivot directly into `learn`, `graph`, or `bundle` without rebuilding paths.",
+      "tags": ["errors", "status", "response"]
+    }
+  ],
+  "links": [
+    { "uri": "dojo/api#registry-index", "context": "Top-level registry metadata route" },
+    { "uri": "dojo/api#discovery-routes", "context": "Resolve, search, and ecosystems routes" },
+    { "uri": "dojo/api#bundle-route", "context": "Export a node as a portable skill bundle" },
+    { "uri": "dojo/api#knowledge-routes", "context": "Registry contract and knowledge route groupings" },
+    { "uri": "dojo/api#agent-routes", "context": "Agent ask and learn payloads" },
+    { "uri": "dojo/spec#execution-modes", "context": "Why this node uses an entry file" },
+    { "uri": "dojo/knowledge#learn-and-graph-endpoints", "context": "Why aliases, sections, and backlinks matter" },
+    { "uri": "dojo/publish/local#smoke-test-routes", "context": "Use these routes during local smoke tests" }
+  ],
+  "related": [
+    { "uri": "dojo/knowledge", "relation": "prerequisite", "note": "Knowing the graph model helps interpret the learn payload" }
+  ],
+  "depends": [
+    { "uri": "dojo/api", "optional": false, "reason": "This skill is a concrete client for the API standard" },
+    { "uri": "dojo/knowledge", "optional": true, "reason": "Understanding the knowledge layer helps interpret learn responses" }
+  ],
+  "scripts": [
+    {
+      "id": "query-registry",
+      "name": "Query Registry",
+      "description": "Call the Dojo API with a single operation enum",
+      "lang": "javascript",
+      "runtime": "node>=18",
+      "entry": "./scripts/query-registry.js",
+      "packages": []
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "operation": {
+          "type": "string",
+          "enum": ["index", "resolve", "discover", "search", "skill", "bundle", "tree", "learn", "backlinks", "graph", "alias", "ecosystems", "agent_ask", "agent_learn"]
+        },
+        "base_url": { "type": "string" },
+        "need": { "type": "string" },
+        "q": { "type": "string" },
+        "message": { "type": "string" },
+        "uri": { "type": "string" },
+        "alias": { "type": "string" },
+        "eco": { "type": "string" },
+        "type": { "type": "string" },
+        "tags": {
+          "oneOf": [
+            { "type": "string" },
+            { "type": "array", "items": { "type": "string" } }
+          ]
+        },
+        "mode": {
+          "type": "string",
+          "enum": ["all", "do", "learn"]
+        },
+        "executable": { "type": "boolean" },
+        "limit": { "type": "integer" },
+        "offset": { "type": "integer" },
+        "section": { "type": "string" },
+        "depth": { "type": "integer" },
+        "question": { "type": "string" },
+        "current_context": { "type": "array", "items": { "type": "string" } },
+        "agent_context": { "type": "object" }
+      },
+      "required": ["operation"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "status": { "type": "integer" },
+        "method": { "type": "string" },
+        "url": { "type": "string" },
+        "data": { "type": "object" }
+      }
+    }
+  },
+  "frontmatter": {
+    "created": "2026-04-05",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "integrators",
+    "estimated_reading_time": "4 min",
+    "prerequisites": ["dojo/api", "dojo/knowledge"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "more": {
+    "docs": "https://github.com/dojo-registry/dojo/blob/master/server/src/server.js",
+    "examples": "https://github.com/dojo-registry/dojo/tree/master/nodes/dojo/api/query",
+    "tests": "https://github.com/dojo-registry/dojo/blob/master/nodes/dojo/api/query/tests/query-registry.test.js",
+    "wiki": "https://github.com/dojo-registry/dojo/tree/master/nodes/dojo/README.md",
+    "agent_skills_spec": "https://github.com/agentskills/agentskills/blob/main/docs/specification.mdx"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://github.com/dojo-registry/dojo",
+  "created": "2026-04-05T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "verified"
+}

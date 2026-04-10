@@ -1,0 +1,96 @@
+{
+  "name": "local",
+  "version": "1.1.1",
+  "uri": "dojo/publish/local",
+  "type": "sub",
+  "context": "Local release rehearsal - validate, boot the server, and test search, tree, learn, and bundle health before publishing",
+  "info": "A local publish rehearsal catches structural and knowledge regressions before they hit a shared registry. This is the safe place to verify that the node can actually be discovered, read, and bundled, and the package-style entry script emits a machine-readable checklist of route health.",
+  "parent": "dojo/publish",
+  "tags": ["dojo", "publish", "local", "smoke-test", "search", "learn"],
+  "aliases": ["local publish rehearsal", "dojo smoke test"],
+  "triggers": [
+    "run a local publish rehearsal",
+    "how do i smoke test dojo locally",
+    "check search and learn before publishing"
+  ],
+  "body": "# Local Publish Rehearsal\n\nA local publish rehearsal catches structural mistakes before they hit a shared registry.\n\nRun [[dojo/validate]], boot the registry with your `nodes/` tree loaded, and verify `/v1/search`, `/v1/tree/<ecosystem>`, `/v1/skills/<uri>`, `/v1/learn/<uri>`, and `/v1/bundle/<uri>` for the node you changed. The entry script returns a structured checklist so other tooling can gate on the same smoke test.",
+  "sections": [
+    {
+      "id": "rehearsal-steps",
+      "title": "Rehearsal steps",
+      "body": "Validate the node, start the local server, load the ecosystem tree, then run focused search and learn checks against the exact URIs you changed.",
+      "tags": ["steps", "validate", "server"]
+    },
+    {
+      "id": "smoke-test-routes",
+      "title": "Smoke test routes",
+      "body": "At minimum, verify `/v1/search`, `/v1/tree/<ecosystem>`, `/v1/skills/<uri>`, `/v1/learn/<uri>`, and `/v1/bundle/<uri>`. If the node teaches through links, also check `/v1/backlinks/*` or `/v1/graph/*`.",
+      "tags": ["search", "tree", "skills", "learn", "bundle", "graph"]
+    }
+  ],
+  "links": [
+    { "uri": "dojo/contributing", "context": "Contribution workflow that recommends the local smoke test" },
+    { "uri": "dojo/validate", "context": "Validation should happen before rehearsal" },
+    { "uri": "dojo/api/query", "context": "Use the read-side client to exercise search and learn routes" },
+    { "uri": "dojo/knowledge", "context": "Understand what a strong learn payload should contain" }
+  ],
+  "related": [
+    { "uri": "dojo/contributing", "relation": "implements", "note": "This sub-skill operationalizes the local smoke test step from the contribution guide" }
+  ],
+  "scripts": [
+    {
+      "id": "rehearse-release",
+      "name": "Rehearse Release",
+      "description": "Check the core routes to validate a local release rehearsal",
+      "lang": "bash",
+      "entry": "./scripts/rehearse-release.sh",
+      "env": {
+        "DOJO_REGISTRY_URL": { "required": false, "description": "Registry base URL for local smoke tests" }
+      }
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "path": { "type": "string" },
+        "uri": { "type": "string" },
+        "ecosystem": { "type": "string" },
+        "registry_url": { "type": "string" }
+      },
+      "required": ["path", "uri", "ecosystem"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "passed": { "type": "boolean" },
+        "checks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": { "type": "string" },
+              "url": { "type": "string" },
+              "status": { "type": "integer" }
+            }
+          }
+        }
+      }
+    }
+  },
+  "frontmatter": {
+    "created": "2026-04-05",
+    "updated": "2026-04-10",
+    "audience": "contributors",
+    "estimated_reading_time": "3 min",
+    "prerequisites": ["dojo/validate"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://github.com/dojo-registry/dojo",
+  "created": "2026-04-05T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "verified"
+}

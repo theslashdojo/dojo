@@ -1,0 +1,145 @@
+{
+  "name": "send",
+  "version": "1.0.0",
+  "uri": "ethereum/transactions/send",
+  "type": "skill",
+  "context": "Send a native ETH transaction on any EVM chain with explicit fee controls and receipt handling",
+  "info": "Broadcasts a native ETH transfer using a JSON-RPC endpoint plus a sender private key. Supports legacy `gasPrice` and EIP-1559 fee fields, optional nonce override, optional calldata, automatic gas estimation with a safety buffer, dry-run preparation, and optional waiting for the mined receipt. This is the simplest real transaction path an agent can execute on Ethereum, Base, Optimism, Arbitrum, or other EVM-compatible chains.",
+  "parent": "ethereum/transactions",
+  "aliases": [
+    "send eth",
+    "send ethereum transaction",
+    "transfer native eth",
+    "broadcast eth transaction",
+    "native eth send"
+  ],
+  "tags": [
+    "transactions",
+    "send",
+    "eth",
+    "eip-1559",
+    "rpc",
+    "wallet"
+  ],
+  "triggers": [
+    "send eth to an address",
+    "make an ethereum payment",
+    "broadcast a native eth transfer",
+    "transfer eth on base",
+    "send a transaction"
+  ],
+  "body": "# Send Native ETH\n\nUse this skill when you need to move native ETH from one wallet to another on an EVM chain. It is intentionally narrower than a general contract-call skill: fewer moving parts means better reliability for agents.\n\nInputs can come from the request payload or environment variables. `RPC_URL` and `PRIVATE_KEY` are the only hard requirements. The value can be supplied as `value_eth` for human readability or `value_wei` when precision matters.\n\nThe script estimates gas when `gas_limit` is omitted and adds a small safety buffer. If you supply `max_fee_per_gas_gwei` or `max_priority_fee_per_gas_gwei`, it sends an EIP-1559 transaction. Otherwise it falls back to legacy `gas_price_gwei` when provided, or lets the provider fill fee data. Set `dry_run` when you need to inspect the prepared request before broadcast.\n\nBefore using this in production, read [[ethereum/gas#eip-1559]] and [[ethereum/transactions#nonce-discipline]]. If you are transferring tokens rather than native ETH, switch to [[ethereum/erc20]].",
+  "sections": [
+    {
+      "id": "value-units",
+      "title": "Value units",
+      "body": "Prefer `value_wei` when an upstream system already computed the exact amount. Use `value_eth` for simple human-entered transfers like `0.01`. Do not send both unless you deliberately want `value_wei` to win.",
+      "tags": ["wei", "eth", "precision"]
+    },
+    {
+      "id": "fee-fields",
+      "title": "Fee fields",
+      "body": "If you provide `max_fee_per_gas_gwei` or `max_priority_fee_per_gas_gwei`, the script builds an EIP-1559 transaction. If you provide only `gas_price_gwei`, it uses legacy pricing. If you provide none of them, the provider fills fee data from the chain.",
+      "tags": ["eip-1559", "gas-price", "fees"]
+    },
+    {
+      "id": "receipt-handling",
+      "title": "Receipt handling",
+      "body": "Set `wait_for_receipt` to `false` when you only need the submitted hash and will watch confirmation elsewhere. Leave it `true` when the caller needs block number, gas used, and final success status in one response.",
+      "tags": ["receipt", "confirmation", "async"]
+    },
+    {
+      "id": "dry-run",
+      "title": "Dry run mode",
+      "body": "Set `dry_run` to `true` to inspect the prepared transaction request without broadcasting. This is useful when an agent needs to surface fees, nonce, or exact value before asking for final approval.",
+      "tags": ["dry-run", "preview", "approval"]
+    }
+  ],
+  "scripts": [
+    {
+      "id": "send-transaction",
+      "name": "Send Native ETH Transaction",
+      "description": "Send native ETH to a recipient and optionally wait for the receipt",
+      "lang": "javascript",
+      "runtime": "node>=18",
+      "packages": ["ethers@5"],
+      "entry": "./scripts/send-native-transaction.js",
+      "env": {
+        "RPC_URL": { "required": true, "description": "JSON-RPC endpoint for the target chain" },
+        "PRIVATE_KEY": { "required": true, "secret": true, "description": "Sender wallet private key" }
+      }
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "rpc_url": { "type": "string", "description": "JSON-RPC endpoint for the target chain" },
+        "private_key": { "type": "string", "description": "Sender wallet private key" },
+        "to": { "type": "string", "description": "Recipient address" },
+        "value_eth": { "type": "string", "description": "ETH amount as a decimal string" },
+        "value_wei": { "type": "string", "description": "ETH amount in wei; overrides value_eth when present" },
+        "data": { "type": "string", "description": "Optional calldata hex string", "default": "0x" },
+        "nonce": { "type": "integer", "description": "Optional explicit nonce" },
+        "chain_id": { "type": "integer", "description": "Optional explicit chain id" },
+        "gas_limit": { "type": "string", "description": "Optional gas limit override" },
+        "gas_limit_multiplier": { "type": "number", "description": "Multiplier applied to the gas estimate", "default": 1.15 },
+        "gas_price_gwei": { "type": "string", "description": "Legacy gas price in gwei" },
+        "max_fee_per_gas_gwei": { "type": "string", "description": "EIP-1559 max fee per gas in gwei" },
+        "max_priority_fee_per_gas_gwei": { "type": "string", "description": "EIP-1559 max priority fee in gwei" },
+        "wait_for_receipt": { "type": "boolean", "description": "Wait for the mined receipt", "default": true },
+        "confirmations": { "type": "integer", "description": "Receipt confirmation count to wait for", "default": 1 },
+        "dry_run": { "type": "boolean", "description": "Prepare the transaction without broadcasting", "default": false }
+      },
+      "required": ["to"],
+      "additionalProperties": true
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "hash": { "type": "string" },
+        "from": { "type": "string" },
+        "to": { "type": "string" },
+        "nonce": { "type": "integer" },
+        "chain_id": { "type": "integer" },
+        "network_name": { "type": "string" },
+        "value_wei": { "type": "string" },
+        "gas_limit": { "type": "string" },
+        "gas_price_wei": { "type": "string" },
+        "max_fee_per_gas_wei": { "type": "string" },
+        "max_priority_fee_per_gas_wei": { "type": "string" },
+        "gas_used": { "type": "string" },
+        "block_number": { "type": "integer" },
+        "status": { "type": "string", "enum": ["prepared", "broadcast", "success", "failed"] },
+        "dry_run": { "type": "boolean" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "ethereum/gas", "optional": false, "reason": "Fee selection and estimation are part of every send flow" },
+    { "uri": "ethereum/transactions", "optional": false, "reason": "Parent workflow context" }
+  ],
+  "links": [
+    { "uri": "ethereum/gas#eip-1559", "context": "Fee model for max fee and priority fee fields" },
+    { "uri": "ethereum/gas#estimation", "context": "Estimate gas before broadcast" },
+    { "uri": "ethereum/transactions#nonce-discipline", "context": "Nonce handling when multiple transactions may be pending" },
+    { "uri": "ethereum/erc20", "context": "Switch here for token transfers rather than native ETH" }
+  ],
+  "related": [
+    { "uri": "ethereum/erc20", "relation": "see-also", "note": "Use ERC-20 tooling when the asset is a token contract, not native ETH" },
+    { "uri": "ethereum/gas", "relation": "prerequisite", "note": "Fee reasoning matters before broadcasting to mainnet" }
+  ],
+  "frontmatter": {
+    "author": "dojo-community",
+    "status": "living",
+    "confidence": "high",
+    "audience": "agents and developers",
+    "prerequisites": ["ethereum/gas", "ethereum/transactions"],
+    "estimated_reading_time": "5 min"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "status": "verified",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z"
+}

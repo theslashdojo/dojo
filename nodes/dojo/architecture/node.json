@@ -1,0 +1,84 @@
+{
+  "name": "architecture",
+  "version": "1.2.0",
+  "uri": "dojo/architecture",
+  "type": "context",
+  "content_type": "reference",
+  "context": "Runtime architecture - nodes/ is canonical, legacy examples still load, search is indexed from manifests, and knowledge is assembled on read",
+  "info": "Explains how the Dojo server and web app load ecosystems. Useful when adding new roots, debugging search, or understanding why a node appears in the UI.",
+  "parent": "dojo",
+  "tags": ["dojo", "architecture", "server", "web", "nodes", "examples", "search", "knowledge", "indexing"],
+  "aliases": ["dojo architecture", "source of truth", "runtime loading", "dojo search index"],
+  "triggers": [
+    "how does dojo load nodes",
+    "why is my dojo node not in search",
+    "what is dojo source of truth",
+    "how does the dojo ui load ecosystems"
+  ],
+  "body": "# Dojo Architecture\n\nThe registry server walks `nodes/` first and then falls back to legacy `examples/`, preferring `node.json` when present and accepting older `skill.json` manifests for compatibility. Parent relationships, not directory names alone, determine the graph.\n\nThe web app reads ecosystem trees from the API and renders each root returned by the registry. Static registry metadata can help discovery, but it is not the runtime source of truth.\n\nSearch quality depends on the server index. If you add richer `aliases`, `body`, `sections`, or link context, those fields need to be indexed to affect `/v1/search` and `/v1/agent/learn`.\n\nThe knowledge layer is assembled at read time: backlinks are derived from links, related edges, dependencies, and wiki-links, while reading paths are built from section order plus executable targets in linked skills. Package-style entry scripts live beside the manifests in `scripts/`, which mirrors the packaging guidance captured in [[dojo/spec#file-layout]].",
+  "sections": [
+    {
+      "id": "source-of-truth",
+      "title": "Runtime source of truth",
+      "body": "The server trusts the loaded manifest roots. `nodes/` is the canonical home for live Dojo content, while `examples/` remains a compatibility root for sample ecosystems and older manifests.",
+      "tags": ["nodes", "examples", "runtime", "source-of-truth"]
+    },
+    {
+      "id": "search-index",
+      "title": "Rich knowledge search index",
+      "body": "The search index should cover not only `context`, `info`, and `tags`, but also `aliases`, `body`, `sections`, and link context. Otherwise the knowledge UI gets richer while `/v1/search` and `/v1/agent/learn` stay thin.",
+      "tags": ["search", "aliases", "body", "sections", "links"]
+    },
+    {
+      "id": "knowledge-routes",
+      "title": "Knowledge routes",
+      "body": "Knowledge routes expose `/v1/learn/*`, `/v1/backlinks/*`, `/v1/graph/*`, `/v1/alias/:alias`, and `/v1/agent/learn`. Together they let an agent read a node, follow links, inspect graph neighborhood, and resolve natural-language aliases.",
+      "tags": ["learn", "backlinks", "graph", "alias", "agent-learn"]
+    },
+    {
+      "id": "package-layout",
+      "title": "Package layout",
+      "body": "The live Dojo node tree uses package-style folders: manifests stay in place, `scripts/` holds entry-based source files, and `tests/` holds the local checks that justify verified status on the JavaScript skills. That layout is easier to maintain than large inline blobs once the logic grows.",
+      "tags": ["layout", "scripts", "tests", "entry"]
+    },
+    {
+      "id": "reading-path-assembly",
+      "title": "Reading path assembly",
+      "body": "The learn endpoint builds a reading path from section order and then adds linked `skill` or `sub` nodes as follow-up actions. That is why links from reference material into executable nodes like [[dojo/api/query]] or [[dojo/validate]] are so useful.",
+      "tags": ["reading-path", "learn", "skills"]
+    }
+  ],
+  "links": [
+    { "uri": "dojo", "context": "Dojo ecosystem overview" },
+    { "uri": "dojo/spec#file-layout", "context": "Manifest, scripts, and tests layout rules" },
+    { "uri": "dojo/contributing#github-pr-flow", "context": "Contributor workflow" },
+    { "uri": "dojo/knowledge#learn-and-graph-endpoints", "context": "Knowledge-layer behavior" },
+    { "uri": "dojo/api#knowledge-routes", "context": "Registry API surface" },
+    { "uri": "dojo/api/query", "context": "Executable client for the read-side API" }
+  ],
+  "related": [
+    { "uri": "dojo/knowledge", "relation": "see-also", "note": "Architecture explains how the knowledge layer is materialized at runtime" },
+    { "uri": "dojo/api", "relation": "see-also", "note": "The API is the visible surface of the architecture" }
+  ],
+  "frontmatter": {
+    "created": "2026-04-05",
+    "updated": "2026-04-09",
+    "author": "dojo-community",
+    "audience": "contributors",
+    "estimated_reading_time": "6 min",
+    "prerequisites": ["dojo/spec"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "more": {
+    "docs": "https://github.com/dojo-registry/dojo/blob/master/docs/ARCHITECTURE.md",
+    "examples": "https://github.com/dojo-registry/dojo/tree/master/nodes/dojo",
+    "wiki": "https://github.com/dojo-registry/dojo/blob/master/server/src/server.js"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://github.com/dojo-registry/dojo",
+  "created": "2026-04-05T00:00:00Z",
+  "updated": "2026-04-09T00:00:00Z",
+  "status": "published"
+}

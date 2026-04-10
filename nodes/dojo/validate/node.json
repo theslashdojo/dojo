@@ -1,0 +1,123 @@
+{
+  "name": "validate",
+  "version": "1.1.1",
+  "uri": "dojo/validate",
+  "type": "skill",
+  "context": "Validate Dojo manifests - schema, tree integrity, section references, discovery metadata, and knowledge quality",
+  "info": "Validation in Dojo is more than schema compliance. This skill checks the hard constraints first, then audits the tree-aware and knowledge-aware details that commonly regress real nodes: parent and URI relationships, section-target links, wiki-link integrity, thin aliases, weak sections, and graph-isolated content. The packaged validator now works both as an importable module and a direct CLI entrypoint so external agents can gate release work with the same checks.",
+  "parent": "dojo",
+  "tags": ["dojo", "validate", "schema", "quality", "knowledge", "publish", "review"],
+  "aliases": ["dojo validate", "validate dojo manifest", "dojo lint"],
+  "triggers": [
+    "validate dojo manifest",
+    "check my dojo node",
+    "lint dojo skill",
+    "what should i validate before publishing"
+  ],
+  "body": "# Validate Dojo Nodes\n\nValidation is more than schema compliance. A node can be syntactically valid and still be weak for search, broken in the runtime tree, or useless in agent learning.\n\nThis skill loads the surrounding manifest tree and checks the hard constraints plus the graph-aware details that only show up when nodes link to each other: parent and URI nesting, section-target link integrity, wiki-link targets, outgoing graph edges, and discovery quality. Use [[dojo/validate/schema]] for the structural contract, [[dojo/validate/knowledge]] for authoring quality, and [[dojo/validate/checklist]] before moving into [[dojo/publish]].",
+  "sections": [
+    {
+      "id": "what-gets-checked",
+      "title": "What gets checked",
+      "body": "Start with required fields, semver, URI and tag shape, script and schema presence, and parent rules. Then inspect the discovery and knowledge layer: aliases, triggers, body depth, sections, section-target links, wiki-links, and graph edges.",
+      "tags": ["schema", "aliases", "sections", "links"]
+    },
+    {
+      "id": "tree-aware-checks",
+      "title": "Tree-aware checks",
+      "body": "Validation should load the surrounding manifest tree, not just the current file. That lets it confirm that `parent` exists, `uri` actually nests under that parent, `sub` references point to real `sub` nodes, and section-target links such as `dojo/spec#manifest-core` or `dojo/validate/checklist#entry-and-tests` resolve to real sections instead of dead anchors.",
+      "tags": ["tree", "parent", "uri", "sections", "graph"]
+    },
+    {
+      "id": "knowledge-gates",
+      "title": "Knowledge gates",
+      "body": "A high-quality node should teach as well as validate. That means realistic aliases and triggers, enough `body` and `sections` content to be worth loading directly, at least one outgoing link, and ideally a link to an executable follow-up node. This is the gate that keeps `/v1/learn` and `/v1/agent/learn` useful instead of thin.",
+      "tags": ["knowledge", "learn", "aliases", "body", "sections"]
+    },
+    {
+      "id": "when-to-run",
+      "title": "When to run validation",
+      "body": "Run validation when scaffolding a node, after major content edits, before local smoke tests, and immediately before release. Treat validation as part of authoring, not a last-minute gate. The portable package emits JSON so other agents and CI systems can consume the result directly.",
+      "tags": ["workflow", "authoring", "release"]
+    },
+    {
+      "id": "common-failures",
+      "title": "Common failures",
+      "body": "Typical failures include bad `parent` values, invalid `content_type`, section-target links that point at missing sections, thin aliases, missing long-form content on context nodes, and nodes that never link to the rest of the graph. See [[dojo/spec]] and [[dojo/knowledge]] when the failure is conceptual rather than mechanical.",
+      "tags": ["failures", "parent", "content-type", "graph"]
+    }
+  ],
+  "links": [
+    { "uri": "dojo/spec", "context": "Rules validation is enforcing" },
+    { "uri": "dojo/knowledge", "context": "What good knowledge quality looks like" },
+    { "uri": "dojo/validate/schema", "context": "Hard schema and parent checks" },
+    { "uri": "dojo/validate/knowledge", "context": "Knowledge quality checks" },
+    { "uri": "dojo/validate/checklist#entry-and-tests", "context": "Prepublish checklist after validation passes" },
+    { "uri": "dojo/publish", "context": "Release workflow after validation" }
+  ],
+  "related": [
+    { "uri": "dojo/publish", "relation": "prerequisite", "note": "Publishing should happen only after validation and a smoke test" },
+    { "uri": "dojo/api", "relation": "see-also", "note": "The API routes are where broken graph references and weak learn payloads become visible" }
+  ],
+  "scripts": [
+    {
+      "id": "validate-node",
+      "name": "Validate Node",
+      "description": "Perform manifest, tree-integrity, and knowledge checks",
+      "lang": "javascript",
+      "runtime": "node>=18",
+      "entry": "./scripts/validate-node.js",
+      "packages": []
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "path": { "type": "string" },
+        "rootDir": { "type": "string" },
+        "strict": { "type": "boolean", "default": false },
+        "requireKnowledge": { "type": "boolean", "default": false }
+      },
+      "required": ["path"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "valid": { "type": "boolean" },
+        "errors": { "type": "array", "items": { "type": "string" } },
+        "warnings": { "type": "array", "items": { "type": "string" } },
+        "summary": {
+          "type": "object",
+          "properties": {
+            "uri": { "type": "string" },
+            "type": { "type": "string" },
+            "root_dir": { "type": "string" },
+            "known_nodes": { "type": "integer" }
+          }
+        }
+      }
+    }
+  },
+  "sub": ["dojo/validate/schema", "dojo/validate/knowledge"],
+  "frontmatter": {
+    "created": "2026-04-05",
+    "updated": "2026-04-10",
+    "audience": "contributors",
+    "estimated_reading_time": "4 min",
+    "prerequisites": ["dojo/spec"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "more": {
+    "docs": "https://github.com/dojo-registry/dojo/tree/master/nodes/dojo/validate",
+    "tests": "https://github.com/dojo-registry/dojo/blob/master/nodes/dojo/validate/tests/validate-node.test.js",
+    "agent_skills_spec": "https://github.com/agentskills/agentskills/blob/main/docs/specification.mdx"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://github.com/dojo-registry/dojo",
+  "created": "2026-04-05T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "verified"
+}

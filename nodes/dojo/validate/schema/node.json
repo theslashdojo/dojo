@@ -1,0 +1,89 @@
+{
+  "name": "schema",
+  "version": "1.1.1",
+  "uri": "dojo/validate/schema",
+  "type": "sub",
+  "context": "Schema checks - required fields, URI syntax, content types, and allowed parent relationships",
+  "info": "This sub-skill covers the hard edges of Dojo manifests: required fields, enum values, URI shape, tag syntax, hierarchy rules like `sub` requiring a `skill` parent, and reference integrity checks that make section-target links and wiki-links safe to follow.",
+  "parent": "dojo/validate",
+  "tags": ["dojo", "validate", "schema", "hierarchy", "content-type", "parent-rules"],
+  "aliases": ["dojo schema validation", "validate dojo schema"],
+  "triggers": [
+    "check dojo schema",
+    "validate dojo parent rules",
+    "why is my content type invalid"
+  ],
+  "body": "# Schema Validation\n\nSchema validation checks the hard edges: required fields, URI format, tag syntax, allowed `content_type` values, and the parent and type constraints described in [[dojo/spec#hierarchy]].\n\nThe live runtime uses `node.json` for canonical nodes and still accepts legacy `skill.json` manifests. Validate the manifest content, not the filename.",
+  "sections": [
+    {
+      "id": "required-fields",
+      "title": "Required fields",
+      "body": "Start with identity (`name`, `version`, `uri`, `type`) and decision text (`context`, `info`), then confirm `tags` are present and properly shaped.",
+      "tags": ["required-fields", "identity", "tags"]
+    },
+    {
+      "id": "parent-rules",
+      "title": "Parent rules",
+      "body": "`ecosystem` is root-only, `sub` must have a `skill` parent, and other node types may live under any non-`sub` parent. Bad parent relationships are often the reason a node looks correct on disk but wrong in the runtime tree.",
+      "tags": ["parent-rules", "sub", "tree"]
+    },
+    {
+      "id": "reference-integrity",
+      "title": "Reference integrity",
+      "body": "Structural validation should also verify that graph references can actually be followed. Explicit `links`, `depends`, and `related` edges should resolve to real nodes, and section-target references like `dojo/spec#manifest-core` should resolve to real sections instead of dead anchors. The same applies to wiki-links inside `info`, `body`, and section text.",
+      "tags": ["references", "sections", "links", "wiki-links"]
+    }
+  ],
+  "links": [
+    { "uri": "dojo/spec", "context": "Full schema and hierarchy rules" },
+    { "uri": "dojo/spec#knowledge-fields", "context": "Knowledge fields whose references should still validate structurally" },
+    { "uri": "dojo/glossary", "context": "Definitions for types like skill, standard, context, and sub" },
+    { "uri": "dojo/validate/checklist", "context": "Checklist to run after hard validation passes" }
+  ],
+  "related": [
+    { "uri": "dojo/spec", "relation": "implements", "note": "This sub-skill applies the formal schema and parent rules" }
+  ],
+  "scripts": [
+    {
+      "id": "schema-only",
+      "name": "Schema Only Validation",
+      "description": "Perform schema-focused manifest checks",
+      "lang": "javascript",
+      "runtime": "node>=18",
+      "entry": "./scripts/schema-only.js",
+      "packages": []
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "path": { "type": "string" }
+      },
+      "required": ["path"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "valid": { "type": "boolean" },
+        "errors": { "type": "array", "items": { "type": "string" } },
+        "warnings": { "type": "array", "items": { "type": "string" } }
+      }
+    }
+  },
+  "frontmatter": {
+    "created": "2026-04-05",
+    "updated": "2026-04-10",
+    "audience": "contributors",
+    "estimated_reading_time": "3 min",
+    "prerequisites": ["dojo/spec"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://github.com/dojo-registry/dojo",
+  "created": "2026-04-05T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "verified"
+}

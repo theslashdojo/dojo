@@ -1,0 +1,106 @@
+{
+  "name": "api",
+  "version": "1.3.0",
+  "uri": "dojo/api",
+  "type": "standard",
+  "context": "Registry API contract - discovery, bundle, retrieval, knowledge, agent, and publish routes for the Dojo server",
+  "info": "The registry API is the concrete HTTP contract between agents, CLIs, UIs, and the registry server. It includes registry metadata, discovery and search routes, grouped agent-friendly discovery, URI-based retrieval, bundled skill export, knowledge graph reads, agent-oriented recommendation endpoints, and the authenticated publish mutation.",
+  "parent": "dojo",
+  "tags": ["dojo", "api", "standard", "resolve", "search", "discover", "bundle", "learn", "graph", "publish", "agent"],
+  "aliases": ["dojo api", "registry api", "dojo http api", "dojo routes", "dojo server api"],
+  "triggers": [
+    "show dojo api docs",
+    "what routes does dojo expose",
+    "how do i query the dojo registry",
+    "how do i publish to the dojo registry",
+    "what does dojo agent ask return"
+  ],
+  "body": "# Dojo API\n\nThe registry API is the standard contract between agents, CLIs, UIs, and the registry server. It is intentionally small, but it is not only a search API: it exposes registry metadata, URI-based retrieval, grouped discovery, ecosystem trees, bundled skill export, knowledge reads, graph traversal, alias resolution, agent-oriented recommendation flows, and the authenticated publish mutation.\n\nUse [[dojo/api/query#operation-matrix]] if you want a scriptable client that wraps the route map. Use [[dojo/skill#bundle-workflow]] when you want the portable Dojo skill package itself. Use [[dojo/spec#manifest-core]] and [[dojo/spec#knowledge-fields]] when you need to understand why the payloads look the way they do. The server implementation in `server/src/server.js` and the integration assertions in `tests/integration.test.js` are the runtime source of truth for this standard.",
+  "sections": [
+    {
+      "id": "registry-index",
+      "title": "Registry index",
+      "body": "`GET /v1` returns top-level registry metadata such as the registry name, version, loaded ecosystems, and total node counts. This is the fastest route for clients that need a heartbeat plus discovery bootstrap data before calling more targeted endpoints.",
+      "tags": ["index", "metadata", "registry"]
+    },
+    {
+      "id": "discovery-routes",
+      "title": "Discovery routes",
+      "body": "Use `GET /v1/resolve` for natural-language intent resolution, `GET /v1/search` for broader full-text discovery, `GET /v1/discover` when an agent wants a grouped `learn_first` versus `then_do` answer, and `GET /v1/ecosystems` when a client wants the loaded roots first. `resolve` is the recommendation-style entry point; `search` is the wider search surface with ecosystem, type, tag, limit, offset, `mode`, and `executable` filters; `discover` is the orchestration shortcut for agents that want ranked reading paths and executable follow-ups in one call. These routes now expose `query_variants` and `routes` so agents can see how the server expanded short phrasing like `tx` into richer search terms and then pivot directly into follow-up endpoints.",
+      "tags": ["resolve", "search", "discover", "ecosystems", "discovery"]
+    },
+    {
+      "id": "skill-and-tree-routes",
+      "title": "Skill and tree routes",
+      "body": "Use `GET /v1/skills/*` to load a node plus its `ancestors` and `children`. Use `GET /v1/tree/:ecosystem` when a client wants the nested hierarchy rooted at an ecosystem. The tree route also accepts `depth`, which is useful for UIs that want a shallow first paint and deeper on-demand expansion.",
+      "tags": ["skills", "tree", "ancestors", "children", "depth"]
+    },
+    {
+      "id": "knowledge-routes",
+      "title": "Knowledge routes",
+      "body": "Use `GET /v1/learn/*` for the full knowledge payload, `GET /v1/backlinks/*` for inbound references, `GET /v1/graph/*` for local graph traversal, and `GET /v1/alias/:alias` for natural-language alias resolution. `learn` returns body, sections, aliases, frontmatter, graph edges, ancestry, children, and a computed `reading_path` that turns the knowledge model in [[dojo/knowledge]] into an API payload. It also accepts `question` so agents can ask for `relevant_sections` within a known node instead of rerunning a broader search.",
+      "tags": ["learn", "backlinks", "graph", "alias", "reading-path"]
+    },
+    {
+      "id": "bundle-route",
+      "title": "Bundle route",
+      "body": "Use `GET /v1/bundle/*` when an agent needs the portable source package for a node rather than only the manifest. The response includes the manifest envelope plus bundled files such as `SKILL.md`, `agents/openai.yaml`, references, scripts, tests, and docs when they exist. This is the route that lets any client fetch executable skills and knowledge with enough context to reuse them outside the registry UI.",
+      "tags": ["bundle", "skill-package", "portable", "files"]
+    },
+    {
+      "id": "agent-routes",
+      "title": "Agent routes",
+      "body": "`POST /v1/agent/ask` recommends executable nodes, explains why they matched, includes an excerpt when one is available, and reports missing required env vars plus required input fields from the selected scripts. `POST /v1/agent/learn` prefers context-rich answers, returns relevant section IDs when it can, accepts `current_context` for local graph biasing, and suggests `then_do` follow-up skills. Together they form the do-path and learn-path for agents.",
+      "tags": ["agent", "ask", "learn", "recommendation"]
+    },
+    {
+      "id": "response-shapes",
+      "title": "Response shapes",
+      "body": "The API uses a few stable response patterns. Retrieval routes often wrap the manifest in a `skill` or `node` object plus structural context like `ancestors`, `children`, `links`, or `backlinks`, and now add `execution`, `knowledge`, and `routes` summaries for agents. Search-style routes return ranked arrays plus totals, `reasons`, `excerpt`, `query_variants`, and the same execution-oriented metadata. `discover` groups the same data into `best_match`, `learn_first`, `then_do`, and `alternatives`. `learn` adds `focused_section` and optional `relevant_sections`, `bundle` returns `entrypoints` plus portable files, and `agent` routes add recommendation-specific fields like `alternatives`, `answer_nodes`, or `then_do`.",
+      "tags": ["payloads", "responses", "learn", "agent"]
+    },
+    {
+      "id": "publish-route",
+      "title": "Publish route",
+      "body": "`POST /v1/skills` is the authenticated write path. The request body is the manifest itself and the bearer token travels in the `Authorization` header. Pair it with [[dojo/validate#tree-aware-checks]] before the request and [[dojo/publish/registry#request-shape]] when you are ready to release.",
+      "tags": ["publish", "post", "auth", "mutation"]
+    }
+  ],
+  "links": [
+    { "uri": "dojo/spec#manifest-core", "context": "Field semantics that sit behind the API" },
+    { "uri": "dojo/spec#lifecycle-status", "context": "Status expectations around publish and verify flows" },
+    { "uri": "dojo/spec#knowledge-fields", "context": "Why learn and graph payloads carry richer graph fields" },
+    { "uri": "dojo/knowledge#learn-and-graph-endpoints", "context": "Knowledge-layer routes and behavior" },
+    { "uri": "dojo/skill#bundle-workflow", "context": "Portable skill package flow backed by the bundle route" },
+    { "uri": "dojo/architecture#knowledge-routes", "context": "How the server and web app use these routes" },
+    { "uri": "dojo/api/query#operation-matrix", "context": "Executable client coverage for the route map" },
+    { "uri": "dojo/api/query#agent-workflows", "context": "Programmatic wrappers for agent ask and learn" },
+    { "uri": "dojo/publish/registry#request-shape", "context": "Publish via POST /v1/skills" }
+  ],
+  "related": [
+    { "uri": "dojo/spec", "relation": "implements", "note": "This standard is the concrete HTTP surface described by the spec" },
+    { "uri": "dojo/knowledge", "relation": "see-also", "note": "The knowledge node explains why the learn and graph routes exist at all" }
+  ],
+  "more": {
+    "docs": "https://github.com/dojo-registry/dojo/blob/master/server/src/server.js",
+    "spec": "https://github.com/dojo-registry/dojo/blob/master/SPEC.md",
+    "examples": "https://github.com/dojo-registry/dojo/tree/master/nodes/dojo/api",
+    "tests": "https://github.com/dojo-registry/dojo/blob/master/tests/integration.test.js"
+  },
+  "frontmatter": {
+    "created": "2026-04-05",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "integrators",
+    "estimated_reading_time": "5 min",
+    "prerequisites": ["dojo/spec"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://github.com/dojo-registry/dojo",
+  "created": "2026-04-05T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

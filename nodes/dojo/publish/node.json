@@ -1,0 +1,115 @@
+{
+  "name": "publish",
+  "version": "1.1.1",
+  "uri": "dojo/publish",
+  "type": "skill",
+  "context": "Publish Dojo nodes - version correctly, authenticate, and release to a registry",
+  "info": "Publishing is the write-side release flow for Dojo nodes. It should come after schema validation, knowledge validation, and a local smoke test, and it should treat version strings as immutable release artifacts. The package-style publish scripts under this node are tested so the verified status is about the actual executable entry files, not just the manifest prose. The portable package is now complete enough for another agent runtime to dry-run, rehearse, and publish without reverse-engineering the workflow from `node.json` alone.",
+  "parent": "dojo",
+  "tags": ["dojo", "publish", "release", "registry", "versioning", "auth"],
+  "aliases": ["dojo publish", "publish dojo node", "release dojo skill"],
+  "triggers": [
+    "publish dojo skill",
+    "release dojo node",
+    "post manifest to dojo registry",
+    "how do i publish to dojo"
+  ],
+  "body": "# Publish Dojo Nodes\n\nPublishing should happen after validation and a local smoke test. Treat version strings as immutable release artifacts, not mutable drafts.\n\nThis skill uses a package-style `entry` script so the release behavior can be tested and reused. Use [[dojo/publish/local]] to rehearse the release against a local registry and [[dojo/publish/registry]] when you are ready to POST the manifest.",
+  "sections": [
+    {
+      "id": "versioning",
+      "title": "Versioning",
+      "body": "If the content changes, bump the version. Never reuse a published version string for different content.",
+      "tags": ["versioning", "semver", "release"]
+    },
+    {
+      "id": "auth",
+      "title": "Auth",
+      "body": "Registry publish is an authenticated operation. Keep the registry token separate from the manifest itself and inject it at publish time.",
+      "tags": ["auth", "token", "security"]
+    },
+    {
+      "id": "release-flow",
+      "title": "Release flow",
+      "body": "Run [[dojo/validate]], rehearse with [[dojo/publish/local]], then publish with [[dojo/publish/registry]]. Only after the node resolves, learns, and bundles correctly should you consider the release complete.",
+      "tags": ["workflow", "validate", "smoke-test"]
+    },
+    {
+      "id": "post-publish-checks",
+      "title": "Post-publish checks",
+      "body": "After release, verify the node through `/v1/search`, `/v1/skills/*`, and `/v1/learn/*`. Publishing without a read-side check leaves you blind to integration regressions.",
+      "tags": ["post-publish", "search", "learn"]
+    }
+  ],
+  "links": [
+    { "uri": "dojo/validate", "context": "Validation workflow that should happen first" },
+    { "uri": "dojo/contributing", "context": "Contributor workflow around publishing" },
+    { "uri": "dojo/api", "context": "Mutation route contract" },
+    { "uri": "dojo/publish/local", "context": "Local release rehearsal" },
+    { "uri": "dojo/publish/registry", "context": "Final publish request" }
+  ],
+  "related": [
+    { "uri": "dojo/validate", "relation": "prerequisite", "note": "Publishing should only happen after validation passes" },
+    { "uri": "dojo/api", "relation": "see-also", "note": "The API node documents the contract behind publish requests" }
+  ],
+  "depends": [
+    { "uri": "dojo/validate", "optional": false, "reason": "Publishing should depend on successful validation" }
+  ],
+  "scripts": [
+    {
+      "id": "publish-node",
+      "name": "Publish Node",
+      "description": "Publish a manifest to a Dojo registry endpoint",
+      "lang": "bash",
+      "entry": "./scripts/publish-node.sh",
+      "env": {
+        "DOJO_TOKEN": { "required": true, "secret": true, "description": "Registry auth token" },
+        "DOJO_REGISTRY_URL": { "required": false, "description": "Registry base URL" },
+        "DOJO_DRY_RUN": { "required": false, "description": "Whether to emit a dry-run preview instead of a live publish" }
+      }
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "path": { "type": "string" },
+        "registry": { "type": "string" },
+        "token_env": { "type": "string", "default": "DOJO_TOKEN" },
+        "dry_run": { "type": "boolean", "default": false }
+      },
+      "required": ["path"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "uri": { "type": "string" },
+        "version": { "type": "string" },
+        "published": { "type": "boolean" },
+        "status": { "type": "string" },
+        "next": { "type": "string" }
+      }
+    }
+  },
+  "sub": ["dojo/publish/local", "dojo/publish/registry"],
+  "frontmatter": {
+    "created": "2026-04-05",
+    "updated": "2026-04-10",
+    "audience": "contributors",
+    "estimated_reading_time": "4 min",
+    "prerequisites": ["dojo/validate"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "more": {
+    "docs": "https://github.com/dojo-registry/dojo/tree/master/nodes/dojo/publish",
+    "tests": "https://github.com/dojo-registry/dojo/blob/master/nodes/dojo/publish/tests/publish-scripts.test.js",
+    "agent_skills_spec": "https://github.com/agentskills/agentskills/blob/main/docs/specification.mdx"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://github.com/dojo-registry/dojo",
+  "created": "2026-04-05T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "verified"
+}

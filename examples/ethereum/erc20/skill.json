@@ -37,9 +37,12 @@
       "lang": "javascript",
       "runtime": "node>=18",
       "packages": [
-        "ethers@6"
+        "ethers@5"
       ],
-      "inline": "const { ethers } = require('ethers');\n\nconst ERC20_ABI = ['function balanceOf(address) view returns (uint256)', 'function decimals() view returns (uint8)', 'function symbol() view returns (string)'];\n\nasync function getBalance({ rpcUrl, tokenAddress, walletAddress }) {\n  const provider = new ethers.JsonRpcProvider(rpcUrl);\n  const token = new ethers.Contract(tokenAddress, ERC20_ABI, provider);\n  const [balance, decimals, symbol] = await Promise.all([\n    token.balanceOf(walletAddress),\n    token.decimals(),\n    token.symbol()\n  ]);\n  return {\n    raw: balance.toString(),\n    formatted: ethers.formatUnits(balance, decimals),\n    symbol,\n    decimals\n  };\n}\n\nmodule.exports = { getBalance };"
+      "env": {
+        "RPC_URL": { "required": true, "description": "JSON-RPC endpoint for the target chain" }
+      },
+      "inline": "const { ethers } = require('ethers');\n\nconst ERC20_ABI = [\n  'function balanceOf(address) view returns (uint256)',\n  'function decimals() view returns (uint8)',\n  'function symbol() view returns (string)'\n];\n\nfunction pick(input, ...keys) {\n  for (const key of keys) {\n    if (input[key] !== undefined && input[key] !== null && input[key] !== '') return input[key];\n  }\n  return undefined;\n}\n\nasync function getBalance(input = {}) {\n  const rpcUrl = pick(input, 'rpc_url', 'rpcUrl', 'RPC_URL') || process.env.RPC_URL;\n  const tokenAddress = pick(input, 'token_address', 'tokenAddress');\n  const walletAddress = pick(input, 'wallet_address', 'walletAddress');\n\n  if (!rpcUrl) throw new Error('RPC_URL or rpc_url is required');\n  if (!tokenAddress) throw new Error('token_address is required');\n  if (!walletAddress) throw new Error('wallet_address is required');\n\n  const provider = new ethers.providers.JsonRpcProvider(rpcUrl);\n  const token = new ethers.Contract(tokenAddress, ERC20_ABI, provider);\n  const [balance, decimals, symbol] = await Promise.all([\n    token.balanceOf(walletAddress),\n    token.decimals(),\n    token.symbol()\n  ]);\n\n  return {\n    raw: balance.toString(),\n    formatted: ethers.utils.formatUnits(balance, decimals),\n    symbol,\n    decimals\n  };\n}\n\nmodule.exports = { getBalance };"
     },
     {
       "id": "transfer",
@@ -48,9 +51,13 @@
       "lang": "javascript",
       "runtime": "node>=18",
       "packages": [
-        "ethers@6"
+        "ethers@5"
       ],
-      "inline": "const { ethers } = require('ethers');\n\nconst ERC20_ABI = ['function transfer(address to, uint256 amount) returns (bool)', 'function decimals() view returns (uint8)'];\n\nasync function transfer({ rpcUrl, privateKey, tokenAddress, to, amount }) {\n  const provider = new ethers.JsonRpcProvider(rpcUrl);\n  const wallet = new ethers.Wallet(privateKey, provider);\n  const token = new ethers.Contract(tokenAddress, ERC20_ABI, wallet);\n  const decimals = await token.decimals();\n  const tx = await token.transfer(to, ethers.parseUnits(amount, decimals));\n  const receipt = await tx.wait();\n  return { tx_hash: receipt.hash, status: receipt.status === 1 ? 'success' : 'failed' };\n}\n\nmodule.exports = { transfer };"
+      "env": {
+        "RPC_URL": { "required": true, "description": "JSON-RPC endpoint for the target chain" },
+        "PRIVATE_KEY": { "required": true, "secret": true, "description": "Sender wallet private key" }
+      },
+      "inline": "const { ethers } = require('ethers');\n\nconst ERC20_ABI = [\n  'function transfer(address to, uint256 amount) returns (bool)',\n  'function decimals() view returns (uint8)'\n];\n\nfunction pick(input, ...keys) {\n  for (const key of keys) {\n    if (input[key] !== undefined && input[key] !== null && input[key] !== '') return input[key];\n  }\n  return undefined;\n}\n\nasync function transfer(input = {}) {\n  const rpcUrl = pick(input, 'rpc_url', 'rpcUrl', 'RPC_URL') || process.env.RPC_URL;\n  const privateKey = pick(input, 'private_key', 'privateKey', 'PRIVATE_KEY') || process.env.PRIVATE_KEY;\n  const tokenAddress = pick(input, 'token_address', 'tokenAddress');\n  const to = pick(input, 'to');\n  const amount = pick(input, 'amount');\n\n  if (!rpcUrl) throw new Error('RPC_URL or rpc_url is required');\n  if (!privateKey) throw new Error('PRIVATE_KEY or private_key is required');\n  if (!tokenAddress) throw new Error('token_address is required');\n  if (!to) throw new Error('to is required');\n  if (amount === undefined || amount === null || amount === '') throw new Error('amount is required');\n\n  const provider = new ethers.providers.JsonRpcProvider(rpcUrl);\n  const wallet = new ethers.Wallet(privateKey, provider);\n  const token = new ethers.Contract(tokenAddress, ERC20_ABI, wallet);\n  const decimals = await token.decimals();\n  const tx = await token.transfer(to, ethers.utils.parseUnits(String(amount), decimals));\n  const receipt = await tx.wait();\n\n  return {\n    tx_hash: receipt.transactionHash,\n    status: receipt.status === 1 ? 'success' : 'failed'\n  };\n}\n\nmodule.exports = { transfer };"
     }
   ],
   "schema": {

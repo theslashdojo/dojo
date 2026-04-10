@@ -1,0 +1,109 @@
+{
+  "name": "knowledge",
+  "version": "1.1.1",
+  "uri": "dojo/validate/knowledge",
+  "type": "sub",
+  "context": "Knowledge checks - aliases, body depth, sections, links, and agent-learn coverage",
+  "info": "This sub-skill asks whether a manifest will actually teach well. It checks for realistic aliases, usable long-form content, sections worth addressing directly, and graph edges that connect the node to the rest of the tree.",
+  "parent": "dojo/validate",
+  "tags": ["dojo", "validate", "knowledge", "aliases", "sections", "links", "search"],
+  "aliases": ["validate knowledge quality", "dojo knowledge validation"],
+  "triggers": [
+    "check dojo knowledge quality",
+    "why is my node not useful in agent learn",
+    "validate aliases and sections"
+  ],
+  "body": "# Knowledge Validation\n\nKnowledge validation asks whether the node will actually teach. Does it have aliases a person would search for? Does it have a body or sections worth learning from? Are there links that connect it into the graph and lead to an actionable next step?\n\nThat is the difference between a bare manifest and a node that works well with [[dojo/knowledge]] and [[dojo/api/query#agent-workflows]].",
+  "sections": [
+    {
+      "id": "discovery-signals",
+      "title": "Discovery signals",
+      "body": "Check `aliases`, `triggers`, and `tags` against the words a user would really type. Search quality depends on human phrasing, not just canonical terms.",
+      "tags": ["aliases", "triggers", "tags", "search"]
+    },
+    {
+      "id": "long-form-content",
+      "title": "Long-form content",
+      "body": "A context-heavy node should have a meaningful `body`, addressable `sections`, or both. Empty knowledge fields make `/v1/learn` and `/v1/agent/learn` much less useful.",
+      "tags": ["body", "sections", "learn"]
+    },
+    {
+      "id": "actionability",
+      "title": "Actionability",
+      "body": "Good knowledge nodes do not stop at explanation. They point toward the next useful thing to do, ideally with at least one link to a `skill` or `sub` node and at least one section-target link that keeps the reading path precise. This is what turns a wiki note into an agent workflow.",
+      "tags": ["actionability", "skills", "sections", "reading-path"]
+    },
+    {
+      "id": "graph-connections",
+      "title": "Graph connections",
+      "body": "Use `links` for clear next steps and `related` for softer conceptual edges. If a node never points anywhere, it becomes a dead end in the knowledge graph. Validation should also warn when those links point to missing nodes or missing sections.",
+      "tags": ["links", "related", "graph", "backlinks"]
+    }
+  ],
+  "links": [
+    { "uri": "dojo/knowledge", "context": "The model this sub-skill is trying to protect" },
+    { "uri": "dojo/contributing", "context": "Authoring workflow that should include knowledge checks" },
+    { "uri": "dojo/api/query#agent-workflows", "context": "Read-side client that benefits from stronger knowledge content" },
+    { "uri": "dojo/publish/local", "context": "Run a local smoke test after knowledge validation" }
+  ],
+  "related": [
+    { "uri": "dojo/knowledge", "relation": "implements", "note": "This sub-skill applies the authoring patterns described in the knowledge guide" }
+  ],
+  "scripts": [
+    {
+      "id": "knowledge-only",
+      "name": "Knowledge Only Validation",
+      "description": "Check discovery and long-form knowledge quality",
+      "lang": "javascript",
+      "runtime": "node>=18",
+      "entry": "./scripts/knowledge-only.js",
+      "packages": []
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "path": { "type": "string" },
+        "rootDir": { "type": "string" },
+        "requireAliases": { "type": "boolean", "default": true },
+        "minSections": { "type": "integer", "default": 1 },
+        "minBodyLength": { "type": "integer", "default": 180 },
+        "requireExecutableLink": { "type": "boolean", "default": true }
+      },
+      "required": ["path"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "valid": { "type": "boolean" },
+        "warnings": { "type": "array", "items": { "type": "string" } },
+        "stats": {
+          "type": "object",
+          "properties": {
+            "aliases": { "type": "integer" },
+            "triggers": { "type": "integer" },
+            "sections": { "type": "integer" },
+            "links": { "type": "integer" },
+            "related": { "type": "integer" }
+          }
+        }
+      }
+    }
+  },
+  "frontmatter": {
+    "created": "2026-04-05",
+    "updated": "2026-04-10",
+    "audience": "contributors",
+    "estimated_reading_time": "3 min",
+    "prerequisites": ["dojo/knowledge"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://github.com/dojo-registry/dojo",
+  "created": "2026-04-05T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "verified"
+}

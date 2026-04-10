@@ -1,0 +1,96 @@
+{
+  "name": "spec",
+  "version": "1.2.0",
+  "uri": "dojo/spec",
+  "type": "context",
+  "content_type": "reference",
+  "context": "Dojo specification - manifest schema, node types, parent rules, knowledge fields, execution modes, and lifecycle states",
+  "info": "Reference material for Dojo manifests and runtime behavior. Use this node to understand valid node types, parent rules, URI structure, rich knowledge fields, script execution modes, search coverage, publication semantics, and how Dojo `node.json` relates to the external Agent Skills `SKILL.md` package format.",
+  "parent": "dojo",
+  "tags": ["dojo", "spec", "schema", "api", "manifests", "hierarchy", "knowledge", "execution", "agent-skills"],
+  "aliases": ["dojo spec", "check dojo spec", "manifest schema", "dojo hierarchy rules", "dojo manifest spec", "dojo node json", "dojo and agent skills"],
+  "triggers": [
+    "check the dojo spec",
+    "what parent is valid for a dojo skill",
+    "how does dojo model hierarchy",
+    "what fields go in node json",
+    "how does node json relate to skill md",
+    "is dojo compatible with agent skills"
+  ],
+  "body": "# Dojo Spec\n\nThe specification is the source of truth for what a node is allowed to contain: identity, hierarchy, discovery, execution, lifecycle metadata, and knowledge fields.\n\nThe live runtime stores Dojo nodes as `node.json` under `nodes/` and still accepts legacy `skill.json` manifests under `examples/`. Author against the schema and rules rather than assuming the filename changes the semantics of the node itself.\n\nPortable Dojo skill bundles also ship a `SKILL.md` that follows the external Agent Skills package format. That file complements `node.json`; it does not replace it. Use `node.json` for hierarchy, discovery, and knowledge-graph semantics, and use `SKILL.md` for portable instructions, references, scripts, and agent metadata that another runtime can execute after a bundle export.\n\nUse [[dojo/validate/schema#parent-rules]] when you want to turn the rules into checks, [[dojo/api#knowledge-routes]] when you need the HTTP contract, and [[dojo/glossary#entry-script]] when a packaging term is unclear.",
+  "sections": [
+    {
+      "id": "hierarchy",
+      "title": "Hierarchy rules",
+      "body": "The spec allows flexible nesting. `standard`, `skill`, and `context` nodes can sit below any non-`sub` parent. The only strict parent rule is that a `sub` node must have a `skill` parent.",
+      "tags": ["hierarchy", "parents", "non-sub-parent"]
+    },
+    {
+      "id": "manifest-core",
+      "title": "Core manifest fields",
+      "body": "Every manifest needs identity fields (`name`, `version`, `uri`, `type`), decision-making text (`context`, `info`), and discovery metadata (`tags`, optional `triggers`). Package-style nodes should also add `repository`, `created`, and `updated` so provenance survives publish flows.",
+      "tags": ["manifest", "required-fields", "schema", "metadata"]
+    },
+    {
+      "id": "knowledge-fields",
+      "title": "Knowledge fields",
+      "body": "Use `aliases` for alternate names, `body` for long-form content, `sections` for structured reading, `links` for directed navigation, and `related` for softer semantic relationships. These fields power the knowledge UI and agent learning endpoints described in [[dojo/knowledge#learn-and-graph-endpoints]].",
+      "tags": ["aliases", "body", "sections", "links", "related"]
+    },
+    {
+      "id": "execution-modes",
+      "title": "Execution modes",
+      "body": "Dojo supports `inline` scripts for short self-contained code and `entry` files for larger scripts or package-style layouts. The live Dojo node tree uses `entry` files for the larger Dojo skills because it keeps the manifests readable while making the scripts testable and reusable.",
+      "tags": ["scripts", "entry", "inline", "runtime"]
+    },
+    {
+      "id": "lifecycle-status",
+      "title": "Lifecycle status",
+      "body": "Statuses signal delivery confidence. `draft` is local, `published` is indexed, and `verified` adds stronger expectations such as tests, documented env vars, and complete input/output schemas. The Dojo node tree marks the tested JavaScript skills as verified and leaves the bash publish flows as published scripts without the stronger verification claim.",
+      "tags": ["status", "draft", "published", "verified"]
+    },
+    {
+      "id": "file-layout",
+      "title": "File layout",
+      "body": "The runtime walks `nodes/` first and falls back to `examples/` for older sample ecosystems. `node.json` is the primary manifest format, while legacy `skill.json` remains readable for compatibility. Entry-based scripts live beside the manifests in `scripts/`, while local tests live in `tests/`. Portable bundle exports also mirror the Agent Skills directory layout centered on `SKILL.md` plus optional `agents/`, `references/`, `scripts/`, and `assets/`.",
+      "tags": ["file-layout", "nodes", "examples", "node-json", "tests", "agent-skills"]
+    }
+  ],
+  "links": [
+    { "uri": "dojo", "context": "Dojo ecosystem overview" },
+    { "uri": "dojo/contributing#entry-vs-inline", "context": "Contributor guidance for choosing script execution modes" },
+    { "uri": "dojo/architecture#package-layout", "context": "Runtime architecture and package-style layout" },
+    { "uri": "dojo/knowledge#authoring-patterns", "context": "Knowledge-layer behavior and authoring patterns" },
+    { "uri": "dojo/api#knowledge-routes", "context": "Registry API grouped by workflow" },
+    { "uri": "dojo/validate/schema#parent-rules", "context": "Turn spec rules into schema and parent checks" },
+    { "uri": "dojo/glossary#entry-script", "context": "Packaging and execution terms used by the spec" }
+  ],
+  "related": [
+    { "uri": "dojo/api", "relation": "see-also", "note": "The API is the operational surface of the spec" },
+    { "uri": "dojo/validate/schema", "relation": "see-also", "note": "Schema validation applies the rules in code" },
+    { "uri": "dojo/skill", "relation": "see-also", "note": "The packaged Dojo skill shows how `node.json` and `SKILL.md` travel together" }
+  ],
+  "frontmatter": {
+    "created": "2026-04-05",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "contributors",
+    "estimated_reading_time": "7 min",
+    "prerequisites": [],
+    "status": "living",
+    "confidence": "high"
+  },
+  "more": {
+    "docs": "https://github.com/dojo-registry/dojo/blob/master/SPEC.md",
+    "api": "https://github.com/dojo-registry/dojo/blob/master/server/src/server.js",
+    "examples": "https://github.com/dojo-registry/dojo/tree/master/nodes/dojo",
+    "wiki": "https://github.com/dojo-registry/dojo/blob/master/schema/node.schema.json",
+    "agent_skills_spec": "https://github.com/agentskills/agentskills/blob/main/docs/specification.mdx"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://github.com/dojo-registry/dojo",
+  "created": "2026-04-05T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

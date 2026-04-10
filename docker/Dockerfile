@@ -5,13 +5,14 @@ WORKDIR /app
 COPY server/package.json server/package-lock.json* ./server/
 RUN cd server && npm install --production
 
-# Copy server source and skill data
+# Copy server source and manifest data
 COPY server/src ./server/src
+COPY nodes ./nodes
 COPY examples ./examples
 COPY schema ./schema
 
 ENV PORT=3000
-ENV SKILLS_DIR=/app/examples
+ENV SKILLS_DIR=/app/nodes,/app/examples
 ENV NODE_ENV=production
 
 EXPOSE 3000

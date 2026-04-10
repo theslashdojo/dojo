@@ -1,5 +1,6 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
-import { ChevronRight, ChevronDown, Search, Link as LinkIcon, Code, ArrowUpRight, Hash, BookOpen, Zap, Box, Globe, Layers, FileText, Copy, Check, ExternalLink, Terminal, Sparkles, ArrowRight } from 'lucide-react'
+import { useState, useEffect, useRef } from 'react'
+import ReactMarkdown from 'react-markdown'
+import { ChevronRight, ChevronDown, Search, Link as LinkIcon, Code, ArrowUpRight, BookOpen, Zap, Box, Globe, Layers, FileText, Copy, Check, ExternalLink, Terminal, Sparkles, ArrowRight } from 'lucide-react'
 
 const DEFAULT_ECOSYSTEMS = [
   'dojo',
@@ -35,7 +36,80 @@ const TYPE_META = {
 }
 
 const ACCENT = '#A78BFA'
-const ACCENT2 = '#60A5FA'
+const TEXT_PRIMARY = 'rgba(255,255,255,0.8)'
+
+function splitTargetUri(uri = '') {
+  const value = String(uri || '').trim()
+  const [baseUri, sectionId] = value.split('#')
+  return {
+    baseUri,
+    sectionId: sectionId || null,
+    fullUri: sectionId ? `${baseUri}#${sectionId}` : baseUri,
+  }
+}
+
+function getAncestorUris(uri = '') {
+  const { baseUri } = splitTargetUri(uri)
+  if (!baseUri) return []
+  const parts = baseUri.split('/').filter(Boolean)
+  return parts.map((_, index) => parts.slice(0, index + 1).join('/'))
+}
+
+function parseWikiLink(raw = '') {
+  const [targetPart, labelPart] = String(raw || '').split('|')
+  const target = targetPart?.trim()
+  if (!target) return null
+  return {
+    target,
+    label: labelPart?.trim() || target,
+  }
+}
+
+function extractExactWikiLink(text = '') {
+  const match = String(text || '').trim().match(/^\[\[([^[\]]+)\]\]$/)
+  return match ? parseWikiLink(match[1]) : null
+}
+
+function transformWikiLinks(markdown = '') {
+  const source = String(markdown || '')
+  let result = ''
+  let index = 0
+  let inInlineCode = false
+  let inFence = false
+
+  while (index < source.length) {
+    if (source.startsWith('```', index)) {
+      inFence = !inFence
+      result += '```'
+      index += 3
+      continue
+    }
+
+    if (!inFence && source[index] === '`') {
+      inInlineCode = !inInlineCode
+      result += source[index]
+      index += 1
+      continue
+    }
+
+    if (!inFence && !inInlineCode && source.startsWith('[[', index)) {
+      const endIndex = source.indexOf(']]', index + 2)
+      if (endIndex !== -1) {
+        const parsed = parseWikiLink(source.slice(index + 2, endIndex))
+        if (parsed) {
+          result += `[${parsed.label}](${parsed.target})`
+          index = endIndex + 2
+          continue
+        }
+      }
+    }
+
+    result += source[index]
+    index += 1
+  }
+
+  return result
+}
 
 // ─── Animations keyframes injected once ───────────────
 const STYLES = `
@@ -72,6 +146,7 @@ const STYLES = `
 ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.12); }
 
 ::selection { background: rgba(167,139,250,0.3); color: #fff; }
+input::placeholder { color: ${TEXT_PRIMARY}; opacity: 0.5; }
 `
 
 function TypeBadge({ type, size = 'sm' }) {
@@ -105,7 +180,7 @@ function CopyButton({ text }) {
     <button onClick={copy} tabIndex={0} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); copy(); } }} style={{
       display: 'flex', alignItems: 'center', gap: 5, padding: '5px 10px',
       borderRadius: 6, border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.04)',
-      color: copied ? '#34D399' : 'rgba(255,255,255,0.4)', fontSize: 11, cursor: 'pointer',
+      color: copied ? '#34D399' : TEXT_PRIMARY, fontSize: 11, cursor: 'pointer',
       fontFamily: "'DM Mono', monospace", transition: 'all 0.2s ease',
       outline: 'none',
     }}
@@ -116,6 +191,206 @@ function CopyButton({ text }) {
     >
       {copied ? <><Check style={{ width: 12, height: 12 }} /> copied</> : <><Copy style={{ width: 12, height: 12 }} /> copy</>}
     </button>
+  )
+}
+
+function MarkdownBlock({ children, accentColor = ACCENT, dense = false, onNavigate }) {
+  const source = transformWikiLinks(children)
+
+  return (
+    <ReactMarkdown
+      components={{
+        h1: ({ node, ...props }) => (
+          <h1
+            style={{
+              margin: dense ? '0 0 10px' : '0 0 12px',
+              color: TEXT_PRIMARY,
+              fontFamily: "'Fraunces', serif",
+              fontSize: dense ? 24 : 30,
+              fontWeight: 300,
+              lineHeight: 1.15,
+              letterSpacing: '-0.02em',
+            }}
+            {...props}
+          />
+        ),
+        h2: ({ node, ...props }) => (
+          <h2
+            style={{
+              margin: dense ? '18px 0 10px' : '22px 0 12px',
+              color: TEXT_PRIMARY,
+              fontFamily: "'Fraunces', serif",
+              fontSize: dense ? 20 : 24,
+              fontWeight: 300,
+              lineHeight: 1.2,
+            }}
+            {...props}
+          />
+        ),
+        h3: ({ node, ...props }) => (
+          <h3
+            style={{
+              margin: '18px 0 10px',
+              color: TEXT_PRIMARY,
+              fontFamily: "'Satoshi', sans-serif",
+              fontSize: dense ? 16 : 18,
+              fontWeight: 500,
+              lineHeight: 1.3,
+            }}
+            {...props}
+          />
+        ),
+        p: ({ node, ...props }) => (
+          <p
+            style={{
+              margin: '0 0 14px',
+              color: TEXT_PRIMARY,
+              fontFamily: "'Satoshi', sans-serif",
+              fontSize: dense ? 14 : 15,
+              fontWeight: 300,
+              lineHeight: dense ? 1.75 : 1.8,
+            }}
+            {...props}
+          />
+        ),
+        ul: ({ node, ...props }) => (
+          <ul
+            style={{
+              margin: '0 0 14px 18px',
+              padding: 0,
+              color: TEXT_PRIMARY,
+              fontFamily: "'Satoshi', sans-serif",
+            }}
+            {...props}
+          />
+        ),
+        ol: ({ node, ...props }) => (
+          <ol
+            style={{
+              margin: '0 0 14px 18px',
+              padding: 0,
+              color: TEXT_PRIMARY,
+              fontFamily: "'Satoshi', sans-serif",
+            }}
+            {...props}
+          />
+        ),
+        li: ({ node, ...props }) => (
+          <li
+            style={{
+              marginBottom: 6,
+              color: TEXT_PRIMARY,
+              fontSize: dense ? 14 : 15,
+              fontWeight: 300,
+              lineHeight: 1.75,
+            }}
+            {...props}
+          />
+        ),
+        strong: ({ node, ...props }) => <strong style={{ color: TEXT_PRIMARY, fontWeight: 600 }} {...props} />,
+        em: ({ node, ...props }) => <em style={{ color: TEXT_PRIMARY }} {...props} />,
+        a: ({ node, ...props }) => {
+          const href = props.href || ''
+          const isInternal = href && !href.startsWith('http') && !href.startsWith('/') && !href.startsWith('#')
+          return (
+            <a
+              href={href}
+              style={{
+                color: accentColor,
+                textDecoration: 'none',
+                borderBottom: isInternal ? `1px solid ${accentColor}40` : 'none',
+              }}
+              onClick={e => {
+                if (isInternal && onNavigate) {
+                  e.preventDefault()
+                  onNavigate(href)
+                }
+              }}
+              {...props}
+            />
+          )
+        },
+        blockquote: ({ node, ...props }) => (
+          <blockquote
+            style={{
+              margin: '16px 0',
+              padding: '2px 0 2px 16px',
+              borderLeft: `2px solid ${accentColor}70`,
+              color: TEXT_PRIMARY,
+            }}
+            {...props}
+          />
+        ),
+        code: ({ inline, node, children: codeChildren, ...props }) => {
+          const codeText = Array.isArray(codeChildren) ? codeChildren.join('') : String(codeChildren || '')
+          const wikiLink = inline ? extractExactWikiLink(codeText) : null
+
+          if (inline && wikiLink && onNavigate) {
+            return (
+              <a
+                href={wikiLink.target}
+                style={{ textDecoration: 'none' }}
+                onClick={e => {
+                  e.preventDefault()
+                  onNavigate(wikiLink.target)
+                }}
+              >
+                <code
+                  style={{
+                    padding: '0.12em 0.38em',
+                    borderRadius: 6,
+                    background: accentColor + '14',
+                    color: accentColor,
+                    border: `1px solid ${accentColor}30`,
+                    fontFamily: "'DM Mono', monospace",
+                    fontSize: '0.92em',
+                    cursor: 'pointer',
+                  }}
+                  {...props}
+                >
+                  {codeText}
+                </code>
+              </a>
+            )
+          }
+
+          return inline ? (
+            <code
+              style={{
+                padding: '0.12em 0.38em',
+                borderRadius: 6,
+                background: 'rgba(255,255,255,0.06)',
+                color: TEXT_PRIMARY,
+                fontFamily: "'DM Mono', monospace",
+                fontSize: '0.92em',
+              }}
+              {...props}
+            >
+              {codeChildren}
+            </code>
+          ) : (
+            <code style={{ color: TEXT_PRIMARY, fontFamily: "'DM Mono', monospace" }} {...props}>
+              {codeChildren}
+            </code>
+          )
+        },
+        pre: ({ node, ...props }) => (
+          <pre
+            style={{
+              margin: '16px 0',
+              padding: '16px 18px',
+              borderRadius: 12,
+              border: '1px solid rgba(255,255,255,0.06)',
+              background: 'rgba(0,0,0,0.25)',
+              overflowX: 'auto',
+            }}
+            {...props}
+          />
+        ),
+      }}
+    >
+      {source || ''}
+    </ReactMarkdown>
   )
 }
 
@@ -199,7 +474,7 @@ function TreeNode({ node, depth, expandedNodes, toggleNode, selectedSkill, handl
 
         <span style={{
           fontSize: 13, fontWeight: isSelected ? 500 : 400,
-          color: isSelected ? '#fff' : 'rgba(255,255,255,0.6)',
+          color: TEXT_PRIMARY,
           fontFamily: depth === 0 ? "'Satoshi', sans-serif" : "'DM Mono', monospace",
           letterSpacing: depth === 0 ? '0.01em' : '-0.01em',
           whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
@@ -234,9 +509,28 @@ function TreeNode({ node, depth, expandedNodes, toggleNode, selectedSkill, handl
 
 // ─── Detail View ──────────────────────────────────────
 
-function DetailView({ skill, backlinks, onNavigate }) {
-  const [openSections, setOpenSections] = useState(new Set())
-  useEffect(() => setOpenSections(new Set()), [skill?.uri])
+function DetailView({ skill, backlinks, onNavigate, focusedSectionId }) {
+  const [collapsedSections, setCollapsedSections] = useState(new Set())
+  const sectionRefs = useRef(new Map())
+  useEffect(() => setCollapsedSections(new Set()), [skill?.uri])
+  useEffect(() => {
+    if (focusedSectionId) {
+      setCollapsedSections(prev => {
+        const next = new Set(prev)
+        next.delete(focusedSectionId)
+        return next
+      })
+    }
+  }, [focusedSectionId])
+  useEffect(() => {
+    if (!focusedSectionId) return
+    const sectionElement = sectionRefs.current.get(focusedSectionId)
+    if (!sectionElement) return
+    const frame = requestAnimationFrame(() => {
+      sectionElement.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    })
+    return () => cancelAnimationFrame(frame)
+  }, [skill?.uri, focusedSectionId])
 
   if (!skill) return (
     <div style={{
@@ -249,7 +543,7 @@ function DetailView({ skill, backlinks, onNavigate }) {
       }}>
         <Sparkles style={{ width: 28, height: 28, color: 'rgba(255,255,255,0.12)' }} />
       </div>
-      <span style={{ fontSize: 15, color: 'rgba(255,255,255,0.25)', fontWeight: 300, fontFamily: "'Satoshi', sans-serif" }}>
+      <span style={{ fontSize: 15, color: TEXT_PRIMARY, fontWeight: 300, fontFamily: "'Satoshi', sans-serif" }}>
         Select a node to explore
       </span>
     </div>
@@ -259,9 +553,10 @@ function DetailView({ skill, backlinks, onNavigate }) {
   const mono = "'DM Mono', monospace"
   const parts = (skill.uri || '').split('/')
   const isCtx = skill.type === 'context'
+  const selectedUri = focusedSectionId ? `${skill.uri}#${focusedSectionId}` : skill.uri
 
   const toggleSection = id => {
-    setOpenSections(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n })
+    setCollapsedSections(prev => { const next = new Set(prev); next.has(id) ? next.delete(id) : next.add(id); return next })
   }
 
   const Section = ({ label, icon: Icon, children, delay = 0 }) => (
@@ -313,6 +608,17 @@ function DetailView({ skill, backlinks, onNavigate }) {
               >{part}</span>
             </span>
           ))}
+          {focusedSectionId && (
+            <span style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <ChevronRight style={{ width: 11, height: 11, color: 'rgba(255,255,255,0.15)', margin: '0 2px' }} />
+              <span style={{
+                fontSize: 12, fontFamily: mono,
+                color: m.color, fontWeight: 500,
+                padding: '2px 6px', borderRadius: 4,
+                background: m.color + '12',
+              }}>#{focusedSectionId}</span>
+            </span>
+          )}
       </div>
 
       {/* Title */}
@@ -320,7 +626,7 @@ function DetailView({ skill, backlinks, onNavigate }) {
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16, marginBottom: 10 }}>
           <h1 style={{
             fontFamily: "'Fraunces', serif", fontSize: 40, fontWeight: 300, fontStyle: 'normal',
-            color: '#fff', margin: 0, lineHeight: 1.1, letterSpacing: '-0.025em', flex: 1,
+            color: TEXT_PRIMARY, margin: 0, lineHeight: 1.1, letterSpacing: '-0.025em', flex: 1,
           }}>
             {skill.name || parts[parts.length - 1]}
           </h1>
@@ -345,6 +651,28 @@ function DetailView({ skill, backlinks, onNavigate }) {
             }}>{skill.content_type}</span>
           )}
         </div>
+
+        {focusedSectionId && (
+          <div style={{
+            display: 'inline-flex', alignItems: 'center', gap: 10, marginBottom: 22,
+            padding: '10px 14px', borderRadius: 10, background: m.color + '12',
+            border: `1px solid ${m.color}30`,
+          }}>
+            <span style={{
+              fontSize: 10, fontWeight: 500, color: m.color, letterSpacing: '0.12em',
+              fontFamily: mono, textTransform: 'uppercase',
+            }}>Focused section</span>
+            <span style={{ fontSize: 14, color: TEXT_PRIMARY, fontFamily: "'Satoshi', sans-serif" }}>
+              {skill.sections?.find(section => section.id === focusedSectionId)?.title || focusedSectionId}
+            </span>
+            <span style={{
+              fontSize: 10, color: 'rgba(255,255,255,0.3)', fontFamily: mono,
+              padding: '2px 6px', borderRadius: 4, background: 'rgba(255,255,255,0.04)',
+            }}>
+              {focusedSectionId}
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Context quote */}
@@ -372,7 +700,7 @@ function DetailView({ skill, backlinks, onNavigate }) {
           {skill.tags.map(tag => (
             <span key={tag} style={{
               fontSize: 11, padding: '4px 11px', borderRadius: 20,
-              background: 'rgba(255,255,255,0.04)', color: 'rgba(255,255,255,0.45)',
+              background: 'rgba(255,255,255,0.04)', color: TEXT_PRIMARY,
               border: '1px solid rgba(255,255,255,0.07)',
               fontFamily: "'Satoshi', sans-serif", fontWeight: 400,
             }}>
@@ -382,74 +710,78 @@ function DetailView({ skill, backlinks, onNavigate }) {
         </div>
       )}
 
-      {/* Aliases */}
-      {skill.aliases?.length > 0 && (
-        <p style={{
-          fontSize: 14, color: 'rgba(255,255,255,0.3)', marginBottom: 28,
-          fontStyle: 'italic', fontFamily: "'Fraunces', serif",
-        }}>
-          also known as {skill.aliases.join(', ')}
-        </p>
-      )}
 
       {/* Info */}
       {skill.info && (
-        <Section label="About" icon={BookOpen} delay={0.15}>
-          <p style={{
-            fontSize: 15, color: 'rgba(255,255,255,0.6)', margin: 0, lineHeight: 1.75,
-            fontWeight: 300, fontFamily: "'Satoshi', sans-serif",
-          }}>{skill.info}</p>
+        <Section label="Overview" icon={BookOpen} delay={0.15}>
+          <MarkdownBlock accentColor={m.color} dense onNavigate={onNavigate}>{skill.info}</MarkdownBlock>
         </Section>
       )}
 
       {/* Body */}
       {skill.body && (
-        <Section label={skill.name} icon={FileText} delay={0.2}>
-          <div style={{
-            fontSize: 13.5, color: 'rgba(255,255,255,0.55)', lineHeight: 1.8, fontWeight: 300,
-whiteSpace: 'pre-wrap',
-            fontFamily: "'DM Mono', monospace",
-          }}>{skill.body}</div>
+        <Section label="Body" icon={FileText} delay={0.2}>
+          <MarkdownBlock accentColor={m.color} onNavigate={onNavigate}>{skill.body}</MarkdownBlock>
           <div style={{ marginTop: 18 }}>
-            {skill.sections.map((s, i) => {
-              const isOpen = !openSections.has(s.id)
+            {skill.sections?.map((s, i) => {
+              const isOpen = !collapsedSections.has(s.id)
+              const isFocused = focusedSectionId === s.id
               return (
-                  <div key={s.id}>
+                  <div
+                    key={s.id}
+                    ref={element => {
+                      if (element) sectionRefs.current.set(s.id, element)
+                      else sectionRefs.current.delete(s.id)
+                    }}
+                    style={{
+                      marginBottom: 10,
+                      borderRadius: 12,
+                      border: isFocused ? `1px solid ${m.color}35` : '1px solid transparent',
+                      background: isFocused ? m.color + '0D' : 'transparent',
+                      scrollMarginTop: 24,
+                    }}
+                  >
                     {i > 0 && <div  />}
                     <div
                       tabIndex={0}
                       onClick={() => toggleSection(s.id)}
                       onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleSection(s.id); } }}
                       style={{
-                        background: isOpen ? 'rgba(255,255,255,0.03)' : 'transparent',
+                        background: isFocused ? m.color + '14' : (isOpen ? 'rgba(255,255,255,0.03)' : 'transparent'),
                         display: 'flex', alignItems: 'center', gap: 10, padding: '13px 18px',
                         cursor: 'pointer',
                         transition: 'background 0.15s',
                         outline: 'none',
                       }}
-                      onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.04)'}
-                      onMouseLeave={e => e.currentTarget.style.background = isOpen ? 'rgba(255,255,255,0.03)' : 'transparent'}
-                      onFocus={e => e.currentTarget.style.background = 'rgba(255,255,255,0.06)'}
-                      onBlur={e => e.currentTarget.style.background = isOpen ? 'rgba(255,255,255,0.03)' : 'transparent'}
+                      onMouseEnter={e => {
+                        e.currentTarget.style.background = isFocused ? m.color + '18' : 'rgba(255,255,255,0.04)'
+                      }}
+                      onMouseLeave={e => {
+                        e.currentTarget.style.background = isFocused ? m.color + '14' : (isOpen ? 'rgba(255,255,255,0.03)' : 'transparent')
+                      }}
+                      onFocus={e => {
+                        e.currentTarget.style.background = isFocused ? m.color + '1C' : 'rgba(255,255,255,0.06)'
+                      }}
+                      onBlur={e => {
+                        e.currentTarget.style.background = isFocused ? m.color + '14' : (isOpen ? 'rgba(255,255,255,0.03)' : 'transparent')
+                      }}
                     >
-                    <span style={{ fontSize: 14, color: TYPE_META.context.color, fontFamily: mono, fontWeight: 500 }}>#</span>
-                    <span style={{ fontSize: 14, color: 'rgba(255,255,255,0.8)', fontWeight: 400, flex: 1, fontFamily: "'Satoshi', sans-serif" }}>{s.title}</span>
+                    <span style={{ fontSize: 14, color: isFocused ? m.color : TYPE_META.context.color, fontFamily: mono, fontWeight: 500 }}>#</span>
+                    <span style={{ fontSize: 14, color: 'rgba(255,255,255,0.8)', fontWeight: isFocused ? 500 : 400, flex: 1, fontFamily: "'Satoshi', sans-serif" }}>{s.title}</span>
                     <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.2)', fontFamily: mono }}>{s.id}</span>
                     <ChevronDown style={{
-                      width: 14, height: 14, color: 'rgba(255,255,255,0.25)',
+                      width: 14, height: 14, color: isFocused ? m.color : 'rgba(255,255,255,0.25)',
                       transform: isOpen ? 'rotate(0)' : 'rotate(-90deg)',
                       transition: 'transform 0.25s cubic-bezier(0.4,0,0.2,1)',
                     }} />
                   </div>
                   {isOpen && s.body && (
                     <div style={{
-                      fontSize: 13.5,
                       margin: '4px 0 10px',
-                      color: 'rgba(255,255,255,0.5)', lineHeight: 1.75, fontWeight: 300,
-                      whiteSpace: 'pre-wrap', 
+                      padding: isFocused ? '0 14px 6px' : 0,
                       animation: 'fadeIn 0.2s ease both',
                     }}>
-                      {s.body}
+                      <MarkdownBlock accentColor={m.color} dense onNavigate={onNavigate}>{s.body}</MarkdownBlock>
                     </div>
                   )}
                 </div>
@@ -469,13 +801,13 @@ whiteSpace: 'pre-wrap',
             padding: '14px 18px', borderRadius: 12,
             background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)',
           }}>
-            <code style={{ fontSize: 13, fontFamily: mono, color: 'rgba(255,255,255,0.6)' }}>
+            <code style={{ fontSize: 13, fontFamily: mono, color: TEXT_PRIMARY }}>
               <span style={{ color: m.color }}>$</span>
               <span style={{ color: 'rgba(255,255,255,0.25)', margin: '0 8px' }}>dojo</span>
               <span style={{ color: '#34D399' }}>{isCtx ? 'learn' : 'install'}</span>
-              <span style={{ color: 'rgba(255,255,255,0.5)', marginLeft: 8 }}>{skill.uri}</span>
+              <span style={{ color: TEXT_PRIMARY, marginLeft: 8 }}>{isCtx ? selectedUri : skill.uri}</span>
             </code>
-            <CopyButton text={`dojo ${isCtx ? 'learn' : 'install'} ${skill.uri}`} />
+            <CopyButton text={`dojo ${isCtx ? 'learn' : 'install'} ${isCtx ? selectedUri : skill.uri}`} />
           </div>
         </Section>
       )}
@@ -505,14 +837,14 @@ whiteSpace: 'pre-wrap',
                   )}
                 </div>
                 {script.description && (
-                  <div style={{ padding: '12px 18px', fontSize: 13, color: 'rgba(255,255,255,0.45)', fontWeight: 300 }}>
+                  <div style={{ padding: '12px 18px', fontSize: 13, color: TEXT_PRIMARY, fontWeight: 300 }}>
                     {script.description}
                   </div>
                 )}
                 {script.inline && (
                   <pre style={{
                     margin: 0, padding: '16px 20px', fontSize: 12, fontFamily: mono,
-                    color: 'rgba(255,255,255,0.5)', background: 'rgba(0,0,0,0.25)',
+                    color: TEXT_PRIMARY, background: 'rgba(0,0,0,0.25)',
                     overflowX: 'auto', lineHeight: 1.7, maxHeight: 260, overflowY: 'auto',
                   }}><code>{script.inline}</code></pre>
                 )}
@@ -592,7 +924,7 @@ whiteSpace: 'pre-wrap',
                   marginBottom: 10, fontWeight: 500, letterSpacing: '0.1em', textTransform: 'uppercase',
                 }}>{k}</div>
                 <pre style={{
-                  margin: 0, fontSize: 11, fontFamily: mono, color: 'rgba(255,255,255,0.45)',
+                  margin: 0, fontSize: 11, fontFamily: mono, color: TEXT_PRIMARY,
                   whiteSpace: 'pre-wrap', lineHeight: 1.65,
                 }}>
                   {JSON.stringify(skill.schema[k].properties || skill.schema[k], null, 2)}
@@ -610,7 +942,7 @@ whiteSpace: 'pre-wrap',
 
 function ConnectionsPanel({ skill, backlinks, onNavigate }) {
   if (!skill) return (
-    <div style={{ padding: 24, color: 'rgba(255,255,255,0.2)', fontSize: 12, textAlign: 'center', fontWeight: 300, marginTop: 48 }}>
+    <div style={{ padding: 24, color: TEXT_PRIMARY, fontSize: 12, textAlign: 'center', fontWeight: 300, marginTop: 48 }}>
       No connections
     </div>
   )
@@ -627,7 +959,7 @@ function ConnectionsPanel({ skill, backlinks, onNavigate }) {
     >
       <span style={{ width: 5, height: 5, borderRadius: '50%', background: color, flexShrink: 0, boxShadow: `0 0 6px ${color}40` }} />
       <span style={{
-        fontFamily: "'DM Mono', monospace", color: 'rgba(255,255,255,0.5)',
+        fontFamily: "'DM Mono', monospace", color: TEXT_PRIMARY,
         overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1,
       }}>{uri}</span>
       {label && (
@@ -661,7 +993,7 @@ function ConnectionsPanel({ skill, backlinks, onNavigate }) {
       <Group title="Links" icon={ArrowUpRight} empty="None">
         {skill.links?.length > 0 && skill.links.map((l, i) => (
           <ConnItem key={i} uri={l.uri || l} color={TYPE_META.skill.color}
-            onClick={() => onNavigate({ uri: (l.uri || l).split('#')[0] })} />
+            onClick={() => onNavigate(l.uri || l)} />
         ))}
       </Group>
       <Group title="Related" icon={Layers} empty="None">
@@ -694,6 +1026,7 @@ export default function App() {
   const [expandedNodes, setExpandedNodes] = useState(new Set(DEFAULT_ECOSYSTEMS))
   const [selectedSkill, setSelectedSkill] = useState(null)
   const [backlinks, setBacklinks] = useState([])
+  const [focusedSectionId, setFocusedSectionId] = useState(null)
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [searchFocused, setSearchFocused] = useState(false)
@@ -742,21 +1075,23 @@ export default function App() {
     setExpandedNodes(prev => { const n = new Set(prev); n.has(uri) ? n.delete(uri) : n.add(uri); return n })
   }
 
-  const handleSelect = async (node) => {
-    if (!node?.uri) return
+  const handleSelect = async (nodeOrUri) => {
+    const uri = typeof nodeOrUri === 'string' ? nodeOrUri : nodeOrUri?.uri
+    if (!uri) return
+    const { baseUri, sectionId } = splitTargetUri(uri)
+    setFocusedSectionId(sectionId || null)
+
     try {
-      const res = await fetch(`/v1/skills/${node.uri}`)
+      const res = await fetch(`/v1/skills/${baseUri}`)
       if (res.ok) { const d = await res.json(); setSelectedSkill(d.skill || d) }
-      else setSelectedSkill(node)
-    } catch { setSelectedSkill(node) }
+      else setSelectedSkill({ uri: baseUri })
+    } catch { setSelectedSkill({ uri: baseUri }) }
     try {
-      const blRes = await fetch(`/v1/backlinks/${node.uri}`)
+      const blRes = await fetch(`/v1/backlinks/${baseUri}`)
       if (blRes.ok) { const d = await blRes.json(); setBacklinks(d.backlinks || []) }
       else setBacklinks([])
     } catch { setBacklinks([]) }
-    if (!expandedNodes.has(node.uri)) {
-      setExpandedNodes(prev => new Set([...prev, node.uri]))
-    }
+    setExpandedNodes(prev => new Set([...prev, ...getAncestorUris(baseUri)]))
   }
 
   // Filter tree based on search query
@@ -814,7 +1149,7 @@ export default function App() {
     <div style={{
       display: 'flex', height: '100vh', width: '100vw',
       fontFamily: "'Satoshi', sans-serif",
-      color: '#fff', background: '#0C0C0F', overflow: 'hidden',
+      color: TEXT_PRIMARY, background: '#0C0C0F', overflow: 'hidden',
       position: 'relative',
     }}>
       {/* Sidebar */}
@@ -831,10 +1166,10 @@ export default function App() {
           borderBottom: '1px solid rgba(255,255,255,0.06)',
         }}>
           <div style={{ display: 'flex', flexDirection: 'column' }}>
-            <span style={{ fontFamily: "'Fraunces', serif", fontSize: 17, fontWeight: 400, color: '#fff', lineHeight: 1 }}>
+            <span style={{ fontFamily: "'Fraunces', serif", fontSize: 17, fontWeight: 400, color: TEXT_PRIMARY, lineHeight: 1 }}>
               dojo
             </span>
-            <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.25)', fontFamily: "'DM Mono'", marginTop: 2 }}>
+            <span style={{ fontSize: 10, color: TEXT_PRIMARY, fontFamily: "'DM Mono'", marginTop: 2 }}>
 the agent knowledge layer
             </span>
           </div>
@@ -859,7 +1194,7 @@ the agent knowledge layer
               style={{
                 width: '100%', padding: '8px 12px 8px 34px', fontSize: 13, borderRadius: 8, boxSizing: 'border-box',
                 border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.03)',
-                color: '#fff', outline: 'none', fontFamily: "'Satoshi', sans-serif",
+                color: TEXT_PRIMARY, outline: 'none', fontFamily: "'Satoshi', sans-serif",
                 transition: 'border-color 0.2s',
               }}
             />
@@ -875,7 +1210,7 @@ the agent knowledge layer
                 borderRadius: '50%', margin: '0 auto 12px',
                 animation: 'spin 0.8s linear infinite',
               }} />
-              <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.25)', fontWeight: 300 }}>Loading trees...</span>
+              <span style={{ fontSize: 12, color: TEXT_PRIMARY, fontWeight: 300 }}>Loading trees...</span>
               <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
             </div>
           ) : (
@@ -895,7 +1230,7 @@ the agent knowledge layer
           display: 'flex', flexWrap: 'wrap', gap: 10,
         }}>
           {Object.entries(TYPE_META).map(([type, m]) => (
-            <span key={type} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 10, color: 'rgba(255,255,255,0.25)' }}>
+            <span key={type} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 10, color: TEXT_PRIMARY }}>
               <span style={{ width: 5, height: 5, borderRadius: '50%', background: m.color, boxShadow: `0 0 4px ${m.color}40` }} />
               {type}
             </span>
@@ -905,7 +1240,7 @@ the agent knowledge layer
 
       {/* Main */}
       <div style={{ flex: 1, overflowY: 'auto', zIndex: 1 }}>
-        <DetailView skill={selectedSkill} backlinks={backlinks} onNavigate={handleSelect} />
+        <DetailView skill={selectedSkill} backlinks={backlinks} onNavigate={handleSelect} focusedSectionId={focusedSectionId} />
       </div>
 
       {/* Right panel */}
@@ -921,7 +1256,7 @@ the agent knowledge layer
           display: 'flex', alignItems: 'center', gap: 7,
         }}>
           <LinkIcon style={{ width: 13, height: 13, color: 'rgba(255,255,255,0.25)' }} />
-          <span style={{ fontSize: 12, fontWeight: 500, color: 'rgba(255,255,255,0.5)' }}>Connections</span>
+          <span style={{ fontSize: 12, fontWeight: 500, color: TEXT_PRIMARY }}>Connections</span>
         </div>
         <ConnectionsPanel skill={selectedSkill} backlinks={backlinks} onNavigate={handleSelect} />
       </div>
