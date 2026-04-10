@@ -1,0 +1,115 @@
+{
+  "name": "list",
+  "version": "1.0.0",
+  "uri": "github/pulls/list",
+  "type": "sub",
+  "context": "List and filter pull requests via GET /repos/{owner}/{repo}/pulls or gh pr list",
+  "info": "List, search, and filter pull requests by state, head/base branch, labels, assignees, and sort order. Use the GitHub REST API `GET /repos/{owner}/{repo}/pulls` via @octokit/rest, the search API for cross-repo queries, or the `gh pr list` CLI command. Results are paginated — see [[github/pagination]] for traversal patterns. Useful for building dashboards, checking PR status before merges, and triaging open PRs. See [[github/auth]] for authentication and [[github/rate-limits]] for quota management.",
+  "parent": "github/pulls",
+  "tags": ["list", "filter", "search", "state", "labels", "sort", "paginate"],
+  "aliases": [
+    "list pull requests",
+    "list prs",
+    "filter prs",
+    "search pull requests",
+    "gh pr list",
+    "show open prs"
+  ],
+  "triggers": [
+    "list pull requests",
+    "show open PRs",
+    "search pull requests",
+    "filter PRs by label",
+    "gh pr list",
+    "how many open PRs"
+  ],
+  "body": "# List Pull Requests\n\nRetrieve and filter pull requests for a repository or across repositories.\n\n## gh CLI\n\n```bash\n# List open PRs (default)\ngh pr list\n\n# Filter by state\ngh pr list --state closed\ngh pr list --state merged\ngh pr list --state all\n\n# Filter by label, assignee, author\ngh pr list --label bug --label urgent\ngh pr list --assignee @me\ngh pr list --author octocat\n\n# Filter by base branch\ngh pr list --base main\ngh pr list --head feature/auth\n\n# JSON output with specific fields\ngh pr list --json number,title,state,author,createdAt --jq '.[] | \"#\\(.number) \\(.title) by \\(.author.login)\"'\n\n# Search across repos\ngh search prs --repo owner/repo --state open --label bug\n```\n\n## REST API\n\n```bash\n# List open PRs\ncurl -H \"Authorization: Bearer $GITHUB_TOKEN\" \\\n     \"https://api.github.com/repos/owner/repo/pulls?state=open&sort=created&direction=desc&per_page=100\"\n\n# Filter by head and base\ncurl -H \"Authorization: Bearer $GITHUB_TOKEN\" \\\n     \"https://api.github.com/repos/owner/repo/pulls?head=owner:feature/auth&base=main\"\n```\n\n```javascript\nimport { Octokit } from \"@octokit/rest\";\nconst octokit = new Octokit({ auth: process.env.GITHUB_TOKEN });\n\n// List open PRs\nconst { data: prs } = await octokit.pulls.list({\n  owner: \"my-org\",\n  repo: \"my-project\",\n  state: \"open\",\n  sort: \"created\",\n  direction: \"desc\",\n  per_page: 100,\n});\n\n// Paginate all PRs\nconst allPRs = await octokit.paginate(octokit.pulls.list, {\n  owner: \"my-org\",\n  repo: \"my-project\",\n  state: \"all\",\n  per_page: 100,\n});\n\n// Search PRs across repos\nconst { data: results } = await octokit.search.issuesAndPullRequests({\n  q: \"repo:my-org/my-project is:pr is:open label:bug sort:updated-desc\",\n  per_page: 50,\n});\nconsole.log(`Found ${results.total_count} matching PRs`);\n```\n\n## GraphQL Query\n\n```graphql\nquery($owner: String!, $name: String!, $cursor: String) {\n  repository(owner: $owner, name: $name) {\n    pullRequests(first: 50, after: $cursor, states: OPEN, orderBy: {field: CREATED_AT, direction: DESC}) {\n      totalCount\n      pageInfo { hasNextPage endCursor }\n      nodes {\n        number\n        title\n        state\n        author { login }\n        createdAt\n        labels(first: 5) { nodes { name } }\n        reviewDecision\n        mergeable\n      }\n    }\n  }\n}\n```\n\n## Filter Parameters\n\n| Parameter | Values | Description |\n|-----------|--------|-------------|\n| `state` | `open`, `closed`, `all` | PR state filter |\n| `head` | `user:branch` | Filter by head branch |\n| `base` | branch name | Filter by base branch |\n| `sort` | `created`, `updated`, `popularity`, `long-running` | Sort field |\n| `direction` | `asc`, `desc` | Sort direction |\n",
+  "sections": [
+    {
+      "id": "basic-listing",
+      "title": "Basic listing",
+      "body": "Use `octokit.pulls.list()` or `gh pr list` with `state` (open/closed/all), `sort`, and `direction`. Default is open PRs sorted by creation date descending. Results are paginated — use `per_page: 100` and follow Link headers or `octokit.paginate()`. See [[github/pagination]].",
+      "tags": ["list", "state", "sort", "default", "per-page"]
+    },
+    {
+      "id": "search-api",
+      "title": "Search API for cross-repo queries",
+      "body": "Use `octokit.search.issuesAndPullRequests()` with `is:pr` qualifier for cross-repo searches. Supports GitHub query syntax: `label:bug`, `author:user`, `review:approved`, `draft:false`, `merged:>2026-01-01`. Search has a separate rate limit of 30 requests/minute. See [[github/rate-limits]].",
+      "tags": ["search", "query-syntax", "cross-repo", "qualifiers"]
+    },
+    {
+      "id": "json-output",
+      "title": "Structured output with gh CLI",
+      "body": "Use `gh pr list --json <fields>` to get structured JSON output. Available fields include `number`, `title`, `state`, `author`, `createdAt`, `labels`, `reviewDecision`, `headRefName`, `baseRefName`. Pipe through `--jq` for client-side filtering and formatting.",
+      "tags": ["json", "jq", "structured", "fields", "formatting"]
+    }
+  ],
+  "links": [
+    { "uri": "github/pulls", "context": "Parent skill for pull request management" },
+    { "uri": "github/pulls/review", "context": "Review listed PRs" },
+    { "uri": "github/pulls/merge", "context": "Merge listed PRs" },
+    { "uri": "github/pagination", "context": "Paginate through PR listings" },
+    { "uri": "github/rate-limits", "context": "Search endpoint has separate rate limits" },
+    { "uri": "github/auth", "context": "Authentication required for listing PRs" }
+  ],
+  "related": [
+    { "uri": "github/pulls", "relation": "parent", "note": "This is a sub-skill of the pulls skill" },
+    { "uri": "github/pagination", "relation": "see-also", "note": "PR listings are paginated" },
+    { "uri": "github/issues", "relation": "see-also", "note": "Search API covers both issues and PRs" }
+  ],
+  "scripts": [
+    {
+      "id": "list-prs",
+      "name": "List Pull Requests",
+      "description": "List and filter pull requests using gh CLI",
+      "lang": "bash",
+      "runtime": "gh>=2.0",
+      "entry": "./scripts/list-prs.sh",
+      "env": {
+        "GITHUB_TOKEN": { "required": true, "secret": true, "description": "GitHub personal access token" }
+      },
+      "packages": []
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "owner": { "type": "string", "description": "Repository owner" },
+        "repo": { "type": "string", "description": "Repository name" },
+        "state": { "type": "string", "enum": ["open", "closed", "all"], "default": "open", "description": "PR state filter" },
+        "sort": { "type": "string", "enum": ["created", "updated", "popularity", "long-running"], "default": "created" },
+        "direction": { "type": "string", "enum": ["asc", "desc"], "default": "desc" }
+      },
+      "required": ["owner", "repo"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "totalCount": { "type": "integer", "description": "Total number of matching PRs" },
+        "pullRequests": { "type": "array", "description": "Array of pull request objects" }
+      }
+    }
+  },
+  "more": {
+    "docs": "https://docs.github.com/en/rest/pulls/pulls#list-pull-requests",
+    "search": "https://docs.github.com/en/search-github/searching-on-github/searching-issues-and-pull-requests",
+    "gh-cli": "https://cli.github.com/manual/gh_pr_list"
+  },
+  "frontmatter": {
+    "created": "2026-04-10",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "3 min",
+    "prerequisites": ["github/auth", "github/pulls"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://github.com/octokit",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

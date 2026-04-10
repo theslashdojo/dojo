@@ -1,0 +1,95 @@
+{
+  "name": "rest",
+  "version": "1.0.0",
+  "uri": "github/rest",
+  "type": "standard",
+  "context": "GitHub REST API v3 conventions, endpoints, authentication, pagination, and media types",
+  "info": "The GitHub REST API v3 is the primary interface for CRUD operations against GitHub resources. Every endpoint lives under `https://api.github.com`. Requests use standard HTTP methods (GET, POST, PATCH, PUT, DELETE) and return JSON responses. Authentication is via Bearer tokens in the Authorization header. Pagination follows RFC 5988 Link headers. Rate limits are 5,000 requests/hour for authenticated callers. Media types control response format via the Accept header. This standard underpins every skill in the GitHub ecosystem: [[github/repos]], [[github/issues]], [[github/pulls]], [[github/actions]], and [[github/webhooks]]. See [[github/auth]] for credential setup, [[github/rate-limits]] for quota management, and [[github/pagination]] for traversing result sets.",
+  "parent": "github",
+  "tags": ["rest", "api", "v3", "http", "json", "endpoints", "crud", "media-types"],
+  "aliases": [
+    "github rest api",
+    "rest api v3",
+    "github api v3",
+    "github http api",
+    "github rest endpoints",
+    "api.github.com"
+  ],
+  "triggers": [
+    "use the github rest api",
+    "make a github api call",
+    "call the github rest endpoint",
+    "github api conventions",
+    "how does the github rest api work"
+  ],
+  "body": "# GitHub REST API v3\n\nThe REST API is the backbone of GitHub's programmatic interface. Every resource — repositories, issues, pull requests, actions, users, organizations — is accessible through predictable URL patterns under `https://api.github.com`.\n\n## Base URL and Versioning\n\nAll requests target `https://api.github.com`. The API version is implicitly v3 when using REST. GitHub Enterprise Server uses `https://{hostname}/api/v3`.\n\n```bash\n# Basic authenticated request\ncurl -H \"Authorization: Bearer $GITHUB_TOKEN\" \\\n     -H \"Accept: application/vnd.github+json\" \\\n     -H \"X-GitHub-Api-Version: 2022-11-28\" \\\n     https://api.github.com/repos/owner/repo\n```\n\n## HTTP Methods\n\n| Method | Usage | Example |\n|--------|-------|---------|\n| GET | Read resources | `GET /repos/{owner}/{repo}` |\n| POST | Create resources | `POST /repos/{owner}/{repo}/issues` |\n| PATCH | Update resources | `PATCH /repos/{owner}/{repo}/issues/{issue_number}` |\n| PUT | Replace or toggle | `PUT /repos/{owner}/{repo}/topics` |\n| DELETE | Remove resources | `DELETE /repos/{owner}/{repo}` |\n\n## Authentication\n\nAll requests require a Bearer token in the Authorization header. See [[github/auth]] for token types.\n\n```javascript\nimport { Octokit } from \"@octokit/rest\";\n\nconst octokit = new Octokit({ auth: process.env.GITHUB_TOKEN });\n// Octokit automatically sets Authorization: token <TOKEN>\n```\n\n```bash\n# gh CLI handles auth automatically\ngh api repos/owner/repo\n\n# curl with explicit header\ncurl -H \"Authorization: Bearer $GITHUB_TOKEN\" \\\n     https://api.github.com/user\n```\n\n## Media Types\n\nControl response format with the Accept header:\n\n| Accept Header | Content |\n|---------------|----------|\n| `application/vnd.github+json` | Default JSON (recommended) |\n| `application/vnd.github.raw+json` | Raw markdown/content |\n| `application/vnd.github.html+json` | Rendered HTML for markdown fields |\n| `application/vnd.github.diff` | Diff format for commits/PRs |\n| `application/vnd.github.patch` | Patch format for commits/PRs |\n\n## Pagination\n\nList endpoints return paginated results. Navigate with Link headers. See [[github/pagination]] for details.\n\n```bash\ncurl -I https://api.github.com/repos/owner/repo/issues\n# Link: <https://api.github.com/repos/owner/repo/issues?page=2>; rel=\"next\",\n#       <https://api.github.com/repos/owner/repo/issues?page=5>; rel=\"last\"\n```\n\n## Rate Limits\n\nAuthenticated: 5,000 requests/hour. Check remaining quota via response headers. See [[github/rate-limits]] for full details.\n\n```bash\ncurl -I https://api.github.com/user\n# X-RateLimit-Limit: 5000\n# X-RateLimit-Remaining: 4995\n# X-RateLimit-Reset: 1696000000\n```\n\n## Conditional Requests\n\nAvoid consuming rate limit on unchanged resources:\n\n```bash\n# Save ETag from response\ncurl -H \"Authorization: Bearer $GITHUB_TOKEN\" \\\n     -D headers.txt \\\n     https://api.github.com/repos/owner/repo\n# headers.txt contains: ETag: \"abc123\"\n\n# Conditional request — returns 304 if unchanged\ncurl -H \"Authorization: Bearer $GITHUB_TOKEN\" \\\n     -H \"If-None-Match: \\\"abc123\\\"\" \\\n     https://api.github.com/repos/owner/repo\n# 304 Not Modified — does NOT count against rate limit\n```\n\n## Error Handling\n\n```json\n{\n  \"message\": \"Validation Failed\",\n  \"errors\": [\n    { \"resource\": \"Issue\", \"code\": \"missing_field\", \"field\": \"title\" }\n  ],\n  \"documentation_url\": \"https://docs.github.com/rest/issues/issues#create-an-issue\"\n}\n```\n\nCommon HTTP status codes: 200 (OK), 201 (Created), 204 (No Content), 304 (Not Modified), 401 (Unauthorized), 403 (Forbidden/Rate Limited), 404 (Not Found), 422 (Validation Failed).\n",
+  "sections": [
+    {
+      "id": "base-url",
+      "title": "Base URL and versioning",
+      "body": "All REST API calls target `https://api.github.com`. Set the `X-GitHub-Api-Version: 2022-11-28` header to pin to the current API version. GitHub Enterprise Server uses `https://{hostname}/api/v3`. The `gh api` CLI command automatically handles base URL and authentication.",
+      "tags": ["base-url", "versioning", "enterprise", "gh-cli"]
+    },
+    {
+      "id": "authentication",
+      "title": "Authentication headers",
+      "body": "Pass `Authorization: Bearer <token>` on every request. Octokit's constructor accepts `auth` and sets this automatically. The `gh` CLI reads credentials from `gh auth login`. Unauthenticated requests are limited to 60/hour and cannot access private resources. See [[github/auth]] for token types and setup.",
+      "tags": ["authorization", "bearer", "token", "header"]
+    },
+    {
+      "id": "media-types",
+      "title": "Media types and content negotiation",
+      "body": "Use `Accept: application/vnd.github+json` for standard JSON responses. Use `application/vnd.github.raw+json` for raw file contents, `application/vnd.github.html+json` for pre-rendered HTML, and `application/vnd.github.diff` or `.patch` for diff/patch formats on commits and PRs. Custom media types enable format-specific responses without separate endpoints.",
+      "tags": ["media-types", "accept", "content-negotiation", "json", "diff", "patch"]
+    },
+    {
+      "id": "conditional-requests",
+      "title": "Conditional requests",
+      "body": "Use `ETag` and `If-None-Match` headers to avoid consuming rate limit on unchanged resources. A 304 Not Modified response means the data hasn't changed since your last request and does not count against your rate limit. Also supports `Last-Modified` / `If-Modified-Since` for time-based caching.",
+      "tags": ["etag", "conditional", "caching", "304", "if-none-match"]
+    },
+    {
+      "id": "error-handling",
+      "title": "Error responses",
+      "body": "Errors return a JSON body with `message`, optional `errors` array, and `documentation_url`. 401 means bad or missing credentials. 403 may indicate rate limiting (check `X-RateLimit-Remaining`) or insufficient permissions. 404 can mean the resource doesn't exist or the token lacks access. 422 means the request body failed validation. Always check the `errors` array for field-level details.",
+      "tags": ["errors", "status-codes", "401", "403", "404", "422", "validation"]
+    }
+  ],
+  "links": [
+    { "uri": "github/auth", "context": "Authentication methods for REST API access" },
+    { "uri": "github/graphql", "context": "GraphQL API v4 as an alternative to REST" },
+    { "uri": "github/rate-limits", "context": "Rate limit quotas and best practices" },
+    { "uri": "github/pagination", "context": "Traversing paginated REST responses" },
+    { "uri": "github/repos", "context": "Repository CRUD via REST endpoints" },
+    { "uri": "github/pulls", "context": "Pull request operations via REST" },
+    { "uri": "github/issues", "context": "Issue management via REST" },
+    { "uri": "github/actions", "context": "Actions API via REST" }
+  ],
+  "related": [
+    { "uri": "github/graphql", "relation": "alternative", "note": "GraphQL v4 provides nested queries and reduces round-trips compared to REST" },
+    { "uri": "github/auth", "relation": "prerequisite", "note": "A valid token is required for all REST API calls" },
+    { "uri": "github/rate-limits", "relation": "see-also", "note": "REST has a 5,000 request/hour limit for authenticated users" },
+    { "uri": "github/pagination", "relation": "see-also", "note": "REST list endpoints use Link header pagination" }
+  ],
+  "more": {
+    "docs": "https://docs.github.com/en/rest",
+    "api-versions": "https://docs.github.com/en/rest/about-the-rest-api/api-versions",
+    "media-types": "https://docs.github.com/en/rest/using-the-rest-api/getting-started-with-the-rest-api#accept"
+  },
+  "frontmatter": {
+    "created": "2026-04-10",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "developers, AI agents, integrators",
+    "estimated_reading_time": "5 min",
+    "prerequisites": ["github/auth"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://github.com/octokit",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

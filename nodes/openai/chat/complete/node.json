@@ -1,0 +1,189 @@
+{
+  "name": "complete",
+  "version": "1.0.0",
+  "uri": "openai/chat/complete",
+  "type": "sub",
+  "context": "Non-streaming chat completions via POST /v1/chat/completions returning a single JSON response",
+  "info": "The standard (non-streaming) chat completion request sends a messages array to `POST /v1/chat/completions` and returns a single JSON response containing the full generated text. This is the simplest integration path: send messages, receive a complete response. The response includes the generated content in `choices[0].message.content`, token usage statistics, and a `finish_reason` indicating why generation stopped (stop, length, tool_calls, content_filter). Use this mode when you need the full response before processing (e.g., JSON parsing, data extraction, downstream pipelines). For real-time token-by-token output, see [[openai/chat/stream]] instead.",
+  "parent": "openai/chat",
+  "tags": ["chat", "completions", "non-streaming", "synchronous", "request-response", "gpt-4o"],
+  "aliases": [
+    "chat completion",
+    "non-streaming completion",
+    "synchronous chat",
+    "complete chat request",
+    "openai complete",
+    "chat create",
+    "single response completion"
+  ],
+  "triggers": [
+    "make a non-streaming chat completion",
+    "get a complete response from openai",
+    "call chat completions without streaming",
+    "send messages and get full response",
+    "synchronous openai request"
+  ],
+  "body": "# Non-Streaming Chat Completion\n\nThe standard chat completion sends a request and waits for the entire response before returning. This is ideal for batch processing, data extraction, and any workflow where you need the complete output before proceeding.\n\n## Basic Request\n\n```javascript\nimport OpenAI from \"openai\";\n\nconst client = new OpenAI();\n\nconst completion = await client.chat.completions.create({\n  model: \"gpt-4o\",\n  messages: [\n    { role: \"system\", content: \"You are a helpful assistant.\" },\n    { role: \"user\", content: \"What is the capital of France?\" },\n  ],\n});\n\nconsole.log(completion.choices[0].message.content);\nconsole.log(`Tokens used: ${completion.usage.total_tokens}`);\n```\n\n## With All Parameters\n\n```javascript\nconst completion = await client.chat.completions.create({\n  model: \"gpt-4o\",\n  messages: [\n    { role: \"system\", content: \"You are a concise technical writer.\" },\n    { role: \"user\", content: \"Explain REST APIs in 3 sentences.\" },\n  ],\n  temperature: 0.7,\n  max_tokens: 256,\n  top_p: 1,\n  frequency_penalty: 0,\n  presence_penalty: 0,\n  stop: [\"\\n\\n\"],\n});\n```\n\n## cURL Equivalent\n\n```bash\ncurl https://api.openai.com/v1/chat/completions \\\n  -H \"Content-Type: application/json\" \\\n  -H \"Authorization: Bearer $OPENAI_API_KEY\" \\\n  -d '{\n    \"model\": \"gpt-4o\",\n    \"messages\": [\n      {\"role\": \"system\", \"content\": \"You are a helpful assistant.\"},\n      {\"role\": \"user\", \"content\": \"Hello!\"}\n    ]\n  }'\n```\n\n## Response Structure\n\n```json\n{\n  \"id\": \"chatcmpl-abc123\",\n  \"object\": \"chat.completion\",\n  \"created\": 1700000000,\n  \"model\": \"gpt-4o-2024-08-06\",\n  \"choices\": [\n    {\n      \"index\": 0,\n      \"message\": {\n        \"role\": \"assistant\",\n        \"content\": \"The capital of France is Paris.\"\n      },\n      \"finish_reason\": \"stop\"\n    }\n  ],\n  \"usage\": {\n    \"prompt_tokens\": 25,\n    \"completion_tokens\": 8,\n    \"total_tokens\": 33\n  }\n}\n```\n\n## Error Handling\n\n```javascript\ntry {\n  const completion = await client.chat.completions.create({\n    model: \"gpt-4o\",\n    messages: [{ role: \"user\", content: \"Hello\" }],\n  });\n  console.log(completion.choices[0].message.content);\n} catch (error) {\n  if (error instanceof OpenAI.APIError) {\n    console.error(`Status ${error.status}: ${error.message}`);\n    if (error.status === 429) {\n      // Rate limited — retry with exponential backoff\n      // See [[openai/rate-limits]]\n    }\n  }\n}\n```\n\n## Multi-Turn Conversations\n\nAppend previous messages to maintain conversation context:\n\n```javascript\nconst messages = [\n  { role: \"system\", content: \"You are a math tutor.\" },\n  { role: \"user\", content: \"What is 2+2?\" },\n  { role: \"assistant\", content: \"2+2 equals 4.\" },\n  { role: \"user\", content: \"And if you multiply that by 3?\" },\n];\n\nconst completion = await client.chat.completions.create({\n  model: \"gpt-4o\",\n  messages,\n});\n```\n",
+  "sections": [
+    {
+      "id": "request-format",
+      "title": "Request format",
+      "body": "Send a POST to `/v1/chat/completions` with `model` (string) and `messages` (array of {role, content} objects). Optional parameters: `temperature` (0-2, default 1), `max_tokens` (integer), `top_p` (0-1), `frequency_penalty` (-2 to 2), `presence_penalty` (-2 to 2), `stop` (string or array of stop sequences), `response_format` (for structured output), `tools` (for function calling, see [[openai/function-calling]]).",
+      "tags": ["request", "parameters", "messages", "model", "temperature"]
+    },
+    {
+      "id": "response-format",
+      "title": "Response format",
+      "body": "The response JSON contains `id` (unique completion ID), `choices` (array with `message.content`, `finish_reason`, and `index`), `usage` (with `prompt_tokens`, `completion_tokens`, `total_tokens`), and `model` (resolved model version). The `finish_reason` is `stop` for normal completion, `length` if `max_tokens` was reached, `tool_calls` if the model wants to call a function, or `content_filter` if content was filtered.",
+      "tags": ["response", "choices", "usage", "tokens", "finish-reason"]
+    },
+    {
+      "id": "error-handling",
+      "title": "Error handling",
+      "body": "The SDK throws `OpenAI.APIError` for HTTP errors. Common status codes: 400 (invalid request), 401 (bad API key), 403 (insufficient permissions), 404 (model not found), 429 (rate limited), 500/503 (server error). The SDK automatically retries on 429 and 5xx with exponential backoff (configurable via `maxRetries`). See [[openai/rate-limits]] for rate limit details.",
+      "tags": ["errors", "retry", "429", "api-error", "backoff"]
+    }
+  ],
+  "links": [
+    { "uri": "openai/chat", "context": "Parent skill — Chat Completions API overview" },
+    { "uri": "openai/chat/stream", "context": "Streaming alternative for real-time token output" },
+    { "uri": "openai/function-calling", "context": "Add tool definitions to completion requests" },
+    { "uri": "openai/models", "context": "Model selection for completions" },
+    { "uri": "openai/rate-limits", "context": "Rate limits and retry strategies for completion requests" }
+  ],
+  "related": [
+    { "uri": "openai/chat/stream", "relation": "alternative", "note": "Use streaming for real-time token-by-token output instead of waiting for the full response" },
+    { "uri": "openai/function-calling", "relation": "see-also", "note": "Function calling extends completions with structured tool invocations" }
+  ],
+  "scripts": [
+    {
+      "id": "chat-complete",
+      "name": "Non-Streaming Chat Completion",
+      "description": "Send a chat completion request and return the full response",
+      "lang": "javascript",
+      "runtime": "node>=18",
+      "inline": "import OpenAI from \"openai\";\n\nconst client = new OpenAI();\n\nconst model = process.env.MODEL || \"gpt-4o\";\nconst systemPrompt = process.env.SYSTEM_PROMPT || \"You are a helpful assistant.\";\nconst userMessage = process.env.USER_MESSAGE || \"Hello!\";\nconst temperature = parseFloat(process.env.TEMPERATURE || \"1\");\nconst maxTokens = process.env.MAX_TOKENS ? parseInt(process.env.MAX_TOKENS) : undefined;\n\nconst completion = await client.chat.completions.create({\n  model,\n  messages: [\n    { role: \"system\", content: systemPrompt },\n    { role: \"user\", content: userMessage },\n  ],\n  temperature,\n  ...(maxTokens && { max_tokens: maxTokens }),\n});\n\nconsole.log(JSON.stringify({\n  content: completion.choices[0].message.content,\n  finishReason: completion.choices[0].finish_reason,\n  usage: {\n    promptTokens: completion.usage.prompt_tokens,\n    completionTokens: completion.usage.completion_tokens,\n    totalTokens: completion.usage.total_tokens,\n  },\n}, null, 2));",
+      "env": {
+        "OPENAI_API_KEY": { "required": true, "secret": true, "description": "OpenAI API key" },
+        "MODEL": { "required": false, "description": "Model ID (default: gpt-4o)" },
+        "SYSTEM_PROMPT": { "required": false, "description": "System message content" },
+        "USER_MESSAGE": { "required": false, "description": "User message content" },
+        "TEMPERATURE": { "required": false, "description": "Sampling temperature 0-2 (default: 1)" },
+        "MAX_TOKENS": { "required": false, "description": "Maximum tokens to generate" }
+      },
+      "packages": ["openai"]
+    },
+    {
+      "id": "chat-complete-curl",
+      "name": "Chat Completion via cURL",
+      "description": "Non-streaming chat completion using raw HTTP request",
+      "lang": "bash",
+      "runtime": "bash",
+      "inline": "curl -s https://api.openai.com/v1/chat/completions \\\n  -H \"Content-Type: application/json\" \\\n  -H \"Authorization: Bearer $OPENAI_API_KEY\" \\\n  -d \"{\n    \\\"model\\\": \\\"${MODEL:-gpt-4o}\\\",\n    \\\"messages\\\": [\n      {\\\"role\\\": \\\"system\\\", \\\"content\\\": \\\"${SYSTEM_PROMPT:-You are a helpful assistant.}\\\"},\n      {\\\"role\\\": \\\"user\\\", \\\"content\\\": \\\"${USER_MESSAGE:-Hello!}\\\"}\n    ],\n    \\\"temperature\\\": ${TEMPERATURE:-1}\n  }\"",
+      "env": {
+        "OPENAI_API_KEY": { "required": true, "secret": true, "description": "OpenAI API key" },
+        "MODEL": { "required": false, "description": "Model ID (default: gpt-4o)" },
+        "SYSTEM_PROMPT": { "required": false, "description": "System message" },
+        "USER_MESSAGE": { "required": false, "description": "User message" },
+        "TEMPERATURE": { "required": false, "description": "Sampling temperature (default: 1)" }
+      }
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "model": { "type": "string", "description": "Model ID (e.g. gpt-4o, gpt-4o-mini, o1, o3-mini)", "default": "gpt-4o" },
+        "messages": {
+          "type": "array",
+          "description": "Conversation messages with role and content",
+          "items": {
+            "type": "object",
+            "properties": {
+              "role": { "type": "string", "enum": ["system", "user", "assistant", "tool"], "description": "Message author role" },
+              "content": { "type": "string", "description": "Message text content" }
+            },
+            "required": ["role", "content"]
+          }
+        },
+        "temperature": { "type": "number", "description": "Sampling temperature 0-2 (lower = more deterministic)", "default": 1, "minimum": 0, "maximum": 2 },
+        "max_tokens": { "type": "integer", "description": "Maximum number of tokens to generate in the response" },
+        "top_p": { "type": "number", "description": "Nucleus sampling: consider tokens with top_p cumulative probability", "default": 1, "minimum": 0, "maximum": 1 },
+        "frequency_penalty": { "type": "number", "description": "Penalize tokens based on frequency in the text so far (-2 to 2)", "default": 0 },
+        "presence_penalty": { "type": "number", "description": "Penalize tokens based on whether they appear in the text so far (-2 to 2)", "default": 0 },
+        "stop": {
+          "oneOf": [
+            { "type": "string" },
+            { "type": "array", "items": { "type": "string" }, "maxItems": 4 }
+          ],
+          "description": "Up to 4 sequences where the API will stop generating"
+        },
+        "response_format": {
+          "type": "object",
+          "description": "Constrain output format: { type: 'json_object' } or { type: 'json_schema', json_schema: {...} }",
+          "properties": {
+            "type": { "type": "string", "enum": ["text", "json_object", "json_schema"] }
+          }
+        }
+      },
+      "required": ["model", "messages"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique identifier for the completion (e.g. chatcmpl-abc123)" },
+        "choices": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "index": { "type": "integer" },
+              "message": {
+                "type": "object",
+                "properties": {
+                  "role": { "type": "string", "enum": ["assistant"] },
+                  "content": { "type": "string", "description": "Generated text content" },
+                  "tool_calls": { "type": "array", "description": "Tool call requests if finish_reason is tool_calls" }
+                }
+              },
+              "finish_reason": { "type": "string", "enum": ["stop", "length", "tool_calls", "content_filter"], "description": "Reason generation stopped" }
+            }
+          }
+        },
+        "usage": {
+          "type": "object",
+          "properties": {
+            "prompt_tokens": { "type": "integer", "description": "Tokens in the input messages" },
+            "completion_tokens": { "type": "integer", "description": "Tokens in the generated response" },
+            "total_tokens": { "type": "integer", "description": "Sum of prompt and completion tokens" }
+          }
+        },
+        "model": { "type": "string", "description": "Resolved model version (e.g. gpt-4o-2024-08-06)" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "openai", "reason": "Requires an OpenAI API key" },
+    { "uri": "openai/chat", "reason": "Sub-skill of chat completions" }
+  ],
+  "more": {
+    "docs": "https://platform.openai.com/docs/api-reference/chat/create",
+    "guide": "https://platform.openai.com/docs/guides/text-generation"
+  },
+  "frontmatter": {
+    "created": "2026-04-10",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "4 min",
+    "prerequisites": ["openai", "openai/chat"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://github.com/openai/openai-node",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

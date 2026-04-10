@@ -1,0 +1,89 @@
+{
+  "name": "pagination",
+  "version": "1.0.0",
+  "uri": "github/pagination",
+  "type": "context",
+  "content_type": "guide",
+  "context": "Paginating GitHub API responses — Link headers for REST, cursor-based for GraphQL",
+  "info": "GitHub API list endpoints return paginated results to manage large datasets. The REST API uses RFC 5988 Link headers with page-based or cursor-based parameters. The GraphQL API uses the Relay connection pattern with `first`/`after` and `last`/`before` cursors. Default page size is 30 for REST (max 100). Efficient pagination is essential for staying within [[github/rate-limits]] and retrieving complete datasets. This guide covers both REST and GraphQL pagination patterns with code examples using Octokit, gh CLI, and raw HTTP. See [[github/rest]] and [[github/graphql]] for API conventions.",
+  "parent": "github",
+  "tags": ["pagination", "paging", "link-headers", "cursor", "relay", "per-page", "offset"],
+  "aliases": [
+    "github pagination",
+    "paginated results",
+    "page through results",
+    "github api pagination",
+    "link headers",
+    "cursor pagination",
+    "github next page"
+  ],
+  "triggers": [
+    "paginate github api results",
+    "get all pages from github",
+    "github link headers",
+    "cursor-based pagination github",
+    "iterate all issues",
+    "fetch all pull requests"
+  ],
+  "body": "# Paginating GitHub API Responses\n\nList endpoints return subsets of results. You must paginate to retrieve complete datasets.\n\n## REST Pagination\n\n### Link Headers\n\nREST list endpoints return `Link` headers with URLs for navigation:\n\n```http\nLink: <https://api.github.com/repos/owner/repo/issues?page=2>; rel=\"next\",\n      <https://api.github.com/repos/owner/repo/issues?page=5>; rel=\"last\"\n```\n\nRelation types: `next`, `prev`, `first`, `last`. Follow `rel=\"next\"` until it's absent.\n\n### Page-Based Parameters\n\n| Parameter | Default | Max | Description |\n|-----------|---------|-----|-------------|\n| `per_page` | 30 | 100 | Items per page |\n| `page` | 1 | — | Page number |\n\n```bash\n# Page 1 with 100 items per page\ncurl -H \"Authorization: Bearer $GITHUB_TOKEN\" \\\n     \"https://api.github.com/repos/owner/repo/issues?per_page=100&page=1\"\n\n# gh CLI with pagination\ngh api repos/owner/repo/issues --paginate\n```\n\n### Octokit Auto-Pagination\n\n```javascript\nimport { Octokit } from \"@octokit/rest\";\n\nconst octokit = new Octokit({ auth: process.env.GITHUB_TOKEN });\n\n// Automatic pagination — fetches ALL pages\nconst allIssues = await octokit.paginate(octokit.issues.listForRepo, {\n  owner: \"my-org\",\n  repo: \"my-project\",\n  state: \"open\",\n  per_page: 100,\n});\nconsole.log(`Fetched ${allIssues.length} issues`);\n\n// With per-page callback for streaming\nfor await (const response of octokit.paginate.iterator(\n  octokit.issues.listForRepo,\n  { owner: \"my-org\", repo: \"my-project\", per_page: 100 }\n)) {\n  for (const issue of response.data) {\n    console.log(issue.number, issue.title);\n  }\n}\n\n// Map/filter during pagination\nconst issueTitles = await octokit.paginate(\n  octokit.issues.listForRepo,\n  { owner: \"my-org\", repo: \"my-project\", per_page: 100 },\n  (response) => response.data.map((issue) => issue.title)\n);\n```\n\n### Manual Link Header Parsing\n\n```javascript\nasync function fetchAllPages(url, token) {\n  const results = [];\n  let nextUrl = url;\n\n  while (nextUrl) {\n    const response = await fetch(nextUrl, {\n      headers: { Authorization: `Bearer ${token}` },\n    });\n    const data = await response.json();\n    results.push(...data);\n\n    // Parse Link header for next page\n    const linkHeader = response.headers.get(\"Link\");\n    const nextMatch = linkHeader?.match(/<([^>]+)>;\\s*rel=\"next\"/);\n    nextUrl = nextMatch ? nextMatch[1] : null;\n  }\n\n  return results;\n}\n\nconst allIssues = await fetchAllPages(\n  \"https://api.github.com/repos/owner/repo/issues?per_page=100\",\n  process.env.GITHUB_TOKEN\n);\n```\n\n## GraphQL Cursor Pagination\n\nGraphQL uses the Relay connection pattern with opaque cursors:\n\n```graphql\nquery($owner: String!, $name: String!, $cursor: String) {\n  repository(owner: $owner, name: $name) {\n    issues(first: 100, after: $cursor, states: OPEN) {\n      totalCount\n      pageInfo {\n        hasNextPage\n        endCursor\n      }\n      nodes {\n        number\n        title\n      }\n    }\n  }\n}\n```\n\n```javascript\nimport { graphql } from \"@octokit/graphql\";\n\nconst graphqlWithAuth = graphql.defaults({\n  headers: { authorization: `token ${process.env.GITHUB_TOKEN}` },\n});\n\nasync function fetchAllIssues(owner, name) {\n  const issues = [];\n  let cursor = null;\n  let hasNextPage = true;\n\n  while (hasNextPage) {\n    const { repository } = await graphqlWithAuth(`\n      query($owner: String!, $name: String!, $cursor: String) {\n        repository(owner: $owner, name: $name) {\n          issues(first: 100, after: $cursor, states: OPEN) {\n            pageInfo { hasNextPage endCursor }\n            nodes { number title }\n          }\n        }\n      }\n    `, { owner, name, cursor });\n\n    issues.push(...repository.issues.nodes);\n    hasNextPage = repository.issues.pageInfo.hasNextPage;\n    cursor = repository.issues.pageInfo.endCursor;\n  }\n\n  return issues;\n}\n```\n\n### Forward vs. Backward Pagination\n\n| Direction | Arguments | PageInfo Fields |\n|-----------|-----------|------------------|\n| Forward | `first`, `after` | `hasNextPage`, `endCursor` |\n| Backward | `last`, `before` | `hasPreviousPage`, `startCursor` |\n\n## gh CLI Pagination\n\nThe `gh` CLI supports automatic pagination:\n\n```bash\n# --paginate fetches all pages and combines results\ngh api repos/owner/repo/issues --paginate -q '.[].title'\n\n# Limit to specific number of results with --jq\ngh api repos/owner/repo/issues --paginate --jq '.[:50] | .[].title'\n\n# GraphQL pagination with gh\ngh api graphql --paginate -f query='\n  query($endCursor: String) {\n    repository(owner: \"owner\", name: \"repo\") {\n      issues(first: 100, after: $endCursor) {\n        pageInfo { hasNextPage endCursor }\n        nodes { number title }\n      }\n    }\n  }\n'\n```\n",
+  "sections": [
+    {
+      "id": "rest-link-headers",
+      "title": "REST Link header pagination",
+      "body": "REST list endpoints include a `Link` response header with `rel=\"next\"`, `rel=\"prev\"`, `rel=\"first\"`, and `rel=\"last\"` URLs. Follow `rel=\"next\"` until it's absent to fetch all pages. Use `per_page` (max 100) to control page size. The `page` parameter selects a specific page. See [[github/rest]] for API conventions.",
+      "tags": ["link", "header", "rel-next", "per-page", "page"]
+    },
+    {
+      "id": "graphql-cursors",
+      "title": "GraphQL cursor-based pagination",
+      "body": "GraphQL uses the Relay connection pattern. Pass `first: N, after: $cursor` for forward pagination. Read `pageInfo.hasNextPage` and `pageInfo.endCursor` to determine if more pages exist and where the next page starts. Maximum `first`/`last` value is 100. Each page costs points against [[github/rate-limits]].",
+      "tags": ["cursor", "relay", "first", "after", "pageInfo", "endCursor"]
+    },
+    {
+      "id": "octokit-paginate",
+      "title": "Octokit auto-pagination",
+      "body": "Use `octokit.paginate()` to automatically fetch all pages of a REST endpoint. Accepts the same parameters as the underlying method plus `per_page`. Use `octokit.paginate.iterator()` for streaming iteration over pages. Pass a map function as the third argument to transform each page's data during collection.",
+      "tags": ["octokit", "paginate", "iterator", "auto", "streaming"]
+    },
+    {
+      "id": "gh-cli-paginate",
+      "title": "gh CLI --paginate flag",
+      "body": "The `gh api --paginate` flag automatically follows Link headers and concatenates results. Works for both REST and GraphQL. For GraphQL, the CLI detects `pageInfo` and `endCursor` and re-executes the query. Combine with `--jq` or `-q` for client-side filtering of paginated results.",
+      "tags": ["gh", "cli", "paginate", "jq", "concatenate"]
+    }
+  ],
+  "links": [
+    { "uri": "github/rest", "context": "REST API uses Link header pagination" },
+    { "uri": "github/graphql", "context": "GraphQL uses cursor-based Relay connections" },
+    { "uri": "github/rate-limits", "context": "Pagination affects rate limit consumption" },
+    { "uri": "github/repos", "context": "Paginate repository listings" },
+    { "uri": "github/pulls", "context": "Paginate pull request listings" },
+    { "uri": "github/issues", "context": "Paginate issue listings" }
+  ],
+  "related": [
+    { "uri": "github/rest", "relation": "see-also", "note": "REST pagination uses Link headers and page/per_page parameters" },
+    { "uri": "github/graphql", "relation": "see-also", "note": "GraphQL pagination uses cursor-based Relay connections" },
+    { "uri": "github/rate-limits", "relation": "see-also", "note": "Efficient pagination helps conserve rate limit budget" }
+  ],
+  "more": {
+    "docs": "https://docs.github.com/en/rest/using-the-rest-api/using-pagination-in-the-rest-api",
+    "graphql-connections": "https://docs.github.com/en/graphql/overview/resource-limitations#node-limit",
+    "octokit-paginate": "https://github.com/octokit/plugin-paginate-rest.js"
+  },
+  "frontmatter": {
+    "created": "2026-04-10",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "5 min",
+    "prerequisites": ["github/auth", "github/rest"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://github.com/octokit",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

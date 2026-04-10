@@ -1,0 +1,152 @@
+{
+  "name": "threads",
+  "version": "1.0.0",
+  "uri": "openai/assistants/threads",
+  "type": "skill",
+  "context": "Manage Assistants API threads — create threads, add messages, run assistants, and retrieve responses",
+  "info": "Threads are the conversation containers in the Assistants API. A thread holds an ordered sequence of messages and manages context window state automatically. The workflow is: create a thread, add user messages, create a run to execute an assistant against the thread, poll or stream for completion, then read the assistant's response messages. Threads persist server-side until explicitly deleted, enabling multi-session conversations. Each thread is independent — one assistant can serve many threads simultaneously. Thread messages support text, images, and file attachments. See [[openai/assistants/threads/create]] for thread creation and [[openai/assistants/threads/run]] for executing runs.",
+  "parent": "openai/assistants",
+  "tags": ["threads", "messages", "conversations", "context", "assistants", "multi-turn", "persistent"],
+  "aliases": [
+    "assistant threads",
+    "openai threads",
+    "conversation threads",
+    "thread management",
+    "assistants thread api",
+    "create thread",
+    "thread messages"
+  ],
+  "triggers": [
+    "create a thread for an assistant",
+    "manage assistant conversation threads",
+    "add messages to a thread",
+    "use openai threads api",
+    "manage multi-turn assistant conversations"
+  ],
+  "body": "# Assistants Threads\n\nThreads are persistent conversation containers in the Assistants API. They hold messages, manage context automatically, and serve as the execution target for assistant runs.\n\n## Thread Lifecycle\n\n```\nCreate Thread -> Add Messages -> Create Run -> Poll/Stream -> Read Response -> (repeat)\n```\n\n## Create and Use a Thread\n\n```javascript\nimport OpenAI from \"openai\";\n\nconst client = new OpenAI();\n\n// Create a thread\nconst thread = await client.beta.threads.create();\nconsole.log(`Thread ID: ${thread.id}`);\n\n// Add a user message\nawait client.beta.threads.messages.create(thread.id, {\n  role: \"user\",\n  content: \"Analyze the performance implications of using async/await vs callbacks in Node.js.\",\n});\n\n// Run the assistant\nconst run = await client.beta.threads.runs.createAndPoll(thread.id, {\n  assistant_id: \"asst_abc123\",\n});\n\nif (run.status === \"completed\") {\n  const messages = await client.beta.threads.messages.list(thread.id);\n  const response = messages.data[0].content[0].text.value;\n  console.log(response);\n}\n```\n\n## Create Thread with Initial Messages\n\n```javascript\nconst thread = await client.beta.threads.create({\n  messages: [\n    { role: \"user\", content: \"I need help with database optimization.\" },\n  ],\n});\n```\n\n## Message Operations\n\n```javascript\n// Add a message\nconst message = await client.beta.threads.messages.create(thread.id, {\n  role: \"user\",\n  content: \"What about indexing strategies?\",\n});\n\n// List messages (most recent first)\nconst messages = await client.beta.threads.messages.list(thread.id, {\n  order: \"desc\",\n  limit: 20,\n});\n\n// Retrieve a specific message\nconst msg = await client.beta.threads.messages.retrieve(thread.id, message.id);\n```\n\n## Message with File Attachments\n\n```javascript\nawait client.beta.threads.messages.create(thread.id, {\n  role: \"user\",\n  content: \"Analyze this CSV data.\",\n  attachments: [\n    {\n      file_id: \"file-abc123\",\n      tools: [{ type: \"code_interpreter\" }],\n    },\n  ],\n});\n```\n\n## Thread Management\n\n```javascript\n// Retrieve thread metadata\nconst thread = await client.beta.threads.retrieve(threadId);\n\n// Update thread metadata\nawait client.beta.threads.update(threadId, {\n  metadata: { session: \"user-session-42\", topic: \"database-optimization\" },\n});\n\n// Delete thread (permanently removes all messages)\nawait client.beta.threads.del(threadId);\n```\n\n## Context Window Management\n\nThe API automatically manages context windows. When a thread's messages exceed the model's context limit, the API truncates older messages. You can control this with the `truncation_strategy` on runs:\n\n```javascript\nconst run = await client.beta.threads.runs.create(thread.id, {\n  assistant_id: \"asst_abc123\",\n  truncation_strategy: {\n    type: \"last_messages\",\n    last_messages: 10,  // only use the last 10 messages\n  },\n});\n```\n",
+  "sections": [
+    {
+      "id": "create-thread",
+      "title": "Creating threads",
+      "body": "Call `client.beta.threads.create()` with optional initial messages and metadata. Threads are lightweight — create one per conversation. The returned thread object contains an `id` used for all subsequent operations. Threads can be created with messages pre-loaded for convenience. See [[openai/assistants/threads/create]] for details.",
+      "tags": ["create", "initialize", "metadata", "thread-id"]
+    },
+    {
+      "id": "messages",
+      "title": "Thread messages",
+      "body": "Add messages with `client.beta.threads.messages.create(threadId, { role, content })`. The `role` is either `user` or `assistant`. Messages support text content, image URLs, and file attachments (for code interpreter or file search). List messages with `.list()`, retrieve with `.retrieve()`. Messages are ordered by creation time.",
+      "tags": ["messages", "add", "list", "retrieve", "attachments", "images"]
+    },
+    {
+      "id": "runs",
+      "title": "Running assistants on threads",
+      "body": "Create a run with `client.beta.threads.runs.create(threadId, { assistant_id })` to execute an assistant against the thread's messages. Poll with `.retrieve()` until `status` is `completed`, `failed`, or `requires_action`. Use `.createAndPoll()` for automatic polling or `.stream()` for real-time output. See [[openai/assistants/threads/run]] for the full run lifecycle.",
+      "tags": ["runs", "execute", "poll", "stream", "status"]
+    },
+    {
+      "id": "context-management",
+      "title": "Context window management",
+      "body": "Threads automatically handle context window limits. When messages exceed the model's context, older messages are truncated. Control truncation with `truncation_strategy` on runs: `auto` (default) or `last_messages` with a count. Use `max_prompt_tokens` to cap total input tokens. Long conversations should use thread metadata to track state outside the context window.",
+      "tags": ["context", "truncation", "window", "tokens", "limit"]
+    }
+  ],
+  "links": [
+    { "uri": "openai/assistants", "context": "Parent skill — Assistants API overview" },
+    { "uri": "openai/assistants/threads/create", "context": "Create threads and add initial messages" },
+    { "uri": "openai/assistants/threads/run", "context": "Execute assistant runs on threads" },
+    { "uri": "openai/chat", "context": "Stateless alternative — direct chat completions" },
+    { "uri": "openai/models", "context": "Model selection for assistant configuration" }
+  ],
+  "related": [
+    { "uri": "openai/assistants/threads/create", "relation": "sub", "note": "Thread and message creation operations" },
+    { "uri": "openai/assistants/threads/run", "relation": "sub", "note": "Run execution, polling, and streaming" },
+    { "uri": "openai/chat", "relation": "see-also", "note": "For stateless single-turn interactions without persistent threads" }
+  ],
+  "scripts": [
+    {
+      "id": "thread-conversation",
+      "name": "Thread Conversation",
+      "description": "Create a thread, add a message, run an assistant, and retrieve the response",
+      "lang": "javascript",
+      "runtime": "node>=18",
+      "inline": "import OpenAI from \"openai\";\n\nconst client = new OpenAI();\n\nconst assistantId = process.env.ASSISTANT_ID;\nif (!assistantId) throw new Error(\"ASSISTANT_ID is required\");\n\nconst userMessage = process.env.USER_MESSAGE || \"Hello!\";\nconst threadId = process.env.THREAD_ID;\n\n// Create or reuse thread\nconst thread = threadId\n  ? await client.beta.threads.retrieve(threadId)\n  : await client.beta.threads.create();\n\nconsole.error(`Thread: ${thread.id}`);\n\n// Add user message\nawait client.beta.threads.messages.create(thread.id, {\n  role: \"user\",\n  content: userMessage,\n});\n\n// Run assistant and poll to completion\nconst run = await client.beta.threads.runs.createAndPoll(thread.id, {\n  assistant_id: assistantId,\n});\n\nif (run.status === \"completed\") {\n  const messages = await client.beta.threads.messages.list(thread.id, { order: \"desc\", limit: 1 });\n  const response = messages.data[0].content[0].text.value;\n  console.log(JSON.stringify({ threadId: thread.id, runId: run.id, response }, null, 2));\n} else {\n  console.error(`Run ended with status: ${run.status}`);\n  if (run.last_error) console.error(run.last_error);\n  process.exit(1);\n}",
+      "env": {
+        "OPENAI_API_KEY": { "required": true, "secret": true, "description": "OpenAI API key" },
+        "ASSISTANT_ID": { "required": true, "description": "Assistant ID to run (e.g. asst_abc123)" },
+        "USER_MESSAGE": { "required": false, "description": "User message to add to the thread" },
+        "THREAD_ID": { "required": false, "description": "Existing thread ID to continue (creates new if omitted)" }
+      },
+      "packages": ["openai"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "assistantId": { "type": "string", "description": "ID of the assistant to run on the thread" },
+        "threadId": { "type": "string", "description": "Existing thread ID (omit to create a new thread)" },
+        "messages": {
+          "type": "array",
+          "description": "Messages to add to the thread",
+          "items": {
+            "type": "object",
+            "properties": {
+              "role": { "type": "string", "enum": ["user"] },
+              "content": { "type": "string" },
+              "attachments": { "type": "array", "items": { "type": "object" } }
+            },
+            "required": ["role", "content"]
+          }
+        },
+        "metadata": {
+          "type": "object",
+          "description": "Key-value metadata to attach to the thread (max 16 pairs, keys max 64 chars, values max 512 chars)"
+        }
+      },
+      "required": ["assistantId"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "threadId": { "type": "string", "description": "Thread identifier" },
+        "runId": { "type": "string", "description": "Run identifier" },
+        "status": { "type": "string", "enum": ["completed", "failed", "requires_action", "cancelled", "expired"] },
+        "messages": {
+          "type": "array",
+          "description": "Response messages from the assistant",
+          "items": {
+            "type": "object",
+            "properties": {
+              "role": { "type": "string" },
+              "content": { "type": "string" }
+            }
+          }
+        }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "openai", "reason": "Requires an OpenAI API key" },
+    { "uri": "openai/assistants", "reason": "Threads are part of the Assistants API" }
+  ],
+  "more": {
+    "docs": "https://platform.openai.com/docs/api-reference/threads",
+    "guide": "https://platform.openai.com/docs/assistants/overview"
+  },
+  "frontmatter": {
+    "created": "2026-04-10",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "5 min",
+    "prerequisites": ["openai", "openai/assistants"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://github.com/openai/openai-node",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

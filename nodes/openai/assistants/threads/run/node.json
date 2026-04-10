@@ -1,0 +1,217 @@
+{
+  "name": "run",
+  "version": "1.0.0",
+  "uri": "openai/assistants/threads/run",
+  "type": "sub",
+  "context": "Execute an assistant on a thread — create runs, poll for completion, stream results, and handle tool calls",
+  "info": "Runs execute an assistant against a thread's messages. Create a run via `POST /v1/threads/{thread_id}/runs` with the assistant ID. The run processes the thread's messages, invokes tools if needed, and appends the assistant's response. Runs are asynchronous — poll with `GET /v1/threads/{thread_id}/runs/{run_id}` until the status is terminal (`completed`, `failed`, `cancelled`, `expired`). The `requires_action` status means the assistant wants to call functions — extract tool calls, execute them, and submit outputs with `POST .../runs/{run_id}/submit_tool_outputs`. The SDK provides `createAndPoll()` for automatic polling and `stream()` for real-time Server-Sent Events. Runs support `max_prompt_tokens` and `max_completion_tokens` to control costs, `truncation_strategy` for context management, and `additional_instructions` for per-run overrides.",
+  "parent": "openai/assistants/threads",
+  "tags": ["run", "execute", "poll", "stream", "tool-calls", "status", "assistants"],
+  "aliases": [
+    "run assistant",
+    "execute run",
+    "thread run",
+    "assistant run",
+    "create run",
+    "poll run",
+    "stream run",
+    "run and poll"
+  ],
+  "triggers": [
+    "run an assistant on a thread",
+    "execute an assistant run",
+    "poll for run completion",
+    "stream assistant run results",
+    "handle tool calls in a run",
+    "submit tool outputs"
+  ],
+  "body": "# Run Assistant on Thread\n\nRuns execute an assistant against a thread, processing messages, invoking tools, and generating responses.\n\n## Create and Poll\n\nThe simplest approach — create a run and automatically poll until completion:\n\n```javascript\nimport OpenAI from \"openai\";\n\nconst client = new OpenAI();\n\nconst run = await client.beta.threads.runs.createAndPoll(threadId, {\n  assistant_id: \"asst_abc123\",\n});\n\nif (run.status === \"completed\") {\n  const messages = await client.beta.threads.messages.list(threadId, {\n    order: \"desc\",\n    limit: 1,\n  });\n  console.log(messages.data[0].content[0].text.value);\n} else {\n  console.error(`Run failed with status: ${run.status}`);\n}\n```\n\n## Manual Polling\n\nFor more control over the polling interval and status handling:\n\n```javascript\n// Create the run\nlet run = await client.beta.threads.runs.create(threadId, {\n  assistant_id: \"asst_abc123\",\n});\n\n// Poll until terminal status\nwhile ([\"queued\", \"in_progress\", \"cancelling\"].includes(run.status)) {\n  await new Promise(resolve => setTimeout(resolve, 1000));\n  run = await client.beta.threads.runs.retrieve(threadId, run.id);\n  console.log(`Status: ${run.status}`);\n}\n\nswitch (run.status) {\n  case \"completed\":\n    console.log(\"Run completed successfully.\");\n    break;\n  case \"requires_action\":\n    console.log(\"Run needs tool call results.\");\n    break;\n  case \"failed\":\n    console.error(`Failed: ${run.last_error?.message}`);\n    break;\n  case \"expired\":\n    console.error(\"Run expired (tool outputs not submitted within 10 minutes).\");\n    break;\n}\n```\n\n## Streaming Runs\n\nStream run events for real-time output:\n\n```javascript\nconst stream = client.beta.threads.runs.stream(threadId, {\n  assistant_id: \"asst_abc123\",\n});\n\nfor await (const event of stream) {\n  if (event.event === \"thread.message.delta\") {\n    const content = event.data.delta.content?.[0]?.text?.value || \"\";\n    process.stdout.write(content);\n  }\n  if (event.event === \"thread.run.requires_action\") {\n    // Handle tool calls — see below\n  }\n}\n```\n\n## Handling Tool Calls (requires_action)\n\nWhen the assistant invokes functions, the run pauses with `requires_action` status:\n\n```javascript\nif (run.status === \"requires_action\") {\n  const toolCalls = run.required_action.submit_tool_outputs.tool_calls;\n\n  const toolOutputs = await Promise.all(\n    toolCalls.map(async (toolCall) => {\n      const args = JSON.parse(toolCall.function.arguments);\n      let output;\n\n      switch (toolCall.function.name) {\n        case \"get_weather\":\n          output = await getWeather(args.location);\n          break;\n        case \"search_database\":\n          output = await searchDB(args.query);\n          break;\n        default:\n          output = { error: `Unknown function: ${toolCall.function.name}` };\n      }\n\n      return {\n        tool_call_id: toolCall.id,\n        output: JSON.stringify(output),\n      };\n    })\n  );\n\n  // Submit outputs and continue the run\n  run = await client.beta.threads.runs.submitToolOutputsAndPoll(threadId, run.id, {\n    tool_outputs: toolOutputs,\n  });\n}\n```\n\n## Run with Overrides\n\nOverride assistant settings per-run:\n\n```javascript\nconst run = await client.beta.threads.runs.create(threadId, {\n  assistant_id: \"asst_abc123\",\n  additional_instructions: \"Respond in Spanish for this request.\",\n  max_prompt_tokens: 4000,\n  max_completion_tokens: 1000,\n  truncation_strategy: {\n    type: \"last_messages\",\n    last_messages: 5,\n  },\n  temperature: 0.3,\n});\n```\n\n## Run Status Lifecycle\n\n```\nqueued -> in_progress -> completed\n                      -> requires_action -> (submit tool outputs) -> in_progress -> completed\n                      -> failed\n                      -> cancelling -> cancelled\n                      -> expired\n```\n\n| Status | Description |\n|--------|-------------|\n| `queued` | Run is waiting to start |\n| `in_progress` | Assistant is generating a response |\n| `requires_action` | Waiting for tool call results |\n| `completed` | Run finished successfully |\n| `failed` | Run encountered an error |\n| `cancelling` | Cancellation requested |\n| `cancelled` | Run was cancelled |\n| `expired` | Tool outputs not submitted within 10 minutes |\n",
+  "sections": [
+    {
+      "id": "create-run",
+      "title": "Creating runs",
+      "body": "Call `client.beta.threads.runs.create(threadId, { assistant_id })` to start a run. Optional parameters: `additional_instructions` (appended to assistant instructions), `additional_messages` (messages to add before the run), `temperature`, `max_prompt_tokens`, `max_completion_tokens`, `truncation_strategy`, `tool_choice` (auto/none/required/specific tool), `response_format`. The run starts asynchronous processing immediately.",
+      "tags": ["create", "start", "parameters", "instructions", "temperature"]
+    },
+    {
+      "id": "polling",
+      "title": "Polling for completion",
+      "body": "Use `createAndPoll()` for automatic polling with exponential backoff. For manual polling, call `runs.retrieve(threadId, runId)` in a loop checking `run.status`. Terminal statuses: `completed`, `failed`, `cancelled`, `expired`. The `in_progress` and `queued` statuses mean the run is still executing. Poll every 1-2 seconds for typical runs.",
+      "tags": ["poll", "status", "retrieve", "backoff", "completion"]
+    },
+    {
+      "id": "tool-calls",
+      "title": "Handling tool calls",
+      "body": "When `status` is `requires_action`, extract tool calls from `run.required_action.submit_tool_outputs.tool_calls`. Each tool call has `id`, `function.name`, and `function.arguments` (JSON string). Execute the functions, then submit results with `runs.submitToolOutputs(threadId, runId, { tool_outputs })` or `submitToolOutputsAndPoll()`. Outputs not submitted within 10 minutes cause the run to expire. See [[openai/function-calling]] for defining tools.",
+      "tags": ["tool-calls", "requires-action", "submit-outputs", "functions", "expire"]
+    },
+    {
+      "id": "streaming",
+      "title": "Streaming runs",
+      "body": "Use `runs.stream()` for real-time Server-Sent Events. Key events: `thread.run.created`, `thread.message.delta` (incremental text), `thread.run.requires_action` (tool calls), `thread.run.completed`, `thread.run.failed`. The `thread.message.delta` event contains `data.delta.content` with incremental text parts. Streaming can also be used with `submitToolOutputsStream()` after handling tool calls.",
+      "tags": ["stream", "sse", "events", "delta", "real-time"]
+    }
+  ],
+  "links": [
+    { "uri": "openai/assistants/threads", "context": "Parent skill — thread management overview" },
+    { "uri": "openai/assistants/threads/create", "context": "Create threads before running assistants" },
+    { "uri": "openai/function-calling", "context": "Define tools for assistant function calling" },
+    { "uri": "openai/assistants", "context": "Create and configure assistants" }
+  ],
+  "related": [
+    { "uri": "openai/assistants/threads/create", "relation": "prerequisite", "note": "Create a thread and add messages before creating a run" },
+    { "uri": "openai/function-calling", "relation": "see-also", "note": "Required for handling requires_action status with tool calls" }
+  ],
+  "scripts": [
+    {
+      "id": "run-assistant",
+      "name": "Run Assistant",
+      "description": "Execute an assistant on a thread with automatic polling",
+      "lang": "javascript",
+      "runtime": "node>=18",
+      "inline": "import OpenAI from \"openai\";\n\nconst client = new OpenAI();\n\nconst threadId = process.env.THREAD_ID;\nconst assistantId = process.env.ASSISTANT_ID;\nif (!threadId || !assistantId) throw new Error(\"THREAD_ID and ASSISTANT_ID are required\");\n\nconst additionalInstructions = process.env.ADDITIONAL_INSTRUCTIONS || undefined;\nconst maxCompletionTokens = process.env.MAX_COMPLETION_TOKENS ? parseInt(process.env.MAX_COMPLETION_TOKENS) : undefined;\n\nconst run = await client.beta.threads.runs.createAndPoll(threadId, {\n  assistant_id: assistantId,\n  ...(additionalInstructions && { additional_instructions: additionalInstructions }),\n  ...(maxCompletionTokens && { max_completion_tokens: maxCompletionTokens }),\n});\n\nif (run.status === \"completed\") {\n  const messages = await client.beta.threads.messages.list(threadId, { order: \"desc\", limit: 1 });\n  const response = messages.data[0].content[0].text.value;\n  console.log(JSON.stringify({\n    runId: run.id,\n    status: run.status,\n    response,\n    usage: run.usage ? {\n      promptTokens: run.usage.prompt_tokens,\n      completionTokens: run.usage.completion_tokens,\n      totalTokens: run.usage.total_tokens,\n    } : null,\n  }, null, 2));\n} else if (run.status === \"requires_action\") {\n  const toolCalls = run.required_action.submit_tool_outputs.tool_calls;\n  console.log(JSON.stringify({\n    runId: run.id,\n    status: run.status,\n    toolCalls: toolCalls.map(tc => ({\n      id: tc.id,\n      function: tc.function.name,\n      arguments: JSON.parse(tc.function.arguments),\n    })),\n  }, null, 2));\n} else {\n  console.error(JSON.stringify({\n    runId: run.id,\n    status: run.status,\n    error: run.last_error,\n  }, null, 2));\n  process.exit(1);\n}",
+      "env": {
+        "OPENAI_API_KEY": { "required": true, "secret": true, "description": "OpenAI API key" },
+        "THREAD_ID": { "required": true, "description": "Thread ID to run against" },
+        "ASSISTANT_ID": { "required": true, "description": "Assistant ID to execute" },
+        "ADDITIONAL_INSTRUCTIONS": { "required": false, "description": "Per-run instruction override" },
+        "MAX_COMPLETION_TOKENS": { "required": false, "description": "Max completion tokens for cost control" }
+      },
+      "packages": ["openai"]
+    },
+    {
+      "id": "stream-run",
+      "name": "Stream Run",
+      "description": "Stream an assistant run with real-time token output",
+      "lang": "javascript",
+      "runtime": "node>=18",
+      "inline": "import OpenAI from \"openai\";\n\nconst client = new OpenAI();\n\nconst threadId = process.env.THREAD_ID;\nconst assistantId = process.env.ASSISTANT_ID;\nif (!threadId || !assistantId) throw new Error(\"THREAD_ID and ASSISTANT_ID are required\");\n\nconst stream = client.beta.threads.runs.stream(threadId, {\n  assistant_id: assistantId,\n});\n\nlet runId = null;\nfor await (const event of stream) {\n  if (event.event === \"thread.run.created\") {\n    runId = event.data.id;\n    console.error(`Run started: ${runId}`);\n  }\n  if (event.event === \"thread.message.delta\") {\n    const content = event.data.delta.content?.[0]?.text?.value || \"\";\n    process.stdout.write(content);\n  }\n  if (event.event === \"thread.run.completed\") {\n    console.error(`\\nRun completed: ${event.data.id}`);\n  }\n  if (event.event === \"thread.run.failed\") {\n    console.error(`\\nRun failed: ${event.data.last_error?.message}`);\n    process.exit(1);\n  }\n}\nconsole.log();",
+      "env": {
+        "OPENAI_API_KEY": { "required": true, "secret": true, "description": "OpenAI API key" },
+        "THREAD_ID": { "required": true, "description": "Thread ID to run against" },
+        "ASSISTANT_ID": { "required": true, "description": "Assistant ID to execute" }
+      },
+      "packages": ["openai"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "thread_id": { "type": "string", "description": "Thread ID to run against" },
+        "assistant_id": { "type": "string", "description": "Assistant ID to execute" },
+        "additional_instructions": { "type": "string", "description": "Extra instructions appended to the assistant's instructions for this run" },
+        "additional_messages": {
+          "type": "array",
+          "description": "Messages to add to the thread before the run",
+          "items": {
+            "type": "object",
+            "properties": {
+              "role": { "type": "string", "enum": ["user"] },
+              "content": { "type": "string" }
+            }
+          }
+        },
+        "temperature": { "type": "number", "description": "Override sampling temperature for this run" },
+        "max_prompt_tokens": { "type": "integer", "description": "Max tokens for input context" },
+        "max_completion_tokens": { "type": "integer", "description": "Max tokens for the response" },
+        "truncation_strategy": {
+          "type": "object",
+          "properties": {
+            "type": { "type": "string", "enum": ["auto", "last_messages"] },
+            "last_messages": { "type": "integer", "description": "Number of most recent messages to include" }
+          }
+        },
+        "tool_choice": {
+          "oneOf": [
+            { "type": "string", "enum": ["auto", "none", "required"] },
+            { "type": "object", "description": "Force a specific tool" }
+          ],
+          "description": "Control which tools the assistant can use"
+        },
+        "response_format": {
+          "type": "object",
+          "description": "Override response format (json_object, json_schema, or text)"
+        }
+      },
+      "required": ["thread_id", "assistant_id"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Run ID" },
+        "status": { "type": "string", "enum": ["queued", "in_progress", "requires_action", "cancelling", "cancelled", "failed", "completed", "expired"] },
+        "required_action": {
+          "type": "object",
+          "description": "Present when status is requires_action",
+          "properties": {
+            "type": { "type": "string", "const": "submit_tool_outputs" },
+            "submit_tool_outputs": {
+              "type": "object",
+              "properties": {
+                "tool_calls": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": { "type": "string" },
+                      "type": { "type": "string", "const": "function" },
+                      "function": {
+                        "type": "object",
+                        "properties": {
+                          "name": { "type": "string" },
+                          "arguments": { "type": "string", "description": "JSON string of function arguments" }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "usage": {
+          "type": "object",
+          "properties": {
+            "prompt_tokens": { "type": "integer" },
+            "completion_tokens": { "type": "integer" },
+            "total_tokens": { "type": "integer" }
+          }
+        },
+        "last_error": {
+          "type": "object",
+          "properties": {
+            "code": { "type": "string" },
+            "message": { "type": "string" }
+          }
+        }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "openai", "reason": "Requires an OpenAI API key" },
+    { "uri": "openai/assistants", "reason": "Requires a configured assistant" },
+    { "uri": "openai/assistants/threads", "reason": "Runs execute on threads" },
+    { "uri": "openai/assistants/threads/create", "reason": "Thread must be created before running" }
+  ],
+  "more": {
+    "docs": "https://platform.openai.com/docs/api-reference/runs",
+    "guide": "https://platform.openai.com/docs/assistants/how-it-works/runs-and-run-steps"
+  },
+  "frontmatter": {
+    "created": "2026-04-10",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "5 min",
+    "prerequisites": ["openai", "openai/assistants", "openai/assistants/threads"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://github.com/openai/openai-node",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

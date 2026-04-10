@@ -1,0 +1,192 @@
+{
+  "name": "push",
+  "version": "1.0.0",
+  "uri": "docker/images/push",
+  "type": "sub",
+  "context": "Push and pull Docker images to and from container registries including Docker Hub, GHCR, and ECR",
+  "info": "This sub-skill covers pushing Docker images to container registries and pulling them for deployment. Registries are the distribution mechanism for container images. Docker Hub is the default public registry. GitHub Container Registry (GHCR) integrates with GitHub repositories and Actions. Amazon ECR provides private registries in AWS. Authentication is handled via docker login or credential helpers. Image references follow the format registry/repository:tag. Pushing requires tagging the image with the full registry path first. Pulling retrieves images by tag or digest. This sub-skill focuses on the push/pull operations themselves; see [[docker/registry]] for registry configuration and management, and [[docker/images/build]] for building images before pushing.",
+  "parent": "docker/images",
+  "tags": ["docker", "push", "pull", "registry", "docker-hub", "ghcr", "ecr", "image-distribution"],
+  "aliases": [
+    "docker push",
+    "docker pull",
+    "push image",
+    "pull image",
+    "push to registry",
+    "pull from registry",
+    "image distribution",
+    "docker hub push"
+  ],
+  "triggers": [
+    "push a docker image",
+    "pull a docker image",
+    "push image to docker hub",
+    "push image to ghcr",
+    "push image to ecr",
+    "distribute a docker image",
+    "upload container image",
+    "download container image"
+  ],
+  "body": "# Pushing and Pulling Docker Images\n\nPushing uploads a locally built image to a container registry for distribution. Pulling downloads an image from a registry to a local machine for running as a container. These operations are the bridge between building and deploying.\n\n## Authentication\n\nBefore pushing, authenticate with the target registry:\n\n```bash\n# Docker Hub\ndocker login\n# Prompts for username and password/access token\n\n# GitHub Container Registry (GHCR)\necho \"$GITHUB_TOKEN\" | docker login ghcr.io -u USERNAME --password-stdin\n\n# Amazon ECR\naws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 123456789.dkr.ecr.us-east-1.amazonaws.com\n\n# Google Artifact Registry\ngcloud auth configure-docker us-docker.pkg.dev\n\n# Azure Container Registry\naz acr login --name myregistry\n```\n\nFor CI/CD, use credential helpers or environment variables instead of interactive login. Store tokens as secrets in your CI system.\n\n## Pushing Images\n\nImages must be tagged with the full registry path before pushing:\n\n```bash\n# Tag for Docker Hub (default registry)\ndocker tag myapp:latest username/myapp:v1.0.0\ndocker push username/myapp:v1.0.0\n\n# Tag and push to GHCR\ndocker tag myapp:latest ghcr.io/org/myapp:v1.0.0\ndocker push ghcr.io/org/myapp:v1.0.0\n\n# Tag and push to ECR\ndocker tag myapp:latest 123456789.dkr.ecr.us-east-1.amazonaws.com/myapp:v1.0.0\ndocker push 123456789.dkr.ecr.us-east-1.amazonaws.com/myapp:v1.0.0\n\n# Push all tags for a repository\ndocker push --all-tags username/myapp\n```\n\n### Push with Buildx\n\nBuildx can build and push in a single command, avoiding the tag-then-push workflow:\n\n```bash\n# Build and push in one step\ndocker buildx build --push -t ghcr.io/org/myapp:v1.0.0 .\n\n# Build for multiple platforms and push\ndocker buildx build --platform linux/amd64,linux/arm64 --push -t ghcr.io/org/myapp:v1.0.0 .\n```\n\n## Pulling Images\n\n```bash\n# Pull by tag\ndocker pull nginx:1.25-alpine\n\n# Pull by digest (immutable, exact content)\ndocker pull nginx@sha256:abc123def456...\n\n# Pull from GHCR\ndocker pull ghcr.io/org/myapp:v1.0.0\n\n# Pull from ECR\ndocker pull 123456789.dkr.ecr.us-east-1.amazonaws.com/myapp:v1.0.0\n\n# Pull and immediately run\ndocker run -d -p 8080:80 ghcr.io/org/myapp:v1.0.0\n```\n\n## Multi-Platform Images\n\nModern deployments target multiple CPU architectures (amd64, arm64). Docker manifests list images for each platform:\n\n```bash\n# Create a multi-platform builder\ndocker buildx create --name multiplatform --driver docker-container --use\n\n# Build and push multi-platform image\ndocker buildx build \\\n  --platform linux/amd64,linux/arm64 \\\n  --push \\\n  -t ghcr.io/org/myapp:v1.0.0 .\n\n# Inspect manifest list\ndocker manifest inspect ghcr.io/org/myapp:v1.0.0\n```\n\nDocker automatically pulls the correct platform variant when running on any architecture.\n\n## CI/CD Push Patterns\n\n### GitHub Actions\n\n```yaml\n- name: Login to GHCR\n  uses: docker/login-action@v3\n  with:\n    registry: ghcr.io\n    username: ${{ github.actor }}\n    password: ${{ secrets.GITHUB_TOKEN }}\n\n- name: Build and push\n  uses: docker/build-push-action@v5\n  with:\n    push: true\n    tags: ghcr.io/${{ github.repository }}:${{ github.sha }}\n```\n\n### GitLab CI\n\n```yaml\nbuild:\n  image: docker:24\n  services:\n    - docker:24-dind\n  script:\n    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY\n    - docker build -t $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA .\n    - docker push $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA\n```\n\n## Registry Comparison\n\n| Registry | Domain | Auth Method | Visibility |\n|---|---|---|---|\n| Docker Hub | `docker.io` | Username + token | Public/private |\n| GHCR | `ghcr.io` | GitHub PAT or GITHUB_TOKEN | Public/private |\n| Amazon ECR | `*.dkr.ecr.*.amazonaws.com` | AWS IAM | Private |\n| Google AR | `*-docker.pkg.dev` | gcloud auth | Public/private |\n| Azure ACR | `*.azurecr.io` | az acr login | Private |\n\nSee [[docker/registry]] for detailed registry configuration and lifecycle management.\n",
+  "sections": [
+    {
+      "id": "authentication",
+      "title": "Registry authentication",
+      "body": "Authenticate with docker login for Docker Hub, echo token | docker login ghcr.io for GHCR, aws ecr get-login-password for ECR, gcloud auth configure-docker for Google, and az acr login for Azure. In CI/CD, use credential helpers or pipe tokens from environment secrets. Never hardcode credentials.",
+      "tags": ["auth", "login", "credentials", "docker-hub", "ghcr", "ecr"]
+    },
+    {
+      "id": "pushing",
+      "title": "Pushing images",
+      "body": "Tag images with the full registry/repository:tag path before pushing. Use docker push to upload layers. Docker only pushes layers not already present in the registry (deduplication). Use docker push --all-tags to push every tag for a repository. Buildx build --push combines build and push in one command.",
+      "tags": ["push", "tag", "upload", "deduplication", "buildx"]
+    },
+    {
+      "id": "pulling",
+      "title": "Pulling images",
+      "body": "Pull by tag for human-readable references or by digest for immutable pinning. Docker pull downloads only layers not already cached locally. Pull happens automatically on docker run if the image is not present. Use docker pull to pre-cache images before running.",
+      "tags": ["pull", "download", "digest", "tag", "cache"]
+    },
+    {
+      "id": "multi-platform",
+      "title": "Multi-platform images",
+      "body": "Build for multiple architectures (amd64, arm64) with docker buildx build --platform. The result is a manifest list pointing to platform-specific image variants. Docker automatically selects the correct variant at pull time. Requires a buildx builder with docker-container or remote driver.",
+      "tags": ["multi-platform", "amd64", "arm64", "manifest", "buildx", "cross-compilation"]
+    },
+    {
+      "id": "cicd-patterns",
+      "title": "CI/CD push patterns",
+      "body": "In GitHub Actions, use docker/login-action and docker/build-push-action for streamlined builds. In GitLab CI, use docker-in-docker services. Tag images with the commit SHA for traceability. Push to the registry on merge to main or on tag creation. Cache layers across CI runs with BuildKit cache export.",
+      "tags": ["ci-cd", "github-actions", "gitlab-ci", "automation", "pipeline"]
+    }
+  ],
+  "links": [
+    { "uri": "docker/images", "context": "Parent skill for the full image lifecycle" },
+    { "uri": "docker/images/build", "context": "Build images before pushing to registries" },
+    { "uri": "docker/images/multi-stage", "context": "Multi-stage builds produce optimized images for pushing" },
+    { "uri": "docker/registry", "context": "Registry configuration, lifecycle policies, and management" },
+    { "uri": "docker/compose", "context": "Compose pulls images for services defined in compose files" }
+  ],
+  "related": [
+    { "uri": "docker/images/build", "relation": "sequence", "note": "Build precedes push in the image lifecycle" },
+    { "uri": "docker/registry", "relation": "see-also", "note": "Registry covers server-side configuration; push covers client-side operations" },
+    { "uri": "docker/containers", "relation": "sequence", "note": "After pushing and pulling, images are run as containers" }
+  ],
+  "scripts": [
+    {
+      "id": "push-image",
+      "name": "Push Image",
+      "description": "Tag and push a Docker image to a container registry",
+      "lang": "bash",
+      "runtime": "docker>=20",
+      "inline": "FULL_TAG=\"${REGISTRY}/${REPOSITORY}:${TAG}\" && docker tag \"${SOURCE_IMAGE}\" \"$FULL_TAG\" && echo \"Pushing $FULL_TAG ...\" && docker push \"$FULL_TAG\" && echo '' && echo \"Successfully pushed $FULL_TAG\" && docker inspect --format 'Digest: {{index .RepoDigests 0}}' \"$FULL_TAG\"",
+      "env": {
+        "SOURCE_IMAGE": { "required": true, "secret": false, "description": "Local image to push (e.g. myapp:latest)" },
+        "REGISTRY": { "required": true, "secret": false, "description": "Registry hostname (e.g. ghcr.io, docker.io, 123456789.dkr.ecr.us-east-1.amazonaws.com)" },
+        "REPOSITORY": { "required": true, "secret": false, "description": "Repository path (e.g. org/myapp)" },
+        "TAG": { "required": true, "secret": false, "description": "Image tag (e.g. v1.0.0, latest)" }
+      },
+      "packages": ["docker"]
+    },
+    {
+      "id": "pull-image",
+      "name": "Pull Image",
+      "description": "Pull a Docker image from a container registry by tag or digest",
+      "lang": "bash",
+      "runtime": "docker>=20",
+      "inline": "echo \"Pulling $IMAGE ...\" && docker pull \"$IMAGE\" && echo '' && echo '=== Image Details ===' && docker inspect --format 'ID: {{.Id}}\nSize: {{.Size}} bytes\nArch: {{.Architecture}}/{{.Os}}\nCreated: {{.Created}}' \"$IMAGE\"",
+      "env": {
+        "IMAGE": { "required": true, "secret": false, "description": "Full image reference (e.g. ghcr.io/org/myapp:v1.0.0 or nginx@sha256:abc...)" }
+      },
+      "packages": ["docker"]
+    },
+    {
+      "id": "login-registry",
+      "name": "Login to Registry",
+      "description": "Authenticate with a container registry using token-based login",
+      "lang": "bash",
+      "runtime": "docker>=20",
+      "inline": "echo \"$REGISTRY_TOKEN\" | docker login \"$REGISTRY\" -u \"$REGISTRY_USER\" --password-stdin && echo \"Successfully authenticated with $REGISTRY\"",
+      "env": {
+        "REGISTRY": { "required": true, "secret": false, "description": "Registry hostname (e.g. ghcr.io, docker.io)" },
+        "REGISTRY_USER": { "required": true, "secret": false, "description": "Registry username or service account" },
+        "REGISTRY_TOKEN": { "required": true, "secret": true, "description": "Registry password or access token" }
+      },
+      "packages": ["docker"]
+    },
+    {
+      "id": "push-multi-platform",
+      "name": "Build and Push Multi-Platform",
+      "description": "Build a multi-architecture image and push to a registry in one step",
+      "lang": "bash",
+      "runtime": "docker>=20",
+      "inline": "PLATFORMS=\"${PLATFORMS:-linux/amd64,linux/arm64}\" && FULL_TAG=\"${REGISTRY}/${REPOSITORY}:${TAG}\" && echo \"Building for $PLATFORMS and pushing as $FULL_TAG ...\" && docker buildx build --platform \"$PLATFORMS\" --push ${DOCKERFILE_PATH:+-f \"$DOCKERFILE_PATH\"} -t \"$FULL_TAG\" \"${BUILD_CONTEXT:-.}\" && echo '' && echo \"Successfully built and pushed multi-platform image $FULL_TAG\" && docker manifest inspect \"$FULL_TAG\"",
+      "env": {
+        "REGISTRY": { "required": true, "secret": false, "description": "Registry hostname" },
+        "REPOSITORY": { "required": true, "secret": false, "description": "Repository path" },
+        "TAG": { "required": true, "secret": false, "description": "Image tag" },
+        "PLATFORMS": { "required": false, "secret": false, "description": "Comma-separated platforms (default: linux/amd64,linux/arm64)" },
+        "DOCKERFILE_PATH": { "required": false, "secret": false, "description": "Path to Dockerfile" },
+        "BUILD_CONTEXT": { "required": false, "secret": false, "description": "Build context directory" }
+      },
+      "packages": ["docker", "buildkit"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "sourceImage": { "type": "string", "description": "Local image to push (repository:tag)" },
+        "registry": { "type": "string", "description": "Target registry hostname (e.g. ghcr.io, docker.io)" },
+        "repository": { "type": "string", "description": "Repository path within the registry (e.g. org/myapp)" },
+        "tag": { "type": "string", "description": "Image tag to push (e.g. v1.0.0)" },
+        "platforms": { "type": "array", "items": { "type": "string" }, "description": "Target platforms for multi-arch builds (e.g. linux/amd64, linux/arm64)" },
+        "credentials": {
+          "type": "object",
+          "properties": {
+            "username": { "type": "string", "description": "Registry username" },
+            "token": { "type": "string", "description": "Registry access token" }
+          },
+          "description": "Registry authentication credentials"
+        }
+      },
+      "required": ["sourceImage", "registry", "repository", "tag"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "digest": { "type": "string", "description": "Image digest (sha256:...) after push" },
+        "fullReference": { "type": "string", "description": "Full image reference (registry/repository:tag)" },
+        "size": { "type": "string", "description": "Compressed image size pushed to registry" },
+        "platforms": { "type": "array", "items": { "type": "string" }, "description": "Platforms included in the manifest" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "docker", "reason": "Docker Engine must be installed" },
+    { "uri": "docker/images", "reason": "Parent skill for image lifecycle" },
+    { "uri": "docker/images/build", "reason": "Images must be built before they can be pushed" }
+  ],
+  "more": {
+    "docs": "https://docs.docker.com/engine/reference/commandline/push/",
+    "docker-hub": "https://hub.docker.com",
+    "ghcr": "https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-container-registry",
+    "ecr": "https://docs.aws.amazon.com/AmazonECR/latest/userguide/"
+  },
+  "frontmatter": {
+    "created": "2026-04-10",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "developers, AI agents, DevOps engineers",
+    "estimated_reading_time": "5 min",
+    "prerequisites": ["docker/images/build"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://github.com/docker",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

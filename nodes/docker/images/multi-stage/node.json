@@ -1,0 +1,178 @@
+{
+  "name": "multi-stage",
+  "version": "1.0.0",
+  "uri": "docker/images/multi-stage",
+  "type": "sub",
+  "context": "Multi-stage Dockerfile builds for smaller, secure production images by separating build and runtime layers",
+  "info": "Multi-stage builds use multiple FROM statements in a single Dockerfile to separate build-time dependencies (compilers, dev tools, test frameworks) from the final runtime image. Only artifacts explicitly copied with COPY --from survive into the production stage. This technique reduces image size by 50-90%, shrinks the attack surface by eliminating build tools, and keeps secrets out of the final image. Named stages allow targeted builds with --target for development, testing, and production from a single Dockerfile. BuildKit executes independent stages in parallel for faster builds. Common patterns include builder-runner, test-then-deploy, and multi-language pipelines. This sub-skill focuses on multi-stage patterns and optimization; see [[docker/images/build]] for general Dockerfile authoring.",
+  "parent": "docker/images",
+  "tags": ["docker", "multi-stage", "dockerfile", "optimization", "image-size", "builder-pattern", "production"],
+  "aliases": [
+    "multi-stage build",
+    "multi-stage dockerfile",
+    "docker multi-stage",
+    "builder pattern",
+    "staged build",
+    "optimized docker build",
+    "production dockerfile",
+    "copy from stage"
+  ],
+  "triggers": [
+    "create a multi-stage dockerfile",
+    "reduce docker image size",
+    "separate build and runtime in docker",
+    "optimize a dockerfile for production",
+    "use builder pattern in docker",
+    "copy from another stage",
+    "make a smaller docker image",
+    "multi-stage build for node app"
+  ],
+  "body": "# Multi-Stage Docker Builds\n\nMulti-stage builds use multiple `FROM` statements in a single Dockerfile to separate build-time dependencies from the runtime image. Only artifacts explicitly copied with `COPY --from=<stage>` appear in the final image. Everything else -- compilers, dev dependencies, test frameworks, source code -- is discarded.\n\n## Why Multi-Stage?\n\n| Concern | Single-stage | Multi-stage |\n|---|---|---|\n| Image size | 800MB+ (includes build tools) | 50-150MB (runtime only) |\n| Attack surface | Large (compilers, package managers) | Minimal (only runtime deps) |\n| Build secrets | Risk of leaking into layers | Contained in discarded stages |\n| Build speed | Sequential | Parallel independent stages (BuildKit) |\n| Dockerfile count | Multiple files for dev/prod | One Dockerfile, multiple targets |\n\n## Basic Pattern: Builder + Runner\n\n```dockerfile\n# Stage 1: Build\nFROM node:20-alpine AS builder\nWORKDIR /app\nCOPY package.json package-lock.json ./\nRUN npm ci\nCOPY . .\nRUN npm run build\n\n# Stage 2: Production runtime\nFROM node:20-alpine AS production\nWORKDIR /app\nENV NODE_ENV=production\nCOPY --from=builder /app/package.json /app/package-lock.json ./\nRUN npm ci --omit=dev\nCOPY --from=builder /app/dist ./dist\nUSER node\nEXPOSE 3000\nHEALTHCHECK --interval=30s --timeout=3s CMD wget -qO- http://localhost:3000/health || exit 1\nCMD [\"node\", \"dist/server.js\"]\n```\n\nThe builder stage contains the full source, dev dependencies, and build toolchain. The production stage copies only the compiled output and production dependencies.\n\n## Go Application\n\nGo compiles to a static binary, enabling scratch or distroless base images:\n\n```dockerfile\n# Build stage\nFROM golang:1.22-alpine AS builder\nWORKDIR /app\nCOPY go.mod go.sum ./\nRUN go mod download\nCOPY . .\nRUN CGO_ENABLED=0 GOOS=linux go build -ldflags='-w -s' -o /app/server ./cmd/server\n\n# Minimal runtime -- from scratch (no OS, ~5MB final image)\nFROM scratch\nCOPY --from=builder /app/server /server\nCOPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/\nEXPOSE 8080\nENTRYPOINT [\"/server\"]\n```\n\nThe final image contains only the binary and CA certificates. No shell, no package manager, no attack surface.\n\n## Python Application\n\n```dockerfile\n# Build stage with full toolchain\nFROM python:3.12-slim AS builder\nWORKDIR /app\nRUN pip install --no-cache-dir poetry\nCOPY pyproject.toml poetry.lock ./\nRUN poetry export -f requirements.txt --output requirements.txt --without-hashes\nCOPY . .\nRUN poetry build --format wheel\n\n# Runtime stage\nFROM python:3.12-slim AS production\nWORKDIR /app\nCOPY --from=builder /app/requirements.txt ./\nRUN pip install --no-cache-dir -r requirements.txt\nCOPY --from=builder /app/dist/*.whl ./\nRUN pip install --no-cache-dir *.whl && rm *.whl\nUSER 1000\nEXPOSE 8000\nCMD [\"gunicorn\", \"myapp:app\", \"--bind\", \"0.0.0.0:8000\"]\n```\n\n## Rust Application\n\n```dockerfile\n# Build with full Rust toolchain\nFROM rust:1.77-slim AS builder\nWORKDIR /app\nCOPY Cargo.toml Cargo.lock ./\n# Cache dependency compilation\nRUN mkdir src && echo 'fn main(){}' > src/main.rs && cargo build --release && rm -rf src\nCOPY src ./src\nRUN cargo build --release\n\n# Distroless runtime (~20MB final image)\nFROM gcr.io/distroless/cc-debian12\nCOPY --from=builder /app/target/release/myapp /\nEXPOSE 8080\nENTRYPOINT [\"/myapp\"]\n```\n\n## Three-Stage Pattern: Build + Test + Production\n\n```dockerfile\n# Stage 1: Dependencies\nFROM node:20-alpine AS deps\nWORKDIR /app\nCOPY package.json package-lock.json ./\nRUN npm ci\n\n# Stage 2: Test\nFROM deps AS test\nCOPY . .\nRUN npm run lint && npm test\n\n# Stage 3: Build\nFROM deps AS builder\nCOPY . .\nRUN npm run build\n\n# Stage 4: Production\nFROM node:20-alpine AS production\nWORKDIR /app\nENV NODE_ENV=production\nCOPY --from=builder /app/dist ./dist\nCOPY --from=deps /app/node_modules ./node_modules\nCOPY --from=builder /app/package.json ./\nUSER node\nCMD [\"node\", \"dist/server.js\"]\n```\n\nBuild with `--target test` in CI to run tests. Build with `--target production` (or no target) for the final image. BuildKit runs the test and builder stages in parallel since they both depend on deps independently.\n\n## Using --target for Different Environments\n\n```bash\n# Development image (includes dev tools, hot reload)\ndocker build --target deps -t myapp:dev .\n\n# Test image (runs lint and tests)\ndocker build --target test -t myapp:test .\n\n# Production image (minimal runtime)\ndocker build --target production -t myapp:latest .\n\n# In docker-compose.yml:\nservices:\n  app:\n    build:\n      context: .\n      target: production\n  app-dev:\n    build:\n      context: .\n      target: deps\n    volumes:\n      - .:/app\n    command: npm run dev\n```\n\n## Copying from External Images\n\n`COPY --from` can reference named stages or external images:\n\n```dockerfile\n# Copy from an external image\nCOPY --from=nginx:1.25-alpine /etc/nginx/nginx.conf /etc/nginx/\nCOPY --from=busybox:1.36 /bin/wget /usr/local/bin/wget\n\n# Copy from a named stage\nCOPY --from=builder /app/dist ./dist\n```\n\nThis is useful for assembling images from multiple sources without building everything in one context.\n\n## Size Comparison\n\n| Application | Single-stage | Multi-stage | Reduction |\n|---|---|---|---|\n| Node.js web app | 1.2 GB | 180 MB | 85% |\n| Go API server | 800 MB | 8 MB (scratch) | 99% |\n| Python ML service | 3.5 GB | 450 MB | 87% |\n| Rust CLI tool | 1.5 GB | 20 MB (distroless) | 99% |\n\n## Best Practices\n\n- Name every stage with `AS name` for readability and `--target` support\n- Put the most-used stage last (it becomes the default build target)\n- Use `scratch` for Go/Rust static binaries, `distroless` for languages needing libc\n- Separate dependency installation from source copy for better caching in each stage\n- Use `--target` in Compose for development vs production images from one Dockerfile\n- Let BuildKit parallelize independent stages for faster builds\n",
+  "sections": [
+    {
+      "id": "builder-runner",
+      "title": "Builder-runner pattern",
+      "body": "The most common multi-stage pattern separates a builder stage (with compilers, dev dependencies, source code) from a runner stage (with only runtime dependencies and compiled output). COPY --from=builder transfers artifacts between stages. The runner stage typically uses a smaller base image (alpine, slim, distroless, or scratch).",
+      "tags": ["builder", "runner", "copy-from", "pattern", "separation"]
+    },
+    {
+      "id": "language-patterns",
+      "title": "Language-specific patterns",
+      "body": "Each language has an optimal multi-stage pattern. Node.js: separate npm ci from source copy, npm ci --omit=dev in production. Go: compile to static binary, use scratch. Python: export requirements from Poetry, pip install in slim image. Rust: cache dependency compilation with dummy main, use distroless. Java: build with Maven/Gradle, run with JRE-only image.",
+      "tags": ["node", "go", "python", "rust", "java", "language-specific"]
+    },
+    {
+      "id": "three-stage",
+      "title": "Build-test-production pattern",
+      "body": "Add a test stage between build and production. The test stage runs linting, unit tests, and security checks. Use --target test in CI to fail fast on code issues. The production stage only runs if tests pass. BuildKit parallelizes independent stages for faster CI pipelines.",
+      "tags": ["test", "ci", "lint", "parallel", "target", "pipeline"]
+    },
+    {
+      "id": "target-environments",
+      "title": "Targeting environments with --target",
+      "body": "Use --target to select which stage to build. Development targets include dev tools and hot reload. Test targets run the test suite. Production targets contain only runtime artifacts. A single Dockerfile serves all environments. Compose uses build.target to select stages per service.",
+      "tags": ["target", "development", "production", "compose", "environment"]
+    },
+    {
+      "id": "size-optimization",
+      "title": "Image size optimization",
+      "body": "Multi-stage builds reduce image size by 50-99%. Use scratch for static binaries (no OS layer). Use distroless for languages needing libc but no shell. Use alpine/slim for languages needing a package manager. Combine with .dockerignore and layer ordering from [[docker/images/build]] for maximum reduction.",
+      "tags": ["size", "optimization", "scratch", "distroless", "alpine", "slim"]
+    }
+  ],
+  "links": [
+    { "uri": "docker/images", "context": "Parent skill for the full image lifecycle" },
+    { "uri": "docker/images/build", "context": "General Dockerfile authoring and build commands" },
+    { "uri": "docker/images/push", "context": "Push optimized multi-stage images to registries" },
+    { "uri": "docker/compose", "context": "Compose build.target selects stages for different services" },
+    { "uri": "docker/best-practices", "context": "Dockerfile and image optimization best practices" }
+  ],
+  "related": [
+    { "uri": "docker/images/build", "relation": "refines", "note": "Multi-stage is an advanced build technique built on core Dockerfile skills" },
+    { "uri": "docker/best-practices", "relation": "see-also", "note": "Best practices guide covers multi-stage alongside other optimization techniques" },
+    { "uri": "docker/images/push", "relation": "sequence", "note": "Optimized images from multi-stage builds are pushed to registries" }
+  ],
+  "scripts": [
+    {
+      "id": "multi-stage-build",
+      "name": "Multi-Stage Build",
+      "description": "Build a Docker image using a specific target stage from a multi-stage Dockerfile",
+      "lang": "bash",
+      "runtime": "docker>=20",
+      "inline": "DOCKER_BUILDKIT=1 docker build --target \"${TARGET_STAGE}\" ${DOCKERFILE_PATH:+-f \"$DOCKERFILE_PATH\"} -t \"${DOCKER_IMAGE}:${DOCKER_TAG}\" --progress=plain \"${BUILD_CONTEXT:-.}\" && echo '' && echo \"Built ${DOCKER_IMAGE}:${DOCKER_TAG} from stage '${TARGET_STAGE}'\" && docker images \"${DOCKER_IMAGE}:${DOCKER_TAG}\" --format 'Size: {{.Size}}'",
+      "env": {
+        "DOCKER_IMAGE": { "required": true, "secret": false, "description": "Image repository name" },
+        "DOCKER_TAG": { "required": true, "secret": false, "description": "Image tag" },
+        "TARGET_STAGE": { "required": true, "secret": false, "description": "Target stage name (e.g. production, builder, test)" },
+        "DOCKERFILE_PATH": { "required": false, "secret": false, "description": "Path to Dockerfile (default: ./Dockerfile)" },
+        "BUILD_CONTEXT": { "required": false, "secret": false, "description": "Build context directory" }
+      },
+      "packages": ["docker", "buildkit"]
+    },
+    {
+      "id": "compare-stage-sizes",
+      "name": "Compare Stage Sizes",
+      "description": "Build multiple stages and compare their image sizes to verify multi-stage optimization",
+      "lang": "bash",
+      "runtime": "docker>=20",
+      "inline": "echo '=== Building stages for size comparison ===' && echo '' && for STAGE in $(echo \"$STAGES\" | tr ',' ' '); do echo \"Building stage: $STAGE\" && DOCKER_BUILDKIT=1 docker build --target \"$STAGE\" -t \"${DOCKER_IMAGE}:stage-${STAGE}\" -q \"${BUILD_CONTEXT:-.}\" 2>/dev/null && echo \"  $STAGE: $(docker images \"${DOCKER_IMAGE}:stage-${STAGE}\" --format '{{.Size}}')\" && echo ''; done && echo '=== Size Summary ===' && docker images --filter \"reference=${DOCKER_IMAGE}:stage-*\" --format 'table {{.Tag}}\\t{{.Size}}'",
+      "env": {
+        "DOCKER_IMAGE": { "required": true, "secret": false, "description": "Image repository name for comparison builds" },
+        "STAGES": { "required": true, "secret": false, "description": "Comma-separated stage names to compare (e.g. builder,test,production)" },
+        "BUILD_CONTEXT": { "required": false, "secret": false, "description": "Build context directory" }
+      },
+      "packages": ["docker", "buildkit"]
+    },
+    {
+      "id": "generate-multi-stage",
+      "name": "Generate Multi-Stage Dockerfile",
+      "description": "Generate a multi-stage Dockerfile template for common language stacks",
+      "lang": "bash",
+      "runtime": "bash>=4",
+      "inline": "case \"$LANGUAGE\" in\n  node|nodejs)\n    cat <<'DOCKERFILE'\n# Stage 1: Dependencies\nFROM node:20-alpine AS deps\nWORKDIR /app\nCOPY package.json package-lock.json ./\nRUN npm ci\n\n# Stage 2: Build\nFROM deps AS builder\nCOPY . .\nRUN npm run build\n\n# Stage 3: Production\nFROM node:20-alpine AS production\nWORKDIR /app\nENV NODE_ENV=production\nCOPY --from=builder /app/dist ./dist\nCOPY package.json package-lock.json ./\nRUN npm ci --omit=dev\nUSER node\nEXPOSE 3000\nCMD [\"node\", \"dist/server.js\"]\nDOCKERFILE\n    ;;\n  go|golang)\n    cat <<'DOCKERFILE'\nFROM golang:1.22-alpine AS builder\nWORKDIR /app\nCOPY go.mod go.sum ./\nRUN go mod download\nCOPY . .\nRUN CGO_ENABLED=0 GOOS=linux go build -ldflags='-w -s' -o /app/server ./cmd/server\n\nFROM scratch\nCOPY --from=builder /app/server /server\nCOPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/\nEXPOSE 8080\nENTRYPOINT [\"/server\"]\nDOCKERFILE\n    ;;\n  python)\n    cat <<'DOCKERFILE'\nFROM python:3.12-slim AS builder\nWORKDIR /app\nCOPY requirements.txt ./\nRUN pip install --no-cache-dir --prefix=/install -r requirements.txt\nCOPY . .\n\nFROM python:3.12-slim AS production\nWORKDIR /app\nCOPY --from=builder /install /usr/local\nCOPY --from=builder /app .\nUSER 1000\nEXPOSE 8000\nCMD [\"gunicorn\", \"myapp:app\", \"--bind\", \"0.0.0.0:8000\"]\nDOCKERFILE\n    ;;\n  rust)\n    cat <<'DOCKERFILE'\nFROM rust:1.77-slim AS builder\nWORKDIR /app\nCOPY Cargo.toml Cargo.lock ./\nRUN mkdir src && echo 'fn main(){}' > src/main.rs && cargo build --release && rm -rf src\nCOPY src ./src\nRUN cargo build --release\n\nFROM gcr.io/distroless/cc-debian12\nCOPY --from=builder /app/target/release/myapp /\nEXPOSE 8080\nENTRYPOINT [\"/myapp\"]\nDOCKERFILE\n    ;;\n  *)\n    echo \"Unsupported language: $LANGUAGE. Supported: node, go, python, rust\" >&2\n    exit 1\n    ;;\nesac",
+      "env": {
+        "LANGUAGE": { "required": true, "secret": false, "description": "Language/stack: node, go, python, rust" }
+      }
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "context": { "type": "string", "description": "Build context directory path" },
+        "dockerfile": { "type": "string", "description": "Path to multi-stage Dockerfile" },
+        "tag": { "type": "string", "description": "Image tag in repository:tag format" },
+        "targetStage": { "type": "string", "description": "Stage name to build (e.g. production, test, builder)" },
+        "language": { "type": "string", "enum": ["node", "go", "python", "rust", "java"], "description": "Language for template generation" },
+        "stages": { "type": "array", "items": { "type": "string" }, "description": "Stage names to compare for size optimization" }
+      },
+      "required": ["context", "tag"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "imageId": { "type": "string", "description": "SHA256 digest of the built image" },
+        "tag": { "type": "string", "description": "Full image tag" },
+        "size": { "type": "string", "description": "Final image size" },
+        "targetStage": { "type": "string", "description": "Stage that was built" },
+        "stageComparison": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "stage": { "type": "string" },
+              "size": { "type": "string" }
+            }
+          },
+          "description": "Size comparison across stages"
+        }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "docker", "reason": "Docker Engine must be installed" },
+    { "uri": "docker/images", "reason": "Parent skill for image lifecycle" },
+    { "uri": "docker/images/build", "reason": "Multi-stage extends core Dockerfile build skills" }
+  ],
+  "more": {
+    "docs": "https://docs.docker.com/build/building/multi-stage/",
+    "best-practices": "https://docs.docker.com/build/building/best-practices/",
+    "distroless": "https://github.com/GoogleContainerTools/distroless"
+  },
+  "frontmatter": {
+    "created": "2026-04-10",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "developers, AI agents, DevOps engineers",
+    "estimated_reading_time": "7 min",
+    "prerequisites": ["docker/images/build"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://github.com/docker",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

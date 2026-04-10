@@ -1,0 +1,179 @@
+{
+  "name": "create",
+  "version": "1.0.0",
+  "uri": "openai/assistants/threads/create",
+  "type": "sub",
+  "context": "Create Assistants API threads with optional initial messages, metadata, and tool resources",
+  "info": "Create a new thread via `POST /v1/threads`. Threads are lightweight conversation containers — create one per conversation or user session. Optionally pass initial messages to pre-load context. Threads support metadata (up to 16 key-value pairs) for tracking session state, user IDs, or topic labels. Tool resources (vector stores for file search, code interpreter files) can be attached at thread creation. The returned thread object contains an `id` used for all subsequent message and run operations. Threads persist until explicitly deleted with `DELETE /v1/threads/{thread_id}`.",
+  "parent": "openai/assistants/threads",
+  "tags": ["create", "thread", "initialize", "messages", "metadata", "assistants"],
+  "aliases": [
+    "create thread",
+    "new thread",
+    "initialize thread",
+    "start conversation thread",
+    "thread create api"
+  ],
+  "triggers": [
+    "create a new assistant thread",
+    "start a new conversation thread",
+    "initialize an openai thread",
+    "create thread with messages"
+  ],
+  "body": "# Create Thread\n\nCreate a new conversation thread for the Assistants API.\n\n## Basic Thread Creation\n\n```javascript\nimport OpenAI from \"openai\";\n\nconst client = new OpenAI();\n\nconst thread = await client.beta.threads.create();\nconsole.log(`Thread ID: ${thread.id}`);\n// Output: Thread ID: thread_abc123\n```\n\n## With Initial Messages\n\nPre-load the thread with messages to provide context:\n\n```javascript\nconst thread = await client.beta.threads.create({\n  messages: [\n    {\n      role: \"user\",\n      content: \"I need help designing a database schema for an e-commerce platform.\",\n    },\n    {\n      role: \"user\",\n      content: \"The platform needs to support products, orders, customers, and inventory tracking.\",\n    },\n  ],\n});\n```\n\n## With Metadata\n\nAttach metadata for tracking and filtering:\n\n```javascript\nconst thread = await client.beta.threads.create({\n  metadata: {\n    user_id: \"user_42\",\n    session_id: \"sess_abc\",\n    topic: \"database-design\",\n    created_by: \"web-app\",\n  },\n});\n```\n\n## With Tool Resources\n\nAttach file search vector stores or code interpreter files at creation:\n\n```javascript\nconst thread = await client.beta.threads.create({\n  messages: [\n    {\n      role: \"user\",\n      content: \"Analyze the attached sales data.\",\n      attachments: [\n        {\n          file_id: \"file-abc123\",\n          tools: [{ type: \"code_interpreter\" }],\n        },\n      ],\n    },\n  ],\n  tool_resources: {\n    file_search: {\n      vector_store_ids: [\"vs_abc123\"],\n    },\n  },\n});\n```\n\n## Adding Messages After Creation\n\n```javascript\nconst message = await client.beta.threads.messages.create(thread.id, {\n  role: \"user\",\n  content: \"What indexing strategies would you recommend?\",\n});\n\nconsole.log(`Message ID: ${message.id}`);\n```\n\n## cURL\n\n```bash\n# Create empty thread\ncurl https://api.openai.com/v1/threads \\\n  -H \"Content-Type: application/json\" \\\n  -H \"Authorization: Bearer $OPENAI_API_KEY\" \\\n  -H \"OpenAI-Beta: assistants=v2\" \\\n  -d '{}'\n\n# Create thread with messages\ncurl https://api.openai.com/v1/threads \\\n  -H \"Content-Type: application/json\" \\\n  -H \"Authorization: Bearer $OPENAI_API_KEY\" \\\n  -H \"OpenAI-Beta: assistants=v2\" \\\n  -d '{\n    \"messages\": [\n      {\"role\": \"user\", \"content\": \"Help me with database design.\"}\n    ]\n  }'\n```\n\n## Thread Object Response\n\n```json\n{\n  \"id\": \"thread_abc123\",\n  \"object\": \"thread\",\n  \"created_at\": 1700000000,\n  \"metadata\": {},\n  \"tool_resources\": {}\n}\n```\n",
+  "sections": [
+    {
+      "id": "basic-creation",
+      "title": "Basic creation",
+      "body": "Call `client.beta.threads.create()` with no arguments for an empty thread. The response contains `id` (thread identifier), `created_at` (unix timestamp), `metadata` (empty object), and `tool_resources`. The thread ID is required for all subsequent operations: adding messages, creating runs, and reading responses.",
+      "tags": ["create", "empty", "basic", "thread-id"]
+    },
+    {
+      "id": "initial-messages",
+      "title": "Initial messages",
+      "body": "Pass a `messages` array to pre-load the thread. Each message needs `role` (\"user\") and `content` (string or array of content parts). Messages can include `attachments` with `file_id` and `tools` array. This is useful for providing context before the first run, such as user requirements or uploaded file references.",
+      "tags": ["messages", "preload", "context", "attachments"]
+    },
+    {
+      "id": "metadata",
+      "title": "Thread metadata",
+      "body": "The `metadata` field accepts up to 16 key-value pairs (keys max 64 chars, values max 512 chars). Use metadata to track user IDs, session identifiers, topic labels, or any application-specific state. Metadata is returned with thread retrieval and can be updated via `client.beta.threads.update()`.",
+      "tags": ["metadata", "key-value", "tracking", "state"]
+    },
+    {
+      "id": "tool-resources",
+      "title": "Tool resources",
+      "body": "Attach tool resources at thread creation for file search and code interpreter. For file search: `tool_resources.file_search.vector_store_ids` (array of vector store IDs). For code interpreter: `tool_resources.code_interpreter.file_ids` (array of file IDs). These resources are available to all runs on the thread.",
+      "tags": ["tool-resources", "vector-store", "file-search", "code-interpreter"]
+    }
+  ],
+  "links": [
+    { "uri": "openai/assistants/threads", "context": "Parent skill — thread management overview" },
+    { "uri": "openai/assistants/threads/run", "context": "Execute runs on created threads" },
+    { "uri": "openai/assistants", "context": "Assistants API overview and assistant creation" }
+  ],
+  "related": [
+    { "uri": "openai/assistants/threads/run", "relation": "next-step", "note": "After creating a thread and adding messages, create a run to execute the assistant" }
+  ],
+  "scripts": [
+    {
+      "id": "create-thread",
+      "name": "Create Thread",
+      "description": "Create a new Assistants API thread with optional initial message",
+      "lang": "javascript",
+      "runtime": "node>=18",
+      "inline": "import OpenAI from \"openai\";\n\nconst client = new OpenAI();\n\nconst userMessage = process.env.USER_MESSAGE;\nconst metadata = process.env.THREAD_METADATA ? JSON.parse(process.env.THREAD_METADATA) : undefined;\n\nconst createParams = {};\n\nif (userMessage) {\n  createParams.messages = [\n    { role: \"user\", content: userMessage },\n  ];\n}\n\nif (metadata) {\n  createParams.metadata = metadata;\n}\n\nconst thread = await client.beta.threads.create(createParams);\n\nconsole.log(JSON.stringify({\n  threadId: thread.id,\n  createdAt: thread.created_at,\n  metadata: thread.metadata,\n}, null, 2));",
+      "env": {
+        "OPENAI_API_KEY": { "required": true, "secret": true, "description": "OpenAI API key" },
+        "USER_MESSAGE": { "required": false, "description": "Initial user message to add to the thread" },
+        "THREAD_METADATA": { "required": false, "description": "JSON string of metadata key-value pairs" }
+      },
+      "packages": ["openai"]
+    },
+    {
+      "id": "create-thread-curl",
+      "name": "Create Thread via cURL",
+      "description": "Create a thread using the REST API directly",
+      "lang": "bash",
+      "runtime": "bash",
+      "inline": "curl -s https://api.openai.com/v1/threads \\\n  -H \"Content-Type: application/json\" \\\n  -H \"Authorization: Bearer $OPENAI_API_KEY\" \\\n  -H \"OpenAI-Beta: assistants=v2\" \\\n  -d \"{\n    \\\"messages\\\": [\n      {\\\"role\\\": \\\"user\\\", \\\"content\\\": \\\"${USER_MESSAGE:-Hello!}\\\"}\n    ]\n  }\"",
+      "env": {
+        "OPENAI_API_KEY": { "required": true, "secret": true, "description": "OpenAI API key" },
+        "USER_MESSAGE": { "required": false, "description": "Initial user message" }
+      }
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "messages": {
+          "type": "array",
+          "description": "Optional initial messages to pre-load the thread",
+          "items": {
+            "type": "object",
+            "properties": {
+              "role": { "type": "string", "enum": ["user"], "description": "Message role (only 'user' for initial messages)" },
+              "content": {
+                "oneOf": [
+                  { "type": "string" },
+                  { "type": "array", "items": { "type": "object" } }
+                ],
+                "description": "Message content (text or array of content parts)"
+              },
+              "attachments": {
+                "type": "array",
+                "description": "File attachments with tool bindings",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "file_id": { "type": "string" },
+                    "tools": { "type": "array", "items": { "type": "object" } }
+                  }
+                }
+              }
+            },
+            "required": ["role", "content"]
+          }
+        },
+        "metadata": {
+          "type": "object",
+          "description": "Up to 16 key-value pairs for thread metadata"
+        },
+        "tool_resources": {
+          "type": "object",
+          "description": "Tool resources to attach to the thread",
+          "properties": {
+            "file_search": {
+              "type": "object",
+              "properties": {
+                "vector_store_ids": { "type": "array", "items": { "type": "string" }, "maxItems": 1 }
+              }
+            },
+            "code_interpreter": {
+              "type": "object",
+              "properties": {
+                "file_ids": { "type": "array", "items": { "type": "string" }, "maxItems": 20 }
+              }
+            }
+          }
+        }
+      }
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Thread ID (e.g. thread_abc123)" },
+        "object": { "type": "string", "const": "thread" },
+        "created_at": { "type": "integer", "description": "Unix timestamp of creation" },
+        "metadata": { "type": "object", "description": "Thread metadata" },
+        "tool_resources": { "type": "object", "description": "Attached tool resources" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "openai", "reason": "Requires an OpenAI API key" },
+    { "uri": "openai/assistants", "reason": "Part of the Assistants API" },
+    { "uri": "openai/assistants/threads", "reason": "Sub-skill of threads" }
+  ],
+  "more": {
+    "docs": "https://platform.openai.com/docs/api-reference/threads/createThread",
+    "guide": "https://platform.openai.com/docs/assistants/overview"
+  },
+  "frontmatter": {
+    "created": "2026-04-10",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "3 min",
+    "prerequisites": ["openai", "openai/assistants"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://github.com/openai/openai-node",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

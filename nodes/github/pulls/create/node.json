@@ -1,0 +1,116 @@
+{
+  "name": "create",
+  "version": "1.0.0",
+  "uri": "github/pulls/create",
+  "type": "sub",
+  "context": "Create pull requests via POST /repos/{owner}/{repo}/pulls or gh pr create",
+  "info": "Create pull requests from feature branches or forks into a base branch. Supports draft PRs, closing keywords for auto-linking [[github/issues]], reviewer assignment, and label application. Use the GitHub REST API `POST /repos/{owner}/{repo}/pulls` via @octokit/rest or the `gh pr create` CLI command. PRs trigger CI checks from [[github/actions]] and are gated by branch protection rules in [[github/repos/settings]]. See [[github/auth]] for authentication.",
+  "parent": "github/pulls",
+  "tags": ["create", "new-pr", "draft", "branch", "fork", "closing-keywords"],
+  "aliases": [
+    "create pull request",
+    "open a pr",
+    "new pr",
+    "gh pr create",
+    "submit pr",
+    "open pull request"
+  ],
+  "triggers": [
+    "create a pull request",
+    "open a new PR",
+    "submit a pull request",
+    "gh pr create",
+    "create PR from branch"
+  ],
+  "body": "# Create Pull Request\n\nCreate a PR to propose changes from a head branch into a base branch.\n\n## gh CLI\n\n```bash\n# Interactive PR creation\ngh pr create\n\n# Non-interactive with all options\ngh pr create \\\n  --title \"feat: add user authentication\" \\\n  --body \"## Summary\nAdds JWT-based authentication with refresh tokens.\n\nFixes #42\n\n## Test Plan\n- [x] Unit tests pass\n- [x] Integration tests pass\" \\\n  --base main \\\n  --head feature/auth \\\n  --reviewer reviewer-1,reviewer-2 \\\n  --assignee @me \\\n  --label enhancement,auth \\\n  --milestone \"v2.0\"\n\n# Create a draft PR\ngh pr create --title \"WIP: new feature\" --body \"Work in progress\" --draft\n\n# Create from a fork\ngh pr create --title \"Fix typo\" --body \"Fixes typo in README\" --repo upstream/repo\n```\n\n## REST API\n\n```bash\n# Create via curl\ncurl -X POST \\\n  -H \"Authorization: Bearer $GITHUB_TOKEN\" \\\n  -H \"Accept: application/vnd.github+json\" \\\n  https://api.github.com/repos/owner/repo/pulls \\\n  -d '{\n    \"title\": \"feat: add user authentication\",\n    \"body\": \"Adds JWT-based authentication.\\n\\nFixes #42\",\n    \"head\": \"feature/auth\",\n    \"base\": \"main\",\n    \"draft\": false\n  }'\n```\n\n```javascript\nimport { Octokit } from \"@octokit/rest\";\nconst octokit = new Octokit({ auth: process.env.GITHUB_TOKEN });\n\n// Create PR\nconst { data: pr } = await octokit.pulls.create({\n  owner: \"my-org\",\n  repo: \"my-project\",\n  title: \"feat: add user authentication\",\n  body: \"## Summary\\nAdds JWT-based authentication.\\n\\nFixes #42\\n\\n## Test Plan\\n- [x] Unit tests pass\\n- [x] Integration tests pass\",\n  head: \"feature/auth\",\n  base: \"main\",\n  draft: false,\n});\nconsole.log(pr.number, pr.html_url, pr.mergeable);\n\n// Request reviewers after creation\nawait octokit.pulls.requestReviewers({\n  owner: \"my-org\",\n  repo: \"my-project\",\n  pull_number: pr.number,\n  reviewers: [\"reviewer-1\", \"reviewer-2\"],\n  team_reviewers: [\"security-team\"],\n});\n\n// Add labels\nawait octokit.issues.addLabels({\n  owner: \"my-org\",\n  repo: \"my-project\",\n  issue_number: pr.number,  // PRs use issue number for labels\n  labels: [\"enhancement\", \"auth\"],\n});\n```\n\n## Cross-Fork PRs\n\nWhen creating a PR from a fork, use `username:branch` as the head:\n\n```javascript\nconst { data: pr } = await octokit.pulls.create({\n  owner: \"upstream-org\",\n  repo: \"upstream-repo\",\n  title: \"Fix: resolve race condition\",\n  head: \"my-username:fix/race-condition\",\n  base: \"main\",\n});\n```\n\n## Closing Keywords\n\nInclude these in the PR body to auto-close [[github/issues]] on merge:\n- `Fixes #42`, `Closes #42`, `Resolves #42`\n- Multiple: `Fixes #42, fixes #43`\n- Cross-repo: `Fixes owner/repo#42`\n",
+  "sections": [
+    {
+      "id": "gh-cli",
+      "title": "gh pr create",
+      "body": "Use `gh pr create` for the simplest PR creation workflow. Supports `--title`, `--body`, `--base`, `--head`, `--draft`, `--reviewer`, `--assignee`, `--label`, and `--milestone` flags. Omit flags for interactive mode. Automatically detects the current branch as head and the default branch as base. Reads PR templates from `.github/PULL_REQUEST_TEMPLATE.md`.",
+      "tags": ["gh", "cli", "create", "interactive", "flags"]
+    },
+    {
+      "id": "rest-api",
+      "title": "REST API creation",
+      "body": "POST to `/repos/{owner}/{repo}/pulls` with `title`, `head`, `base`, and optional `body`, `draft`, `maintainer_can_modify`. The response includes `number`, `html_url`, `mergeable`, `mergeable_state`, and `state`. For cross-fork PRs, head format is `username:branch`. Labels and reviewers are set via separate API calls after creation.",
+      "tags": ["rest", "api", "post", "endpoint", "response"]
+    },
+    {
+      "id": "draft-prs",
+      "title": "Draft pull requests",
+      "body": "Set `draft: true` to create a work-in-progress PR that cannot be merged. Draft PRs still trigger CI checks from [[github/actions]] but signal to reviewers that the code is not ready. Convert from draft to ready-for-review with `gh pr ready 42` or `octokit.pulls.update({ draft: false })`.",
+      "tags": ["draft", "wip", "ready-for-review", "work-in-progress"]
+    }
+  ],
+  "links": [
+    { "uri": "github/pulls", "context": "Parent skill for pull request management" },
+    { "uri": "github/pulls/review", "context": "Request reviews after creating a PR" },
+    { "uri": "github/pulls/merge", "context": "Merge the PR after approval" },
+    { "uri": "github/issues", "context": "Close issues with PR closing keywords" },
+    { "uri": "github/auth", "context": "Authentication required for PR creation" },
+    { "uri": "github/actions", "context": "CI checks triggered on PR creation" }
+  ],
+  "related": [
+    { "uri": "github/pulls", "relation": "parent", "note": "This is a sub-skill of the pulls skill" },
+    { "uri": "github/pulls/review", "relation": "next-step", "note": "After creation, request reviews" },
+    { "uri": "github/issues", "relation": "see-also", "note": "PRs can auto-close issues with closing keywords" }
+  ],
+  "scripts": [
+    {
+      "id": "create-pr",
+      "name": "Create Pull Request",
+      "description": "Create a pull request using gh CLI",
+      "lang": "bash",
+      "runtime": "gh>=2.0",
+      "entry": "./scripts/create-pr.sh",
+      "env": {
+        "GITHUB_TOKEN": { "required": true, "secret": true, "description": "GitHub personal access token" }
+      },
+      "packages": []
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "owner": { "type": "string", "description": "Repository owner" },
+        "repo": { "type": "string", "description": "Repository name" },
+        "title": { "type": "string", "description": "PR title" },
+        "body": { "type": "string", "description": "PR body (markdown)" },
+        "head": { "type": "string", "description": "Source branch or user:branch" },
+        "base": { "type": "string", "description": "Target branch" },
+        "draft": { "type": "boolean", "default": false, "description": "Create as draft PR" }
+      },
+      "required": ["owner", "repo", "title", "head", "base"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "prNumber": { "type": "integer", "description": "Pull request number" },
+        "prUrl": { "type": "string", "description": "HTML URL" },
+        "state": { "type": "string", "description": "PR state" }
+      }
+    }
+  },
+  "more": {
+    "docs": "https://docs.github.com/en/rest/pulls/pulls#create-a-pull-request",
+    "gh-cli": "https://cli.github.com/manual/gh_pr_create"
+  },
+  "frontmatter": {
+    "created": "2026-04-10",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "3 min",
+    "prerequisites": ["github/auth", "github/pulls"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://github.com/octokit",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

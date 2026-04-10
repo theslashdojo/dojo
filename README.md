@@ -227,7 +227,7 @@ Full schema: [`schema/node.schema.json`](schema/node.schema.json)
 
 ## Authoring Nodes
 
-1. Start from the [spec](../SPEC.md) for the full format reference
+1. Start from the [spec](https://github.com/theslashdojo/dojo/blob/main/SPEC.md) for the full format reference
 2. Use [`nodes/dojo`](nodes/dojo) as the reference tree — it demonstrates all five node types, knowledge-rich manifests, bundled skill packages, and script-backed workflows
 3. Validate against [`schema/node.schema.json`](schema/node.schema.json)
 4. For executable skills, include `SKILL.md`, `agents/`, `scripts/`, and `tests/` as needed
@@ -250,7 +250,7 @@ cd nodes/dojo && node --test validate/tests/validate-node.test.js
 
 ## Spec
 
-The full specification lives at [`/workspaces/Contracts/SPEC.md`](../SPEC.md). It defines:
+The full specification lives at [`SPEC.md`](https://github.com/theslashdojo/dojo/blob/main/SPEC.md). It defines:
 
 - Section 1: Overview and design principles
 - Section 2: `node.json` manifest schema and field reference

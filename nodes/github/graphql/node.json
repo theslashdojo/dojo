@@ -1,0 +1,96 @@
+{
+  "name": "graphql",
+  "version": "1.0.0",
+  "uri": "github/graphql",
+  "type": "standard",
+  "context": "GitHub GraphQL API v4 — schema exploration, queries, mutations, and connections",
+  "info": "The GitHub GraphQL API v4 provides a single endpoint (`https://api.github.com/graphql`) for deeply nested, efficient queries across GitHub resources. Unlike [[github/rest]] where you may need multiple round-trips, GraphQL lets you fetch exactly the fields you need in a single request. It supports introspection for schema discovery, connections for paginated relationships, mutations for write operations, and fragments for reusable field selections. Rate limiting uses a point-based system (5,000 points/hour). See [[github/auth]] for authentication, [[github/rate-limits]] for point calculations, and [[github/pagination]] for cursor-based traversal.",
+  "parent": "github",
+  "tags": ["graphql", "api", "v4", "queries", "mutations", "schema", "connections"],
+  "aliases": [
+    "github graphql api",
+    "graphql api v4",
+    "github api v4",
+    "github graphql",
+    "github gql",
+    "graphql endpoint"
+  ],
+  "triggers": [
+    "use the github graphql api",
+    "write a github graphql query",
+    "query github with graphql",
+    "github graphql mutation",
+    "explore the github schema"
+  ],
+  "body": "# GitHub GraphQL API v4\n\nThe GraphQL API provides a single endpoint that returns exactly the data you request. Instead of hitting multiple REST endpoints, you compose a query that fetches nested resources in one request.\n\n## Single Endpoint\n\nAll GraphQL requests go to `POST https://api.github.com/graphql` with a JSON body containing your query.\n\n```bash\ncurl -X POST \\\n  -H \"Authorization: Bearer $GITHUB_TOKEN\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"query\": \"{ viewer { login name } }\"}' \\\n  https://api.github.com/graphql\n```\n\n## Basic Query\n\n```graphql\nquery {\n  repository(owner: \"octokit\", name: \"rest.js\") {\n    name\n    description\n    stargazerCount\n    defaultBranchRef {\n      name\n    }\n    issues(first: 5, states: OPEN, orderBy: {field: CREATED_AT, direction: DESC}) {\n      totalCount\n      nodes {\n        number\n        title\n        author { login }\n        labels(first: 5) {\n          nodes { name color }\n        }\n      }\n    }\n  }\n}\n```\n\n```javascript\nimport { graphql } from \"@octokit/graphql\";\n\nconst graphqlWithAuth = graphql.defaults({\n  headers: { authorization: `token ${process.env.GITHUB_TOKEN}` },\n});\n\nconst { repository } = await graphqlWithAuth(`\n  query($owner: String!, $name: String!) {\n    repository(owner: $owner, name: $name) {\n      name\n      stargazerCount\n      issues(first: 10, states: OPEN) {\n        totalCount\n        nodes { number title }\n        pageInfo { hasNextPage endCursor }\n      }\n    }\n  }\n`, { owner: \"octokit\", name: \"rest.js\" });\n```\n\n## Mutations\n\nWrite operations use mutations:\n\n```graphql\nmutation($input: CreateIssueInput!) {\n  createIssue(input: $input) {\n    issue {\n      number\n      url\n      title\n    }\n  }\n}\n```\n\n```javascript\nconst { createIssue } = await graphqlWithAuth(`\n  mutation($input: CreateIssueInput!) {\n    createIssue(input: $input) {\n      issue { number url title }\n    }\n  }\n`, {\n  input: {\n    repositoryId: \"R_abc123\",\n    title: \"Bug: login fails\",\n    body: \"Steps to reproduce...\",\n    labelIds: [\"LA_abc123\"],\n  },\n});\n```\n\n## Schema Introspection\n\n```graphql\n# Discover available types\nquery {\n  __schema {\n    types {\n      name\n      kind\n      description\n    }\n  }\n}\n\n# Explore a specific type\nquery {\n  __type(name: \"Repository\") {\n    name\n    fields {\n      name\n      type { name kind }\n      description\n    }\n  }\n}\n```\n\nUse the GitHub GraphQL Explorer at `https://docs.github.com/en/graphql/overview/explorer` for interactive schema exploration.\n\n## Connections (Pagination)\n\nRelationships use the Relay connection pattern. See [[github/pagination]] for cursor-based traversal.\n\n```graphql\nquery($cursor: String) {\n  repository(owner: \"octokit\", name: \"rest.js\") {\n    issues(first: 100, after: $cursor) {\n      totalCount\n      pageInfo {\n        hasNextPage\n        endCursor\n      }\n      nodes {\n        number\n        title\n      }\n    }\n  }\n}\n```\n\n## Fragments\n\nReuse field selections across queries:\n\n```graphql\nfragment IssueFields on Issue {\n  number\n  title\n  state\n  author { login }\n  createdAt\n}\n\nquery {\n  repository(owner: \"octokit\", name: \"rest.js\") {\n    open: issues(first: 5, states: OPEN) {\n      nodes { ...IssueFields }\n    }\n    closed: issues(first: 5, states: CLOSED) {\n      nodes { ...IssueFields }\n    }\n  }\n}\n```\n\n## Rate Limiting\n\nGraphQL uses a point-based system (not request count). See [[github/rate-limits]] for details.\n\n```graphql\nquery {\n  rateLimit {\n    limit\n    cost\n    remaining\n    resetAt\n  }\n}\n```\n",
+  "sections": [
+    {
+      "id": "queries",
+      "title": "Queries and variables",
+      "body": "Queries read data. Use variables (`$owner: String!`) for parameterized, reusable queries. Pass variables as a separate JSON object alongside the query string. Use aliases to fetch the same field with different arguments in a single query. Always request only the fields you need to minimize response size and rate limit cost.",
+      "tags": ["queries", "variables", "aliases", "fields"]
+    },
+    {
+      "id": "mutations",
+      "title": "Mutations",
+      "body": "Mutations create, update, or delete resources. They take typed input objects (`CreateIssueInput`, `AddCommentInput`) and return the modified resource. Common mutations: `createIssue`, `addComment`, `mergePullRequest`, `createPullRequest`, `addReaction`. Mutation inputs often require node IDs — fetch these via queries first.",
+      "tags": ["mutations", "create", "update", "delete", "input-types", "node-ids"]
+    },
+    {
+      "id": "connections",
+      "title": "Connections and pagination",
+      "body": "Relationships use the Relay connection pattern with `first`/`after` (forward) or `last`/`before` (backward) arguments. Connections return `pageInfo { hasNextPage endCursor }` and either `nodes` (flat list) or `edges` (with cursor per item). Maximum `first`/`last` value is 100. See [[github/pagination]] for traversal patterns.",
+      "tags": ["connections", "relay", "cursor", "pageInfo", "edges", "nodes"]
+    },
+    {
+      "id": "introspection",
+      "title": "Schema introspection",
+      "body": "Use `__schema` and `__type` queries to explore available types, fields, and arguments at runtime. The GraphQL Explorer provides an interactive IDE with autocomplete and documentation. Introspection is essential for discovering node IDs, available mutations, and connection arguments.",
+      "tags": ["introspection", "schema", "explorer", "types", "documentation"]
+    },
+    {
+      "id": "rate-limit-cost",
+      "title": "Rate limit cost calculation",
+      "body": "Each query costs points based on the number of nodes it could return. A query requesting `first: 100` on a connection costs 100 points regardless of actual results. Nested connections multiply: `first: 100` issues each with `first: 10` labels costs 100 + (100 * 10) = 1,100 points. Query the `rateLimit` field to check cost and remaining budget. See [[github/rate-limits]].",
+      "tags": ["rate-limit", "points", "cost", "budget", "nested-connections"]
+    }
+  ],
+  "links": [
+    { "uri": "github/auth", "context": "Authentication for GraphQL API access" },
+    { "uri": "github/rest", "context": "REST API v3 as an alternative to GraphQL" },
+    { "uri": "github/rate-limits", "context": "Point-based rate limiting for GraphQL" },
+    { "uri": "github/pagination", "context": "Cursor-based pagination for GraphQL connections" },
+    { "uri": "github/repos", "context": "Repository queries and mutations" },
+    { "uri": "github/pulls", "context": "Pull request queries and mutations" },
+    { "uri": "github/issues", "context": "Issue queries and mutations" },
+    { "uri": "github/actions", "context": "Actions data accessible via GraphQL" }
+  ],
+  "related": [
+    { "uri": "github/rest", "relation": "alternative", "note": "REST v3 is simpler for single-resource CRUD; GraphQL excels at nested data" },
+    { "uri": "github/auth", "relation": "prerequisite", "note": "A Bearer token is required for all GraphQL requests" },
+    { "uri": "github/rate-limits", "relation": "see-also", "note": "GraphQL uses point-based rate limiting, not request counting" },
+    { "uri": "github/pagination", "relation": "see-also", "note": "GraphQL uses cursor-based pagination via the Relay connection pattern" }
+  ],
+  "more": {
+    "docs": "https://docs.github.com/en/graphql",
+    "explorer": "https://docs.github.com/en/graphql/overview/explorer",
+    "schema": "https://docs.github.com/en/graphql/reference",
+    "octokit": "https://github.com/octokit/graphql.js"
+  },
+  "frontmatter": {
+    "created": "2026-04-10",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "developers, AI agents, integrators",
+    "estimated_reading_time": "6 min",
+    "prerequisites": ["github/auth"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://github.com/octokit/graphql.js",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

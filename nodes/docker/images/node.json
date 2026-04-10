@@ -1,0 +1,182 @@
+{
+  "name": "images",
+  "version": "1.0.0",
+  "uri": "docker/images",
+  "type": "skill",
+  "context": "Build, tag, push, and manage Docker images with Dockerfiles, BuildKit, and multi-stage builds",
+  "info": "The images skill covers the full lifecycle of Docker images: writing Dockerfiles, building images with docker build or docker buildx, tagging for registries, pushing and pulling from Docker Hub, GHCR, and ECR, and optimizing with multi-stage builds. Docker images are read-only templates composed of ordered filesystem layers. Each Dockerfile instruction produces a layer that is content-addressable and cached. BuildKit is the modern build backend providing parallel stage execution, secret mounts, SSH forwarding, and advanced caching. Image management includes listing, inspecting, pruning dangling images, and scanning for vulnerabilities with docker scout. Sub-skills break down into build (constructing images from Dockerfiles), push (distributing images to registries), and multi-stage (optimizing image size with staged builds).",
+  "parent": "docker",
+  "tags": ["docker", "images", "build", "tag", "push", "pull", "dockerfile", "buildkit", "layer-cache", "multi-stage"],
+  "aliases": [
+    "docker images",
+    "docker image management",
+    "docker image lifecycle",
+    "container images",
+    "image building",
+    "image tagging",
+    "docker image operations",
+    "oci images"
+  ],
+  "triggers": [
+    "work with docker images",
+    "build a docker image",
+    "tag a docker image",
+    "list docker images",
+    "inspect a docker image",
+    "prune docker images",
+    "scan docker image for vulnerabilities",
+    "manage container images"
+  ],
+  "body": "# Docker Images\n\nA Docker image is a read-only, layered filesystem template used to create containers. Images are built from Dockerfiles, tagged with a `repository:tag` identifier, and distributed through registries. Every image is composed of an ordered stack of layers, each produced by a single Dockerfile instruction (`FROM`, `RUN`, `COPY`, etc.). Layers are content-addressable and shared across images that use the same base.\n\n## Image Lifecycle\n\n```\nDockerfile  -->  docker build  -->  local image  -->  docker push  -->  registry\n                                         |                                |\n                                   docker run                       docker pull\n                                         |                                |\n                                     container                     local image\n```\n\n1. **Author** a Dockerfile describing the image contents. See [[docker/images/build]].\n2. **Build** the image from the Dockerfile with `docker build` or `docker buildx build`.\n3. **Tag** the image for the target registry: `docker tag myapp:latest ghcr.io/org/myapp:v1.0`.\n4. **Push** the image to a registry for distribution. See [[docker/images/push]].\n5. **Pull** the image on deployment targets: `docker pull ghcr.io/org/myapp:v1.0`.\n6. **Run** the image as a container. See [[docker/containers]].\n\n## Image Identification\n\nImages are identified by:\n\n- **Repository and tag** — `nginx:1.25-alpine`, `ghcr.io/org/myapp:v2.1.0`\n- **Digest** — immutable SHA256 hash: `nginx@sha256:abc123...` (pinning exact content)\n- **Image ID** — local short SHA: `sha256:d1a364dc548d`\n\nBest practice: use specific version tags in production (`node:20.11.1-alpine`), never `latest`.\n\n## Tagging Strategy\n\nA consistent tagging scheme is essential for reproducible deployments:\n\n| Tag Pattern | Example | Purpose |\n|---|---|---|\n| Semantic version | `v1.2.3` | Release tracking |\n| Git SHA | `abc1234` | Traceability to source |\n| Branch name | `main`, `feature-x` | CI/CD preview builds |\n| `latest` | `latest` | Most recent build (mutable, avoid in prod) |\n| Date-based | `2026-04-10` | Nightly or periodic builds |\n\n```bash\n# Tag an existing image\ndocker tag myapp:latest myapp:v1.2.3\ndocker tag myapp:latest ghcr.io/org/myapp:v1.2.3\ndocker tag myapp:latest ghcr.io/org/myapp:$(git rev-parse --short HEAD)\n```\n\n## Inspecting Images\n\n```bash\n# List local images\ndocker images\ndocker images --filter 'reference=myapp:*'\n\n# Inspect image metadata\ndocker inspect myapp:latest\ndocker inspect --format '{{.Config.Cmd}}' myapp:latest\n\n# View image layers and history\ndocker history myapp:latest\ndocker history --no-trunc myapp:latest\n\n# Check image size\ndocker images --format '{{.Repository}}:{{.Tag}} {{.Size}}' | sort -k2 -h\n```\n\n## Image Pruning\n\nDangling images (untagged layers from previous builds) consume disk space:\n\n```bash\n# Remove dangling images\ndocker image prune\n\n# Remove all unused images (not just dangling)\ndocker image prune -a\n\n# Remove images older than 24 hours\ndocker image prune -a --filter 'until=24h'\n\n# System-wide cleanup (images, containers, volumes, networks)\ndocker system prune -a --volumes\n```\n\n## Vulnerability Scanning\n\n```bash\n# Scan with Docker Scout\ndocker scout cves myapp:latest\ndocker scout quickview myapp:latest\n\n# Compare two image versions\ndocker scout compare myapp:v1.2.2 --to myapp:v1.2.3\n```\n\nIntegrate scanning into CI/CD to catch vulnerabilities before pushing to [[docker/registry]].\n\n## Layer Caching\n\nDocker caches each image layer. If an instruction and its inputs have not changed since the last build, the cached layer is reused. Order Dockerfile instructions from least to most frequently changed to maximize cache hits. See [[docker/images/build]] for detailed caching strategies.\n\n## Multi-Stage Builds\n\nMulti-stage builds use multiple `FROM` statements to separate build-time dependencies from the runtime image, often reducing size by 50-90%. See [[docker/images/multi-stage]] for patterns and examples.\n",
+  "sections": [
+    {
+      "id": "image-lifecycle",
+      "title": "Image lifecycle",
+      "body": "The image lifecycle flows from Dockerfile authoring through build, tag, push, pull, and run. Each step is a distinct operation with its own commands and concerns. The build step converts Dockerfile instructions into layers. Tagging attaches human-readable identifiers. Push distributes to registries. Pull retrieves on target hosts. Run instantiates as a container.",
+      "tags": ["lifecycle", "build", "tag", "push", "pull", "run"]
+    },
+    {
+      "id": "image-identification",
+      "title": "Image identification",
+      "body": "Images are identified by repository:tag pairs, SHA256 digests, or local image IDs. Tags are mutable pointers — the same tag can point to different content over time. Digests are immutable content addresses that guarantee exact content. Use digests in production for reproducibility. Use version tags for human readability.",
+      "tags": ["tag", "digest", "sha256", "image-id", "identification"]
+    },
+    {
+      "id": "tagging-strategy",
+      "title": "Tagging strategy",
+      "body": "Use semantic version tags for releases, git SHAs for traceability, branch names for CI previews, and date-based tags for periodic builds. Avoid relying on latest in production — it is mutable and non-deterministic. Tag images with the full registry path before pushing. Multiple tags can point to the same image digest.",
+      "tags": ["tagging", "semver", "git-sha", "latest", "versioning"]
+    },
+    {
+      "id": "pruning",
+      "title": "Image pruning",
+      "body": "Dangling images are untagged layers left behind by successive builds. Use docker image prune to remove them. Use docker image prune -a to remove all unused images. Filter by age with --filter until=24h. For full cleanup including volumes and networks, use docker system prune -a --volumes. Automate pruning in CI/CD to prevent disk exhaustion.",
+      "tags": ["prune", "cleanup", "dangling", "disk", "system-prune"]
+    },
+    {
+      "id": "vulnerability-scanning",
+      "title": "Vulnerability scanning",
+      "body": "Docker Scout scans images for known CVEs in OS packages and application dependencies. Use docker scout cves for a full report or docker scout quickview for a summary. Compare versions with docker scout compare. Integrate into CI/CD pipelines to block pushes of vulnerable images. Third-party tools include Trivy, Snyk, and Grype.",
+      "tags": ["security", "cves", "scout", "trivy", "snyk", "scanning"]
+    }
+  ],
+  "links": [
+    { "uri": "docker/images/build", "context": "Build images from Dockerfiles with docker build and BuildKit" },
+    { "uri": "docker/images/push", "context": "Push and pull images to and from container registries" },
+    { "uri": "docker/images/multi-stage", "context": "Multi-stage Dockerfile builds for optimized production images" },
+    { "uri": "docker/containers", "context": "Run images as containers" },
+    { "uri": "docker/registry", "context": "Registry configuration, authentication, and management" },
+    { "uri": "docker/compose", "context": "Compose builds and pulls images for multi-service applications" },
+    { "uri": "docker/best-practices", "context": "Dockerfile authoring and image optimization best practices" }
+  ],
+  "related": [
+    { "uri": "docker/containers", "relation": "see-also", "note": "Containers are running instances of images" },
+    { "uri": "docker/registry", "relation": "see-also", "note": "Registries store and distribute images" },
+    { "uri": "docker/compose", "relation": "see-also", "note": "Compose builds and manages images as part of multi-service applications" }
+  ],
+  "scripts": [
+    {
+      "id": "list-images",
+      "name": "List Images",
+      "description": "List local Docker images with optional filtering by repository name",
+      "lang": "bash",
+      "runtime": "docker>=20",
+      "inline": "docker images --format 'table {{.Repository}}\\t{{.Tag}}\\t{{.ID}}\\t{{.Size}}\\t{{.CreatedSince}}' ${FILTER:+--filter \"reference=$FILTER\"}",
+      "env": {
+        "FILTER": { "required": false, "secret": false, "description": "Filter by repository name pattern (e.g. myapp:*)" }
+      }
+    },
+    {
+      "id": "tag-image",
+      "name": "Tag Image",
+      "description": "Tag an existing Docker image with a new repository:tag identifier",
+      "lang": "bash",
+      "runtime": "docker>=20",
+      "inline": "docker tag \"$SOURCE_IMAGE\" \"$TARGET_IMAGE\" && echo \"Tagged $SOURCE_IMAGE as $TARGET_IMAGE\"",
+      "env": {
+        "SOURCE_IMAGE": { "required": true, "secret": false, "description": "Source image in repository:tag format (e.g. myapp:latest)" },
+        "TARGET_IMAGE": { "required": true, "secret": false, "description": "Target image in repository:tag format (e.g. ghcr.io/org/myapp:v1.0)" }
+      }
+    },
+    {
+      "id": "inspect-image",
+      "name": "Inspect Image",
+      "description": "Display detailed metadata for a Docker image including layers, config, and size",
+      "lang": "bash",
+      "runtime": "docker>=20",
+      "inline": "echo '=== Image Details ===' && docker inspect --format 'ID: {{.Id}}\nCreated: {{.Created}}\nSize: {{.Size}} bytes\nArch: {{.Architecture}}/{{.Os}}\nCmd: {{.Config.Cmd}}\nEntrypoint: {{.Config.Entrypoint}}\nExposedPorts: {{json .Config.ExposedPorts}}\nLabels: {{json .Config.Labels}}' \"$IMAGE\" && echo '' && echo '=== Layer History ===' && docker history --no-trunc --format 'table {{.CreatedBy}}\\t{{.Size}}' \"$IMAGE\"",
+      "env": {
+        "IMAGE": { "required": true, "secret": false, "description": "Image to inspect in repository:tag or ID format" }
+      }
+    },
+    {
+      "id": "prune-images",
+      "name": "Prune Images",
+      "description": "Remove dangling or unused Docker images to free disk space",
+      "lang": "bash",
+      "runtime": "docker>=20",
+      "inline": "if [ \"$PRUNE_ALL\" = 'true' ]; then docker image prune -a -f ${OLDER_THAN:+--filter \"until=$OLDER_THAN\"}; else docker image prune -f ${OLDER_THAN:+--filter \"until=$OLDER_THAN\"}; fi && echo '' && echo '=== Remaining Images ===' && docker images --format 'table {{.Repository}}\\t{{.Tag}}\\t{{.Size}}'",
+      "env": {
+        "PRUNE_ALL": { "required": false, "secret": false, "description": "Set to 'true' to remove all unused images, not just dangling (default: false)" },
+        "OLDER_THAN": { "required": false, "secret": false, "description": "Remove images older than this duration (e.g. 24h, 7d)" }
+      }
+    },
+    {
+      "id": "scan-image",
+      "name": "Scan Image",
+      "description": "Scan a Docker image for known CVEs using Docker Scout",
+      "lang": "bash",
+      "runtime": "docker>=20",
+      "inline": "docker scout quickview \"$IMAGE\" && echo '' && echo '=== CVE Details ===' && docker scout cves \"$IMAGE\" --format list ${SEVERITY:+--only-severity \"$SEVERITY\"}",
+      "env": {
+        "IMAGE": { "required": true, "secret": false, "description": "Image to scan in repository:tag format" },
+        "SEVERITY": { "required": false, "secret": false, "description": "Filter by severity: critical, high, medium, low" }
+      }
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "image": { "type": "string", "description": "Image reference in repository:tag or repository@digest format" },
+        "action": { "type": "string", "enum": ["list", "tag", "inspect", "prune", "scan"], "description": "Image operation to perform" },
+        "filter": { "type": "string", "description": "Filter pattern for listing images (e.g. myapp:*)" },
+        "targetTag": { "type": "string", "description": "New tag for tagging operations (e.g. ghcr.io/org/myapp:v1.0)" },
+        "pruneAll": { "type": "boolean", "description": "Whether to prune all unused images or only dangling" }
+      },
+      "required": ["action"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "images": { "type": "array", "items": { "type": "object", "properties": { "repository": { "type": "string" }, "tag": { "type": "string" }, "id": { "type": "string" }, "size": { "type": "string" }, "created": { "type": "string" } } }, "description": "List of images matching the query" },
+        "imageId": { "type": "string", "description": "SHA256 ID of the affected image" },
+        "vulnerabilities": { "type": "object", "properties": { "critical": { "type": "integer" }, "high": { "type": "integer" }, "medium": { "type": "integer" }, "low": { "type": "integer" } }, "description": "CVE counts by severity" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "docker", "reason": "Docker Engine must be installed and running" }
+  ],
+  "more": {
+    "docs": "https://docs.docker.com/engine/reference/commandline/image/",
+    "scout": "https://docs.docker.com/scout/",
+    "buildkit": "https://docs.docker.com/build/buildkit/"
+  },
+  "frontmatter": {
+    "created": "2026-04-10",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "developers, AI agents, DevOps engineers",
+    "estimated_reading_time": "6 min",
+    "prerequisites": [],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://github.com/docker",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

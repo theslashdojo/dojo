@@ -1,0 +1,181 @@
+{
+  "name": "stream",
+  "version": "1.0.0",
+  "uri": "openai/chat/stream",
+  "type": "sub",
+  "context": "Streaming chat completions via Server-Sent Events for real-time token-by-token output",
+  "info": "Streaming chat completions deliver tokens incrementally via Server-Sent Events (SSE) as the model generates them. Set `stream: true` in the request to `POST /v1/chat/completions` and receive a stream of `data:` events, each containing a chunk with `choices[0].delta.content`. This reduces time-to-first-token dramatically — the client sees output within milliseconds instead of waiting seconds for the full response. The Node.js SDK returns an async iterable; iterate with `for await (const chunk of stream)`. Streaming is essential for chat UIs, CLIs with live output, and any latency-sensitive application. The final chunk contains `finish_reason` indicating completion. Token usage is available in the final chunk when `stream_options: { include_usage: true }` is set.",
+  "parent": "openai/chat",
+  "tags": ["streaming", "sse", "server-sent-events", "real-time", "delta", "chunks", "chat"],
+  "aliases": [
+    "streaming completion",
+    "stream chat",
+    "openai streaming",
+    "sse chat",
+    "real-time completion",
+    "token streaming",
+    "incremental response",
+    "stream gpt response"
+  ],
+  "triggers": [
+    "stream openai chat responses",
+    "use server-sent events with openai",
+    "get real-time token output",
+    "stream gpt-4o response",
+    "enable streaming completions",
+    "token-by-token output from openai"
+  ],
+  "body": "# Streaming Chat Completions\n\nStreaming delivers generated tokens incrementally via Server-Sent Events (SSE). Instead of waiting for the entire response, you receive each token as the model produces it.\n\n## Basic Streaming\n\n```javascript\nimport OpenAI from \"openai\";\n\nconst client = new OpenAI();\n\nconst stream = await client.chat.completions.create({\n  model: \"gpt-4o\",\n  messages: [\n    { role: \"system\", content: \"You are a helpful assistant.\" },\n    { role: \"user\", content: \"Write a short poem about programming.\" },\n  ],\n  stream: true,\n});\n\nfor await (const chunk of stream) {\n  const content = chunk.choices[0]?.delta?.content || \"\";\n  process.stdout.write(content);\n}\nconsole.log(); // newline after stream ends\n```\n\n## With Usage Tracking\n\nTo get token usage with streaming, set `stream_options.include_usage`:\n\n```javascript\nconst stream = await client.chat.completions.create({\n  model: \"gpt-4o\",\n  messages: [{ role: \"user\", content: \"Hello!\" }],\n  stream: true,\n  stream_options: { include_usage: true },\n});\n\nlet usage = null;\nfor await (const chunk of stream) {\n  const content = chunk.choices[0]?.delta?.content || \"\";\n  process.stdout.write(content);\n  if (chunk.usage) {\n    usage = chunk.usage;\n  }\n}\n\nconsole.log(`\\nTokens: ${usage.prompt_tokens} prompt + ${usage.completion_tokens} completion = ${usage.total_tokens} total`);\n```\n\n## Collecting Full Response\n\nAccumulate chunks when you need both streaming output and the full text:\n\n```javascript\nconst chunks = [];\nfor await (const chunk of stream) {\n  const content = chunk.choices[0]?.delta?.content || \"\";\n  chunks.push(content);\n  process.stdout.write(content);\n}\nconst fullResponse = chunks.join(\"\");\n```\n\n## SSE Wire Format\n\nThe raw HTTP response is a series of `data:` lines. Each line contains a JSON chunk:\n\n```\ndata: {\"id\":\"chatcmpl-abc\",\"choices\":[{\"index\":0,\"delta\":{\"role\":\"assistant\"},\"finish_reason\":null}]}\n\ndata: {\"id\":\"chatcmpl-abc\",\"choices\":[{\"index\":0,\"delta\":{\"content\":\"Hello\"},\"finish_reason\":null}]}\n\ndata: {\"id\":\"chatcmpl-abc\",\"choices\":[{\"index\":0,\"delta\":{\"content\":\"!\"},\"finish_reason\":null}]}\n\ndata: {\"id\":\"chatcmpl-abc\",\"choices\":[{\"index\":0,\"delta\":{},\"finish_reason\":\"stop\"}]}\n\ndata: [DONE]\n```\n\n## cURL Streaming\n\n```bash\ncurl -N https://api.openai.com/v1/chat/completions \\\n  -H \"Content-Type: application/json\" \\\n  -H \"Authorization: Bearer $OPENAI_API_KEY\" \\\n  -d '{\n    \"model\": \"gpt-4o\",\n    \"messages\": [{\"role\": \"user\", \"content\": \"Hello!\"}],\n    \"stream\": true\n  }'\n```\n\n## Abort / Cancel\n\nUse an AbortController to cancel a stream mid-generation:\n\n```javascript\nconst controller = new AbortController();\n\nconst stream = await client.chat.completions.create(\n  {\n    model: \"gpt-4o\",\n    messages: [{ role: \"user\", content: \"Write a long essay.\" }],\n    stream: true,\n  },\n  { signal: controller.signal },\n);\n\nsetTimeout(() => controller.abort(), 5000); // cancel after 5s\n\ntry {\n  for await (const chunk of stream) {\n    process.stdout.write(chunk.choices[0]?.delta?.content || \"\");\n  }\n} catch (err) {\n  if (err.name === \"AbortError\") {\n    console.log(\"\\nStream cancelled.\");\n  } else {\n    throw err;\n  }\n}\n```\n",
+  "sections": [
+    {
+      "id": "delta-format",
+      "title": "Delta format",
+      "body": "Each streamed chunk contains `choices[0].delta` instead of `choices[0].message`. The first chunk has `delta.role` (\"assistant\"). Subsequent chunks have `delta.content` with incremental text. The final chunk has an empty `delta` and `finish_reason` set to `stop`, `length`, `tool_calls`, or `content_filter`. Tool call deltas arrive as `delta.tool_calls` with incremental function argument JSON.",
+      "tags": ["delta", "chunks", "format", "incremental", "finish-reason"]
+    },
+    {
+      "id": "usage-tracking",
+      "title": "Usage tracking in streams",
+      "body": "By default, streaming does not include usage stats. Set `stream_options: { include_usage: true }` to receive a final chunk with `usage` containing `prompt_tokens`, `completion_tokens`, and `total_tokens`. This final usage chunk has empty choices. Always check `chunk.usage` to detect the usage event.",
+      "tags": ["usage", "tokens", "stream-options", "billing", "cost"]
+    },
+    {
+      "id": "error-handling",
+      "title": "Stream error handling",
+      "body": "Stream errors can occur mid-generation. The SDK throws on connection errors, timeout, and server errors. Wrap the `for await` loop in a try/catch. Use AbortController to cancel long-running streams. On 429 rate limit errors, the SDK retries automatically before the stream starts, but errors during an active stream are not retried. See [[openai/rate-limits]] for backoff strategies.",
+      "tags": ["errors", "abort", "cancel", "timeout", "retry"]
+    }
+  ],
+  "links": [
+    { "uri": "openai/chat", "context": "Parent skill — Chat Completions API overview" },
+    { "uri": "openai/chat/complete", "context": "Non-streaming alternative for batch processing" },
+    { "uri": "openai/function-calling", "context": "Streaming with tool calls via delta.tool_calls" },
+    { "uri": "openai/rate-limits", "context": "Rate limits and retry strategies" }
+  ],
+  "related": [
+    { "uri": "openai/chat/complete", "relation": "alternative", "note": "Use non-streaming for simpler integration when latency is not critical" },
+    { "uri": "openai/assistants", "relation": "see-also", "note": "Assistants API also supports streaming runs via runs.stream()" }
+  ],
+  "scripts": [
+    {
+      "id": "chat-stream",
+      "name": "Streaming Chat Completion",
+      "description": "Stream a chat completion response token-by-token to stdout",
+      "lang": "javascript",
+      "runtime": "node>=18",
+      "inline": "import OpenAI from \"openai\";\n\nconst client = new OpenAI();\n\nconst model = process.env.MODEL || \"gpt-4o\";\nconst systemPrompt = process.env.SYSTEM_PROMPT || \"You are a helpful assistant.\";\nconst userMessage = process.env.USER_MESSAGE || \"Hello!\";\nconst temperature = parseFloat(process.env.TEMPERATURE || \"1\");\n\nconst stream = await client.chat.completions.create({\n  model,\n  messages: [\n    { role: \"system\", content: systemPrompt },\n    { role: \"user\", content: userMessage },\n  ],\n  temperature,\n  stream: true,\n  stream_options: { include_usage: true },\n});\n\nconst chunks = [];\nlet usage = null;\n\nfor await (const chunk of stream) {\n  const content = chunk.choices[0]?.delta?.content || \"\";\n  if (content) {\n    chunks.push(content);\n    process.stdout.write(content);\n  }\n  if (chunk.usage) {\n    usage = chunk.usage;\n  }\n}\n\nconsole.log();\nif (usage) {\n  console.error(JSON.stringify({\n    usage: {\n      promptTokens: usage.prompt_tokens,\n      completionTokens: usage.completion_tokens,\n      totalTokens: usage.total_tokens,\n    },\n  }));\n}",
+      "env": {
+        "OPENAI_API_KEY": { "required": true, "secret": true, "description": "OpenAI API key" },
+        "MODEL": { "required": false, "description": "Model ID (default: gpt-4o)" },
+        "SYSTEM_PROMPT": { "required": false, "description": "System message content" },
+        "USER_MESSAGE": { "required": false, "description": "User message content" },
+        "TEMPERATURE": { "required": false, "description": "Sampling temperature 0-2 (default: 1)" }
+      },
+      "packages": ["openai"]
+    },
+    {
+      "id": "chat-stream-curl",
+      "name": "Streaming Chat via cURL",
+      "description": "Stream a chat completion using raw HTTP with Server-Sent Events",
+      "lang": "bash",
+      "runtime": "bash",
+      "inline": "curl -N -s https://api.openai.com/v1/chat/completions \\\n  -H \"Content-Type: application/json\" \\\n  -H \"Authorization: Bearer $OPENAI_API_KEY\" \\\n  -d \"{\n    \\\"model\\\": \\\"${MODEL:-gpt-4o}\\\",\n    \\\"messages\\\": [\n      {\\\"role\\\": \\\"system\\\", \\\"content\\\": \\\"${SYSTEM_PROMPT:-You are a helpful assistant.}\\\"},\n      {\\\"role\\\": \\\"user\\\", \\\"content\\\": \\\"${USER_MESSAGE:-Hello!}\\\"}\n    ],\n    \\\"stream\\\": true\n  }\"",
+      "env": {
+        "OPENAI_API_KEY": { "required": true, "secret": true, "description": "OpenAI API key" },
+        "MODEL": { "required": false, "description": "Model ID (default: gpt-4o)" },
+        "SYSTEM_PROMPT": { "required": false, "description": "System message" },
+        "USER_MESSAGE": { "required": false, "description": "User message" }
+      }
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "model": { "type": "string", "description": "Model ID (e.g. gpt-4o, gpt-4o-mini, o1)", "default": "gpt-4o" },
+        "messages": {
+          "type": "array",
+          "description": "Conversation messages with role and content",
+          "items": {
+            "type": "object",
+            "properties": {
+              "role": { "type": "string", "enum": ["system", "user", "assistant", "tool"] },
+              "content": { "type": "string" }
+            },
+            "required": ["role", "content"]
+          }
+        },
+        "stream": { "type": "boolean", "const": true, "description": "Must be true for streaming" },
+        "stream_options": {
+          "type": "object",
+          "description": "Streaming options",
+          "properties": {
+            "include_usage": { "type": "boolean", "description": "Include usage stats in the final chunk" }
+          }
+        },
+        "temperature": { "type": "number", "description": "Sampling temperature 0-2", "default": 1 },
+        "max_tokens": { "type": "integer", "description": "Maximum tokens to generate" }
+      },
+      "required": ["model", "messages", "stream"]
+    },
+    "output": {
+      "type": "object",
+      "description": "Each SSE chunk contains a partial completion object",
+      "properties": {
+        "id": { "type": "string", "description": "Completion ID (same across all chunks)" },
+        "choices": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "index": { "type": "integer" },
+              "delta": {
+                "type": "object",
+                "description": "Incremental content for this chunk",
+                "properties": {
+                  "role": { "type": "string", "description": "Only in the first chunk" },
+                  "content": { "type": "string", "description": "Incremental text content" },
+                  "tool_calls": { "type": "array", "description": "Incremental tool call data" }
+                }
+              },
+              "finish_reason": { "type": ["string", "null"], "enum": ["stop", "length", "tool_calls", "content_filter", null] }
+            }
+          }
+        },
+        "usage": {
+          "type": "object",
+          "description": "Only present in the final chunk when stream_options.include_usage is true",
+          "properties": {
+            "prompt_tokens": { "type": "integer" },
+            "completion_tokens": { "type": "integer" },
+            "total_tokens": { "type": "integer" }
+          }
+        }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "openai", "reason": "Requires an OpenAI API key" },
+    { "uri": "openai/chat", "reason": "Sub-skill of chat completions" }
+  ],
+  "more": {
+    "docs": "https://platform.openai.com/docs/api-reference/chat/create",
+    "guide": "https://platform.openai.com/docs/guides/streaming"
+  },
+  "frontmatter": {
+    "created": "2026-04-10",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "4 min",
+    "prerequisites": ["openai", "openai/chat"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://github.com/openai/openai-node",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

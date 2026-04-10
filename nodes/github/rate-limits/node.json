@@ -1,0 +1,88 @@
+{
+  "name": "rate-limits",
+  "version": "1.0.0",
+  "uri": "github/rate-limits",
+  "type": "context",
+  "content_type": "reference",
+  "context": "GitHub API rate limits — REST, GraphQL, search, secondary limits, and abuse detection",
+  "info": "GitHub enforces rate limits on all API interactions to ensure fair usage and platform stability. Authenticated REST requests are limited to 5,000/hour, GraphQL to 5,000 points/hour, and search to 30 requests/minute. GitHub Apps get 5,000/hour per installation. Secondary rate limits protect against burst traffic and abuse patterns. Conditional requests (ETag/If-None-Match) do not count against limits. Monitor remaining quota via response headers and the GraphQL `rateLimit` field. This reference covers all rate limit tiers, headers, strategies for staying within limits, and handling 403/429 responses. See [[github/rest]] and [[github/graphql]] for API conventions, and [[github/auth]] for how authentication method affects your quota.",
+  "parent": "github",
+  "tags": ["rate-limits", "throttle", "quota", "429", "403", "abuse-detection", "secondary-limits"],
+  "aliases": [
+    "github rate limits",
+    "rate limiting",
+    "api quota",
+    "github throttle",
+    "request limits",
+    "rate limit exceeded",
+    "github 429"
+  ],
+  "triggers": [
+    "check github rate limit",
+    "github rate limit exceeded",
+    "how many api calls can I make",
+    "github api quota",
+    "handle rate limiting",
+    "secondary rate limit"
+  ],
+  "body": "# GitHub API Rate Limits\n\nGitHub enforces rate limits to ensure fair access and platform stability. Limits vary by API surface, authentication method, and request type.\n\n## Primary Rate Limits\n\n| API Surface | Authenticated | Unauthenticated | Notes |\n|-------------|---------------|-----------------|-------|\n| REST v3 | 5,000 req/hr | 60 req/hr | Per user or installation |\n| GraphQL v4 | 5,000 pts/hr | N/A (auth required) | Point-based, see below |\n| Search | 30 req/min | 10 req/min | Separate quota |\n| Code Search | 10 req/min | N/A | Auth required |\n| GitHub App manifest | 5,000 req/hr | N/A | Per installation |\n\n## Response Headers\n\nEvery REST response includes rate limit headers:\n\n```http\nX-RateLimit-Limit: 5000\nX-RateLimit-Remaining: 4985\nX-RateLimit-Reset: 1696000000\nX-RateLimit-Used: 15\nX-RateLimit-Resource: core\n```\n\n```bash\n# Check rate limit status without consuming quota\ncurl -H \"Authorization: Bearer $GITHUB_TOKEN\" \\\n     https://api.github.com/rate_limit\n\n# gh CLI shortcut\ngh api rate_limit\n```\n\n## GraphQL Point System\n\nGraphQL uses points instead of request count. Each query costs points based on the nodes it could return:\n\n```\ncost = nodes_requested + (nested_connections * their_first_value)\n```\n\nExample: Fetching 50 issues, each with 10 labels:\n- Top level: 50 points (issues)\n- Nested: 50 * 10 = 500 points (labels)\n- Total: 550 points\n\n```graphql\nquery {\n  rateLimit {\n    limit       # 5000\n    cost        # cost of this query\n    remaining   # points remaining\n    resetAt     # ISO 8601 reset time\n    nodeCount   # nodes returned\n  }\n  repository(owner: \"octokit\", name: \"rest.js\") {\n    issues(first: 50) {\n      nodes {\n        title\n        labels(first: 10) { nodes { name } }\n      }\n    }\n  }\n}\n```\n\n## Secondary Rate Limits\n\nBeyond primary limits, GitHub enforces secondary (abuse) limits:\n\n- **No more than 90 concurrent requests** (across REST and GraphQL)\n- **No more than 900 points/minute** for GraphQL\n- **No more than 80 content-creating requests/minute** (POST, PATCH, PUT creating new resources)\n- **Polling: No more than 1 request/second** for the same endpoint\n\nTriggering secondary limits returns `403 Forbidden` with:\n```json\n{\n  \"message\": \"You have exceeded a secondary rate limit...\",\n  \"documentation_url\": \"https://docs.github.com/rest/overview/rate-limits-for-the-rest-api\"\n}\n```\n\nOr `429 Too Many Requests` with a `Retry-After` header.\n\n## Handling Rate Limits\n\n```javascript\nimport { Octokit } from \"@octokit/rest\";\nimport { throttling } from \"@octokit/plugin-throttling\";\n\nconst ThrottledOctokit = Octokit.plugin(throttling);\n\nconst octokit = new ThrottledOctokit({\n  auth: process.env.GITHUB_TOKEN,\n  throttle: {\n    onRateLimit: (retryAfter, options, octokit, retryCount) => {\n      octokit.log.warn(`Rate limit hit for ${options.method} ${options.url}`);\n      if (retryCount < 2) {\n        octokit.log.info(`Retrying after ${retryAfter} seconds`);\n        return true; // retry\n      }\n    },\n    onSecondaryRateLimit: (retryAfter, options, octokit) => {\n      octokit.log.warn(`Secondary rate limit hit for ${options.method} ${options.url}`);\n      return true; // retry after backoff\n    },\n  },\n});\n```\n\n## Conditional Requests\n\nConditional requests that return 304 Not Modified do NOT count against your rate limit:\n\n```javascript\n// First request — save ETag\nconst response = await octokit.repos.get({ owner, repo });\nconst etag = response.headers.etag;\n\n// Subsequent request — use If-None-Match\ntry {\n  await octokit.repos.get({\n    owner, repo,\n    headers: { \"If-None-Match\": etag },\n  });\n} catch (e) {\n  if (e.status === 304) {\n    // Not modified — rate limit NOT consumed\n  }\n}\n```\n\n## Best Practices\n\n1. **Use conditional requests** to avoid wasting quota on unchanged data\n2. **Use GraphQL** when you need data from multiple resources (fewer requests)\n3. **Implement exponential backoff** when rate limited\n4. **Use the throttling plugin** (`@octokit/plugin-throttling`) for automatic retry\n5. **Cache responses** locally when data changes infrequently\n6. **Use webhooks** ([[github/webhooks]]) instead of polling for real-time updates\n7. **Monitor `X-RateLimit-Remaining`** to proactively slow down before hitting limits\n",
+  "sections": [
+    {
+      "id": "primary-limits",
+      "title": "Primary rate limits",
+      "body": "REST: 5,000 requests/hour authenticated, 60/hour unauthenticated. GraphQL: 5,000 points/hour (authentication required). Search: 30 requests/minute authenticated, 10/minute unauthenticated. GitHub Apps: 5,000/hour per installation. Limits reset hourly; check the `X-RateLimit-Reset` header for the exact reset timestamp.",
+      "tags": ["primary", "rest", "graphql", "search", "hourly", "per-installation"]
+    },
+    {
+      "id": "secondary-limits",
+      "title": "Secondary (abuse) rate limits",
+      "body": "Secondary limits prevent burst traffic: max 90 concurrent requests, 900 GraphQL points/minute, 80 content-creating requests/minute, and 1 request/second per endpoint for polling. Violations return 403 or 429 with `Retry-After`. These limits are not publicly enumerated per-endpoint and can change. Always implement retry logic.",
+      "tags": ["secondary", "abuse", "concurrent", "burst", "retry-after", "429", "403"]
+    },
+    {
+      "id": "graphql-points",
+      "title": "GraphQL point calculation",
+      "body": "Each GraphQL query costs points based on node count: the sum of all `first`/`last` arguments across connections. Nested connections multiply. Query the `rateLimit` field to see the `cost` of any query before it runs at scale. Keep `first` values low in nested connections to avoid expensive queries.",
+      "tags": ["points", "cost", "node-count", "nested", "first", "last"]
+    },
+    {
+      "id": "handling-strategies",
+      "title": "Handling and retry strategies",
+      "body": "Use `@octokit/plugin-throttling` for automatic backoff and retry. Parse `Retry-After` headers for 429 responses. Implement exponential backoff with jitter for custom clients. Use conditional requests (ETag/If-None-Match) to avoid consuming quota. Use webhooks instead of polling. Cache responses locally.",
+      "tags": ["throttling", "backoff", "retry", "exponential", "jitter", "caching"]
+    }
+  ],
+  "links": [
+    { "uri": "github/rest", "context": "REST API rate limit conventions and headers" },
+    { "uri": "github/graphql", "context": "GraphQL point-based rate limiting" },
+    { "uri": "github/auth", "context": "Authentication method affects rate limit tier" },
+    { "uri": "github/pagination", "context": "Efficient pagination reduces rate limit consumption" },
+    { "uri": "github/webhooks", "context": "Use webhooks instead of polling to save quota" }
+  ],
+  "related": [
+    { "uri": "github/rest", "relation": "see-also", "note": "REST endpoints return rate limit headers on every response" },
+    { "uri": "github/graphql", "relation": "see-also", "note": "GraphQL uses a point system instead of request counting" },
+    { "uri": "github/auth", "relation": "see-also", "note": "GitHub Apps get separate rate limits per installation" }
+  ],
+  "more": {
+    "docs": "https://docs.github.com/en/rest/using-the-rest-api/rate-limits-for-the-rest-api",
+    "graphql-limits": "https://docs.github.com/en/graphql/overview/resource-limitations",
+    "best-practices": "https://docs.github.com/en/rest/using-the-rest-api/best-practices-for-using-the-rest-api"
+  },
+  "frontmatter": {
+    "created": "2026-04-10",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "developers, AI agents, integrators",
+    "estimated_reading_time": "5 min",
+    "prerequisites": ["github/auth"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://github.com/octokit",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

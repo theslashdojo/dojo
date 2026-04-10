@@ -1,6 +1,6 @@
 # Dojo Node Tree
 
-This directory is the live package-style Dojo node tree. It is intentionally richer than the sample ecosystems so contributors can copy a tree that is aligned with [`/workspaces/Contracts/SPEC.md`](/workspaces/Contracts/SPEC.md), not just a minimal manifest.
+This directory is the live package-style Dojo node tree. It is intentionally richer than the sample ecosystems so contributors can copy a tree that is aligned with [`SPEC.md`](https://github.com/theslashdojo/dojo/blob/main/SPEC.md), not just a minimal manifest.
 
 It demonstrates:
 
