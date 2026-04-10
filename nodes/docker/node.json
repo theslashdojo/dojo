@@ -27,7 +27,7 @@
     "set up container networking",
     "manage docker volumes"
   ],
-  "body": "# Docker Ecosystem\n\nDocker is a containerization platform where agents build images, run containers, compose multi-service applications, and manage container registries. The Docker Engine runs containers as isolated processes sharing the host kernel, providing lightweight virtualization without the overhead of full VMs.\n\n## Agent Jobs\n\nThe primary tasks an agent performs in this ecosystem:\n\n- **Build images** — write Dockerfiles, execute multi-stage builds, leverage layer caching for fast rebuilds. See [[docker/build]].\n- **Compose services** — define multi-container applications in `docker-compose.yml`, manage service dependencies, profiles, and health checks. See [[docker/compose]].\n- **Push to registries** — tag images, authenticate with registries, push and pull images across Docker Hub, GHCR, and ECR. See [[docker/registry]].\n- **Configure networking** — set up bridge, host, and overlay networks, map ports, configure DNS resolution between containers. See [[docker/networking]].\n- **Manage volumes** — create named volumes, configure bind mounts, back up and restore persistent data. See [[docker/volumes]].\n\n## Architecture\n\nDocker uses a client-server architecture:\n\n| Component | Role |\n|-----------|------|\n| Docker CLI | Client that sends commands to the daemon |\n| Docker Daemon (dockerd) | Manages images, containers, networks, volumes |\n| containerd | Low-level container runtime |\n| BuildKit | Modern build backend with parallel builds and cache |\n| Docker Compose | Multi-container orchestration via YAML |\n| Docker Registry | Image storage and distribution (Docker Hub, GHCR, ECR) |\n\n## Image vs Container\n\n- **Image** — read-only template built from a Dockerfile. Layers are cached and shared. Identified by `repository:tag` or digest.\n- **Container** — running instance of an image. Writable layer on top. Has its own filesystem, networking, and process namespace.\n\nImages are built once and run many times. Containers are ephemeral by default — use [[docker/volumes]] for persistent data.\n\n## Docker Engine\n\nThe Docker Engine provides the core runtime:\n\n- **Namespaces** — process, network, mount, user isolation\n- **cgroups** — CPU, memory, I/O resource limits\n- **Union filesystem** — overlay2 layered filesystem for images and containers\n- **Networking** — bridge, host, overlay, macvlan drivers\n- **Storage** — volumes, bind mounts, tmpfs mounts\n\n## Key Commands\n\n```bash\n# Build an image\ndocker build -t myapp:latest .\n\n# Run a container\ndocker run -d -p 8080:80 --name myapp myapp:latest\n\n# Compose multi-service app\ndocker compose up -d\n\n# Push to registry\ndocker push myregistry/myapp:latest\n\n# Inspect and manage\ndocker ps\ndocker logs myapp\ndocker exec -it myapp /bin/sh\n```\n",
+  "body": "# Docker Ecosystem\n\nDocker is a containerization platform where agents build images, run containers, compose multi-service applications, and manage container registries. The Docker Engine runs containers as isolated processes sharing the host kernel, providing lightweight virtualization without the overhead of full VMs.\n\n## Agent Jobs\n\nThe primary tasks an agent performs in this ecosystem:\n\n- **Manage images** — build, tag, push, pull, and scan Docker images. Write Dockerfiles, execute multi-stage builds, and leverage layer caching. See [[docker/images]].\n- **Run containers** — create, start, stop, inspect, exec into, and view logs of containers. Manage lifecycle, resource limits, and restart policies. See [[docker/containers]].\n- **Compose services** — define multi-container applications in `docker-compose.yml`, manage service dependencies, profiles, and health checks. See [[docker/compose]].\n- **Push to registries** — tag images, authenticate with registries, push and pull images across Docker Hub, GHCR, and ECR. See [[docker/registry]].\n- **Configure networking** — set up bridge, host, and overlay networks, map ports, configure DNS resolution between containers. See [[docker/networking]].\n- **Manage volumes** — create named volumes, configure bind mounts, back up and restore persistent data. See [[docker/volumes]].\n- **Follow best practices** — Dockerfile optimization, security hardening, image size reduction, and production deployment guidelines. See [[docker/best-practices]].\n\n## Architecture\n\nDocker uses a client-server architecture:\n\n| Component | Role |\n|-----------|------|\n| Docker CLI | Client that sends commands to the daemon |\n| Docker Daemon (dockerd) | Manages images, containers, networks, volumes |\n| containerd | Low-level container runtime |\n| BuildKit | Modern build backend with parallel builds and cache |\n| Docker Compose | Multi-container orchestration via YAML |\n| Docker Registry | Image storage and distribution (Docker Hub, GHCR, ECR) |\n\n## Image vs Container\n\n- **Image** — read-only template built from a Dockerfile. Layers are cached and shared. Identified by `repository:tag` or digest.\n- **Container** — running instance of an image. Writable layer on top. Has its own filesystem, networking, and process namespace.\n\nImages are built once and run many times. Containers are ephemeral by default — use [[docker/volumes]] for persistent data.\n\n## Docker Engine\n\nThe Docker Engine provides the core runtime:\n\n- **Namespaces** — process, network, mount, user isolation\n- **cgroups** — CPU, memory, I/O resource limits\n- **Union filesystem** — overlay2 layered filesystem for images and containers\n- **Networking** — bridge, host, overlay, macvlan drivers\n- **Storage** — volumes, bind mounts, tmpfs mounts\n\n## Key Commands\n\n```bash\n# Build an image\ndocker build -t myapp:latest .\n\n# Run a container\ndocker run -d -p 8080:80 --name myapp myapp:latest\n\n# Compose multi-service app\ndocker compose up -d\n\n# Push to registry\ndocker push myregistry/myapp:latest\n\n# Inspect and manage\ndocker ps\ndocker logs myapp\ndocker exec -it myapp /bin/sh\n```\n",
   "sections": [
     {
       "id": "architecture",
@@ -49,13 +49,19 @@
     }
   ],
   "links": [
-    { "uri": "docker/build", "context": "Build Docker images from Dockerfiles" },
+    { "uri": "docker/images", "context": "Build, tag, push, and manage Docker images" },
+    { "uri": "docker/images/build", "context": "Build Docker images from Dockerfiles with BuildKit" },
+    { "uri": "docker/images/push", "context": "Push and pull images to container registries" },
+    { "uri": "docker/images/multi-stage", "context": "Multi-stage builds for smaller production images" },
+    { "uri": "docker/containers", "context": "Run and manage Docker containers" },
+    { "uri": "docker/containers/run", "context": "Create containers with ports, volumes, env vars" },
+    { "uri": "docker/containers/exec", "context": "Execute commands inside running containers" },
+    { "uri": "docker/containers/logs", "context": "View and follow container log output" },
     { "uri": "docker/compose", "context": "Define and run multi-container applications" },
     { "uri": "docker/registry", "context": "Push, pull, and manage container images in registries" },
     { "uri": "docker/networking", "context": "Container networking: bridge, host, overlay, DNS, ports" },
     { "uri": "docker/volumes", "context": "Persistent storage with volumes and bind mounts" },
-    { "uri": "docker/build#multi-stage", "context": "Multi-stage builds for smaller production images" },
-    { "uri": "docker/build#caching", "context": "Layer caching strategies for fast rebuilds" },
+    { "uri": "docker/best-practices", "context": "Dockerfile optimization, security, and production guidelines" },
     { "uri": "docker/compose#services", "context": "Defining services, dependencies, and scaling" },
     { "uri": "docker/compose#healthchecks", "context": "Health checks for service readiness" },
     { "uri": "docker/registry#push-pull", "context": "Pushing and pulling images to/from registries" },
@@ -63,8 +69,10 @@
     { "uri": "docker/volumes#volume-types", "context": "Named volumes, bind mounts, and tmpfs" }
   ],
   "related": [
-    { "uri": "docker/build", "relation": "see-also", "note": "Image building is the primary development workflow" },
-    { "uri": "docker/compose", "relation": "see-also", "note": "Compose is the standard for multi-container local development" }
+    { "uri": "docker/images", "relation": "see-also", "note": "Image management is the primary development workflow" },
+    { "uri": "docker/containers", "relation": "see-also", "note": "Container management is the primary runtime workflow" },
+    { "uri": "docker/compose", "relation": "see-also", "note": "Compose is the standard for multi-container local development" },
+    { "uri": "docker/best-practices", "relation": "see-also", "note": "Best practices guide for production-ready containers" }
   ],
   "more": {
     "docs": "https://docs.docker.com",
