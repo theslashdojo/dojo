@@ -1,0 +1,120 @@
+{
+  "name": "review",
+  "version": "1.0.0",
+  "uri": "github/pulls/review",
+  "type": "sub",
+  "context": "Request, submit, and manage pull request code reviews via the GitHub API or gh pr review",
+  "info": "Manage the code review process for pull requests: request reviewers, submit reviews with APPROVE/REQUEST_CHANGES/COMMENT events, add inline comments on specific file lines, and dismiss stale reviews. Reviews integrate with branch protection rules in [[github/repos/settings]] to gate merges on required approvals. Use `octokit.pulls.createReview()` or `gh pr review`. See [[github/auth]] for authentication and [[github/pulls/merge]] for merging after approval.",
+  "parent": "github/pulls",
+  "tags": ["review", "approve", "request-changes", "comment", "inline-comments", "code-review"],
+  "aliases": [
+    "code review",
+    "pr review",
+    "review pull request",
+    "approve pr",
+    "request changes",
+    "gh pr review",
+    "submit review"
+  ],
+  "triggers": [
+    "review a pull request",
+    "approve a PR",
+    "request changes on a PR",
+    "add review comments",
+    "gh pr review",
+    "submit code review"
+  ],
+  "body": "# Pull Request Reviews\n\nCode reviews are the quality gate for pull requests. Reviewers approve changes, request modifications, or leave comments.\n\n## gh CLI\n\n```bash\n# Approve a PR\ngh pr review 42 --approve --body \"LGTM! Clean implementation.\"\n\n# Request changes\ngh pr review 42 --request-changes --body \"Please add error handling for the auth middleware.\"\n\n# Leave a comment (without approve/reject)\ngh pr review 42 --comment --body \"Nice approach, a few suggestions below.\"\n\n# Request specific reviewers\ngh pr edit 42 --add-reviewer reviewer-1,reviewer-2\ngh pr edit 42 --add-reviewer org/team-name\n```\n\n## REST API\n\n```javascript\nimport { Octokit } from \"@octokit/rest\";\nconst octokit = new Octokit({ auth: process.env.GITHUB_TOKEN });\n\n// Request reviewers\nawait octokit.pulls.requestReviewers({\n  owner: \"my-org\",\n  repo: \"my-project\",\n  pull_number: 42,\n  reviewers: [\"reviewer-1\", \"reviewer-2\"],\n  team_reviewers: [\"security-team\"],\n});\n\n// Submit an approval\nawait octokit.pulls.createReview({\n  owner: \"my-org\",\n  repo: \"my-project\",\n  pull_number: 42,\n  event: \"APPROVE\",\n  body: \"LGTM! Code looks clean and tests are comprehensive.\",\n});\n\n// Request changes with inline comments\nawait octokit.pulls.createReview({\n  owner: \"my-org\",\n  repo: \"my-project\",\n  pull_number: 42,\n  event: \"REQUEST_CHANGES\",\n  body: \"A few issues need addressing before merge.\",\n  comments: [\n    {\n      path: \"src/auth/middleware.js\",\n      position: 15,  // diff position (not line number)\n      body: \"This needs try/catch — JWT verification can throw.\",\n    },\n    {\n      path: \"src/auth/middleware.js\",\n      line: 28,       // line number in the file\n      side: \"RIGHT\",  // RIGHT = new code, LEFT = old code\n      body: \"Consider using `token.exp` instead of manual timestamp comparison.\",\n    },\n  ],\n});\n\n// List reviews on a PR\nconst { data: reviews } = await octokit.pulls.listReviews({\n  owner: \"my-org\",\n  repo: \"my-project\",\n  pull_number: 42,\n});\nreviews.forEach(r => console.log(r.user.login, r.state));\n\n// Dismiss a review\nawait octokit.pulls.dismissReview({\n  owner: \"my-org\",\n  repo: \"my-project\",\n  pull_number: 42,\n  review_id: 123456,\n  message: \"Dismissing stale review — code has been updated.\",\n});\n```\n\n```bash\n# REST via curl — submit approval\ncurl -X POST \\\n  -H \"Authorization: Bearer $GITHUB_TOKEN\" \\\n  -H \"Accept: application/vnd.github+json\" \\\n  https://api.github.com/repos/owner/repo/pulls/42/reviews \\\n  -d '{\"event\": \"APPROVE\", \"body\": \"LGTM\"}'\n```\n\n## Review Events\n\n| Event | Meaning | Effect |\n|-------|---------|--------|\n| `APPROVE` | Approve the PR | Counts toward required approvals |\n| `REQUEST_CHANGES` | Request modifications | Blocks merge until resolved |\n| `COMMENT` | General feedback | No approval/rejection status |\n| `PENDING` | In-progress review | Not submitted yet |\n\n## Inline Comments\n\nTwo positioning modes for inline comments:\n\n- **`position`** — offset in the diff hunk (legacy, 1-based from the first `@@` line)\n- **`line` + `side`** — absolute line number in the file. `side: \"RIGHT\"` targets new code, `side: \"LEFT\"` targets removed code. Preferred over `position`.\n\n## Branch Protection Integration\n\nBranch protection rules in [[github/repos/settings]] can require:\n- Minimum number of approving reviews (e.g., 1 or 2)\n- Dismissal of stale reviews when new commits are pushed\n- Require review from code owners (CODEOWNERS file)\n- Restrict who can dismiss reviews\n",
+  "sections": [
+    {
+      "id": "request-reviewers",
+      "title": "Requesting reviewers",
+      "body": "Use `octokit.pulls.requestReviewers()` with `reviewers` (individual usernames) and `team_reviewers` (team slugs). Or use `gh pr edit 42 --add-reviewer user1,org/team`. GitHub notifies requested reviewers. CODEOWNERS files can auto-assign reviewers based on file paths.",
+      "tags": ["request", "reviewers", "team", "codeowners", "assign"]
+    },
+    {
+      "id": "submit-review",
+      "title": "Submitting reviews",
+      "body": "Use `octokit.pulls.createReview()` with `event` (APPROVE, REQUEST_CHANGES, COMMENT) and optional `body` and `comments` array. The `gh pr review` CLI provides `--approve`, `--request-changes`, and `--comment` flags. Reviews with REQUEST_CHANGES block merge on protected branches until resolved.",
+      "tags": ["submit", "approve", "request-changes", "comment", "event"]
+    },
+    {
+      "id": "inline-comments",
+      "title": "Inline comments",
+      "body": "Add file-specific comments in the `comments` array of `createReview()`. Use `line` + `side` (preferred) or `position` (legacy diff offset) to target specific lines. `side: RIGHT` targets new code, `LEFT` targets removed code. Multi-line comments use `start_line` + `start_side` in addition to `line` + `side`.",
+      "tags": ["inline", "line-comments", "position", "side", "multi-line"]
+    },
+    {
+      "id": "dismiss-reviews",
+      "title": "Dismissing reviews",
+      "body": "Dismiss stale reviews with `octokit.pulls.dismissReview()` providing `review_id` and `message`. Branch protection can auto-dismiss reviews when new commits are pushed. Only users with write access (or admins) can dismiss reviews. Dismissal leaves an audit trail.",
+      "tags": ["dismiss", "stale", "audit", "write-access"]
+    }
+  ],
+  "links": [
+    { "uri": "github/pulls", "context": "Parent skill for pull request management" },
+    { "uri": "github/pulls/create", "context": "Create PRs before reviewing" },
+    { "uri": "github/pulls/merge", "context": "Merge after review approval" },
+    { "uri": "github/repos/settings", "context": "Branch protection requires reviews" },
+    { "uri": "github/auth", "context": "Authentication for review API" }
+  ],
+  "related": [
+    { "uri": "github/pulls", "relation": "parent", "note": "This is a sub-skill of the pulls skill" },
+    { "uri": "github/pulls/merge", "relation": "next-step", "note": "After approval, merge the PR" },
+    { "uri": "github/repos/settings", "relation": "see-also", "note": "Branch protection rules require review approvals" }
+  ],
+  "scripts": [
+    {
+      "id": "review-pr",
+      "name": "Review Pull Request",
+      "description": "Submit a code review using gh CLI",
+      "lang": "bash",
+      "runtime": "gh>=2.0",
+      "entry": "./scripts/review-pr.sh",
+      "env": {
+        "GITHUB_TOKEN": { "required": true, "secret": true, "description": "GitHub personal access token" }
+      },
+      "packages": []
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "owner": { "type": "string", "description": "Repository owner" },
+        "repo": { "type": "string", "description": "Repository name" },
+        "pull_number": { "type": "integer", "description": "PR number" },
+        "event": { "type": "string", "enum": ["APPROVE", "REQUEST_CHANGES", "COMMENT"], "description": "Review event type" },
+        "body": { "type": "string", "description": "Review body text" }
+      },
+      "required": ["owner", "repo", "pull_number", "event"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "reviewId": { "type": "integer", "description": "Review ID" },
+        "state": { "type": "string", "description": "Review state" }
+      }
+    }
+  },
+  "more": {
+    "docs": "https://docs.github.com/en/rest/pulls/reviews",
+    "gh-cli": "https://cli.github.com/manual/gh_pr_review"
+  },
+  "frontmatter": {
+    "created": "2026-04-10",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "4 min",
+    "prerequisites": ["github/auth", "github/pulls"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://github.com/octokit",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

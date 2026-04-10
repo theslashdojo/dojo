@@ -1,0 +1,124 @@
+{
+  "name": "merge",
+  "version": "1.0.0",
+  "uri": "github/pulls/merge",
+  "type": "sub",
+  "context": "Merge pull requests via PUT /repos/{owner}/{repo}/pulls/{pull_number}/merge or gh pr merge",
+  "info": "Merge pull requests using three strategies: merge commit, squash, or rebase. Check merge readiness via the `mergeable` field, ensure required status checks from [[github/actions]] pass, and confirm review approvals from [[github/pulls/review]]. Use `octokit.pulls.merge()` or `gh pr merge`. Branch protection rules in [[github/repos/settings]] control which merge methods are allowed and what prerequisites must be satisfied. See [[github/auth]] for authentication.",
+  "parent": "github/pulls",
+  "tags": ["merge", "squash", "rebase", "merge-commit", "mergeable", "auto-merge"],
+  "aliases": [
+    "merge pr",
+    "merge pull request",
+    "squash and merge",
+    "rebase and merge",
+    "gh pr merge",
+    "land pr",
+    "close pr"
+  ],
+  "triggers": [
+    "merge a pull request",
+    "squash and merge",
+    "rebase and merge",
+    "gh pr merge",
+    "land a PR",
+    "close and merge"
+  ],
+  "body": "# Merge Pull Requests\n\nMerge a pull request after reviews and CI checks pass.\n\n## gh CLI\n\n```bash\n# Merge with merge commit (default)\ngh pr merge 42\n\n# Squash merge (single commit)\ngh pr merge 42 --squash\n\n# Rebase merge (linear history)\ngh pr merge 42 --rebase\n\n# Delete branch after merge\ngh pr merge 42 --squash --delete-branch\n\n# Auto-merge when checks pass\ngh pr merge 42 --auto --squash\n\n# Merge with custom commit message\ngh pr merge 42 --squash --subject \"feat: add auth (#42)\" --body \"Adds JWT-based authentication\"\n```\n\n## REST API\n\n```javascript\nimport { Octokit } from \"@octokit/rest\";\nconst octokit = new Octokit({ auth: process.env.GITHUB_TOKEN });\n\n// Check if PR is mergeable\nconst { data: pr } = await octokit.pulls.get({\n  owner: \"my-org\",\n  repo: \"my-project\",\n  pull_number: 42,\n});\nconsole.log(pr.mergeable, pr.mergeable_state);\n// mergeable_state: clean, dirty, blocked, unstable, unknown\n\n// Merge with squash\nawait octokit.pulls.merge({\n  owner: \"my-org\",\n  repo: \"my-project\",\n  pull_number: 42,\n  merge_method: \"squash\",\n  commit_title: \"feat: add user authentication (#42)\",\n  commit_message: \"Adds JWT-based auth with refresh tokens.\\n\\nCo-authored-by: bot <bot@example.com>\",\n});\n\n// Delete the branch after merge\nawait octokit.git.deleteRef({\n  owner: \"my-org\",\n  repo: \"my-project\",\n  ref: \"heads/feature/auth\",\n});\n\n// Enable auto-merge (requires branch protection)\nawait octokit.pulls.updateBranch({\n  owner: \"my-org\",\n  repo: \"my-project\",\n  pull_number: 42,\n});\n```\n\n```bash\n# REST via curl\ncurl -X PUT \\\n  -H \"Authorization: Bearer $GITHUB_TOKEN\" \\\n  -H \"Accept: application/vnd.github+json\" \\\n  https://api.github.com/repos/owner/repo/pulls/42/merge \\\n  -d '{\"merge_method\": \"squash\", \"commit_title\": \"feat: add auth (#42)\"}'\n```\n\n## Merge Strategies\n\n| Strategy | `merge_method` | Result | Best For |\n|----------|---------------|--------|----------|\n| Merge commit | `\"merge\"` | Preserves all commits, adds merge commit | Feature branches with meaningful commit history |\n| Squash | `\"squash\"` | Combines all commits into one | Feature branches with messy commit history |\n| Rebase | `\"rebase\"` | Replays commits on base, linear history | Small, atomic changes |\n\n## Mergeable State\n\nThe `mergeable_state` field indicates readiness:\n\n| State | Meaning |\n|-------|---------|\n| `clean` | All checks pass, no conflicts, ready to merge |\n| `dirty` | Merge conflicts exist — resolve first |\n| `blocked` | Branch protection requirements not met |\n| `unstable` | Some checks pending or failing |\n| `unknown` | GitHub is computing merge status (retry shortly) |\n\n## Auto-Merge\n\nEnable auto-merge to automatically merge when all requirements are met:\n\n```bash\n# gh CLI — merge automatically when checks pass\ngh pr merge 42 --auto --squash --delete-branch\n\n# Disable auto-merge\ngh pr merge 42 --disable-auto\n```\n\nAuto-merge requires branch protection to be enabled on the base branch. The PR will merge automatically once all required status checks pass and required reviews are submitted.\n\n## Update Branch\n\nKeep the PR branch up to date with the base branch:\n\n```bash\n# Update PR branch with latest base branch changes\ngh api repos/owner/repo/pulls/42/update-branch -X PUT\n```\n",
+  "sections": [
+    {
+      "id": "merge-strategies",
+      "title": "Merge strategies",
+      "body": "Three methods: `merge` (preserves commits + merge commit), `squash` (single commit), `rebase` (linear replay). Configure allowed methods per-repo via [[github/repos/settings]]. Squash is most common for feature branches. Rebase preserves individual commits without a merge commit. Merge commit preserves full history including branch topology.",
+      "tags": ["merge", "squash", "rebase", "strategy", "commit"]
+    },
+    {
+      "id": "mergeable-state",
+      "title": "Checking merge readiness",
+      "body": "Check `pr.mergeable` (boolean) and `pr.mergeable_state` (clean/dirty/blocked/unstable/unknown) via `octokit.pulls.get()`. `unknown` means GitHub is still computing — retry after a short delay. `blocked` means branch protection requirements (reviews, checks) are not met. `dirty` means merge conflicts must be resolved.",
+      "tags": ["mergeable", "state", "clean", "dirty", "blocked", "checks"]
+    },
+    {
+      "id": "auto-merge",
+      "title": "Auto-merge",
+      "body": "Enable auto-merge with `gh pr merge --auto` or via the GraphQL `enablePullRequestAutoMerge` mutation. The PR merges automatically when all required checks pass and reviews are approved. Requires branch protection on the base branch. Supports specifying the merge method. Disable with `gh pr merge --disable-auto`.",
+      "tags": ["auto-merge", "automatic", "branch-protection", "checks"]
+    },
+    {
+      "id": "branch-cleanup",
+      "title": "Branch cleanup after merge",
+      "body": "Delete the head branch after merge with `gh pr merge --delete-branch`, `octokit.git.deleteRef()`, or configure the repo to auto-delete branches via [[github/repos/settings]] (`delete_branch_on_merge: true`). Keeping branches clean prevents clutter and confusion.",
+      "tags": ["delete-branch", "cleanup", "auto-delete", "head-branch"]
+    }
+  ],
+  "links": [
+    { "uri": "github/pulls", "context": "Parent skill for pull request management" },
+    { "uri": "github/pulls/review", "context": "Reviews must be approved before merge" },
+    { "uri": "github/pulls/create", "context": "Create PRs that will later be merged" },
+    { "uri": "github/repos/settings", "context": "Branch protection controls merge requirements" },
+    { "uri": "github/actions", "context": "CI checks must pass before merge" },
+    { "uri": "github/auth", "context": "Authentication required for merge API" }
+  ],
+  "related": [
+    { "uri": "github/pulls", "relation": "parent", "note": "This is a sub-skill of the pulls skill" },
+    { "uri": "github/pulls/review", "relation": "prerequisite", "note": "Reviews must be approved before merge on protected branches" },
+    { "uri": "github/actions", "relation": "see-also", "note": "Required status checks from Actions gate merges" }
+  ],
+  "scripts": [
+    {
+      "id": "merge-pr",
+      "name": "Merge Pull Request",
+      "description": "Merge a pull request using gh CLI",
+      "lang": "bash",
+      "runtime": "gh>=2.0",
+      "entry": "./scripts/merge-pr.sh",
+      "env": {
+        "GITHUB_TOKEN": { "required": true, "secret": true, "description": "GitHub personal access token" }
+      },
+      "packages": []
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "owner": { "type": "string", "description": "Repository owner" },
+        "repo": { "type": "string", "description": "Repository name" },
+        "pull_number": { "type": "integer", "description": "PR number" },
+        "merge_method": { "type": "string", "enum": ["merge", "squash", "rebase"], "default": "merge", "description": "Merge strategy" },
+        "commit_title": { "type": "string", "description": "Custom commit title (squash/merge only)" },
+        "commit_message": { "type": "string", "description": "Custom commit message body" }
+      },
+      "required": ["owner", "repo", "pull_number"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "sha": { "type": "string", "description": "SHA of the merge commit" },
+        "merged": { "type": "boolean", "description": "Whether the merge succeeded" },
+        "message": { "type": "string", "description": "Merge result message" }
+      }
+    }
+  },
+  "more": {
+    "docs": "https://docs.github.com/en/rest/pulls/pulls#merge-a-pull-request",
+    "auto-merge": "https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/incorporating-changes-from-a-pull-request/automatically-merging-a-pull-request",
+    "gh-cli": "https://cli.github.com/manual/gh_pr_merge"
+  },
+  "frontmatter": {
+    "created": "2026-04-10",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "4 min",
+    "prerequisites": ["github/auth", "github/pulls", "github/pulls/review"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://github.com/octokit",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

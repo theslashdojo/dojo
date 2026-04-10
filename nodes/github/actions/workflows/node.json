@@ -1,0 +1,117 @@
+{
+  "name": "workflows",
+  "version": "1.0.0",
+  "uri": "github/actions/workflows",
+  "type": "sub",
+  "context": "Define GitHub Actions workflow YAML — triggers, jobs, steps, matrix strategies, and reusable workflows",
+  "info": "Define CI/CD workflows in `.github/workflows/*.yml` using GitHub Actions workflow syntax. Covers trigger events (push, pull_request, schedule, workflow_dispatch), job configuration (runs-on, steps, needs), matrix strategies for multi-environment testing, reusable workflows for DRY configuration, and composite actions. Workflows integrate with [[github/pulls]] via pull_request triggers and required status checks. See [[github/actions/runs]] for monitoring execution and [[github/actions/artifacts]] for build output management. See [[github/auth]] for token management within workflows.",
+  "parent": "github/actions",
+  "tags": ["workflows", "yaml", "triggers", "jobs", "steps", "matrix", "reusable", "composite"],
+  "aliases": [
+    "github actions workflow",
+    "workflow yaml",
+    "ci pipeline",
+    "workflow syntax",
+    "github actions triggers",
+    "workflow definition"
+  ],
+  "triggers": [
+    "create a github actions workflow",
+    "write a ci pipeline",
+    "define a workflow yaml",
+    "add a build workflow",
+    "configure workflow triggers",
+    "set up matrix testing"
+  ],
+  "body": "# Workflow Definition\n\nWorkflows are YAML files in `.github/workflows/` that define automated pipelines.\n\n## Basic Workflow\n\n```yaml\n# .github/workflows/ci.yml\nname: CI\n\non:\n  push:\n    branches: [main]\n  pull_request:\n    branches: [main]\n\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n      - uses: actions/setup-node@v4\n        with:\n          node-version: 20\n          cache: npm\n      - run: npm ci\n      - run: npm test\n\n  lint:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n      - uses: actions/setup-node@v4\n        with:\n          node-version: 20\n          cache: npm\n      - run: npm ci\n      - run: npm run lint\n```\n\n## Trigger Events\n\n```yaml\non:\n  # Push to specific branches\n  push:\n    branches: [main, develop]\n    paths: [\"src/**\", \"package.json\"]\n    tags: [\"v*\"]\n\n  # Pull request events\n  pull_request:\n    types: [opened, synchronize, reopened]\n    branches: [main]\n\n  # Scheduled (cron)\n  schedule:\n    - cron: \"0 6 * * 1\"  # Every Monday at 6 AM UTC\n\n  # Manual trigger\n  workflow_dispatch:\n    inputs:\n      environment:\n        description: \"Deployment environment\"\n        required: true\n        type: choice\n        options: [staging, production]\n      version:\n        description: \"Version to deploy\"\n        required: true\n        type: string\n\n  # Triggered by another workflow\n  workflow_call:\n    inputs:\n      node-version:\n        type: string\n        default: \"20\"\n    secrets:\n      NPM_TOKEN:\n        required: true\n\n  # Issue and comment events\n  issues:\n    types: [opened, labeled]\n  issue_comment:\n    types: [created]\n\n  # Release events\n  release:\n    types: [published]\n```\n\n## Matrix Strategy\n\n```yaml\njobs:\n  test:\n    runs-on: ${{ matrix.os }}\n    strategy:\n      fail-fast: false\n      matrix:\n        os: [ubuntu-latest, macos-latest, windows-latest]\n        node-version: [18, 20, 22]\n        exclude:\n          - os: windows-latest\n            node-version: 18\n        include:\n          - os: ubuntu-latest\n            node-version: 20\n            experimental: true\n    steps:\n      - uses: actions/checkout@v4\n      - uses: actions/setup-node@v4\n        with:\n          node-version: ${{ matrix.node-version }}\n      - run: npm ci && npm test\n```\n\n## Job Dependencies\n\n```yaml\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n      - run: npm ci && npm test\n\n  build:\n    needs: test\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n      - run: npm ci && npm run build\n\n  deploy:\n    needs: [test, build]\n    runs-on: ubuntu-latest\n    if: github.ref == 'refs/heads/main'\n    environment: production\n    steps:\n      - run: echo \"Deploying...\"\n```\n\n## Reusable Workflows\n\n```yaml\n# .github/workflows/reusable-test.yml (called workflow)\nname: Reusable Test\non:\n  workflow_call:\n    inputs:\n      node-version:\n        type: string\n        default: \"20\"\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n      - uses: actions/setup-node@v4\n        with:\n          node-version: ${{ inputs.node-version }}\n      - run: npm ci && npm test\n```\n\n```yaml\n# .github/workflows/ci.yml (caller workflow)\nname: CI\non: [push, pull_request]\njobs:\n  test:\n    uses: ./.github/workflows/reusable-test.yml\n    with:\n      node-version: \"20\"\n    secrets: inherit\n```\n\n## Secrets and Environment Variables\n\n```yaml\njobs:\n  deploy:\n    runs-on: ubuntu-latest\n    env:\n      NODE_ENV: production\n    steps:\n      - run: echo \"Token is ${{ secrets.DEPLOY_TOKEN }}\"\n      - run: echo \"Node env is $NODE_ENV\"\n      - env:\n          STEP_VAR: \"step-level\"\n        run: echo \"$STEP_VAR\"\n```\n\n## Permissions\n\n```yaml\npermissions:\n  contents: read\n  pull-requests: write\n  issues: write\n\njobs:\n  build:\n    runs-on: ubuntu-latest\n    permissions:\n      contents: read\n    steps:\n      - uses: actions/checkout@v4\n```\n",
+  "sections": [
+    {
+      "id": "triggers",
+      "title": "Trigger events",
+      "body": "Workflows trigger on `push`, `pull_request`, `schedule` (cron), `workflow_dispatch` (manual), `workflow_call` (reusable), `issues`, `release`, and 30+ other events. Filter with `branches`, `paths`, `tags`, and `types`. Use `workflow_dispatch.inputs` for parameterized manual triggers. See [[github/webhooks]] for the full event catalog.",
+      "tags": ["triggers", "push", "pull-request", "schedule", "cron", "dispatch"]
+    },
+    {
+      "id": "matrix",
+      "title": "Matrix strategies",
+      "body": "Use `strategy.matrix` to run jobs across multiple configurations. GitHub creates a job instance for each combination. Use `fail-fast: false` to continue when one combination fails. `exclude` removes specific combinations. `include` adds extra combinations or variables to existing ones. Maximum matrix size is 256 jobs.",
+      "tags": ["matrix", "multi-version", "cross-platform", "fail-fast", "exclude", "include"]
+    },
+    {
+      "id": "reusable",
+      "title": "Reusable workflows",
+      "body": "Define reusable workflows with `on: workflow_call` that other workflows invoke with `uses:`. Accepts `inputs` and `secrets`. Call with `uses: ./.github/workflows/reusable.yml` (same repo) or `uses: owner/repo/.github/workflows/reusable.yml@main` (cross-repo). Use `secrets: inherit` to pass all secrets from the caller.",
+      "tags": ["reusable", "workflow-call", "dry", "inheritance", "cross-repo"]
+    },
+    {
+      "id": "permissions",
+      "title": "Permissions and GITHUB_TOKEN",
+      "body": "Every workflow gets an automatic `GITHUB_TOKEN` with configurable permissions. Set `permissions:` at workflow or job level to restrict scope. Default permissions can be configured at repo or org level. Use `contents: read` and `pull-requests: write` for typical CI workflows. See [[github/auth]] for external token management.",
+      "tags": ["permissions", "github-token", "scope", "least-privilege"]
+    }
+  ],
+  "links": [
+    { "uri": "github/actions", "context": "Parent skill for GitHub Actions" },
+    { "uri": "github/actions/runs", "context": "Monitor workflow run execution" },
+    { "uri": "github/actions/artifacts", "context": "Manage build artifacts from workflows" },
+    { "uri": "github/pulls", "context": "Workflows trigger on pull_request events" },
+    { "uri": "github/repos/settings", "context": "Branch protection requires workflow checks" },
+    { "uri": "github/auth", "context": "Token management within workflows" }
+  ],
+  "related": [
+    { "uri": "github/actions", "relation": "parent", "note": "This is a sub-skill of the actions skill" },
+    { "uri": "github/actions/runs", "relation": "next-step", "note": "After defining workflows, monitor their runs" },
+    { "uri": "github/pulls", "relation": "see-also", "note": "PR events are the most common workflow trigger" }
+  ],
+  "scripts": [
+    {
+      "id": "create-workflow",
+      "name": "Create Workflow",
+      "description": "Generate a GitHub Actions workflow YAML file",
+      "lang": "bash",
+      "runtime": "bash>=4.0",
+      "entry": "./scripts/create-workflow.sh",
+      "env": {},
+      "packages": []
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "description": "Workflow name" },
+        "triggers": { "type": "array", "items": { "type": "string" }, "description": "Trigger events" },
+        "runner": { "type": "string", "default": "ubuntu-latest", "description": "Runner OS" },
+        "steps": { "type": "array", "description": "Job steps" }
+      },
+      "required": ["name", "triggers"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "filePath": { "type": "string", "description": "Path to the created workflow file" }
+      }
+    }
+  },
+  "more": {
+    "docs": "https://docs.github.com/en/actions/writing-workflows/workflow-syntax-for-github-actions",
+    "triggers": "https://docs.github.com/en/actions/writing-workflows/choosing-when-your-workflow-runs/events-that-trigger-workflows",
+    "reusable": "https://docs.github.com/en/actions/sharing-automations/reusing-workflows"
+  },
+  "frontmatter": {
+    "created": "2026-04-10",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "6 min",
+    "prerequisites": ["github/auth", "github/actions"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://github.com/actions",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

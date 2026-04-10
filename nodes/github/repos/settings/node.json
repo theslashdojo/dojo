@@ -1,0 +1,123 @@
+{
+  "name": "settings",
+  "version": "1.0.0",
+  "uri": "github/repos/settings",
+  "type": "sub",
+  "context": "Configure repository settings — branch protection, collaborators, merge options, and webhooks",
+  "info": "Configure GitHub repository settings after creation: branch protection rules, collaborator access, merge strategy options, default branch, issue/wiki/project toggles, and webhook registration. Branch protection integrates with [[github/actions]] for required status checks and [[github/pulls/review]] for required approvals. Use `octokit.repos.update()`, `octokit.repos.updateBranchProtection()`, or `gh api` commands. See [[github/auth]] for authentication and [[github/repos/create]] for initial repo setup.",
+  "parent": "github/repos",
+  "tags": ["settings", "branch-protection", "collaborators", "merge-options", "webhooks", "configuration"],
+  "aliases": [
+    "repo settings",
+    "repository settings",
+    "branch protection",
+    "configure repo",
+    "repo configuration",
+    "manage collaborators"
+  ],
+  "triggers": [
+    "configure branch protection",
+    "manage repo settings",
+    "add collaborators",
+    "set up branch rules",
+    "configure merge options",
+    "protect the main branch"
+  ],
+  "body": "# Repository Settings\n\nConfigure repository behavior, access controls, and branch policies.\n\n## General Settings\n\n```javascript\nimport { Octokit } from \"@octokit/rest\";\nconst octokit = new Octokit({ auth: process.env.GITHUB_TOKEN });\n\n// Update repo settings\nawait octokit.repos.update({\n  owner: \"my-org\",\n  repo: \"my-project\",\n  description: \"Updated description\",\n  default_branch: \"main\",\n  has_issues: true,\n  has_wiki: false,\n  has_projects: false,\n  allow_squash_merge: true,\n  allow_merge_commit: false,\n  allow_rebase_merge: true,\n  allow_auto_merge: true,\n  delete_branch_on_merge: true,\n  squash_merge_commit_title: \"PR_TITLE\",\n  squash_merge_commit_message: \"PR_BODY\",\n});\n```\n\n```bash\n# gh CLI — update settings via API\ngh api repos/owner/repo -X PATCH \\\n  -f default_branch=main \\\n  -F allow_squash_merge=true \\\n  -F delete_branch_on_merge=true\n```\n\n## Branch Protection\n\n```javascript\n// Set branch protection rules\nawait octokit.repos.updateBranchProtection({\n  owner: \"my-org\",\n  repo: \"my-project\",\n  branch: \"main\",\n  required_status_checks: {\n    strict: true,   // Require branch to be up to date before merging\n    contexts: [\"ci/test\", \"ci/lint\"],  // Required check names from Actions\n  },\n  enforce_admins: true,\n  required_pull_request_reviews: {\n    required_approving_review_count: 1,\n    dismiss_stale_reviews: true,\n    require_code_owner_reviews: true,\n    dismissal_restrictions: {\n      users: [],\n      teams: [\"maintainers\"],\n    },\n  },\n  restrictions: null,  // null = no push restrictions\n  required_linear_history: true,\n  allow_force_pushes: false,\n  allow_deletions: false,\n  required_conversation_resolution: true,\n});\n\n// Get current branch protection\nconst { data: protection } = await octokit.repos.getBranchProtection({\n  owner: \"my-org\",\n  repo: \"my-project\",\n  branch: \"main\",\n});\nconsole.log(protection.required_status_checks.contexts);\n\n// Delete branch protection\nawait octokit.repos.deleteBranchProtection({\n  owner: \"my-org\",\n  repo: \"my-project\",\n  branch: \"main\",\n});\n```\n\n```bash\n# gh CLI — set branch protection\ngh api repos/owner/repo/branches/main/protection -X PUT \\\n  --input - <<EOF\n{\n  \"required_status_checks\": {\n    \"strict\": true,\n    \"contexts\": [\"ci/test\"]\n  },\n  \"enforce_admins\": true,\n  \"required_pull_request_reviews\": {\n    \"required_approving_review_count\": 1\n  },\n  \"restrictions\": null\n}\nEOF\n```\n\n## Collaborators\n\n```javascript\n// Add a collaborator\nawait octokit.repos.addCollaborator({\n  owner: \"my-org\",\n  repo: \"my-project\",\n  username: \"new-collaborator\",\n  permission: \"push\",  // pull, push, admin, maintain, triage\n});\n\n// List collaborators\nconst { data: collabs } = await octokit.repos.listCollaborators({\n  owner: \"my-org\",\n  repo: \"my-project\",\n});\n\n// Remove a collaborator\nawait octokit.repos.removeCollaborator({\n  owner: \"my-org\",\n  repo: \"my-project\",\n  username: \"former-collaborator\",\n});\n```\n\n```bash\n# gh CLI — manage collaborators\ngh api repos/owner/repo/collaborators/username -X PUT -f permission=push\n```\n\n## CODEOWNERS\n\nAutomate review assignment by file path:\n\n```\n# .github/CODEOWNERS\n* @default-team\n/src/api/ @api-team\n/src/auth/ @security-team\n/docs/ @docs-team\n*.go @go-team\n```\n\nCODEOWNERS works with branch protection's \"Require review from Code Owners\" setting.\n\n## Merge Options\n\n| Setting | Effect |\n|---------|--------|\n| `allow_merge_commit` | Allow merge commit strategy |\n| `allow_squash_merge` | Allow squash merge strategy |\n| `allow_rebase_merge` | Allow rebase merge strategy |\n| `allow_auto_merge` | Allow auto-merge when checks pass |\n| `delete_branch_on_merge` | Auto-delete head branches after merge |\n| `squash_merge_commit_title` | `PR_TITLE` or `COMMIT_OR_PR_TITLE` |\n| `squash_merge_commit_message` | `PR_BODY`, `COMMIT_MESSAGES`, or `BLANK` |\n",
+  "sections": [
+    {
+      "id": "branch-protection",
+      "title": "Branch protection rules",
+      "body": "Protect branches with required status checks (from [[github/actions]]), required review approvals (from [[github/pulls/review]]), enforce admin compliance, require signed commits, require linear history, and restrict who can push. Use `octokit.repos.updateBranchProtection()` to set rules. These rules gate all PR merges on the protected branch.",
+      "tags": ["branch-protection", "status-checks", "required-reviews", "signed-commits", "linear-history"]
+    },
+    {
+      "id": "collaborators",
+      "title": "Managing collaborators",
+      "body": "Add collaborators with permission levels: `pull` (read), `triage` (manage issues), `push` (write), `maintain` (manage without admin), `admin` (full control). Use `octokit.repos.addCollaborator()` or `gh api`. For organizations, use team-based access instead of individual collaborators for easier management.",
+      "tags": ["collaborators", "permissions", "access", "teams", "roles"]
+    },
+    {
+      "id": "merge-options",
+      "title": "Merge strategy configuration",
+      "body": "Control which merge methods are available for [[github/pulls/merge]]: merge commit, squash, rebase. Enable `allow_auto_merge` for PRs to merge automatically when all requirements are met. Set `delete_branch_on_merge` to auto-clean head branches. Configure squash commit title/message format with `squash_merge_commit_title` and `squash_merge_commit_message`.",
+      "tags": ["merge", "squash", "rebase", "auto-merge", "delete-branch"]
+    },
+    {
+      "id": "codeowners",
+      "title": "CODEOWNERS",
+      "body": "Define code ownership in `.github/CODEOWNERS` to auto-assign reviewers based on file paths. Each line maps a glob pattern to GitHub users or teams. When a PR modifies matching files, those owners are automatically requested as reviewers. Combine with branch protection's `require_code_owner_reviews` to enforce.",
+      "tags": ["codeowners", "auto-assign", "review", "ownership", "file-paths"]
+    }
+  ],
+  "links": [
+    { "uri": "github/repos", "context": "Parent skill for repository management" },
+    { "uri": "github/repos/create", "context": "Create repos before configuring settings" },
+    { "uri": "github/pulls/review", "context": "Required reviews enforced by branch protection" },
+    { "uri": "github/pulls/merge", "context": "Merge options control PR merge behavior" },
+    { "uri": "github/actions", "context": "Required status checks from Actions workflows" },
+    { "uri": "github/webhooks", "context": "Configure webhooks for repo events" },
+    { "uri": "github/auth", "context": "Admin token required for settings changes" }
+  ],
+  "related": [
+    { "uri": "github/repos", "relation": "parent", "note": "This is a sub-skill of the repos skill" },
+    { "uri": "github/actions", "relation": "see-also", "note": "Actions provide the CI checks that branch protection can require" },
+    { "uri": "github/pulls/review", "relation": "see-also", "note": "Branch protection enforces review requirements for PRs" }
+  ],
+  "scripts": [
+    {
+      "id": "configure-settings",
+      "name": "Configure Repository Settings",
+      "description": "Configure branch protection and repo settings using gh CLI",
+      "lang": "bash",
+      "runtime": "gh>=2.0",
+      "entry": "./scripts/configure-settings.sh",
+      "env": {
+        "GITHUB_TOKEN": { "required": true, "secret": true, "description": "GitHub personal access token with admin scope" }
+      },
+      "packages": []
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "owner": { "type": "string", "description": "Repository owner" },
+        "repo": { "type": "string", "description": "Repository name" },
+        "branch": { "type": "string", "default": "main", "description": "Branch to protect" },
+        "required_approvals": { "type": "integer", "default": 1, "description": "Required review approvals" },
+        "required_checks": { "type": "array", "items": { "type": "string" }, "description": "Required status check names" }
+      },
+      "required": ["owner", "repo"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "protected": { "type": "boolean", "description": "Whether branch protection is active" },
+        "requiredChecks": { "type": "array", "description": "Configured required checks" }
+      }
+    }
+  },
+  "more": {
+    "docs": "https://docs.github.com/en/rest/repos/repos#update-a-repository",
+    "branch-protection": "https://docs.github.com/en/rest/branches/branch-protection",
+    "collaborators": "https://docs.github.com/en/rest/collaborators/collaborators",
+    "codeowners": "https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners"
+  },
+  "frontmatter": {
+    "created": "2026-04-10",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "5 min",
+    "prerequisites": ["github/auth", "github/repos"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://github.com/octokit",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

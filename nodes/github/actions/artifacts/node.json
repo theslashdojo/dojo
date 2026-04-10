@@ -1,0 +1,121 @@
+{
+  "name": "artifacts",
+  "version": "1.0.0",
+  "uri": "github/actions/artifacts",
+  "type": "sub",
+  "context": "Upload and download GitHub Actions build artifacts via actions/upload-artifact, actions/download-artifact, and the REST API",
+  "info": "Manage build artifacts produced by GitHub Actions workflow runs. Upload artifacts (build outputs, test reports, coverage data) from workflow steps using `actions/upload-artifact@v4`. Download artifacts in subsequent jobs or via the REST API and `gh` CLI. Artifacts are retained for 90 days by default (configurable). Use artifacts to pass data between workflow jobs, preserve build outputs for deployment, and store test results for analysis. See [[github/actions/workflows]] for defining workflows and [[github/actions/runs]] for run management.",
+  "parent": "github/actions",
+  "tags": ["artifacts", "upload", "download", "build-output", "test-reports", "retention"],
+  "aliases": [
+    "build artifacts",
+    "workflow artifacts",
+    "upload artifact",
+    "download artifact",
+    "actions artifact",
+    "build output"
+  ],
+  "triggers": [
+    "upload build artifacts",
+    "download artifacts from a run",
+    "pass data between jobs",
+    "store test reports",
+    "get build output",
+    "artifact retention"
+  ],
+  "body": "# Build Artifacts\n\nArtifacts let you persist data from workflow runs — build outputs, test reports, logs, and any files you need to share between jobs or download later.\n\n## Upload Artifacts in Workflows\n\n```yaml\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n      - run: npm ci && npm run build\n\n      # Upload build output\n      - uses: actions/upload-artifact@v4\n        with:\n          name: build-output\n          path: dist/\n          retention-days: 30\n\n      # Upload test reports\n      - run: npm test -- --reporter=junit --output=test-results.xml\n        continue-on-error: true\n      - uses: actions/upload-artifact@v4\n        if: always()  # Upload even if tests fail\n        with:\n          name: test-results\n          path: test-results.xml\n\n      # Upload multiple paths\n      - uses: actions/upload-artifact@v4\n        with:\n          name: reports\n          path: |\n            coverage/\n            test-results.xml\n            *.log\n          if-no-files-found: warn  # warn, error, or ignore\n```\n\n## Download Artifacts Between Jobs\n\n```yaml\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n      - run: npm ci && npm run build\n      - uses: actions/upload-artifact@v4\n        with:\n          name: build-output\n          path: dist/\n\n  deploy:\n    needs: build\n    runs-on: ubuntu-latest\n    steps:\n      # Download artifact from the build job\n      - uses: actions/download-artifact@v4\n        with:\n          name: build-output\n          path: dist/\n      - run: ls -la dist/\n      - run: echo \"Deploying build output...\"\n\n  # Download all artifacts\n  collect:\n    needs: [build, test]\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/download-artifact@v4\n        # Omit 'name' to download ALL artifacts\n      - run: ls -la  # Each artifact in its own directory\n```\n\n## Download via gh CLI\n\n```bash\n# List artifacts for a run\ngh run view 12345 --json artifacts --jq '.artifacts[].name'\n\n# Download a specific artifact from the latest run\ngh run download --name build-output\n\n# Download from a specific run\ngh run download 12345 --name build-output\n\n# Download all artifacts from a run\ngh run download 12345\n\n# Download to a specific directory\ngh run download 12345 --name build-output --dir ./downloads\n\n# Download by pattern\ngh run download 12345 --pattern \"test-*\"\n```\n\n## REST API\n\n```javascript\nimport { Octokit } from \"@octokit/rest\";\nconst octokit = new Octokit({ auth: process.env.GITHUB_TOKEN });\n\n// List artifacts for a repo\nconst { data: artifacts } = await octokit.actions.listArtifactsForRepo({\n  owner: \"my-org\",\n  repo: \"my-project\",\n  per_page: 30,\n});\nartifacts.artifacts.forEach(a => {\n  console.log(a.name, a.size_in_bytes, a.expires_at);\n});\n\n// List artifacts for a specific run\nconst { data: runArtifacts } = await octokit.actions.listWorkflowRunArtifacts({\n  owner: \"my-org\",\n  repo: \"my-project\",\n  run_id: 12345,\n});\n\n// Download an artifact (returns redirect to zip)\nconst { url } = await octokit.actions.downloadArtifact({\n  owner: \"my-org\",\n  repo: \"my-project\",\n  artifact_id: 67890,\n  archive_format: \"zip\",\n});\n\n// Delete an artifact\nawait octokit.actions.deleteArtifact({\n  owner: \"my-org\",\n  repo: \"my-project\",\n  artifact_id: 67890,\n});\n```\n\n## Retention and Limits\n\n| Setting | Default | Configurable |\n|---------|---------|---------------|\n| Retention period | 90 days | 1-400 days (per artifact or repo setting) |\n| Max artifact size | 500 MB | N/A |\n| Max total storage | Varies by plan | Free: 500 MB, Pro: 1 GB, Enterprise: 50 GB |\n| Compression | Automatic (zip) | N/A |\n\nSet retention per artifact:\n```yaml\n- uses: actions/upload-artifact@v4\n  with:\n    name: logs\n    path: \"*.log\"\n    retention-days: 5\n```\n\nSet repo-level default via Settings > Actions > General > Artifact and log retention.\n",
+  "sections": [
+    {
+      "id": "upload",
+      "title": "Uploading artifacts",
+      "body": "Use `actions/upload-artifact@v4` in workflow steps. Specify `name` (artifact name), `path` (files/directories to upload), and optional `retention-days`. Use glob patterns and multi-line `path` for multiple files. Set `if-no-files-found: error` to fail if no files match. Use `if: always()` to upload even when previous steps fail (useful for test reports).",
+      "tags": ["upload", "path", "glob", "retention", "if-always"]
+    },
+    {
+      "id": "download-jobs",
+      "title": "Downloading between jobs",
+      "body": "Use `actions/download-artifact@v4` in a job that `needs:` the uploading job. Specify `name` to download a specific artifact or omit to download all. Each artifact extracts to a directory matching its name. Artifacts are available to all jobs in the same workflow run.",
+      "tags": ["download", "jobs", "needs", "extract", "share"]
+    },
+    {
+      "id": "download-external",
+      "title": "Downloading externally",
+      "body": "Use `gh run download` to download artifacts from the CLI. Use `octokit.actions.downloadArtifact()` for API access — it returns a redirect URL to a zip archive. List artifacts with `listWorkflowRunArtifacts()`. Artifacts require authentication to download. Expired artifacts return 410 Gone.",
+      "tags": ["download", "cli", "api", "zip", "external"]
+    },
+    {
+      "id": "retention",
+      "title": "Retention and storage",
+      "body": "Default retention is 90 days. Override per-artifact with `retention-days` or set a repo-level default. Expired artifacts are automatically deleted. Monitor storage usage in repo Settings > Actions. Delete artifacts early with `octokit.actions.deleteArtifact()` to free storage. Artifact storage counts against your plan's quota.",
+      "tags": ["retention", "storage", "expiration", "quota", "delete"]
+    }
+  ],
+  "links": [
+    { "uri": "github/actions", "context": "Parent skill for GitHub Actions" },
+    { "uri": "github/actions/workflows", "context": "Define workflows that produce artifacts" },
+    { "uri": "github/actions/runs", "context": "Runs contain the artifacts" },
+    { "uri": "github/auth", "context": "Authentication for artifact download API" },
+    { "uri": "github/rate-limits", "context": "Rate limits for artifact API calls" }
+  ],
+  "related": [
+    { "uri": "github/actions", "relation": "parent", "note": "This is a sub-skill of the actions skill" },
+    { "uri": "github/actions/workflows", "relation": "see-also", "note": "Artifacts are uploaded/downloaded in workflow steps" },
+    { "uri": "github/actions/runs", "relation": "see-also", "note": "Artifacts belong to specific workflow runs" }
+  ],
+  "scripts": [
+    {
+      "id": "download-artifacts",
+      "name": "Download Artifacts",
+      "description": "Download artifacts from a workflow run using gh CLI",
+      "lang": "bash",
+      "runtime": "gh>=2.0",
+      "entry": "./scripts/download-artifacts.sh",
+      "env": {
+        "GITHUB_TOKEN": { "required": true, "secret": true, "description": "GitHub personal access token" }
+      },
+      "packages": []
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "owner": { "type": "string", "description": "Repository owner" },
+        "repo": { "type": "string", "description": "Repository name" },
+        "run_id": { "type": "integer", "description": "Workflow run ID" },
+        "artifact_name": { "type": "string", "description": "Artifact name to download" },
+        "output_dir": { "type": "string", "default": ".", "description": "Directory to download to" }
+      },
+      "required": ["owner", "repo", "run_id"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "artifacts": { "type": "array", "description": "List of downloaded artifact names" },
+        "totalSize": { "type": "integer", "description": "Total download size in bytes" }
+      }
+    }
+  },
+  "more": {
+    "docs": "https://docs.github.com/en/actions/writing-workflows/choosing-what-your-workflow-does/storing-and-sharing-data-from-a-workflow",
+    "upload-action": "https://github.com/actions/upload-artifact",
+    "download-action": "https://github.com/actions/download-artifact",
+    "api": "https://docs.github.com/en/rest/actions/artifacts"
+  },
+  "frontmatter": {
+    "created": "2026-04-10",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "4 min",
+    "prerequisites": ["github/auth", "github/actions"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://github.com/actions",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

@@ -1,0 +1,169 @@
+{
+  "name": "exec",
+  "version": "1.0.0",
+  "uri": "docker/containers/exec",
+  "type": "sub",
+  "context": "Run commands inside running Docker containers for debugging, administration, and one-off tasks",
+  "info": "This sub-skill covers docker exec for executing commands inside running containers. docker exec starts a new process in a running container's namespace, sharing its filesystem, network, and environment. Common uses include opening a shell for debugging, running database migrations, checking service health, tailing logs inside the container, inspecting the filesystem, and executing administrative scripts. Use -it for interactive terminal access. Use -d for detached (background) execution. Use -u to run as a specific user. Use -w to set the working directory. Use -e to pass additional environment variables. The exec command does not modify the container image or create new layers. This sub-skill focuses on exec operations; see [[docker/containers/run]] for starting containers and [[docker/containers/logs]] for viewing output.",
+  "parent": "docker/containers",
+  "tags": ["docker", "exec", "debug", "shell", "interactive", "container-access", "administration"],
+  "aliases": [
+    "docker exec",
+    "exec into container",
+    "shell into container",
+    "run command in container",
+    "container shell",
+    "debug container",
+    "access container",
+    "container terminal"
+  ],
+  "triggers": [
+    "run a command in a running container",
+    "shell into a docker container",
+    "debug a running container",
+    "execute a migration in container",
+    "open bash in docker container",
+    "inspect files inside container",
+    "run one-off command in container",
+    "access container shell"
+  ],
+  "body": "# Executing Commands in Containers\n\n`docker exec` runs a new process inside an already-running container. The process shares the container's PID namespace, network, filesystem, and environment. It does not create new image layers or modify the container image.\n\n## Basic Usage\n\n```bash\n# Run a command and see output\ndocker exec myapp cat /etc/hostname\n\n# Open an interactive shell\ndocker exec -it myapp /bin/sh\ndocker exec -it myapp /bin/bash\n\n# Run in detached mode (background)\ndocker exec -d myapp touch /tmp/healthcheck\n```\n\n## Interactive Shells\n\nThe most common use of exec is opening a shell inside a container for debugging:\n\n```bash\n# Alpine/minimal images (sh only)\ndocker exec -it myapp /bin/sh\n\n# Ubuntu/Debian images (bash available)\ndocker exec -it myapp /bin/bash\n\n# Check which shells are available\ndocker exec myapp cat /etc/shells\n\n# If no shell is available (distroless/scratch), use debug container:\ndocker debug myapp  # Docker 25+ with debug images\n```\n\nThe `-i` flag keeps STDIN open, and `-t` allocates a pseudo-TTY. Both are needed for an interactive terminal session.\n\n## Running as a Specific User\n\n```bash\n# Run as root (even if container runs as non-root)\ndocker exec -u root myapp apt-get update\n\n# Run as a specific user\ndocker exec -u node myapp npm run migrate\n\n# Run as UID:GID\ndocker exec -u 1000:1000 myapp whoami\n```\n\nThis is useful when the container runs as a non-root user but you need root for debugging or administration.\n\n## Setting Working Directory\n\n```bash\n# Execute from a specific directory\ndocker exec -w /app myapp ls -la\ndocker exec -w /app/src myapp npm test\ndocker exec -w /var/log myapp tail -f app.log\n```\n\n## Passing Environment Variables\n\n```bash\n# Pass additional env vars for the exec session\ndocker exec -e DEBUG=true -e LOG_LEVEL=verbose myapp node debug-script.js\n\n# Run migration with database URL override\ndocker exec -e DATABASE_URL=postgres://admin:pass@db:5432/myapp myapp npm run migrate\n```\n\nNote: environment variables passed to exec are only available to that specific exec process, not to the main container process.\n\n## Database Operations\n\n```bash\n# PostgreSQL\ndocker exec -it postgres psql -U app -d myapp\ndocker exec postgres pg_dump -U app myapp > backup.sql\n\n# MySQL\ndocker exec -it mysql mysql -u root -p\ndocker exec mysql mysqldump -u root -p myapp > backup.sql\n\n# Redis\ndocker exec -it redis redis-cli\ndocker exec redis redis-cli INFO memory\n\n# MongoDB\ndocker exec -it mongo mongosh\ndocker exec mongo mongodump --out /dump\n```\n\n## Debugging Patterns\n\n```bash\n# Check processes running inside\ndocker exec myapp ps aux\n\n# Check network configuration\ndocker exec myapp ip addr\ndocker exec myapp cat /etc/resolv.conf\ndocker exec myapp nslookup database\n\n# Check filesystem\ndocker exec myapp df -h\ndocker exec myapp ls -la /app\ndocker exec myapp find /app -name '*.log' -size +10M\n\n# Check environment\ndocker exec myapp env\ndocker exec myapp printenv DATABASE_URL\n\n# Check connectivity\ndocker exec myapp curl -s http://localhost:3000/health\ndocker exec myapp wget -qO- http://api:8080/status\n\n# Install debugging tools (in non-production!)\ndocker exec -u root myapp apt-get update && apt-get install -y curl net-tools strace\ndocker exec -u root myapp apk add --no-cache curl bind-tools\n```\n\n## Script Execution\n\n```bash\n# Run a script already inside the container\ndocker exec myapp /app/scripts/migrate.sh\n\n# Pipe a script from host into container\ndocker exec -i myapp /bin/sh < local-script.sh\n\n# Run inline multi-command script\ndocker exec myapp /bin/sh -c 'cd /app && npm run migrate && npm run seed'\n\n# Copy a file in, then execute it\ndocker cp script.sh myapp:/tmp/script.sh\ndocker exec myapp chmod +x /tmp/script.sh\ndocker exec myapp /tmp/script.sh\n```\n\n## Health Checking\n\n```bash\n# HTTP health check\ndocker exec myapp curl -sf http://localhost:3000/health || echo 'UNHEALTHY'\n\n# Process check\ndocker exec myapp pgrep -f 'node server.js' || echo 'PROCESS NOT RUNNING'\n\n# File-based health check\ndocker exec myapp test -f /tmp/healthy && echo 'HEALTHY' || echo 'UNHEALTHY'\n\n# Database connectivity check\ndocker exec myapp pg_isready -h localhost -U app || echo 'DB NOT READY'\n```\n\n## Best Practices\n\n- Use `--user` to avoid running exec as root when possible\n- Prefer running migrations and admin tasks as ephemeral containers (`docker run --rm`) rather than exec\n- Do not install packages in production containers via exec -- rebuild the image instead\n- Use exec for debugging, not for regular application operations\n- Remember that exec processes are not restarted if they crash -- only the main container process respects restart policies\n",
+  "sections": [
+    {
+      "id": "interactive-shells",
+      "title": "Interactive shells",
+      "body": "Open a shell inside a container with docker exec -it <container> /bin/sh (or /bin/bash if available). The -i flag keeps STDIN open, -t allocates a TTY. For distroless or scratch images with no shell, use docker debug (Docker 25+). Check available shells with cat /etc/shells.",
+      "tags": ["shell", "interactive", "bash", "sh", "tty", "debug"]
+    },
+    {
+      "id": "user-context",
+      "title": "User context and permissions",
+      "body": "Use -u to override the exec user. Run as root for administration even if the container runs as non-root. Run as a specific UID:GID for permission-sensitive operations. The user context affects filesystem access, process ownership, and capability restrictions.",
+      "tags": ["user", "root", "uid", "gid", "permissions", "override"]
+    },
+    {
+      "id": "database-operations",
+      "title": "Database operations",
+      "body": "Exec into database containers for administration: psql for PostgreSQL, mysql for MySQL, redis-cli for Redis, mongosh for MongoDB. Run backups with pg_dump, mysqldump, or mongodump. Pipe output to host for backup storage. Use exec for interactive queries and one-off administrative commands.",
+      "tags": ["database", "psql", "mysql", "redis-cli", "mongosh", "backup", "migration"]
+    },
+    {
+      "id": "debugging",
+      "title": "Debugging patterns",
+      "body": "Inspect processes (ps aux), network config (ip addr, nslookup), filesystem (ls, df, find), environment (env, printenv), and connectivity (curl, wget) inside the container. Install debug tools temporarily in non-production containers. For production, use docker debug or ephemeral debug containers on the same network.",
+      "tags": ["debug", "inspect", "processes", "network", "filesystem", "connectivity"]
+    },
+    {
+      "id": "best-practices",
+      "title": "Exec best practices",
+      "body": "Use exec for debugging and one-off tasks, not regular operations. Prefer ephemeral containers (docker run --rm) for migrations and administrative scripts. Do not install packages in production containers via exec -- rebuild the image. Exec processes are not covered by restart policies. Use --user to follow least-privilege principles.",
+      "tags": ["best-practices", "ephemeral", "migration", "least-privilege"]
+    }
+  ],
+  "links": [
+    { "uri": "docker/containers", "context": "Parent skill for container lifecycle and management" },
+    { "uri": "docker/containers/run", "context": "Start containers before exec-ing into them" },
+    { "uri": "docker/containers/logs", "context": "View container output; complementary to exec for debugging" },
+    { "uri": "docker/volumes", "context": "Inspect volume-mounted data inside containers" },
+    { "uri": "docker/networking", "context": "Debug network connectivity from inside containers" }
+  ],
+  "related": [
+    { "uri": "docker/containers/run", "relation": "sequence", "note": "Containers must be running before exec can be used" },
+    { "uri": "docker/containers/logs", "relation": "see-also", "note": "Logs show stdout/stderr; exec provides interactive access" },
+    { "uri": "docker/compose", "relation": "see-also", "note": "docker compose exec provides the same functionality for Compose services" }
+  ],
+  "scripts": [
+    {
+      "id": "exec-shell",
+      "name": "Exec Shell",
+      "description": "Open an interactive shell inside a running Docker container",
+      "lang": "bash",
+      "runtime": "docker>=20",
+      "inline": "SHELL_CMD=\"${SHELL_CMD:-/bin/sh}\" && USER_FLAG=\"${USER_ID:+--user $USER_ID}\" && WORKDIR_FLAG=\"${WORKDIR:+-w $WORKDIR}\" && echo \"Opening shell in container '${CONTAINER}'...\" && docker exec -it $USER_FLAG $WORKDIR_FLAG \"$CONTAINER\" \"$SHELL_CMD\"",
+      "env": {
+        "CONTAINER": { "required": true, "secret": false, "description": "Container name or ID" },
+        "SHELL_CMD": { "required": false, "secret": false, "description": "Shell to use (default: /bin/sh)" },
+        "USER_ID": { "required": false, "secret": false, "description": "User to run as (e.g. root, 1000:1000)" },
+        "WORKDIR": { "required": false, "secret": false, "description": "Working directory inside container" }
+      },
+      "packages": ["docker"]
+    },
+    {
+      "id": "exec-command",
+      "name": "Exec Command",
+      "description": "Execute a command inside a running Docker container and return the output",
+      "lang": "bash",
+      "runtime": "docker>=20",
+      "inline": "echo \"Executing in container '${CONTAINER}': ${COMMAND}\" && echo '---' && docker exec ${USER_ID:+--user \"$USER_ID\"} ${WORKDIR:+-w \"$WORKDIR\"} ${ENV_VARS:+$(echo \"$ENV_VARS\" | tr ',' '\\n' | sed 's/^/-e /')} \"$CONTAINER\" /bin/sh -c \"$COMMAND\" && echo '' && echo '--- Exit code: 0'",
+      "env": {
+        "CONTAINER": { "required": true, "secret": false, "description": "Container name or ID" },
+        "COMMAND": { "required": true, "secret": false, "description": "Command to execute (e.g. 'npm run migrate', 'cat /etc/hostname')" },
+        "USER_ID": { "required": false, "secret": false, "description": "User to run as" },
+        "WORKDIR": { "required": false, "secret": false, "description": "Working directory" },
+        "ENV_VARS": { "required": false, "secret": false, "description": "Comma-separated env vars (e.g. DEBUG=true,LOG_LEVEL=verbose)" }
+      },
+      "packages": ["docker"]
+    },
+    {
+      "id": "exec-debug",
+      "name": "Debug Container",
+      "description": "Run a comprehensive diagnostic check inside a running container",
+      "lang": "bash",
+      "runtime": "docker>=20",
+      "inline": "echo \"=== Container: ${CONTAINER} ===\" && echo '' && echo '--- Hostname ---' && docker exec \"$CONTAINER\" hostname 2>/dev/null && echo '' && echo '--- Processes ---' && docker exec \"$CONTAINER\" ps aux 2>/dev/null || docker exec \"$CONTAINER\" ls /proc 2>/dev/null && echo '' && echo '--- Environment ---' && docker exec \"$CONTAINER\" env 2>/dev/null | sort && echo '' && echo '--- Filesystem ---' && docker exec \"$CONTAINER\" df -h 2>/dev/null && echo '' && echo '--- Network ---' && docker exec \"$CONTAINER\" cat /etc/resolv.conf 2>/dev/null && echo '' && if [ -n \"$HEALTH_URL\" ]; then echo '--- Health Check ---' && docker exec \"$CONTAINER\" wget -qO- \"$HEALTH_URL\" 2>/dev/null || docker exec \"$CONTAINER\" curl -sf \"$HEALTH_URL\" 2>/dev/null || echo 'Health check failed (no curl/wget)'; fi",
+      "env": {
+        "CONTAINER": { "required": true, "secret": false, "description": "Container name or ID to debug" },
+        "HEALTH_URL": { "required": false, "secret": false, "description": "Health check URL to test (e.g. http://localhost:3000/health)" }
+      },
+      "packages": ["docker"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "container": { "type": "string", "description": "Container name or ID" },
+        "command": { "type": "string", "description": "Command to execute inside the container" },
+        "interactive": { "type": "boolean", "description": "Allocate TTY for interactive session" },
+        "user": { "type": "string", "description": "User to execute as (name or UID:GID)" },
+        "workdir": { "type": "string", "description": "Working directory inside the container" },
+        "environment": { "type": "object", "additionalProperties": { "type": "string" }, "description": "Additional environment variables for the exec process" },
+        "detach": { "type": "boolean", "description": "Run in background" }
+      },
+      "required": ["container", "command"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "stdout": { "type": "string", "description": "Command standard output" },
+        "stderr": { "type": "string", "description": "Command standard error" },
+        "exitCode": { "type": "integer", "description": "Command exit code (0 = success)" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "docker", "reason": "Docker Engine must be installed and running" },
+    { "uri": "docker/containers", "reason": "Parent skill for container management" },
+    { "uri": "docker/containers/run", "reason": "Container must be running before exec" }
+  ],
+  "more": {
+    "docs": "https://docs.docker.com/engine/reference/commandline/exec/",
+    "debug": "https://docs.docker.com/engine/reference/commandline/debug/"
+  },
+  "frontmatter": {
+    "created": "2026-04-10",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "developers, AI agents, DevOps engineers",
+    "estimated_reading_time": "5 min",
+    "prerequisites": ["docker/containers/run"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://github.com/docker",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

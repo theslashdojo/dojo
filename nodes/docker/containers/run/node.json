@@ -1,0 +1,196 @@
+{
+  "name": "run",
+  "version": "1.0.0",
+  "uri": "docker/containers/run",
+  "type": "sub",
+  "context": "Create and start Docker containers with port mapping, volume mounts, environment variables, and resource limits",
+  "info": "This sub-skill covers docker run and its many flags for creating and starting containers. docker run combines docker create and docker start in one command. Key configuration includes port mapping (-p host:container), volume mounts (-v or --mount), environment variables (-e or --env-file), network selection (--network), resource limits (--memory, --cpus), restart policies (--restart), user override (--user), working directory (--workdir), and entrypoint/command override. Containers run in the foreground by default; use -d for detached mode. Use --rm for ephemeral containers that are removed on exit. Use --name for human-readable identification. Interactive containers use -it for terminal allocation. This sub-skill covers the run command in depth; see [[docker/containers/exec]] for interacting with running containers and [[docker/containers/logs]] for viewing output.",
+  "parent": "docker/containers",
+  "tags": ["docker", "run", "container", "port-mapping", "volumes", "environment", "detached", "interactive"],
+  "aliases": [
+    "docker run",
+    "run container",
+    "start container",
+    "create container",
+    "docker run command",
+    "launch container",
+    "container startup",
+    "docker run flags"
+  ],
+  "triggers": [
+    "run a docker container",
+    "start a container from an image",
+    "map ports in docker run",
+    "mount volumes in docker run",
+    "pass environment variables to container",
+    "run container in background",
+    "run interactive container",
+    "docker run with resource limits"
+  ],
+  "body": "# Running Docker Containers\n\n`docker run` creates a new container from an image and starts it. It is the most commonly used Docker command, combining `docker create` and `docker start` in one step.\n\n## Basic Usage\n\n```bash\n# Run and attach to output\ndocker run nginx:1.25-alpine\n\n# Run in detached mode (background)\ndocker run -d nginx:1.25-alpine\n\n# Run with a name\ndocker run -d --name webserver nginx:1.25-alpine\n\n# Run and remove on exit (ephemeral)\ndocker run --rm alpine echo 'hello world'\n\n# Run interactively with a terminal\ndocker run -it ubuntu:22.04 /bin/bash\n\n# Run with custom command\ndocker run -d --name api myapp:latest node server.js --port 3000\n```\n\n## Port Mapping\n\nExpose container ports to the host network:\n\n```bash\n# Map host port 8080 to container port 80\ndocker run -d -p 8080:80 nginx\n\n# Map multiple ports\ndocker run -d -p 8080:80 -p 8443:443 nginx\n\n# Bind to localhost only (not exposed externally)\ndocker run -d -p 127.0.0.1:8080:80 nginx\n\n# Random host port assignment\ndocker run -d -p 80 nginx\ndocker port <container_id>  # check assigned port\n\n# UDP port mapping\ndocker run -d -p 53:53/udp dns-server\n\n# Map all EXPOSE'd ports to random host ports\ndocker run -d -P nginx\n```\n\nSee [[docker/networking]] for network drivers and DNS resolution.\n\n## Volume Mounts\n\nPersist data and share files between host and container:\n\n```bash\n# Named volume (Docker-managed, persists across container restarts)\ndocker run -d -v pgdata:/var/lib/postgresql/data postgres:16\n\n# Bind mount (host directory mapped into container)\ndocker run -d -v $(pwd)/src:/app/src myapp:dev\n\n# Read-only bind mount\ndocker run -d -v $(pwd)/config:/etc/app/config:ro myapp\n\n# tmpfs mount (in-memory, not persisted)\ndocker run -d --tmpfs /tmp:rw,noexec,size=100m myapp\n\n# Using --mount (more explicit syntax)\ndocker run -d \\\n  --mount type=volume,source=pgdata,target=/var/lib/postgresql/data \\\n  --mount type=bind,source=$(pwd)/config,target=/etc/app/config,readonly \\\n  myapp\n```\n\nSee [[docker/volumes]] for volume management and backup strategies.\n\n## Environment Variables\n\nConfigure containers at runtime with environment variables:\n\n```bash\n# Single variable\ndocker run -d -e DATABASE_URL=postgres://db:5432/myapp myapp\n\n# Multiple variables\ndocker run -d \\\n  -e DATABASE_URL=postgres://db:5432/myapp \\\n  -e REDIS_URL=redis://cache:6379 \\\n  -e LOG_LEVEL=info \\\n  -e NODE_ENV=production \\\n  myapp\n\n# From host environment\nexport API_KEY=secret123\ndocker run -d -e API_KEY myapp  # passes host $API_KEY\n\n# From a file\ndocker run -d --env-file .env myapp\n```\n\n### .env file format:\n```\nDATABASE_URL=postgres://db:5432/myapp\nREDIS_URL=redis://cache:6379\nLOG_LEVEL=info\n# Comments are supported\nNODE_ENV=production\n```\n\n## Network Configuration\n\n```bash\n# Connect to a user-defined network\ndocker run -d --network app-network --name api myapp\n\n# Host networking (no isolation, container uses host network directly)\ndocker run -d --network host myapp\n\n# No networking\ndocker run -d --network none myapp\n\n# Set hostname and DNS\ndocker run -d --hostname api.local --dns 8.8.8.8 myapp\n\n# Add hosts file entry\ndocker run -d --add-host db:192.168.1.100 myapp\n```\n\nSee [[docker/networking]] for network creation and multi-container communication.\n\n## Resource Limits\n\n```bash\n# Memory limits\ndocker run -d --memory 512m --memory-swap 1g myapp\n\n# CPU limits\ndocker run -d --cpus 1.5 myapp\ndocker run -d --cpu-shares 512 myapp  # relative weight\n\n# Process limit\ndocker run -d --pids-limit 100 myapp\n\n# Combined production constraints\ndocker run -d \\\n  --name api \\\n  --memory 1g \\\n  --memory-reservation 512m \\\n  --cpus 2 \\\n  --pids-limit 200 \\\n  --restart unless-stopped \\\n  myapp:v1.0.0\n```\n\n## Security Options\n\n```bash\n# Run as non-root user\ndocker run -d --user 1000:1000 myapp\ndocker run -d --user node myapp\n\n# Read-only filesystem\ndocker run -d --read-only --tmpfs /tmp myapp\n\n# Drop all capabilities, add only what is needed\ndocker run -d --cap-drop ALL --cap-add NET_BIND_SERVICE myapp\n\n# Security profile\ndocker run -d --security-opt no-new-privileges myapp\n\n# Combined secure configuration\ndocker run -d \\\n  --name api \\\n  --user 1000:1000 \\\n  --read-only \\\n  --tmpfs /tmp:rw,noexec,size=50m \\\n  --cap-drop ALL \\\n  --cap-add NET_BIND_SERVICE \\\n  --security-opt no-new-privileges \\\n  myapp:v1.0.0\n```\n\n## Override Entrypoint and Command\n\n```bash\n# Override CMD (appended after ENTRYPOINT)\ndocker run myapp node script.js\n\n# Override ENTRYPOINT\ndocker run --entrypoint /bin/sh myapp -c 'echo hello'\n\n# Override both\ndocker run --entrypoint python myapp manage.py migrate\n\n# Override working directory\ndocker run -w /opt/app myapp npm test\n```\n\n## Common Patterns\n\n```bash\n# Development container with live reload\ndocker run -d \\\n  --name dev \\\n  -p 3000:3000 \\\n  -v $(pwd):/app \\\n  -v /app/node_modules \\\n  -e NODE_ENV=development \\\n  myapp:dev \\\n  npm run dev\n\n# One-off task runner\ndocker run --rm \\\n  -v $(pwd):/workspace \\\n  -w /workspace \\\n  node:20-alpine \\\n  npm run migrate\n\n# Database with persistence\ndocker run -d \\\n  --name postgres \\\n  --network app-network \\\n  -v pgdata:/var/lib/postgresql/data \\\n  -e POSTGRES_DB=myapp \\\n  -e POSTGRES_USER=app \\\n  -e POSTGRES_PASSWORD_FILE=/run/secrets/db_password \\\n  --restart unless-stopped \\\n  postgres:16-alpine\n```\n",
+  "sections": [
+    {
+      "id": "basic-usage",
+      "title": "Basic docker run usage",
+      "body": "docker run creates and starts a container from an image. Use -d for detached (background) mode. Use --name for human-readable identification. Use --rm for ephemeral containers removed on exit. Use -it for interactive terminal access. The command after the image name overrides the Dockerfile CMD.",
+      "tags": ["run", "detached", "name", "rm", "interactive", "basic"]
+    },
+    {
+      "id": "port-mapping",
+      "title": "Port mapping",
+      "body": "Map container ports to the host with -p host:container. Bind to specific interfaces with 127.0.0.1:host:container for localhost-only access. Use -P to map all EXPOSE'd ports to random host ports. Support TCP (default) and UDP (/udp). Check assigned ports with docker port.",
+      "tags": ["ports", "publish", "mapping", "tcp", "udp", "expose"]
+    },
+    {
+      "id": "volume-mounts",
+      "title": "Volume mounts",
+      "body": "Named volumes (-v name:/path) persist data across container restarts and are managed by Docker. Bind mounts (-v /host/path:/container/path) share host directories. Read-only mounts use the :ro suffix. tmpfs mounts store data in memory. The --mount flag provides a more explicit syntax. Use volumes for databases and bind mounts for development.",
+      "tags": ["volumes", "bind-mount", "tmpfs", "mount", "persistence", "storage"]
+    },
+    {
+      "id": "environment",
+      "title": "Environment variables",
+      "body": "Pass environment variables with -e KEY=VALUE. Pass multiple with repeated -e flags. Pass from host environment with -e KEY (no value). Load from file with --env-file .env. Environment files support comments and blank lines. Never pass secrets in plain -e flags in CI -- use Docker secrets or env files excluded from version control.",
+      "tags": ["environment", "env", "env-file", "configuration", "secrets"]
+    },
+    {
+      "id": "security",
+      "title": "Security options",
+      "body": "Run as non-root with --user UID:GID. Make filesystem read-only with --read-only (use --tmpfs for writable temp directories). Drop capabilities with --cap-drop ALL and add back only what is needed. Prevent privilege escalation with --security-opt no-new-privileges. These options reduce the blast radius of container compromise.",
+      "tags": ["security", "non-root", "read-only", "capabilities", "cap-drop", "hardening"]
+    }
+  ],
+  "links": [
+    { "uri": "docker/containers", "context": "Parent skill for container lifecycle management" },
+    { "uri": "docker/containers/exec", "context": "Run commands in running containers after docker run" },
+    { "uri": "docker/containers/logs", "context": "View output from running containers" },
+    { "uri": "docker/networking", "context": "Network configuration and port mapping" },
+    { "uri": "docker/volumes", "context": "Volume management for persistent container data" },
+    { "uri": "docker/images", "context": "Images from which containers are run" },
+    { "uri": "docker/best-practices", "context": "Security and operational best practices for running containers" }
+  ],
+  "related": [
+    { "uri": "docker/containers/exec", "relation": "sequence", "note": "After running, use exec to interact with the container" },
+    { "uri": "docker/containers/logs", "relation": "sequence", "note": "After running, use logs to view output" },
+    { "uri": "docker/networking", "relation": "see-also", "note": "Networking flags in docker run configure container connectivity" },
+    { "uri": "docker/volumes", "relation": "see-also", "note": "Volume flags in docker run configure persistent storage" }
+  ],
+  "scripts": [
+    {
+      "id": "run-container",
+      "name": "Run Container",
+      "description": "Run a Docker container with configurable port mapping, volumes, environment, and resource limits",
+      "lang": "bash",
+      "runtime": "docker>=20",
+      "inline": "docker run -d \\\n  --name \"${CONTAINER_NAME}\" \\\n  ${PORTS:+$(echo \"$PORTS\" | tr ',' '\\n' | sed 's/^/-p /')} \\\n  ${VOLUMES:+$(echo \"$VOLUMES\" | tr ',' '\\n' | sed 's/^/-v /')} \\\n  ${ENV_VARS:+$(echo \"$ENV_VARS\" | tr ',' '\\n' | sed 's/^/-e /')} \\\n  ${ENV_FILE:+--env-file \"$ENV_FILE\"} \\\n  ${NETWORK:+--network \"$NETWORK\"} \\\n  ${MEMORY:+--memory \"$MEMORY\"} \\\n  ${CPUS:+--cpus \"$CPUS\"} \\\n  ${RESTART:+--restart \"$RESTART\"} \\\n  ${USER_ID:+--user \"$USER_ID\"} \\\n  \"$IMAGE\" ${COMMAND:-} && echo '' && echo \"Container '${CONTAINER_NAME}' started\" && docker ps --filter \"name=${CONTAINER_NAME}\" --format 'table {{.ID}}\\t{{.Names}}\\t{{.Status}}\\t{{.Ports}}'",
+      "env": {
+        "IMAGE": { "required": true, "secret": false, "description": "Docker image to run (e.g. nginx:1.25-alpine)" },
+        "CONTAINER_NAME": { "required": true, "secret": false, "description": "Container name" },
+        "PORTS": { "required": false, "secret": false, "description": "Comma-separated port mappings (e.g. 8080:80,8443:443)" },
+        "VOLUMES": { "required": false, "secret": false, "description": "Comma-separated volume mounts (e.g. pgdata:/var/lib/postgresql/data,./src:/app/src)" },
+        "ENV_VARS": { "required": false, "secret": false, "description": "Comma-separated environment variables (e.g. NODE_ENV=production,LOG_LEVEL=info)" },
+        "ENV_FILE": { "required": false, "secret": false, "description": "Path to env file" },
+        "NETWORK": { "required": false, "secret": false, "description": "Docker network to connect to" },
+        "MEMORY": { "required": false, "secret": false, "description": "Memory limit (e.g. 512m, 1g)" },
+        "CPUS": { "required": false, "secret": false, "description": "CPU limit (e.g. 1.5)" },
+        "RESTART": { "required": false, "secret": false, "description": "Restart policy: no, on-failure, always, unless-stopped" },
+        "USER_ID": { "required": false, "secret": false, "description": "User ID to run as (e.g. 1000:1000)" },
+        "COMMAND": { "required": false, "secret": false, "description": "Override container command" }
+      },
+      "packages": ["docker"]
+    },
+    {
+      "id": "run-interactive",
+      "name": "Run Interactive Container",
+      "description": "Start an interactive container with terminal access for debugging or one-off tasks",
+      "lang": "bash",
+      "runtime": "docker>=20",
+      "inline": "docker run -it --rm \\\n  --name \"${CONTAINER_NAME:-interactive}\" \\\n  ${NETWORK:+--network \"$NETWORK\"} \\\n  ${VOLUMES:+$(echo \"$VOLUMES\" | tr ',' '\\n' | sed 's/^/-v /')} \\\n  ${WORKDIR:+-w \"$WORKDIR\"} \\\n  \"$IMAGE\" ${SHELL_CMD:-/bin/sh}",
+      "env": {
+        "IMAGE": { "required": true, "secret": false, "description": "Docker image (e.g. ubuntu:22.04, alpine:3.19)" },
+        "CONTAINER_NAME": { "required": false, "secret": false, "description": "Container name (default: interactive)" },
+        "NETWORK": { "required": false, "secret": false, "description": "Docker network to join" },
+        "VOLUMES": { "required": false, "secret": false, "description": "Comma-separated volume mounts" },
+        "WORKDIR": { "required": false, "secret": false, "description": "Working directory inside container" },
+        "SHELL_CMD": { "required": false, "secret": false, "description": "Shell command (default: /bin/sh)" }
+      },
+      "packages": ["docker"]
+    },
+    {
+      "id": "run-dev-container",
+      "name": "Run Development Container",
+      "description": "Start a development container with source code mounted for live reload",
+      "lang": "bash",
+      "runtime": "docker>=20",
+      "inline": "docker run -d \\\n  --name \"${CONTAINER_NAME:-dev}\" \\\n  -p \"${HOST_PORT:-3000}:${CONTAINER_PORT:-3000}\" \\\n  -v \"${SOURCE_DIR:-.}:/app\" \\\n  -v /app/node_modules \\\n  -e NODE_ENV=development \\\n  ${NETWORK:+--network \"$NETWORK\"} \\\n  ${ENV_FILE:+--env-file \"$ENV_FILE\"} \\\n  \"$IMAGE\" ${DEV_COMMAND:-npm run dev} && echo '' && echo \"Development container '${CONTAINER_NAME:-dev}' started on port ${HOST_PORT:-3000}\" && echo \"Source mounted from ${SOURCE_DIR:-.}\"",
+      "env": {
+        "IMAGE": { "required": true, "secret": false, "description": "Development Docker image" },
+        "CONTAINER_NAME": { "required": false, "secret": false, "description": "Container name (default: dev)" },
+        "SOURCE_DIR": { "required": false, "secret": false, "description": "Host source directory to mount (default: current directory)" },
+        "HOST_PORT": { "required": false, "secret": false, "description": "Host port (default: 3000)" },
+        "CONTAINER_PORT": { "required": false, "secret": false, "description": "Container port (default: 3000)" },
+        "NETWORK": { "required": false, "secret": false, "description": "Docker network" },
+        "ENV_FILE": { "required": false, "secret": false, "description": "Path to .env file" },
+        "DEV_COMMAND": { "required": false, "secret": false, "description": "Development command (default: npm run dev)" }
+      },
+      "packages": ["docker"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "image": { "type": "string", "description": "Docker image to run (repository:tag)" },
+        "name": { "type": "string", "description": "Container name" },
+        "ports": { "type": "array", "items": { "type": "string" }, "description": "Port mappings in host:container format" },
+        "volumes": { "type": "array", "items": { "type": "string" }, "description": "Volume mounts in source:target[:options] format" },
+        "environment": { "type": "object", "additionalProperties": { "type": "string" }, "description": "Environment variables as key-value pairs" },
+        "envFile": { "type": "string", "description": "Path to env file" },
+        "network": { "type": "string", "description": "Docker network name" },
+        "memory": { "type": "string", "description": "Memory limit (e.g. 512m, 1g)" },
+        "cpus": { "type": "number", "description": "CPU limit (number of cores)" },
+        "restart": { "type": "string", "enum": ["no", "on-failure", "always", "unless-stopped"], "description": "Restart policy" },
+        "user": { "type": "string", "description": "User UID:GID to run as" },
+        "command": { "type": "array", "items": { "type": "string" }, "description": "Override container command" },
+        "detach": { "type": "boolean", "description": "Run in background (default: true)" },
+        "interactive": { "type": "boolean", "description": "Allocate TTY for interactive mode" },
+        "removeOnExit": { "type": "boolean", "description": "Remove container when it exits" }
+      },
+      "required": ["image", "name"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "containerId": { "type": "string", "description": "Full container ID" },
+        "name": { "type": "string", "description": "Container name" },
+        "status": { "type": "string", "description": "Container status after start" },
+        "ports": { "type": "object", "additionalProperties": { "type": "string" }, "description": "Mapped ports (container port -> host port)" },
+        "networkIp": { "type": "string", "description": "Container IP address on the network" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "docker", "reason": "Docker Engine must be installed and running" },
+    { "uri": "docker/containers", "reason": "Parent skill for container management" }
+  ],
+  "more": {
+    "docs": "https://docs.docker.com/engine/reference/run/",
+    "cli-ref": "https://docs.docker.com/engine/reference/commandline/run/"
+  },
+  "frontmatter": {
+    "created": "2026-04-10",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "developers, AI agents, DevOps engineers",
+    "estimated_reading_time": "7 min",
+    "prerequisites": [],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://github.com/docker",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

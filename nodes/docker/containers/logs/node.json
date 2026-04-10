@@ -1,0 +1,185 @@
+{
+  "name": "logs",
+  "version": "1.0.0",
+  "uri": "docker/containers/logs",
+  "type": "sub",
+  "context": "View, follow, filter, and manage Docker container log output from stdout and stderr",
+  "info": "This sub-skill covers docker logs for viewing container output. Docker captures everything written to stdout and stderr by the container's main process and stores it via the configured logging driver. The default json-file driver writes logs to JSON files on the host. Commands include following live output (-f), showing timestamps (--since, --until), limiting output (--tail), and filtering by time range. Logging drivers determine where logs are stored: json-file (default, local), journald (systemd), syslog (remote syslog), fluentd (log aggregator), awslogs (CloudWatch), gcplogs (Cloud Logging), and none (discard). Configure log rotation to prevent disk exhaustion. In production, forward logs to a centralized system (ELK, Loki, Datadog) via the appropriate logging driver or a sidecar container. This sub-skill covers log access and configuration; see [[docker/containers/exec]] for interactive debugging.",
+  "parent": "docker/containers",
+  "tags": ["docker", "logs", "stdout", "stderr", "logging-driver", "json-file", "log-rotation", "monitoring"],
+  "aliases": [
+    "docker logs",
+    "container logs",
+    "view container output",
+    "container stdout",
+    "docker log output",
+    "container logging",
+    "follow container logs",
+    "tail docker logs"
+  ],
+  "triggers": [
+    "view docker container logs",
+    "follow container output",
+    "tail docker logs",
+    "check container errors",
+    "container log output",
+    "configure docker logging",
+    "set up log rotation for docker",
+    "stream container logs"
+  ],
+  "body": "# Docker Container Logs\n\nDocker captures everything written to stdout and stderr by a container's main process (PID 1). The `docker logs` command retrieves this output. The logging driver determines how and where logs are stored.\n\n## Basic Usage\n\n```bash\n# View all logs\ndocker logs myapp\n\n# Follow (stream) live output\ndocker logs -f myapp\n\n# Show last N lines\ndocker logs --tail 100 myapp\n\n# Follow starting from last 50 lines\ndocker logs -f --tail 50 myapp\n\n# Show timestamps\ndocker logs -t myapp\n\n# Separate stdout and stderr\ndocker logs myapp 2>/dev/null     # stdout only\ndocker logs myapp 1>/dev/null     # stderr only\n```\n\n## Time-Based Filtering\n\nFilter logs by time range to find specific events:\n\n```bash\n# Logs since a specific time\ndocker logs --since 2026-04-10T10:00:00 myapp\n\n# Logs from the last 30 minutes\ndocker logs --since 30m myapp\n\n# Logs from the last 2 hours\ndocker logs --since 2h myapp\n\n# Logs between two times\ndocker logs --since 2026-04-10T08:00:00 --until 2026-04-10T09:00:00 myapp\n\n# Combine with tail for recent errors\ndocker logs --since 10m --tail 50 myapp\n```\n\n## Compose Logs\n\nDocker Compose provides aggregated logs across all services:\n\n```bash\n# All services\ndocker compose logs\n\n# Follow all services\ndocker compose logs -f\n\n# Specific service(s)\ndocker compose logs -f web api\n\n# Last 100 lines per service\ndocker compose logs --tail 100\n\n# Since a time\ndocker compose logs --since 30m web\n\n# No color (for piping/parsing)\ndocker compose logs --no-color web | grep ERROR\n```\n\nSee [[docker/compose]] for multi-service orchestration.\n\n## Logging Drivers\n\nThe logging driver determines where container logs are stored:\n\n| Driver | Destination | docker logs? | Use Case |\n|---|---|---|---|\n| `json-file` | Local JSON files | Yes | Default, development, small deployments |\n| `local` | Local optimized format | Yes | Better performance than json-file |\n| `journald` | systemd journal | Yes | Linux servers with systemd |\n| `syslog` | Remote syslog server | No | Traditional log aggregation |\n| `fluentd` | Fluentd collector | No | Flexible log routing and processing |\n| `awslogs` | AWS CloudWatch Logs | No | AWS deployments |\n| `gcplogs` | Google Cloud Logging | No | GCP deployments |\n| `none` | Discarded | No | High-throughput apps logging internally |\n\n### Setting the Logging Driver\n\n```bash\n# Per container\ndocker run -d --log-driver json-file --log-opt max-size=10m --log-opt max-file=3 myapp\n\n# Per container (journald)\ndocker run -d --log-driver journald myapp\n\n# Per container (awslogs)\ndocker run -d \\\n  --log-driver awslogs \\\n  --log-opt awslogs-region=us-east-1 \\\n  --log-opt awslogs-group=/ecs/myapp \\\n  --log-opt awslogs-stream-prefix=web \\\n  myapp\n```\n\n### Default Logging Driver\n\nConfigure the daemon-wide default in `/etc/docker/daemon.json`:\n\n```json\n{\n  \"log-driver\": \"json-file\",\n  \"log-opts\": {\n    \"max-size\": \"10m\",\n    \"max-file\": \"3\",\n    \"compress\": \"true\"\n  }\n}\n```\n\nRestart Docker after changing: `sudo systemctl restart docker`\n\n## Log Rotation\n\nWithout rotation, container logs grow unbounded and eventually fill the disk. Always configure log rotation:\n\n```bash\n# Rotate at 10MB, keep 3 files\ndocker run -d \\\n  --log-opt max-size=10m \\\n  --log-opt max-file=3 \\\n  myapp\n\n# In docker-compose.yml:\n#   services:\n#     web:\n#       logging:\n#         driver: json-file\n#         options:\n#           max-size: \"10m\"\n#           max-file: \"3\"\n```\n\n### Compose Logging Configuration\n\n```yaml\nservices:\n  web:\n    image: myapp:latest\n    logging:\n      driver: json-file\n      options:\n        max-size: \"10m\"\n        max-file: \"5\"\n        compress: \"true\"\n\n  api:\n    image: myapi:latest\n    logging:\n      driver: awslogs\n      options:\n        awslogs-region: us-east-1\n        awslogs-group: /ecs/myapi\n        awslogs-stream-prefix: api\n```\n\n## Log Parsing and Searching\n\n```bash\n# Search for errors\ndocker logs myapp 2>&1 | grep -i error\n\n# Count error occurrences\ndocker logs myapp 2>&1 | grep -ci error\n\n# Extract JSON logs\ndocker logs myapp 2>&1 | jq -r 'select(.level == \"error\") | .message'\n\n# Parse with timestamps\ndocker logs -t myapp 2>&1 | grep 'ERROR' | head -20\n\n# Follow and grep in real-time\ndocker logs -f myapp 2>&1 | grep --line-buffered 'ERROR\\|WARN'\n\n# Extract request paths from access logs\ndocker logs myapp 2>&1 | awk '{print $7}' | sort | uniq -c | sort -rn | head -20\n```\n\n## Log File Locations\n\nWith the default json-file driver, logs are stored at:\n\n```bash\n# Find log file path\ndocker inspect --format '{{.LogPath}}' myapp\n# Typically: /var/lib/docker/containers/<container_id>/<container_id>-json.log\n\n# Check log file size\ndu -sh $(docker inspect --format '{{.LogPath}}' myapp)\n\n# Direct log file access (requires root)\nsudo cat /var/lib/docker/containers/<id>/<id>-json.log | jq\n```\n\n## Structured Logging Best Practices\n\n- Write logs to stdout/stderr (not files) so Docker captures them\n- Use structured JSON format for machine-parseable logs\n- Include timestamp, level, message, and correlation ID\n- Set appropriate log levels: ERROR for failures, WARN for degradation, INFO for operations, DEBUG for development\n- Configure log rotation to prevent disk exhaustion\n- Forward logs to a centralized system (ELK, Loki, Datadog) for production\n- Use the `none` driver with application-level logging for high-throughput services\n",
+  "sections": [
+    {
+      "id": "basic-usage",
+      "title": "Basic log commands",
+      "body": "docker logs shows all captured output. Use -f to follow live output. Use --tail N to show last N lines. Use -t to add timestamps. Separate stdout and stderr with shell redirection. Combine --tail with -f to start following from a specific point.",
+      "tags": ["logs", "follow", "tail", "timestamps", "basic"]
+    },
+    {
+      "id": "time-filtering",
+      "title": "Time-based filtering",
+      "body": "Use --since for logs after a timestamp or relative duration (30m, 2h, 24h). Use --until for logs before a time. Combine both for a time range. Relative durations are most practical for recent debugging. ISO 8601 timestamps for precise historical queries.",
+      "tags": ["since", "until", "time-range", "filtering", "duration"]
+    },
+    {
+      "id": "logging-drivers",
+      "title": "Logging drivers",
+      "body": "The logging driver determines log storage: json-file (default, local JSON), local (optimized local), journald (systemd), syslog (remote), fluentd (aggregator), awslogs (CloudWatch), gcplogs (Cloud Logging), none (discard). Only json-file, local, and journald support docker logs. Others require external log viewers. Set per-container with --log-driver or daemon-wide in daemon.json.",
+      "tags": ["driver", "json-file", "journald", "syslog", "fluentd", "awslogs", "gcplogs"]
+    },
+    {
+      "id": "log-rotation",
+      "title": "Log rotation",
+      "body": "Without rotation, logs grow unbounded and fill the disk. Configure with --log-opt max-size (e.g. 10m) and --log-opt max-file (e.g. 3). In Compose, use the logging.options key. Set daemon-wide defaults in /etc/docker/daemon.json. The compress option reduces storage for rotated files.",
+      "tags": ["rotation", "max-size", "max-file", "disk", "compress", "daemon-json"]
+    },
+    {
+      "id": "structured-logging",
+      "title": "Structured logging",
+      "body": "Write logs to stdout/stderr in JSON format for machine parsing. Include timestamp, level, message, and request/correlation ID. Parse with jq. Forward to centralized systems (ELK, Loki, Datadog) via logging drivers or sidecar containers. Use appropriate log levels for different environments.",
+      "tags": ["structured", "json", "elk", "loki", "datadog", "centralized"]
+    }
+  ],
+  "links": [
+    { "uri": "docker/containers", "context": "Parent skill for container lifecycle and management" },
+    { "uri": "docker/containers/run", "context": "Configure logging driver when running containers" },
+    { "uri": "docker/containers/exec", "context": "Interactive debugging complements log viewing" },
+    { "uri": "docker/compose", "context": "Compose provides aggregated logs and per-service logging config" },
+    { "uri": "docker/best-practices", "context": "Logging best practices for production containers" }
+  ],
+  "related": [
+    { "uri": "docker/containers/exec", "relation": "see-also", "note": "Exec provides interactive access; logs provide output history" },
+    { "uri": "docker/compose", "relation": "see-also", "note": "Compose aggregates logs across services" },
+    { "uri": "docker/best-practices", "relation": "see-also", "note": "Best practices include log rotation and structured logging" }
+  ],
+  "scripts": [
+    {
+      "id": "view-logs",
+      "name": "View Logs",
+      "description": "View Docker container logs with optional filtering by time, line count, and pattern",
+      "lang": "bash",
+      "runtime": "docker>=20",
+      "inline": "docker logs ${SINCE:+--since \"$SINCE\"} ${UNTIL:+--until \"$UNTIL\"} ${TAIL:+--tail \"$TAIL\"} ${TIMESTAMPS:+-t} \"$CONTAINER\" 2>&1 ${GREP_PATTERN:+| grep -i --line-buffered \"$GREP_PATTERN\"} | head -${MAX_LINES:-1000}",
+      "env": {
+        "CONTAINER": { "required": true, "secret": false, "description": "Container name or ID" },
+        "SINCE": { "required": false, "secret": false, "description": "Show logs since timestamp or relative (e.g. 30m, 2h, 2026-04-10T10:00:00)" },
+        "UNTIL": { "required": false, "secret": false, "description": "Show logs until timestamp or relative" },
+        "TAIL": { "required": false, "secret": false, "description": "Number of lines from the end (e.g. 100)" },
+        "TIMESTAMPS": { "required": false, "secret": false, "description": "Set to any value to show timestamps" },
+        "GREP_PATTERN": { "required": false, "secret": false, "description": "Pattern to filter log lines (case-insensitive grep)" },
+        "MAX_LINES": { "required": false, "secret": false, "description": "Maximum lines to output (default: 1000)" }
+      },
+      "packages": ["docker"]
+    },
+    {
+      "id": "follow-logs",
+      "name": "Follow Logs",
+      "description": "Stream live container logs with optional pattern filtering",
+      "lang": "bash",
+      "runtime": "docker>=20",
+      "inline": "echo \"Following logs for '${CONTAINER}' (Ctrl+C to stop)...\" && echo '---' && docker logs -f --tail \"${TAIL:-50}\" ${TIMESTAMPS:+-t} \"$CONTAINER\" 2>&1 ${GREP_PATTERN:+| grep -i --line-buffered \"$GREP_PATTERN\"}",
+      "env": {
+        "CONTAINER": { "required": true, "secret": false, "description": "Container name or ID" },
+        "TAIL": { "required": false, "secret": false, "description": "Number of initial lines to show (default: 50)" },
+        "TIMESTAMPS": { "required": false, "secret": false, "description": "Set to any value to show timestamps" },
+        "GREP_PATTERN": { "required": false, "secret": false, "description": "Pattern to filter in real-time (case-insensitive)" }
+      },
+      "packages": ["docker"]
+    },
+    {
+      "id": "log-stats",
+      "name": "Log Statistics",
+      "description": "Analyze container logs for error counts, log volume, and common patterns",
+      "lang": "bash",
+      "runtime": "docker>=20",
+      "inline": "echo \"=== Log Statistics for '${CONTAINER}' ===\" && echo '' && TOTAL=$(docker logs \"$CONTAINER\" 2>&1 | wc -l) && echo \"Total lines: $TOTAL\" && echo '' && echo '--- Log Level Counts ---' && docker logs \"$CONTAINER\" 2>&1 | grep -ioE '(ERROR|WARN|INFO|DEBUG)' | sort | uniq -c | sort -rn && echo '' && echo '--- Log File Size ---' && LOG_PATH=$(docker inspect --format '{{.LogPath}}' \"$CONTAINER\" 2>/dev/null) && if [ -n \"$LOG_PATH\" ] && [ -f \"$LOG_PATH\" ]; then du -sh \"$LOG_PATH\"; else echo 'Log file not accessible (non-json-file driver or permission denied)'; fi && echo '' && echo '--- Recent Errors (last 10) ---' && docker logs --tail 1000 \"$CONTAINER\" 2>&1 | grep -i 'error\\|exception\\|fatal\\|panic' | tail -10",
+      "env": {
+        "CONTAINER": { "required": true, "secret": false, "description": "Container name or ID" }
+      },
+      "packages": ["docker"]
+    },
+    {
+      "id": "configure-log-rotation",
+      "name": "Configure Log Rotation",
+      "description": "Display the recommended daemon.json logging configuration for log rotation",
+      "lang": "bash",
+      "runtime": "bash>=4",
+      "inline": "MAX_SIZE=\"${MAX_SIZE:-10m}\" && MAX_FILES=\"${MAX_FILES:-3}\" && echo 'Add to /etc/docker/daemon.json:' && echo '' && echo '{' && echo '  \"log-driver\": \"json-file\",' && echo '  \"log-opts\": {' && echo \"    \\\"max-size\\\": \\\"${MAX_SIZE}\\\",\" && echo \"    \\\"max-file\\\": \\\"${MAX_FILES}\\\",\" && echo '    \"compress\": \"true\"' && echo '  }' && echo '}' && echo '' && echo 'Then restart Docker: sudo systemctl restart docker' && echo '' && echo 'For Compose services, add per-service:' && echo '' && echo '  logging:' && echo '    driver: json-file' && echo '    options:' && echo \"      max-size: \\\"${MAX_SIZE}\\\"\" && echo \"      max-file: \\\"${MAX_FILES}\\\"\"",
+      "env": {
+        "MAX_SIZE": { "required": false, "secret": false, "description": "Max log file size (default: 10m)" },
+        "MAX_FILES": { "required": false, "secret": false, "description": "Max number of rotated files (default: 3)" }
+      }
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "container": { "type": "string", "description": "Container name or ID" },
+        "follow": { "type": "boolean", "description": "Follow (stream) log output" },
+        "tail": { "type": "integer", "description": "Number of lines from the end" },
+        "since": { "type": "string", "description": "Show logs since timestamp or relative duration" },
+        "until": { "type": "string", "description": "Show logs until timestamp or relative duration" },
+        "timestamps": { "type": "boolean", "description": "Show timestamps on each line" },
+        "grepPattern": { "type": "string", "description": "Filter pattern for log lines" }
+      },
+      "required": ["container"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "lines": { "type": "array", "items": { "type": "string" }, "description": "Log lines matching the query" },
+        "totalLines": { "type": "integer", "description": "Total number of log lines" },
+        "logFileSize": { "type": "string", "description": "Size of the log file on disk" },
+        "errorCount": { "type": "integer", "description": "Number of error-level log entries" },
+        "logDriver": { "type": "string", "description": "Configured logging driver" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "docker", "reason": "Docker Engine must be installed and running" },
+    { "uri": "docker/containers", "reason": "Parent skill for container management" },
+    { "uri": "docker/containers/run", "reason": "Container must be running or have run to produce logs" }
+  ],
+  "more": {
+    "docs": "https://docs.docker.com/engine/reference/commandline/logs/",
+    "logging-drivers": "https://docs.docker.com/config/containers/logging/configure/",
+    "json-file": "https://docs.docker.com/config/containers/logging/json-file/"
+  },
+  "frontmatter": {
+    "created": "2026-04-10",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "developers, AI agents, DevOps engineers",
+    "estimated_reading_time": "6 min",
+    "prerequisites": ["docker/containers/run"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://github.com/docker",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

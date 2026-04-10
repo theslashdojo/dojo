@@ -1,0 +1,115 @@
+{
+  "name": "clone",
+  "version": "1.0.0",
+  "uri": "github/repos/clone",
+  "type": "sub",
+  "context": "Clone and fork GitHub repositories via git clone, gh repo clone, and the fork API",
+  "info": "Clone GitHub repositories locally via HTTPS, SSH, or the GitHub CLI. Fork repositories to create personal copies for contribution. Supports shallow clones for large repos, sparse checkouts for monorepos, and configuring upstream remotes for fork-based workflows. Use `git clone`, `gh repo clone`, or `gh repo fork`. Forking creates a server-side copy linked to the upstream repo, enabling [[github/pulls]] back to the original. See [[github/auth]] for authentication and [[github/repos/create]] for creating new repos from scratch.",
+  "parent": "github/repos",
+  "tags": ["clone", "fork", "git-clone", "ssh", "https", "shallow", "sparse-checkout"],
+  "aliases": [
+    "clone repo",
+    "git clone",
+    "gh repo clone",
+    "fork repository",
+    "gh repo fork",
+    "download repo"
+  ],
+  "triggers": [
+    "clone a github repo",
+    "fork a repository",
+    "git clone a repo",
+    "gh repo clone",
+    "shallow clone",
+    "clone with ssh"
+  ],
+  "body": "# Clone and Fork Repositories\n\nGet a local copy of a GitHub repository or create a fork for contribution.\n\n## gh CLI\n\n```bash\n# Clone a repo (uses git protocol configured in gh)\ngh repo clone owner/repo\n\n# Clone into a specific directory\ngh repo clone owner/repo my-local-dir\n\n# Fork and clone in one step\ngh repo fork owner/repo --clone\n\n# Fork without cloning\ngh repo fork owner/repo\n\n# Fork to a specific org\ngh repo fork owner/repo --org my-org\n```\n\n## git clone\n\n```bash\n# Clone via HTTPS\ngit clone https://github.com/owner/repo.git\n\n# Clone via SSH (requires SSH key configured)\ngit clone git@github.com:owner/repo.git\n\n# Clone specific branch\ngit clone -b develop https://github.com/owner/repo.git\n\n# Shallow clone (last commit only — fast for large repos)\ngit clone --depth 1 https://github.com/owner/repo.git\n\n# Shallow clone with limited history\ngit clone --depth 50 https://github.com/owner/repo.git\n\n# Sparse checkout (only specific directories)\ngit clone --filter=blob:none --sparse https://github.com/owner/repo.git\ncd repo\ngit sparse-checkout set src/api src/shared\n\n# Mirror clone (exact copy including all refs)\ngit clone --mirror https://github.com/owner/repo.git\n```\n\n## Fork API\n\n```javascript\nimport { Octokit } from \"@octokit/rest\";\nconst octokit = new Octokit({ auth: process.env.GITHUB_TOKEN });\n\n// Fork a repository\nconst { data: fork } = await octokit.repos.createFork({\n  owner: \"upstream-owner\",\n  repo: \"upstream-repo\",\n});\nconsole.log(fork.html_url, fork.clone_url);\n\n// Fork to an organization\nconst { data: orgFork } = await octokit.repos.createFork({\n  owner: \"upstream-owner\",\n  repo: \"upstream-repo\",\n  organization: \"my-org\",\n  name: \"custom-fork-name\",  // optional custom name\n  default_branch_only: true, // only fork the default branch\n});\n```\n\n## Fork Workflow\n\nThe standard open-source contribution workflow:\n\n```bash\n# 1. Fork and clone\ngh repo fork upstream/repo --clone\ncd repo\n\n# 2. Verify remotes (origin = fork, upstream = original)\ngit remote -v\n# origin    https://github.com/you/repo.git (fetch)\n# upstream  https://github.com/upstream/repo.git (fetch)\n\n# 3. Create feature branch\ngit checkout -b fix/typo-in-readme\n\n# 4. Make changes, commit, push to your fork\ngit add .\ngit commit -m \"fix: correct typo in README\"\ngit push origin fix/typo-in-readme\n\n# 5. Open PR from your fork to upstream\ngh pr create --repo upstream/repo --title \"Fix typo in README\"\n\n# 6. Keep fork in sync with upstream\ngit fetch upstream\ngit rebase upstream/main\ngit push origin main\n```\n\n## Clone Performance Tips\n\n| Technique | Command | Use Case |\n|-----------|---------|----------|\n| Shallow clone | `--depth 1` | CI/CD, quick builds |\n| Single branch | `--single-branch` | Only need one branch |\n| Sparse checkout | `--filter=blob:none --sparse` | Monorepos, specific directories |\n| Partial clone | `--filter=blob:none` | Large repos, lazy-load blobs |\n| Mirror | `--mirror` | Backup, exact repository copy |\n",
+  "sections": [
+    {
+      "id": "clone-protocols",
+      "title": "Clone protocols",
+      "body": "HTTPS (`https://github.com/owner/repo.git`) works with PATs and credential managers. SSH (`git@github.com:owner/repo.git`) requires SSH keys configured in GitHub. HTTPS is simpler for CI/CD. SSH is preferred for interactive development. The `gh repo clone` command uses whatever protocol is configured via `gh config`.",
+      "tags": ["https", "ssh", "protocol", "credential-manager"]
+    },
+    {
+      "id": "forking",
+      "title": "Forking repositories",
+      "body": "Fork creates a server-side copy of a repository under your account or organization. Forks maintain a link to the upstream repo, enabling PRs back to the original via [[github/pulls/create]]. Use `gh repo fork` or `octokit.repos.createFork()`. Set `default_branch_only: true` to only fork the default branch (saves space).",
+      "tags": ["fork", "upstream", "contribution", "default-branch-only"]
+    },
+    {
+      "id": "shallow-sparse",
+      "title": "Shallow and sparse clones",
+      "body": "Use `--depth N` for shallow clones that only fetch the last N commits. Use `--filter=blob:none --sparse` for monorepos where you only need specific directories. Shallow clones are faster and use less disk space. Partial clones (`--filter=blob:none`) lazy-load file contents on demand. These techniques are essential for CI/CD pipelines with large repositories.",
+      "tags": ["shallow", "sparse", "depth", "filter", "partial-clone", "ci-cd"]
+    }
+  ],
+  "links": [
+    { "uri": "github/repos", "context": "Parent skill for repository management" },
+    { "uri": "github/repos/create", "context": "Create repos from scratch instead of cloning" },
+    { "uri": "github/repos/settings", "context": "Configure repo after cloning" },
+    { "uri": "github/pulls/create", "context": "Open PRs from forks back to upstream" },
+    { "uri": "github/auth", "context": "Authentication for clone/fork operations" }
+  ],
+  "related": [
+    { "uri": "github/repos", "relation": "parent", "note": "This is a sub-skill of the repos skill" },
+    { "uri": "github/repos/create", "relation": "alternative", "note": "Create a new repo instead of cloning an existing one" },
+    { "uri": "github/pulls/create", "relation": "next-step", "note": "After forking and making changes, open a PR" }
+  ],
+  "scripts": [
+    {
+      "id": "clone-repo",
+      "name": "Clone Repository",
+      "description": "Clone a GitHub repository using gh CLI or git",
+      "lang": "bash",
+      "runtime": "git>=2.0",
+      "entry": "./scripts/clone-repo.sh",
+      "env": {
+        "GITHUB_TOKEN": { "required": false, "secret": true, "description": "GitHub token for HTTPS clone auth" }
+      },
+      "packages": []
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "repo": { "type": "string", "description": "Repository in owner/name format" },
+        "directory": { "type": "string", "description": "Local directory to clone into" },
+        "protocol": { "type": "string", "enum": ["https", "ssh"], "default": "https" },
+        "depth": { "type": "integer", "description": "Shallow clone depth" },
+        "branch": { "type": "string", "description": "Specific branch to clone" },
+        "fork": { "type": "boolean", "default": false, "description": "Fork before cloning" }
+      },
+      "required": ["repo"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "localPath": { "type": "string", "description": "Path to the cloned repository" },
+        "remote": { "type": "string", "description": "Remote URL" }
+      }
+    }
+  },
+  "more": {
+    "docs": "https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository",
+    "fork-docs": "https://docs.github.com/en/rest/repos/forks#create-a-fork",
+    "gh-cli": "https://cli.github.com/manual/gh_repo_clone"
+  },
+  "frontmatter": {
+    "created": "2026-04-10",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "3 min",
+    "prerequisites": ["github/auth"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://github.com/octokit",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

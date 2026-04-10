@@ -1,0 +1,104 @@
+{
+  "name": "best-practices",
+  "version": "1.0.0",
+  "uri": "docker/best-practices",
+  "type": "context",
+  "content_type": "guide",
+  "context": "Dockerfile authoring, image optimization, security hardening, layer caching, and production container best practices",
+  "info": "This guide consolidates Docker best practices across the entire ecosystem: writing efficient Dockerfiles, minimizing image size, securing containers, optimizing layer caching, managing secrets, configuring health checks, setting resource limits, and structuring production deployments. Best practices are organized by category -- Dockerfile authoring, image optimization, security hardening, runtime configuration, logging, and CI/CD integration. Following these practices produces smaller, faster, more secure containers. This guide references specific skills for implementation details: [[docker/images/build]] for Dockerfile authoring, [[docker/images/multi-stage]] for size optimization, [[docker/containers/run]] for runtime security, and [[docker/containers/logs]] for logging configuration.",
+  "parent": "docker",
+  "tags": ["docker", "best-practices", "security", "optimization", "dockerfile", "production", "hardening", "layer-cache"],
+  "aliases": [
+    "docker best practices",
+    "dockerfile best practices",
+    "docker security",
+    "docker optimization",
+    "container security",
+    "docker hardening",
+    "production docker",
+    "docker guidelines"
+  ],
+  "triggers": [
+    "docker best practices",
+    "optimize a dockerfile",
+    "secure a docker container",
+    "harden docker image",
+    "docker production checklist",
+    "reduce docker image size",
+    "docker security best practices",
+    "dockerfile optimization tips"
+  ],
+  "body": "# Docker Best Practices\n\nThis guide consolidates best practices for building, securing, and running Docker containers in production. Following these practices produces smaller images, faster builds, and more secure deployments.\n\n## Dockerfile Authoring\n\n### Use Minimal Base Images\n\nStart from the smallest base that meets your requirements:\n\n| Base Image | Size | Shell | Package Manager | Use Case |\n|---|---|---|---|---|\n| `scratch` | 0 MB | No | No | Go/Rust static binaries |\n| `distroless` | 2-20 MB | No | No | Java, Python, Node.js (runtime only) |\n| `alpine` | 5 MB | Yes | apk | General purpose, smaller than Debian |\n| `*-slim` | 50-80 MB | Yes | apt | Debian-based, smaller than full |\n| `ubuntu/debian` | 100-200 MB | Yes | apt | Full OS, maximum compatibility |\n\n```dockerfile\n# Good: minimal base\nFROM node:20-alpine\n\n# Avoid: full base with unnecessary packages\n# FROM node:20\n```\n\n### Pin Image Versions\n\nNever use `latest` or bare tags in production:\n\n```dockerfile\n# Good: pinned version\nFROM node:20.11.1-alpine3.19\n\n# Acceptable: minor version pin\nFROM node:20-alpine\n\n# Bad: mutable tags\n# FROM node:latest\n# FROM node\n```\n\nFor maximum reproducibility, pin by digest:\n```dockerfile\nFROM node:20-alpine@sha256:abc123...\n```\n\n### Optimize Layer Caching\n\nOrder instructions from least to most frequently changed:\n\n```dockerfile\n# 1. Base image (changes rarely)\nFROM node:20-alpine\n\n# 2. System dependencies (changes occasionally)\nRUN apk add --no-cache curl\n\n# 3. Application dependencies (changes when deps update)\nWORKDIR /app\nCOPY package.json package-lock.json ./\nRUN npm ci --production\n\n# 4. Application source (changes frequently)\nCOPY . .\n\n# 5. Build step\nRUN npm run build\n```\n\nSee [[docker/images/build#caching]] for advanced caching strategies.\n\n### Combine RUN Commands\n\nEach RUN creates a layer. Combine related commands and clean up in the same layer:\n\n```dockerfile\n# Good: single layer, clean up in same step\nRUN apt-get update && \\\n    apt-get install -y --no-install-recommends curl ca-certificates && \\\n    rm -rf /var/lib/apt/lists/*\n\n# Bad: multiple layers, apt cache persists\n# RUN apt-get update\n# RUN apt-get install -y curl\n```\n\n### Use .dockerignore\n\nExclude files that should not enter the build context:\n\n```\nnode_modules\n.git\n.gitignore\n*.md\nREADME*\ndist\nbuild\ncoverage\n.env*\n.DS_Store\nDockerfile*\ndocker-compose*\n.dockerignore\n.github\n.vscode\n```\n\nA proper `.dockerignore` speeds up builds and prevents cache invalidation from irrelevant file changes.\n\n### Use Multi-Stage Builds\n\nSeparate build-time and runtime dependencies. See [[docker/images/multi-stage]] for detailed patterns.\n\n```dockerfile\nFROM node:20-alpine AS builder\nWORKDIR /app\nCOPY package.json package-lock.json ./\nRUN npm ci\nCOPY . .\nRUN npm run build\n\nFROM node:20-alpine\nWORKDIR /app\nCOPY --from=builder /app/dist ./dist\nCOPY --from=builder /app/package.json ./\nRUN npm ci --omit=dev\nCMD [\"node\", \"dist/server.js\"]\n```\n\n## Security Hardening\n\n### Run as Non-Root\n\nNever run containers as root in production:\n\n```dockerfile\n# Create a non-root user\nRUN addgroup -S appgroup && adduser -S appuser -G appgroup\n\n# ... install dependencies as root ...\n\n# Switch to non-root before CMD\nUSER appuser\nCMD [\"node\", \"server.js\"]\n```\n\nAt runtime, enforce with `--user`:\n```bash\ndocker run --user 1000:1000 myapp\n```\n\n### Never Store Secrets in Images\n\nSecrets in build args, COPY, or ENV are visible in image history:\n\n```dockerfile\n# Bad: secret in build arg (visible in docker history)\n# ARG DB_PASSWORD\n# ENV DB_PASSWORD=$DB_PASSWORD\n\n# Good: BuildKit secret mount (not stored in any layer)\nRUN --mount=type=secret,id=db_password \\\n    DB_PASSWORD=$(cat /run/secrets/db_password) && \\\n    npm run migrate\n```\n\nAt runtime, use Docker secrets or mount from external secret managers. See [[docker/containers/run#security]].\n\n### Read-Only Filesystem\n\n```bash\n# Run with read-only root filesystem\ndocker run --read-only --tmpfs /tmp:rw,noexec,size=50m myapp\n```\n\n### Drop Capabilities\n\n```bash\n# Drop all capabilities, add only what is needed\ndocker run --cap-drop ALL --cap-add NET_BIND_SERVICE myapp\n```\n\n### Scan for Vulnerabilities\n\n```bash\n# Docker Scout\ndocker scout cves myapp:latest\n\n# Trivy\ntrivy image myapp:latest\n\n# Snyk\nsnyk container test myapp:latest\n```\n\nIntegrate scanning into CI/CD to block vulnerable images from being pushed. See [[docker/images#vulnerability-scanning]].\n\n### Prevent Privilege Escalation\n\n```bash\ndocker run --security-opt no-new-privileges myapp\n```\n\n## Image Size Optimization\n\n### Size Reduction Checklist\n\n1. Use multi-stage builds -- see [[docker/images/multi-stage]]\n2. Start from minimal base images (alpine, slim, distroless, scratch)\n3. Remove package manager caches in the same RUN layer\n4. Use `--no-install-recommends` with apt-get\n5. Use `--no-cache` with apk add\n6. Exclude dev dependencies: `npm ci --omit=dev`, `pip install --no-dev`\n7. Remove build artifacts, docs, and test files in the final stage\n8. Use `.dockerignore` to keep the build context small\n\n### Checking Image Size\n\n```bash\n# List images sorted by size\ndocker images --format '{{.Repository}}:{{.Tag}} {{.Size}}' | sort -k2 -h\n\n# Analyze layers\ndocker history myapp:latest\n\n# Deep analysis with dive (third-party)\ndive myapp:latest\n```\n\n## Runtime Configuration\n\n### Health Checks\n\nAlways define health checks for production containers:\n\n```dockerfile\nHEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \\\n  CMD curl -f http://localhost:3000/health || exit 1\n```\n\nSee [[docker/compose#healthchecks]] for health checks in Compose.\n\n### Resource Limits\n\nAlways set resource limits to prevent containers from consuming all host resources:\n\n```bash\ndocker run -d \\\n  --memory 512m \\\n  --memory-reservation 256m \\\n  --cpus 1.0 \\\n  --pids-limit 100 \\\n  myapp\n```\n\nSee [[docker/containers#resource-limits]] for details.\n\n### Restart Policies\n\n```bash\n# Production: restart unless manually stopped\ndocker run -d --restart unless-stopped myapp\n\n# CI/testing: never restart\ndocker run -d --restart no myapp\n```\n\n### Logging\n\nConfigure log rotation to prevent disk exhaustion:\n\n```bash\ndocker run -d \\\n  --log-opt max-size=10m \\\n  --log-opt max-file=3 \\\n  myapp\n```\n\nWrite logs to stdout/stderr in structured JSON format. See [[docker/containers/logs]] for logging drivers and centralized logging.\n\n## CI/CD Practices\n\n### Build Cache in CI\n\n```bash\n# Export cache to registry\ndocker buildx build \\\n  --cache-from type=registry,ref=myapp:cache \\\n  --cache-to type=registry,ref=myapp:cache,mode=max \\\n  -t myapp:$CI_COMMIT_SHA .\n```\n\nSee [[docker/images/build#buildkit]] for cache export/import.\n\n### Tag Strategy\n\nTag every image with:\n1. Git commit SHA for traceability\n2. Semantic version for releases\n3. `latest` only on the default branch\n\n```bash\ndocker tag myapp:latest myapp:$GIT_SHA\ndocker tag myapp:latest myapp:v1.2.3\n```\n\nSee [[docker/images#tagging-strategy]] for details.\n\n### Production Deployment Checklist\n\n- [ ] Multi-stage build with minimal runtime image\n- [ ] Specific version tags (no `latest` in manifests)\n- [ ] Non-root user in Dockerfile\n- [ ] HEALTHCHECK defined\n- [ ] Resource limits configured\n- [ ] Log rotation configured\n- [ ] Secrets managed externally (not baked into image)\n- [ ] Vulnerability scan passing\n- [ ] .dockerignore excludes unnecessary files\n- [ ] Read-only filesystem where possible\n- [ ] Capabilities dropped to minimum needed\n- [ ] Restart policy set\n",
+  "sections": [
+    {
+      "id": "dockerfile-authoring",
+      "title": "Dockerfile authoring",
+      "body": "Use minimal base images (alpine, slim, distroless, scratch). Pin image versions for reproducibility. Order instructions from least to most frequently changed for optimal caching. Combine RUN commands to reduce layers and clean up in the same step. Use .dockerignore to exclude irrelevant files from the build context. Use multi-stage builds to separate build and runtime. See [[docker/images/build]] and [[docker/images/multi-stage]].",
+      "tags": ["dockerfile", "base-image", "version-pinning", "layers", "dockerignore", "caching"]
+    },
+    {
+      "id": "security",
+      "title": "Security hardening",
+      "body": "Run as non-root (USER instruction or --user flag). Never store secrets in images -- use BuildKit secret mounts or external secret managers. Use read-only filesystems with tmpfs for writable paths. Drop all capabilities and add only needed ones. Scan images for CVEs with Docker Scout, Trivy, or Snyk. Prevent privilege escalation with --security-opt no-new-privileges.",
+      "tags": ["security", "non-root", "secrets", "capabilities", "cve-scanning", "read-only"]
+    },
+    {
+      "id": "image-size",
+      "title": "Image size optimization",
+      "body": "Multi-stage builds reduce size by 50-99%. Use minimal base images. Remove caches in the same RUN layer. Exclude dev dependencies. Analyze with docker history or dive. Track image size in CI to catch regressions. Smaller images mean faster pulls, less storage, and reduced attack surface.",
+      "tags": ["size", "optimization", "multi-stage", "alpine", "distroless", "dive"]
+    },
+    {
+      "id": "runtime",
+      "title": "Runtime configuration",
+      "body": "Define HEALTHCHECK for monitoring. Set memory and CPU limits to prevent resource exhaustion. Configure restart policies for resilience. Enable log rotation to prevent disk fill. Use --read-only and --cap-drop for defense in depth. Set --pids-limit to prevent fork bombs. See [[docker/containers]] for details.",
+      "tags": ["healthcheck", "resource-limits", "restart", "logging", "runtime", "production"]
+    },
+    {
+      "id": "cicd",
+      "title": "CI/CD practices",
+      "body": "Export build cache to registries for faster CI builds. Tag images with git commit SHA for traceability and semantic versions for releases. Scan images before pushing. Use build matrix for multi-platform images. Automate the entire build-scan-push-deploy pipeline. Never push unscanned images to production registries.",
+      "tags": ["ci-cd", "cache", "tagging", "scanning", "pipeline", "automation"]
+    }
+  ],
+  "links": [
+    { "uri": "docker/images/build", "context": "Dockerfile authoring, layer caching, and BuildKit features" },
+    { "uri": "docker/images/multi-stage", "context": "Multi-stage builds for image size reduction" },
+    { "uri": "docker/images/push", "context": "CI/CD push patterns and registry authentication" },
+    { "uri": "docker/images", "context": "Image lifecycle, tagging, and vulnerability scanning" },
+    { "uri": "docker/containers", "context": "Container lifecycle, resource limits, and health monitoring" },
+    { "uri": "docker/containers/run", "context": "Runtime security options: non-root, read-only, cap-drop" },
+    { "uri": "docker/containers/logs", "context": "Logging configuration, rotation, and structured logging" },
+    { "uri": "docker/compose", "context": "Compose health checks, logging config, and resource limits" },
+    { "uri": "docker/networking", "context": "Network isolation patterns for security" },
+    { "uri": "docker/volumes", "context": "Volume security and data management" }
+  ],
+  "related": [
+    { "uri": "docker/images/build", "relation": "see-also", "note": "Build skill implements Dockerfile authoring best practices" },
+    { "uri": "docker/images/multi-stage", "relation": "see-also", "note": "Multi-stage builds are the primary image size optimization technique" },
+    { "uri": "docker/containers/run", "relation": "see-also", "note": "Run skill implements runtime security best practices" },
+    { "uri": "docker/containers/logs", "relation": "see-also", "note": "Logs skill covers logging driver configuration and rotation" }
+  ],
+  "more": {
+    "docs": "https://docs.docker.com/build/building/best-practices/",
+    "security": "https://docs.docker.com/engine/security/",
+    "scout": "https://docs.docker.com/scout/",
+    "cis-benchmark": "https://www.cisecurity.org/benchmark/docker"
+  },
+  "frontmatter": {
+    "created": "2026-04-10",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "developers, AI agents, DevOps engineers",
+    "estimated_reading_time": "8 min",
+    "prerequisites": [],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://github.com/docker",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

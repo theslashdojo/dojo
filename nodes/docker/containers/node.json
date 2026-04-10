@@ -1,0 +1,198 @@
+{
+  "name": "containers",
+  "version": "1.0.0",
+  "uri": "docker/containers",
+  "type": "skill",
+  "context": "Run, manage, and interact with Docker containers including lifecycle, resource limits, and health monitoring",
+  "info": "The containers skill covers the full lifecycle of Docker containers: creating and running containers from images, managing container state (start, stop, restart, pause, remove), executing commands inside running containers, viewing and following logs, setting resource constraints (CPU, memory, storage), configuring restart policies, and monitoring container health. A container is a running instance of an image with its own filesystem, networking, and process namespace. Containers are ephemeral by default -- use volumes for persistent data and networks for communication. Sub-skills break down into run (creating and starting containers), exec (running commands in running containers), and logs (viewing container output). This skill focuses on direct container management; see [[docker/compose]] for multi-container orchestration.",
+  "parent": "docker",
+  "tags": ["docker", "containers", "run", "exec", "logs", "lifecycle", "resource-limits", "restart-policy"],
+  "aliases": [
+    "docker containers",
+    "docker container management",
+    "running containers",
+    "container lifecycle",
+    "docker run",
+    "container operations",
+    "manage containers",
+    "docker ps"
+  ],
+  "triggers": [
+    "run a docker container",
+    "manage docker containers",
+    "list running containers",
+    "stop a docker container",
+    "restart a container",
+    "check container status",
+    "remove stopped containers",
+    "set container resource limits"
+  ],
+  "body": "# Docker Containers\n\nA Docker container is a running instance of an image. It has its own isolated filesystem, network interfaces, and process tree. Containers are created from images with `docker run` or `docker create`, and their lifecycle is managed with start, stop, restart, pause, unpause, and remove commands.\n\n## Container Lifecycle\n\n```\nImage  --docker create-->  Created  --docker start-->  Running\n                                                          |\n       docker run = create + start                   docker stop\n                                                          |\n                                    docker rm  <--   Stopped/Exited\n```\n\n### State Transitions\n\n| State | Description |\n|---|---|\n| `created` | Container exists but has not started |\n| `running` | Main process is active |\n| `paused` | Process frozen with SIGSTOP |\n| `restarting` | Being restarted by restart policy or manual restart |\n| `exited` | Main process has terminated |\n| `dead` | Failed to stop cleanly |\n\n## Managing Containers\n\n```bash\n# List running containers\ndocker ps\n\n# List all containers (including stopped)\ndocker ps -a\n\n# List with custom format\ndocker ps --format 'table {{.ID}}\\t{{.Names}}\\t{{.Status}}\\t{{.Ports}}'\n\n# Stop a running container (sends SIGTERM, then SIGKILL after 10s)\ndocker stop myapp\ndocker stop --time 30 myapp  # wait 30s before SIGKILL\n\n# Start a stopped container\ndocker start myapp\n\n# Restart a container\ndocker restart myapp\n\n# Pause/unpause (freeze/unfreeze processes)\ndocker pause myapp\ndocker unpause myapp\n\n# Remove a stopped container\ndocker rm myapp\n\n# Force remove a running container\ndocker rm -f myapp\n\n# Remove all stopped containers\ndocker container prune\n```\n\n## Resource Constraints\n\nLimit CPU, memory, and I/O to prevent containers from consuming all host resources:\n\n```bash\n# Memory limit (hard) and reservation (soft)\ndocker run -d --memory 512m --memory-reservation 256m myapp\n\n# CPU limit (number of cores)\ndocker run -d --cpus 1.5 myapp\n\n# CPU shares (relative weight, default 1024)\ndocker run -d --cpu-shares 512 myapp\n\n# Combined limits\ndocker run -d \\\n  --memory 1g \\\n  --memory-swap 2g \\\n  --cpus 2 \\\n  --pids-limit 100 \\\n  myapp\n\n# View resource usage\ndocker stats\ndocker stats myapp --no-stream\n```\n\n## Restart Policies\n\nRestart policies control what happens when a container exits:\n\n| Policy | Behavior |\n|---|---|\n| `no` | Never restart (default) |\n| `on-failure[:max]` | Restart only on non-zero exit code, with optional retry limit |\n| `always` | Always restart regardless of exit code |\n| `unless-stopped` | Like always, but not if manually stopped |\n\n```bash\n# Restart on failure up to 5 times\ndocker run -d --restart on-failure:5 myapp\n\n# Always restart (survives Docker daemon restart)\ndocker run -d --restart always myapp\n\n# Update restart policy on existing container\ndocker update --restart unless-stopped myapp\n```\n\n## Container Inspection\n\n```bash\n# Full JSON metadata\ndocker inspect myapp\n\n# Specific fields\ndocker inspect --format '{{.State.Status}}' myapp\ndocker inspect --format '{{.NetworkSettings.IPAddress}}' myapp\ndocker inspect --format '{{json .Config.Env}}' myapp\n\n# Process list inside container\ndocker top myapp\n\n# Filesystem changes since image\ndocker diff myapp\n\n# Port mappings\ndocker port myapp\n```\n\n## Container Health\n\nIf the image defines a `HEALTHCHECK`, Docker monitors container health:\n\n```bash\n# Check health status\ndocker inspect --format '{{.State.Health.Status}}' myapp\n# Returns: starting, healthy, or unhealthy\n\n# View health check log\ndocker inspect --format '{{json .State.Health}}' myapp | jq\n```\n\nIn [[docker/compose]], use `depends_on` with `condition: service_healthy` to wait for health before starting dependent services.\n\n## Cleanup\n\n```bash\n# Remove all stopped containers\ndocker container prune\n\n# Remove containers older than 24 hours\ndocker container prune --filter 'until=24h'\n\n# Full system cleanup\ndocker system prune -a --volumes\n```\n",
+  "sections": [
+    {
+      "id": "lifecycle",
+      "title": "Container lifecycle",
+      "body": "Containers transition through states: created, running, paused, restarting, exited, dead. docker run combines create and start. docker stop sends SIGTERM then SIGKILL after a timeout. docker rm removes stopped containers. docker container prune removes all stopped containers. Restart policies automate recovery from crashes.",
+      "tags": ["lifecycle", "state", "create", "start", "stop", "remove", "prune"]
+    },
+    {
+      "id": "resource-limits",
+      "title": "Resource constraints",
+      "body": "Limit container resources with --memory (hard limit), --memory-reservation (soft limit), --cpus (CPU cores), --cpu-shares (relative weight), --pids-limit (process count), and --memory-swap (memory + swap). Monitor with docker stats. Update limits on running containers with docker update. Prevents noisy neighbors on shared hosts.",
+      "tags": ["memory", "cpu", "limits", "stats", "cgroups", "resources"]
+    },
+    {
+      "id": "restart-policies",
+      "title": "Restart policies",
+      "body": "Four restart policies: no (default), on-failure (with optional retry limit), always (survives daemon restart), unless-stopped (like always but respects manual stop). Set with --restart on docker run. Update existing containers with docker update --restart. In Compose, use the restart key on services.",
+      "tags": ["restart", "on-failure", "always", "unless-stopped", "recovery"]
+    },
+    {
+      "id": "inspection",
+      "title": "Container inspection",
+      "body": "docker inspect returns full JSON metadata. Use --format with Go templates to extract specific fields: state, IP address, environment variables, mounts, port mappings. docker top shows processes. docker diff shows filesystem changes. docker port shows port mappings. docker stats shows live resource usage.",
+      "tags": ["inspect", "format", "top", "diff", "port", "metadata"]
+    },
+    {
+      "id": "health-monitoring",
+      "title": "Health monitoring",
+      "body": "Containers with a HEALTHCHECK instruction report health status: starting, healthy, or unhealthy. Docker runs the health check command at configured intervals. Inspect health with docker inspect --format on .State.Health. In Compose, depends_on with condition: service_healthy ensures dependencies are ready.",
+      "tags": ["healthcheck", "healthy", "unhealthy", "monitoring", "depends-on"]
+    }
+  ],
+  "links": [
+    { "uri": "docker/containers/run", "context": "Create and start containers with port mapping, volumes, and env vars" },
+    { "uri": "docker/containers/exec", "context": "Run commands inside running containers" },
+    { "uri": "docker/containers/logs", "context": "View and follow container log output" },
+    { "uri": "docker/images", "context": "Images are the templates from which containers are created" },
+    { "uri": "docker/compose", "context": "Compose orchestrates multi-container applications" },
+    { "uri": "docker/networking", "context": "Container networking: bridge, host, port mapping" },
+    { "uri": "docker/volumes", "context": "Persistent storage for container data" },
+    { "uri": "docker/best-practices", "context": "Container security and operational best practices" }
+  ],
+  "related": [
+    { "uri": "docker/images", "relation": "see-also", "note": "Containers are running instances of images" },
+    { "uri": "docker/compose", "relation": "see-also", "note": "Compose manages container lifecycle for multi-service applications" },
+    { "uri": "docker/networking", "relation": "see-also", "note": "Networking determines how containers communicate" },
+    { "uri": "docker/volumes", "relation": "see-also", "note": "Volumes persist data beyond container lifecycle" }
+  ],
+  "scripts": [
+    {
+      "id": "list-containers",
+      "name": "List Containers",
+      "description": "List Docker containers with status, ports, and resource usage",
+      "lang": "bash",
+      "runtime": "docker>=20",
+      "inline": "echo '=== Running Containers ===' && docker ps --format 'table {{.ID}}\\t{{.Names}}\\t{{.Image}}\\t{{.Status}}\\t{{.Ports}}' && if [ \"$SHOW_ALL\" = 'true' ]; then echo '' && echo '=== Stopped Containers ===' && docker ps -a --filter 'status=exited' --format 'table {{.ID}}\\t{{.Names}}\\t{{.Image}}\\t{{.Status}}'; fi && if [ \"$SHOW_STATS\" = 'true' ]; then echo '' && echo '=== Resource Usage ===' && docker stats --no-stream --format 'table {{.Name}}\\t{{.CPUPerc}}\\t{{.MemUsage}}\\t{{.NetIO}}\\t{{.BlockIO}}'; fi",
+      "env": {
+        "SHOW_ALL": { "required": false, "secret": false, "description": "Set to 'true' to include stopped containers" },
+        "SHOW_STATS": { "required": false, "secret": false, "description": "Set to 'true' to show resource usage statistics" }
+      }
+    },
+    {
+      "id": "stop-container",
+      "name": "Stop Container",
+      "description": "Gracefully stop a running Docker container with configurable timeout",
+      "lang": "bash",
+      "runtime": "docker>=20",
+      "inline": "echo \"Stopping container '${CONTAINER}' (timeout: ${TIMEOUT:-10}s)...\" && docker stop --time \"${TIMEOUT:-10}\" \"$CONTAINER\" && echo \"Container '${CONTAINER}' stopped\" && docker inspect --format 'Exit code: {{.State.ExitCode}}' \"$CONTAINER\"",
+      "env": {
+        "CONTAINER": { "required": true, "secret": false, "description": "Container name or ID to stop" },
+        "TIMEOUT": { "required": false, "secret": false, "description": "Seconds to wait before SIGKILL (default: 10)" }
+      }
+    },
+    {
+      "id": "container-stats",
+      "name": "Container Stats",
+      "description": "Display live or snapshot resource usage for containers",
+      "lang": "bash",
+      "runtime": "docker>=20",
+      "inline": "if [ -n \"$CONTAINER\" ]; then docker stats ${NO_STREAM:+--no-stream} --format 'table {{.Name}}\\t{{.CPUPerc}}\\t{{.MemUsage}}\\t{{.MemPerc}}\\t{{.NetIO}}\\t{{.BlockIO}}\\t{{.PIDs}}' \"$CONTAINER\"; else docker stats ${NO_STREAM:+--no-stream} --format 'table {{.Name}}\\t{{.CPUPerc}}\\t{{.MemUsage}}\\t{{.MemPerc}}\\t{{.NetIO}}\\t{{.BlockIO}}\\t{{.PIDs}}'; fi",
+      "env": {
+        "CONTAINER": { "required": false, "secret": false, "description": "Specific container name or ID (default: all running)" },
+        "NO_STREAM": { "required": false, "secret": false, "description": "Set to any value for a single snapshot instead of live stream" }
+      }
+    },
+    {
+      "id": "cleanup-containers",
+      "name": "Cleanup Containers",
+      "description": "Remove stopped containers and optionally prune system resources",
+      "lang": "bash",
+      "runtime": "docker>=20",
+      "inline": "echo '=== Stopped Containers ===' && docker ps -a --filter 'status=exited' --format 'table {{.ID}}\\t{{.Names}}\\t{{.Image}}\\t{{.Status}}' && echo '' && echo 'Removing stopped containers...' && docker container prune -f ${OLDER_THAN:+--filter \"until=$OLDER_THAN\"} && if [ \"$FULL_PRUNE\" = 'true' ]; then echo '' && echo 'Running full system prune...' && docker system prune -f ${PRUNE_VOLUMES:+--volumes}; fi",
+      "env": {
+        "OLDER_THAN": { "required": false, "secret": false, "description": "Only remove containers older than this duration (e.g. 24h, 7d)" },
+        "FULL_PRUNE": { "required": false, "secret": false, "description": "Set to 'true' to also prune images, networks, and build cache" },
+        "PRUNE_VOLUMES": { "required": false, "secret": false, "description": "Set to 'true' to also prune volumes (data loss warning)" }
+      }
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "action": { "type": "string", "enum": ["list", "stop", "start", "restart", "remove", "inspect", "stats", "prune"], "description": "Container management action" },
+        "container": { "type": "string", "description": "Container name or ID" },
+        "showAll": { "type": "boolean", "description": "Include stopped containers in listing" },
+        "timeout": { "type": "integer", "description": "Stop timeout in seconds before SIGKILL" },
+        "olderThan": { "type": "string", "description": "Duration filter for pruning (e.g. 24h)" }
+      },
+      "required": ["action"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "containers": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "name": { "type": "string" },
+              "image": { "type": "string" },
+              "status": { "type": "string" },
+              "ports": { "type": "string" },
+              "created": { "type": "string" }
+            }
+          },
+          "description": "List of containers"
+        },
+        "stats": {
+          "type": "object",
+          "properties": {
+            "cpu": { "type": "string" },
+            "memory": { "type": "string" },
+            "networkIO": { "type": "string" },
+            "blockIO": { "type": "string" }
+          },
+          "description": "Resource usage statistics"
+        },
+        "removed": { "type": "integer", "description": "Number of containers removed in prune" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "docker", "reason": "Docker Engine must be installed and running" }
+  ],
+  "more": {
+    "docs": "https://docs.docker.com/engine/reference/commandline/container/",
+    "run-ref": "https://docs.docker.com/engine/reference/run/",
+    "resource-constraints": "https://docs.docker.com/engine/containers/resource_constraints/"
+  },
+  "frontmatter": {
+    "created": "2026-04-10",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "developers, AI agents, DevOps engineers",
+    "estimated_reading_time": "6 min",
+    "prerequisites": [],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://github.com/docker",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

@@ -1,0 +1,116 @@
+{
+  "name": "create",
+  "version": "1.0.0",
+  "uri": "github/repos/create",
+  "type": "sub",
+  "context": "Create GitHub repositories via POST /user/repos, POST /orgs/{org}/repos, or gh repo create",
+  "info": "Create new GitHub repositories for users or organizations. Supports public and private repos, auto-initialization with README/LICENSE/.gitignore, template repositories, and configuring default settings on creation. Use the GitHub REST API `POST /user/repos` (personal) or `POST /orgs/{org}/repos` (organization) via @octokit/rest, or the `gh repo create` CLI command. See [[github/auth]] for authentication, [[github/repos/settings]] for post-creation configuration, and [[github/repos/clone]] for cloning the new repo locally.",
+  "parent": "github/repos",
+  "tags": ["create", "new-repo", "init", "template", "org", "private", "public"],
+  "aliases": [
+    "create repository",
+    "new repo",
+    "gh repo create",
+    "create github repo",
+    "init repo",
+    "new project"
+  ],
+  "triggers": [
+    "create a github repository",
+    "create a new repo",
+    "gh repo create",
+    "set up a new project on github",
+    "create an org repo"
+  ],
+  "body": "# Create Repository\n\nCreate a new GitHub repository for a user or organization.\n\n## gh CLI\n\n```bash\n# Create public repo interactively\ngh repo create\n\n# Create private repo with specific name\ngh repo create my-project --private --description \"My new project\"\n\n# Create with README and license\ngh repo create my-project --public --add-readme --license mit --gitignore Node\n\n# Create in an organization\ngh repo create my-org/shared-lib --private --description \"Shared library\"\n\n# Create from template\ngh repo create my-project --template owner/template-repo --public\n\n# Create and clone locally\ngh repo create my-project --public --clone\n\n# Create from existing local repo\ncd my-local-project\ngh repo create --source . --public --push\n```\n\n## REST API\n\n```javascript\nimport { Octokit } from \"@octokit/rest\";\nconst octokit = new Octokit({ auth: process.env.GITHUB_TOKEN });\n\n// Create user-owned repo\nconst { data: repo } = await octokit.repos.createForAuthenticatedUser({\n  name: \"my-project\",\n  description: \"A new project\",\n  private: false,\n  auto_init: true,          // Create initial commit with README\n  gitignore_template: \"Node\",\n  license_template: \"mit\",\n  has_issues: true,\n  has_wiki: false,\n  has_projects: false,\n});\nconsole.log(repo.html_url, repo.clone_url, repo.ssh_url);\n\n// Create org-owned repo\nconst { data: orgRepo } = await octokit.repos.createInOrg({\n  org: \"my-org\",\n  name: \"shared-lib\",\n  description: \"Shared library for all teams\",\n  private: true,\n  visibility: \"internal\",  // internal visibility for Enterprise\n  auto_init: true,\n  team_id: 12345,  // Grant access to a specific team\n});\n\n// Create from template\nconst { data: fromTemplate } = await octokit.repos.createUsingTemplate({\n  template_owner: \"my-org\",\n  template_repo: \"project-template\",\n  owner: \"my-org\",\n  name: \"new-from-template\",\n  description: \"Created from template\",\n  private: true,\n  include_all_branches: false,\n});\n```\n\n```bash\n# REST via curl — create user repo\ncurl -X POST \\\n  -H \"Authorization: Bearer $GITHUB_TOKEN\" \\\n  -H \"Accept: application/vnd.github+json\" \\\n  https://api.github.com/user/repos \\\n  -d '{\"name\": \"my-project\", \"private\": false, \"auto_init\": true}'\n\n# Create org repo\ncurl -X POST \\\n  -H \"Authorization: Bearer $GITHUB_TOKEN\" \\\n  -H \"Accept: application/vnd.github+json\" \\\n  https://api.github.com/orgs/my-org/repos \\\n  -d '{\"name\": \"shared-lib\", \"private\": true}'\n```\n\n## Creation Options\n\n| Parameter | Type | Description |\n|-----------|------|-------------|\n| `name` | string | Repository name (required) |\n| `description` | string | Short description |\n| `private` | boolean | Private repo (default: false) |\n| `visibility` | string | `public`, `private`, or `internal` (Enterprise) |\n| `auto_init` | boolean | Create initial commit with README |\n| `gitignore_template` | string | `.gitignore` template (e.g., \"Node\", \"Python\") |\n| `license_template` | string | License template (e.g., \"mit\", \"apache-2.0\") |\n| `has_issues` | boolean | Enable issue tracker |\n| `has_wiki` | boolean | Enable wiki |\n| `has_projects` | boolean | Enable projects |\n| `team_id` | integer | Team to grant access (org repos) |\n| `allow_squash_merge` | boolean | Allow squash merging |\n| `delete_branch_on_merge` | boolean | Auto-delete head branches after merge |\n",
+  "sections": [
+    {
+      "id": "user-repos",
+      "title": "User-owned repositories",
+      "body": "Use `octokit.repos.createForAuthenticatedUser()` or `gh repo create name`. The authenticated user becomes the owner. Set `private: true` for private repos. Use `auto_init: true` to create with an initial README commit. Combine with `gitignore_template` and `license_template` for a fully initialized repo.",
+      "tags": ["user", "personal", "authenticated", "auto-init"]
+    },
+    {
+      "id": "org-repos",
+      "title": "Organization repositories",
+      "body": "Use `octokit.repos.createInOrg()` or `gh repo create org/name`. Requires `admin:org` scope or org membership with repo creation permissions. Set `team_id` to grant a specific team access. Enterprise orgs support `visibility: internal` for repos visible to all org members but not the public.",
+      "tags": ["org", "organization", "team", "internal", "enterprise"]
+    },
+    {
+      "id": "templates",
+      "title": "Creating from templates",
+      "body": "Use `octokit.repos.createUsingTemplate()` or `gh repo create --template owner/repo` to create a new repo from a template repository. Templates copy files, directory structure, and branches. Set `include_all_branches: true` to copy all branches (default copies only the default branch). Templates are ideal for standardized project scaffolding.",
+      "tags": ["template", "scaffold", "boilerplate", "include-branches"]
+    }
+  ],
+  "links": [
+    { "uri": "github/repos", "context": "Parent skill for repository management" },
+    { "uri": "github/repos/clone", "context": "Clone the newly created repo" },
+    { "uri": "github/repos/settings", "context": "Configure settings after creation" },
+    { "uri": "github/auth", "context": "Authentication required for repo creation" },
+    { "uri": "github/pulls", "context": "Open PRs against the new repo" }
+  ],
+  "related": [
+    { "uri": "github/repos", "relation": "parent", "note": "This is a sub-skill of the repos skill" },
+    { "uri": "github/repos/clone", "relation": "next-step", "note": "Clone the repo locally after creation" },
+    { "uri": "github/repos/settings", "relation": "next-step", "note": "Configure branch protection and settings after creation" }
+  ],
+  "scripts": [
+    {
+      "id": "create-repo",
+      "name": "Create Repository",
+      "description": "Create a GitHub repository using gh CLI",
+      "lang": "bash",
+      "runtime": "gh>=2.0",
+      "entry": "./scripts/create-repo.sh",
+      "env": {
+        "GITHUB_TOKEN": { "required": true, "secret": true, "description": "GitHub personal access token" }
+      },
+      "packages": []
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "description": "Repository name" },
+        "description": { "type": "string", "description": "Repository description" },
+        "private": { "type": "boolean", "default": false, "description": "Whether the repo is private" },
+        "org": { "type": "string", "description": "Organization name (omit for user-owned)" },
+        "auto_init": { "type": "boolean", "default": true, "description": "Initialize with README" },
+        "template": { "type": "string", "description": "Template repo (owner/name)" }
+      },
+      "required": ["name"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "repoUrl": { "type": "string", "description": "HTML URL of the created repository" },
+        "cloneUrl": { "type": "string", "description": "HTTPS clone URL" },
+        "sshUrl": { "type": "string", "description": "SSH clone URL" },
+        "defaultBranch": { "type": "string", "description": "Default branch name" }
+      }
+    }
+  },
+  "more": {
+    "docs": "https://docs.github.com/en/rest/repos/repos#create-a-repository-for-the-authenticated-user",
+    "org-docs": "https://docs.github.com/en/rest/repos/repos#create-an-organization-repository",
+    "gh-cli": "https://cli.github.com/manual/gh_repo_create"
+  },
+  "frontmatter": {
+    "created": "2026-04-10",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "3 min",
+    "prerequisites": ["github/auth"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://github.com/octokit",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

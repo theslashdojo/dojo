@@ -1,0 +1,125 @@
+{
+  "name": "runs",
+  "version": "1.0.0",
+  "uri": "github/actions/runs",
+  "type": "sub",
+  "context": "Monitor, trigger, and manage GitHub Actions workflow runs via gh run list/view/watch and the REST API",
+  "info": "Manage workflow run lifecycle: list recent runs, view run details and logs, watch runs in real-time, trigger runs via workflow_dispatch, re-run failed jobs, and cancel in-progress runs. Use `gh run list`, `gh run view`, `gh run watch` for CLI interaction, or the REST API via @octokit/rest. Runs are created when [[github/actions/workflows]] are triggered. Check run status as required checks for [[github/pulls/merge]]. See [[github/auth]] for authentication and [[github/rate-limits]] for API quota.",
+  "parent": "github/actions",
+  "tags": ["runs", "workflow-runs", "logs", "trigger", "re-run", "cancel", "status"],
+  "aliases": [
+    "workflow runs",
+    "gh run",
+    "action runs",
+    "run list",
+    "run view",
+    "run watch",
+    "ci status"
+  ],
+  "triggers": [
+    "list workflow runs",
+    "check ci status",
+    "view run logs",
+    "trigger a workflow run",
+    "re-run failed jobs",
+    "watch a workflow run",
+    "cancel a running workflow"
+  ],
+  "body": "# Workflow Runs\n\nMonitor, trigger, and manage the execution of GitHub Actions workflows.\n\n## gh CLI\n\n```bash\n# List recent runs\ngh run list\ngh run list --workflow ci.yml\ngh run list --status failure --limit 10\ngh run list --branch main --json status,conclusion,name,databaseId\n\n# View a specific run\ngh run view 12345\ngh run view 12345 --log\ngh run view 12345 --json status,conclusion,jobs\n\n# View failed job logs\ngh run view 12345 --log-failed\n\n# Watch a run in real-time\ngh run watch 12345\ngh run watch  # watch the most recent run\n\n# Trigger a workflow dispatch\ngh workflow run deploy.yml -f environment=production -f version=1.2.3\ngh workflow run ci.yml --ref develop\n\n# Re-run failed jobs\ngh run rerun 12345 --failed\n\n# Re-run all jobs\ngh run rerun 12345\n\n# Cancel a run\ngh run cancel 12345\n\n# Download logs\ngh run view 12345 --log > run.log\n```\n\n## REST API\n\n```javascript\nimport { Octokit } from \"@octokit/rest\";\nconst octokit = new Octokit({ auth: process.env.GITHUB_TOKEN });\n\n// List workflow runs\nconst { data: runs } = await octokit.actions.listWorkflowRuns({\n  owner: \"my-org\",\n  repo: \"my-project\",\n  workflow_id: \"ci.yml\",\n  status: \"completed\",\n  per_page: 10,\n});\nruns.workflow_runs.forEach(r => {\n  console.log(r.id, r.status, r.conclusion, r.html_url);\n});\n\n// Get a specific run\nconst { data: run } = await octokit.actions.getWorkflowRun({\n  owner: \"my-org\",\n  repo: \"my-project\",\n  run_id: 12345,\n});\nconsole.log(run.status, run.conclusion, run.head_sha);\n\n// List jobs for a run\nconst { data: jobs } = await octokit.actions.listJobsForWorkflowRun({\n  owner: \"my-org\",\n  repo: \"my-project\",\n  run_id: 12345,\n});\njobs.jobs.forEach(j => {\n  console.log(j.name, j.status, j.conclusion);\n  j.steps.forEach(s => console.log(`  ${s.name}: ${s.conclusion}`));\n});\n\n// Trigger workflow dispatch\nawait octokit.actions.createWorkflowDispatch({\n  owner: \"my-org\",\n  repo: \"my-project\",\n  workflow_id: \"deploy.yml\",\n  ref: \"main\",\n  inputs: { environment: \"production\", version: \"1.2.3\" },\n});\n\n// Re-run failed jobs\nawait octokit.actions.reRunWorkflowFailedJobs({\n  owner: \"my-org\",\n  repo: \"my-project\",\n  run_id: 12345,\n});\n\n// Cancel a run\nawait octokit.actions.cancelWorkflowRun({\n  owner: \"my-org\",\n  repo: \"my-project\",\n  run_id: 12345,\n});\n\n// Download run logs\nconst { data: logs } = await octokit.actions.downloadWorkflowRunLogs({\n  owner: \"my-org\",\n  repo: \"my-project\",\n  run_id: 12345,\n});\n// Returns a redirect URL to a zip archive of logs\n```\n\n## Run Status and Conclusion\n\n| Field | Values | Meaning |\n|-------|--------|---------|\n| `status` | `queued`, `in_progress`, `completed` | Current execution state |\n| `conclusion` | `success`, `failure`, `cancelled`, `skipped`, `timed_out`, `action_required` | Final result (only when completed) |\n\n## Polling for Completion\n\n```bash\n# Watch until completion (blocks until done)\ngh run watch 12345 --exit-status\n# Exit code 0 if success, non-zero if failure\n\n# Poll via API\nwhile true; do\n  STATUS=$(gh run view 12345 --json status --jq '.status')\n  if [ \"$STATUS\" = \"completed\" ]; then\n    CONCLUSION=$(gh run view 12345 --json conclusion --jq '.conclusion')\n    echo \"Run completed: $CONCLUSION\"\n    break\n  fi\n  sleep 10\ndone\n```\n",
+  "sections": [
+    {
+      "id": "list-runs",
+      "title": "Listing runs",
+      "body": "Use `gh run list` or `octokit.actions.listWorkflowRuns()` to list runs filtered by workflow, status (completed/in_progress/queued), conclusion (success/failure), branch, and actor. Results are paginated. See [[github/pagination]] for traversal. Use `--json` with `gh` for structured output.",
+      "tags": ["list", "filter", "status", "conclusion", "branch"]
+    },
+    {
+      "id": "view-logs",
+      "title": "Viewing run details and logs",
+      "body": "Use `gh run view <id>` for a summary or `--log` for full logs. `--log-failed` shows only failed job logs. The API provides `getWorkflowRun()` for run metadata and `listJobsForWorkflowRun()` for job-level details including step-by-step status. Download complete logs as a zip archive via `downloadWorkflowRunLogs()`.",
+      "tags": ["view", "logs", "jobs", "steps", "download"]
+    },
+    {
+      "id": "trigger-runs",
+      "title": "Triggering runs",
+      "body": "Use `gh workflow run <workflow>` or `octokit.actions.createWorkflowDispatch()` to trigger runs on workflows with `workflow_dispatch` triggers. Pass inputs via `-f key=value` (CLI) or `inputs` object (API). Specify the git ref (branch/tag/SHA) to run on. The workflow must have `on: workflow_dispatch` defined. See [[github/actions/workflows]].",
+      "tags": ["trigger", "dispatch", "inputs", "ref", "manual"]
+    },
+    {
+      "id": "rerun-cancel",
+      "title": "Re-running and cancelling",
+      "body": "Re-run failed jobs with `gh run rerun <id> --failed` or all jobs with `gh run rerun <id>`. Cancel in-progress runs with `gh run cancel <id>`. The API equivalents are `reRunWorkflowFailedJobs()`, `reRunWorkflow()`, and `cancelWorkflowRun()`. Re-runs use the same commit SHA and workflow definition.",
+      "tags": ["rerun", "cancel", "failed", "retry"]
+    }
+  ],
+  "links": [
+    { "uri": "github/actions", "context": "Parent skill for GitHub Actions" },
+    { "uri": "github/actions/workflows", "context": "Define workflows that create runs" },
+    { "uri": "github/actions/artifacts", "context": "Download artifacts from completed runs" },
+    { "uri": "github/pulls", "context": "Check run status on PR branches" },
+    { "uri": "github/auth", "context": "Authentication for Actions API" },
+    { "uri": "github/rate-limits", "context": "Rate limits for Actions API calls" }
+  ],
+  "related": [
+    { "uri": "github/actions", "relation": "parent", "note": "This is a sub-skill of the actions skill" },
+    { "uri": "github/actions/workflows", "relation": "see-also", "note": "Workflows define what runs execute" },
+    { "uri": "github/actions/artifacts", "relation": "see-also", "note": "Runs produce artifacts that can be downloaded" }
+  ],
+  "scripts": [
+    {
+      "id": "manage-runs",
+      "name": "Manage Workflow Runs",
+      "description": "List, view, and trigger workflow runs using gh CLI",
+      "lang": "bash",
+      "runtime": "gh>=2.0",
+      "entry": "./scripts/manage-runs.sh",
+      "env": {
+        "GITHUB_TOKEN": { "required": true, "secret": true, "description": "GitHub personal access token" }
+      },
+      "packages": []
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "owner": { "type": "string", "description": "Repository owner" },
+        "repo": { "type": "string", "description": "Repository name" },
+        "run_id": { "type": "integer", "description": "Workflow run ID" },
+        "workflow_id": { "type": "string", "description": "Workflow file name or ID" },
+        "action": { "type": "string", "enum": ["list", "view", "trigger", "rerun", "cancel"], "description": "Action to perform" }
+      },
+      "required": ["owner", "repo"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "runId": { "type": "integer", "description": "Workflow run ID" },
+        "status": { "type": "string", "description": "Run status" },
+        "conclusion": { "type": "string", "description": "Run conclusion" },
+        "url": { "type": "string", "description": "Run URL" }
+      }
+    }
+  },
+  "more": {
+    "docs": "https://docs.github.com/en/rest/actions/workflow-runs",
+    "gh-run": "https://cli.github.com/manual/gh_run",
+    "gh-workflow": "https://cli.github.com/manual/gh_workflow"
+  },
+  "frontmatter": {
+    "created": "2026-04-10",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "4 min",
+    "prerequisites": ["github/auth", "github/actions"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://github.com/actions",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}
