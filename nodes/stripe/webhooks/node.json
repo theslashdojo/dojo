@@ -1,0 +1,128 @@
+{
+  "name": "webhooks",
+  "version": "1.0.0",
+  "uri": "stripe/webhooks",
+  "type": "skill",
+  "context": "Handle Stripe webhook events: verify signatures, process payment and subscription events",
+  "info": "Stripe sends webhook events to your server when things happen in your account — payments succeed, subscriptions change, disputes are opened, and more. This skill covers setting up a webhook endpoint, verifying event signatures to prevent spoofing, processing common event types for payments and subscriptions, handling retries and failures, and best practices for idempotent event processing. Webhook signature verification uses the STRIPE_WEBHOOK_SECRET (whsec_...) from the Stripe dashboard or CLI.",
+  "parent": "stripe",
+  "tags": ["webhooks", "events", "signatures", "payment-events", "subscription-events"],
+  "aliases": [
+    "stripe webhooks",
+    "webhook handler",
+    "stripe events",
+    "webhook endpoint",
+    "event listener",
+    "stripe webhook verification",
+    "webhook signature",
+    "event processing"
+  ],
+  "triggers": [
+    "set up stripe webhooks",
+    "handle stripe webhook events",
+    "verify webhook signatures",
+    "listen for payment events",
+    "handle subscription webhook events",
+    "process stripe events"
+  ],
+  "body": "# Stripe Webhooks\n\nWebhooks notify your server when events happen in your Stripe account. They are essential for reliable payment confirmation, subscription lifecycle management, and dispute handling. You will need both `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET` from your [[stripe]] dashboard.\n\n## Setup\n\n### Express Endpoint\n\n```javascript\nimport express from 'express';\nimport Stripe from 'stripe';\n\nconst stripe = new Stripe(process.env.STRIPE_SECRET_KEY);\nconst app = express();\n\n// IMPORTANT: Use raw body for signature verification\napp.post('/webhook', express.raw({ type: 'application/json' }), (req, res) => {\n  const sig = req.headers['stripe-signature'];\n  let event;\n\n  try {\n    event = stripe.webhooks.constructEvent(\n      req.body,\n      sig,\n      process.env.STRIPE_WEBHOOK_SECRET\n    );\n  } catch (err) {\n    console.error('Signature verification failed:', err.message);\n    return res.status(400).send(`Webhook Error: ${err.message}`);\n  }\n\n  // Handle the event\n  switch (event.type) {\n    case 'payment_intent.succeeded':\n      const paymentIntent = event.data.object;\n      console.log(`Payment ${paymentIntent.id} succeeded`);\n      break;\n    case 'customer.subscription.created':\n      const subscription = event.data.object;\n      console.log(`Subscription ${subscription.id} created`);\n      break;\n    case 'customer.subscription.deleted':\n      const canceled = event.data.object;\n      console.log(`Subscription ${canceled.id} canceled`);\n      break;\n    case 'checkout.session.completed':\n      const session = event.data.object;\n      console.log(`Checkout session ${session.id} completed`);\n      break;\n    default:\n      console.log(`Unhandled event type: ${event.type}`);\n  }\n\n  res.json({ received: true });\n});\n\napp.listen(3000);\n```\n\n## Signature Verification\n\nAlways verify webhook signatures to ensure events are from Stripe, not an attacker:\n\n```javascript\n// The raw request body (Buffer, not parsed JSON)\nconst payload = req.body;\n// The Stripe-Signature header\nconst sig = req.headers['stripe-signature'];\n// Your webhook endpoint secret (whsec_...)\nconst secret = process.env.STRIPE_WEBHOOK_SECRET;\n\nconst event = stripe.webhooks.constructEvent(payload, sig, secret);\n```\n\n**Critical**: The body must be the raw request buffer, not parsed JSON. If you use `express.json()` globally, exclude the webhook route or use `express.raw()` specifically for it.\n\n## Event Types\n\nCommon events to handle:\n\n| Event | When | Action |\n|-------|------|--------|\n| `payment_intent.succeeded` | Payment completes | Fulfill order, send receipt |\n| `payment_intent.payment_failed` | Payment fails | Notify customer, retry |\n| `checkout.session.completed` | Checkout finishes | Fulfill order (see [[stripe/checkout#fulfillment]]) |\n| `customer.subscription.created` | New subscription | Provision access |\n| `customer.subscription.updated` | Plan change | Update access level |\n| `customer.subscription.deleted` | Cancellation | Revoke access |\n| `customer.subscription.trial_will_end` | Trial ending in 3 days | Notify customer |\n| `invoice.payment_failed` | Subscription payment fails | Notify, dunning flow |\n| `charge.dispute.created` | Dispute opened | Gather evidence |\n\nSee [[stripe/payments]] for payment event details and [[stripe/subscriptions]] for subscription lifecycle events.\n\n## Local Testing with Stripe CLI\n\n```bash\n# Install Stripe CLI, then:\nstripe listen --forward-to localhost:3000/webhook\n# Returns: whsec_xxx (use as STRIPE_WEBHOOK_SECRET)\n\n# Trigger test events\nstripe trigger payment_intent.succeeded\nstripe trigger customer.subscription.created\n```\n\n## Retry Logic\n\nStripe retries failed webhook deliveries (non-2xx responses) for up to 3 days with exponential backoff. Your endpoint must:\n\n- Return `200` quickly (within 20 seconds)\n- Process events asynchronously if work is slow\n- Be idempotent — use `event.id` to deduplicate\n\n```javascript\n// Idempotent processing\nconst processed = await db.findEvent(event.id);\nif (processed) return res.json({ received: true });\n\nawait processEvent(event);\nawait db.markProcessed(event.id);\nres.json({ received: true });\n```\n\n## Environment Variables\n\n| Variable | Purpose |\n|----------|----------|\n| `STRIPE_SECRET_KEY` | Server-side API key for Stripe SDK |\n| `STRIPE_WEBHOOK_SECRET` | Webhook endpoint signing secret (`whsec_...`) |\n",
+  "sections": [
+    {
+      "id": "setup",
+      "title": "Webhook endpoint setup",
+      "body": "Create a POST endpoint that receives raw JSON bodies. Register the URL in the Stripe dashboard (Developers > Webhooks) or use the Stripe CLI for local testing (`stripe listen --forward-to localhost:3000/webhook`). The endpoint must return 2xx within 20 seconds. Use `express.raw({ type: 'application/json' })` for Express — do not parse JSON before signature verification.",
+      "tags": ["setup", "endpoint", "express", "stripe-cli", "register"]
+    },
+    {
+      "id": "signature-verification",
+      "title": "Signature verification",
+      "body": "Call `stripe.webhooks.constructEvent(rawBody, signatureHeader, webhookSecret)` to verify and parse the event. This prevents spoofed events from attackers. The `STRIPE_WEBHOOK_SECRET` (`whsec_...`) comes from the Stripe dashboard or CLI. If verification fails, return 400. Never process events without verification in production.",
+      "tags": ["signature", "verification", "security", "constructEvent", "whsec"]
+    },
+    {
+      "id": "event-types",
+      "title": "Common event types",
+      "body": "Payment events: `payment_intent.succeeded`, `payment_intent.payment_failed` (see [[stripe/payments]]). Checkout events: `checkout.session.completed`, `checkout.session.expired` (see [[stripe/checkout#fulfillment]]). Subscription events: `customer.subscription.created`, `customer.subscription.updated`, `customer.subscription.deleted`, `customer.subscription.trial_will_end` (see [[stripe/subscriptions]]). Invoice events: `invoice.payment_failed`, `invoice.paid`. Dispute: `charge.dispute.created`.",
+      "tags": ["events", "payment-intent", "checkout-session", "subscription", "invoice", "dispute"]
+    },
+    {
+      "id": "retry-logic",
+      "title": "Retry behavior",
+      "body": "Stripe retries failed deliveries (non-2xx responses) with exponential backoff for up to 3 days. Endpoints must respond within 20 seconds. For slow processing, acknowledge immediately (return 200) and process asynchronously via a queue. Events may arrive out of order — always fetch the current state from the API if order matters.",
+      "tags": ["retry", "backoff", "timeout", "async", "queue"]
+    },
+    {
+      "id": "best-practices",
+      "title": "Best practices",
+      "body": "Always verify signatures. Make handlers idempotent using `event.id` as a deduplication key. Return 200 quickly, process asynchronously. Handle events you care about, ignore the rest (return 200 for unknown types). Use the Stripe CLI for local development. In production, register specific event types rather than receiving all events. Monitor webhook delivery in the Stripe dashboard.",
+      "tags": ["best-practices", "idempotency", "deduplication", "monitoring", "production"]
+    }
+  ],
+  "links": [
+    { "uri": "stripe", "context": "Stripe ecosystem overview, API keys, and test mode" },
+    { "uri": "stripe/payments", "context": "Payment intent events: succeeded, failed" },
+    { "uri": "stripe/subscriptions", "context": "Subscription lifecycle events: created, updated, deleted" },
+    { "uri": "stripe/checkout", "context": "Checkout session events: completed, expired" },
+    { "uri": "stripe/checkout#fulfillment", "context": "Use webhooks for reliable checkout fulfillment" }
+  ],
+  "related": [
+    { "uri": "stripe/payments", "relation": "see-also", "note": "Payment events are the most common webhook type" },
+    { "uri": "stripe/subscriptions", "relation": "see-also", "note": "Subscription lifecycle management depends heavily on webhooks" },
+    { "uri": "stripe/checkout", "relation": "see-also", "note": "Checkout fulfillment should use checkout.session.completed webhooks" }
+  ],
+  "scripts": [
+    {
+      "id": "handle-webhook",
+      "name": "Handle Webhook Event",
+      "description": "Set up an Express endpoint to receive and verify Stripe webhook events",
+      "lang": "javascript",
+      "runtime": "node>=18",
+      "entry": "./scripts/handle-webhook.js",
+      "env": {
+        "STRIPE_SECRET_KEY": { "required": true, "secret": true, "description": "Stripe secret API key (sk_test_... or sk_live_...)" },
+        "STRIPE_WEBHOOK_SECRET": { "required": true, "secret": true, "description": "Webhook endpoint signing secret (whsec_...)" }
+      },
+      "packages": ["stripe", "express"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "payload": { "type": "string", "description": "Raw request body as string or Buffer" },
+        "signature": { "type": "string", "description": "Value of the Stripe-Signature header" }
+      },
+      "required": ["payload", "signature"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "eventType": { "type": "string", "description": "Event type string (e.g., payment_intent.succeeded)" },
+        "eventId": { "type": "string", "description": "Unique event ID (evt_xxx) for idempotency" },
+        "data": { "type": "object", "description": "Event data object containing the affected resource" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "stripe", "reason": "Requires a Stripe account, API key, and webhook secret" }
+  ],
+  "more": {
+    "docs": "https://docs.stripe.com/webhooks",
+    "api": "https://docs.stripe.com/api/webhook_endpoints"
+  },
+  "frontmatter": {
+    "created": "2026-04-10",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "5 min",
+    "prerequisites": ["stripe"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

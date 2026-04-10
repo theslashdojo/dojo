@@ -1,0 +1,96 @@
+{
+  "name": "data-structures",
+  "version": "1.0.0",
+  "uri": "redis/data-structures",
+  "type": "context",
+  "content_type": "reference",
+  "context": "Redis data structures: strings, lists, sets, sorted sets, hashes, bitmaps, HyperLogLog",
+  "info": "This reference covers the full range of Redis data structures beyond simple key-value caching. Strings support atomic counters (INCR, DECR) and bitwise operations. Lists provide O(1) push/pop for queues and stacks. Sets offer membership testing, intersection, union, and difference. Sorted sets add a score to each member for ranking, range queries, and leaderboards. Hashes store field-value pairs within a single key for object-like storage. Bitmaps enable compact boolean arrays for feature flags and daily active user tracking. HyperLogLog provides probabilistic cardinality estimation with constant memory. Each structure has dedicated commands optimized for its access patterns.",
+  "parent": "redis",
+  "tags": ["data-structures", "strings", "lists", "sets", "sorted-sets", "hashes", "bitmaps", "hyperloglog"],
+  "aliases": [
+    "redis data types",
+    "redis data structures",
+    "redis strings",
+    "redis lists",
+    "redis sets",
+    "redis sorted sets",
+    "redis hashes",
+    "redis bitmaps",
+    "redis hyperloglog",
+    "redis zset"
+  ],
+  "triggers": [
+    "what redis data types are available",
+    "use redis sorted sets",
+    "work with redis hashes",
+    "use redis as a queue with lists",
+    "count unique items with hyperloglog",
+    "use redis bitmaps for feature flags"
+  ],
+  "body": "# Redis Data Structures\n\nRedis provides specialized data structures beyond simple strings, each with dedicated commands optimized for specific access patterns. Choosing the right structure can reduce code complexity and improve performance by orders of magnitude. See [[redis#data-model]] for an overview of how these types map to keys and values.\n\n## Strings\n\nStrings are the simplest type \u2014 a key maps to a single value (up to 512MB). Beyond basic GET/SET (see [[redis/caching#get-set]]), strings support atomic counters and binary-safe storage.\n\n```javascript\nimport Redis from \"ioredis\";\nconst redis = new Redis(process.env.REDIS_URL);\n\n// Atomic counters\nawait redis.set(\"page:views\", 0);\nawait redis.incr(\"page:views\");           // 1\nawait redis.incrby(\"page:views\", 10);     // 11\nawait redis.decr(\"page:views\");           // 10\nawait redis.incrbyfloat(\"score\", 1.5);    // 1.5\n\n// Append to a string\nawait redis.append(\"log:entry\", \"line 1\\n\");\nawait redis.append(\"log:entry\", \"line 2\\n\");\n\n// Get/set substring\nawait redis.setrange(\"greeting\", 6, \"Redis\"); // \"Hello Redis\"\nconst sub = await redis.getrange(\"greeting\", 0, 4); // \"Hello\"\n```\n\n## Lists\n\nOrdered collections with O(1) push/pop at both ends. Ideal for queues, stacks, and recent item feeds.\n\n```javascript\n// Queue pattern (FIFO): push left, pop right\nawait redis.lpush(\"tasks\", \"task-1\", \"task-2\", \"task-3\");\nconst nextTask = await redis.rpop(\"tasks\"); // \"task-1\"\n\n// Stack pattern (LIFO): push left, pop left\nawait redis.lpush(\"undo\", \"action-1\", \"action-2\");\nconst lastAction = await redis.lpop(\"undo\"); // \"action-2\"\n\n// Blocking pop (wait for items, great for worker queues)\nconst [list, item] = await redis.brpop(\"tasks\", 30); // block up to 30s\n\n// Range queries\nconst recent = await redis.lrange(\"feed:user:1\", 0, 9); // first 10 items\nconst length = await redis.llen(\"tasks\");\n\n// Trim to keep only recent items\nawait redis.ltrim(\"feed:user:1\", 0, 99); // keep last 100\n```\n\n## Sets and Sorted Sets\n\n### Sets\n\nUnordered collections of unique members. Efficient for membership testing, tagging, and set operations.\n\n```javascript\n// Add members\nawait redis.sadd(\"tags:article:1\", \"redis\", \"database\", \"nosql\");\nawait redis.sadd(\"tags:article:2\", \"redis\", \"caching\", \"performance\");\n\n// Membership test\nconst isMember = await redis.sismember(\"tags:article:1\", \"redis\"); // 1 (true)\n\n// Set operations\nconst intersection = await redis.sinter(\"tags:article:1\", \"tags:article:2\"); // [\"redis\"]\nconst union = await redis.sunion(\"tags:article:1\", \"tags:article:2\");\nconst diff = await redis.sdiff(\"tags:article:1\", \"tags:article:2\"); // [\"database\", \"nosql\"]\n\n// Random member\nconst random = await redis.srandmember(\"tags:article:1\");\nconst allMembers = await redis.smembers(\"tags:article:1\");\n```\n\n### Sorted Sets\n\nSets where each member has a score, enabling ranking and range queries. Perfect for leaderboards, rate limiting, and scheduled jobs.\n\n```javascript\n// Leaderboard\nawait redis.zadd(\"leaderboard\", 1500, \"alice\", 1200, \"bob\", 1800, \"carol\");\n\n// Top 3 (highest scores)\nconst top3 = await redis.zrevrange(\"leaderboard\", 0, 2, \"WITHSCORES\");\n// [\"carol\", \"1800\", \"alice\", \"1500\", \"bob\", \"1200\"]\n\n// Rank lookup (0-based, highest first)\nconst rank = await redis.zrevrank(\"leaderboard\", \"alice\"); // 1\n\n// Score range\nconst midTier = await redis.zrangebyscore(\"leaderboard\", 1000, 1600);\n\n// Increment score\nawait redis.zincrby(\"leaderboard\", 100, \"bob\"); // bob now 1300\n\n// Rate limiting (sliding window)\nconst now = Date.now();\nconst windowMs = 60000;\nawait redis.zadd(\"ratelimit:user:1\", now, `${now}`);\nawait redis.zremrangebyscore(\"ratelimit:user:1\", 0, now - windowMs);\nconst requestCount = await redis.zcard(\"ratelimit:user:1\");\n```\n\n## Hashes\n\nField-value maps within a single key. Ideal for storing objects without serialization overhead.\n\n```javascript\n// Store an object\nawait redis.hset(\"user:1001\",\n  \"name\", \"Alice\",\n  \"email\", \"alice@example.com\",\n  \"role\", \"admin\",\n  \"loginCount\", \"0\"\n);\n\n// Get a single field\nconst name = await redis.hget(\"user:1001\", \"name\"); // \"Alice\"\n\n// Get multiple fields\nconst [email, role] = await redis.hmget(\"user:1001\", \"email\", \"role\");\n\n// Get all fields\nconst user = await redis.hgetall(\"user:1001\");\n// { name: \"Alice\", email: \"alice@example.com\", role: \"admin\", loginCount: \"0\" }\n\n// Atomic increment on a hash field\nawait redis.hincrby(\"user:1001\", \"loginCount\", 1);\n\n// Check field existence\nconst exists = await redis.hexists(\"user:1001\", \"email\"); // 1\n\n// Delete a field\nawait redis.hdel(\"user:1001\", \"role\");\n```\n\n## Bitmaps and HyperLogLog\n\n### Bitmaps\n\nCompact boolean arrays using string type. Each bit represents a flag. Extremely memory-efficient for large boolean datasets.\n\n```javascript\n// Track daily active users (bit position = user ID)\nawait redis.setbit(\"dau:2026-04-10\", 1001, 1); // user 1001 active\nawait redis.setbit(\"dau:2026-04-10\", 1002, 1); // user 1002 active\n\n// Check if user was active\nconst wasActive = await redis.getbit(\"dau:2026-04-10\", 1001); // 1\n\n// Count active users\nconst activeCount = await redis.bitcount(\"dau:2026-04-10\"); // 2\n\n// Users active on both days (AND)\nawait redis.bitop(\"AND\", \"dau:both\", \"dau:2026-04-09\", \"dau:2026-04-10\");\n\n// Feature flags\nawait redis.setbit(\"features:dark-mode\", 1001, 1); // enable for user 1001\n```\n\n### HyperLogLog\n\nProbabilistic cardinality estimation using constant memory (~12KB regardless of set size). Accurate to within 0.81% standard error.\n\n```javascript\n// Count unique visitors\nawait redis.pfadd(\"visitors:2026-04-10\", \"user-a\", \"user-b\", \"user-c\");\nawait redis.pfadd(\"visitors:2026-04-10\", \"user-a\", \"user-d\"); // duplicates ignored\n\n// Approximate count\nconst uniqueCount = await redis.pfcount(\"visitors:2026-04-10\"); // ~4\n\n// Merge multiple HyperLogLogs (weekly unique visitors)\nawait redis.pfmerge(\"visitors:week-15\",\n  \"visitors:2026-04-06\",\n  \"visitors:2026-04-07\",\n  \"visitors:2026-04-08\"\n);\nconst weeklyUniques = await redis.pfcount(\"visitors:week-15\");\n```\n",
+  "sections": [
+    {
+      "id": "strings",
+      "title": "Strings and counters",
+      "body": "Strings hold values up to 512MB. Beyond GET/SET (see [[redis/caching#get-set]]), use INCR/DECR for atomic counters, APPEND for log-style writes, and GETRANGE/SETRANGE for substrings. Strings are also the backing type for bitmaps. Most caching workloads use strings as their primary type.",
+      "tags": ["strings", "incr", "decr", "counters", "append", "getrange"]
+    },
+    {
+      "id": "lists",
+      "title": "Lists",
+      "body": "Doubly-linked lists with O(1) push/pop at both ends. LPUSH/RPOP for FIFO queues, LPUSH/LPOP for LIFO stacks. BRPOP/BLPOP for blocking consumer patterns (worker queues). LRANGE for pagination. LTRIM to cap list length (e.g., recent activity feeds). For durable queue semantics with acknowledgment, consider [[redis/streams]] instead.",
+      "tags": ["lists", "lpush", "rpop", "brpop", "queue", "stack", "lrange"]
+    },
+    {
+      "id": "sets-sorted-sets",
+      "title": "Sets and sorted sets",
+      "body": "Sets store unique members with O(1) add/remove/membership. SINTER, SUNION, SDIFF for set algebra. Sorted sets add a numeric score to each member. ZADD/ZRANGE/ZREVRANGE for leaderboards. ZRANGEBYSCORE for range queries. ZINCRBY for score updates. Sorted sets enable rate limiting via sliding window (ZADD + ZREMRANGEBYSCORE + ZCARD). See [[redis/caching]] for using sorted sets as scored caches.",
+      "tags": ["sets", "sorted-sets", "zadd", "zrange", "leaderboard", "rate-limiting", "sinter"]
+    },
+    {
+      "id": "hashes",
+      "title": "Hashes",
+      "body": "Hashes store field-value pairs within a single key, ideal for object storage without serialization. HSET/HGET for individual fields, HGETALL for the entire object, HINCRBY for atomic field increments. More memory-efficient than storing each field as a separate string key. Useful for user profiles, sessions, and configuration objects.",
+      "tags": ["hashes", "hset", "hget", "hgetall", "hincrby", "objects", "sessions"]
+    },
+    {
+      "id": "bitmaps-hyperloglog",
+      "title": "Bitmaps and HyperLogLog",
+      "body": "Bitmaps use SETBIT/GETBIT to manipulate individual bits within a string. BITCOUNT for population count, BITOP for AND/OR/XOR across keys. Ideal for feature flags and daily active user tracking (1 bit per user). HyperLogLog uses PFADD/PFCOUNT for probabilistic unique counting with ~12KB constant memory. PFMERGE combines multiple HLLs. Perfect for unique visitor counts and cardinality estimation where exact counts are not required.",
+      "tags": ["bitmaps", "hyperloglog", "setbit", "bitcount", "pfadd", "pfcount", "cardinality"]
+    }
+  ],
+  "links": [
+    { "uri": "redis", "context": "Redis ecosystem overview and data model" },
+    { "uri": "redis/caching", "context": "String-based caching with TTL and eviction" },
+    { "uri": "redis/streams", "context": "Stream type for durable event processing" },
+    { "uri": "redis/caching#get-set", "context": "Basic string GET/SET operations" },
+    { "uri": "redis#data-model", "context": "Overview of all Redis data types" },
+    { "uri": "redis/clustering", "context": "Data structure behavior across cluster shards" }
+  ],
+  "related": [
+    { "uri": "redis/caching", "relation": "see-also", "note": "Caching primarily uses strings; hashes and sorted sets provide structured alternatives" },
+    { "uri": "redis/streams", "relation": "see-also", "note": "Streams are a specialized data structure for event logs with consumer groups" },
+    { "uri": "redis/pub-sub", "relation": "see-also", "note": "Pub/sub complements data structures for real-time notification of changes" }
+  ],
+  "more": {
+    "docs": "https://redis.io/docs/latest/develop/data-types/",
+    "commands": "https://redis.io/docs/latest/commands/"
+  },
+  "frontmatter": {
+    "created": "2026-04-10",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "6 min",
+    "prerequisites": ["redis"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

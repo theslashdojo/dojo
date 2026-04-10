@@ -1,0 +1,130 @@
+{
+  "name": "backup",
+  "version": "1.0.0",
+  "uri": "postgres/backup",
+  "type": "skill",
+  "context": "Backup and restore PostgreSQL: pg_dump, pg_basebackup, point-in-time recovery with WAL archiving",
+  "info": "This skill covers PostgreSQL backup and restore strategies. pg_dump creates logical backups of individual databases — supports custom (compressed binary), directory (parallel), and plain SQL formats. pg_basebackup creates physical backups of the entire cluster for streaming replication initialization or full restore. Point-in-time recovery (PITR) combines a base backup with WAL archiving to restore to any specific timestamp — essential for recovering from accidental data loss. WAL archiving continuously copies WAL segments to a safe location (local, S3, GCS). Backup strategies should combine regular pg_dump for application-level restores with pg_basebackup + WAL archiving for disaster recovery. Always test restores regularly.",
+  "parent": "postgres",
+  "tags": ["backup", "pg-dump", "pg-basebackup", "pitr", "wal-archiving", "restore"],
+  "aliases": [
+    "postgres backup",
+    "postgresql backup",
+    "pg_dump",
+    "pg_basebackup",
+    "database backup",
+    "point-in-time recovery",
+    "pitr",
+    "wal archiving",
+    "restore database",
+    "database restore"
+  ],
+  "triggers": [
+    "backup a postgres database",
+    "restore a database",
+    "set up pg_dump",
+    "configure point-in-time recovery",
+    "set up wal archiving",
+    "schedule database backups",
+    "disaster recovery for postgres"
+  ],
+  "body": "# PostgreSQL Backup and Restore\n\nA robust backup strategy is essential for any PostgreSQL deployment. Combine logical backups (pg_dump) for application-level restores with physical backups (pg_basebackup + WAL archiving) for disaster recovery and point-in-time recovery.\n\n## pg_dump\n\npg_dump creates a logical backup of a single database. It outputs SQL statements or a custom binary format that can be restored with pg_restore.\n\n```bash\n# Custom format (compressed, most flexible)\npg_dump -Fc -f backup.dump $DATABASE_URL\n\n# Directory format (parallel dump/restore)\npg_dump -Fd -j 4 -f backup_dir/ $DATABASE_URL\n\n# Plain SQL (human-readable, good for version control)\npg_dump -Fp -f backup.sql $DATABASE_URL\n\n# Dump specific tables\npg_dump -Fc -t users -t orders -f tables.dump $DATABASE_URL\n\n# Dump schema only (no data)\npg_dump -Fc --schema-only -f schema.dump $DATABASE_URL\n\n# Dump data only (no DDL)\npg_dump -Fc --data-only -f data.dump $DATABASE_URL\n\n# Dump all databases (use pg_dumpall)\npg_dumpall -f all_databases.sql\n```\n\n### Restore from pg_dump\n\n```bash\n# Restore custom/directory format\npg_restore -d mydb backup.dump\n\n# Restore with parallel workers\npg_restore -d mydb -j 4 backup_dir/\n\n# Restore specific tables\npg_restore -d mydb -t users backup.dump\n\n# Restore plain SQL\npsql -d mydb -f backup.sql\n\n# Create database and restore\ncreatedb mydb_restored\npg_restore -d mydb_restored --clean --if-exists backup.dump\n```\n\n## pg_basebackup\n\npg_basebackup creates a physical backup of the entire PostgreSQL cluster. It is the foundation for streaming replication initialization and PITR.\n\n```bash\n# Basic base backup\npg_basebackup -h primary_host -U replicator -D /backup/base -Fp -Xs -P\n\n# Compressed tar format\npg_basebackup -h primary_host -U replicator -D /backup/base -Ft -z -Xs -P\n\n# With WAL files included (self-contained backup)\npg_basebackup -h primary_host -U replicator -D /backup/base -Ft -z -Xf -P\n```\n\nFlags: `-Fp` plain format, `-Ft` tar format, `-z` gzip compress, `-Xs` stream WAL during backup, `-Xf` fetch WAL after backup, `-P` show progress.\n\n## Point-in-Time Recovery (PITR)\n\nPITR lets you restore to any specific timestamp by combining a base backup with WAL archives.\n\n### 1. Configure WAL Archiving\n\n```ini\n# postgresql.conf\nwal_level = replica\narchive_mode = on\narchive_command = 'cp %p /archive/wal/%f'\n# For S3:\n# archive_command = 'aws s3 cp %p s3://my-bucket/wal/%f'\n```\n\n### 2. Take a Base Backup\n\n```bash\npg_basebackup -h localhost -U replicator -D /backup/base -Ft -z -Xs -P\n```\n\n### 3. Restore to a Point in Time\n\n```bash\n# Stop PostgreSQL\npg_ctl stop -D /var/lib/postgresql/data\n\n# Replace data directory with base backup\nrm -rf /var/lib/postgresql/data/*\ntar xzf /backup/base/base.tar.gz -C /var/lib/postgresql/data/\n\n# Create recovery configuration\ncat > /var/lib/postgresql/data/postgresql.auto.conf << EOF\nrestore_command = 'cp /archive/wal/%f %p'\nrecovery_target_time = '2026-04-10 14:30:00 UTC'\nrecovery_target_action = 'promote'\nEOF\n\n# Create recovery signal file\ntouch /var/lib/postgresql/data/recovery.signal\n\n# Start PostgreSQL — it will replay WAL up to the target time\npg_ctl start -D /var/lib/postgresql/data\n```\n\n## Scheduling\n\nAutomate backups with cron:\n\n```bash\n# /etc/cron.d/postgres-backup\n\n# Daily pg_dump at 2 AM\n0 2 * * * postgres pg_dump -Fc -f /backup/daily/mydb_$(date +\\%Y\\%m\\%d).dump $DATABASE_URL\n\n# Weekly base backup on Sunday at 3 AM\n0 3 * * 0 postgres pg_basebackup -h localhost -U replicator -D /backup/weekly/base_$(date +\\%Y\\%m\\%d) -Ft -z -Xs -P\n\n# Clean up backups older than 30 days\n0 4 * * * postgres find /backup/daily -name '*.dump' -mtime +30 -delete\n```\n\n## Backup Strategy Summary\n\n| Method | Type | Granularity | Restore Speed | Use Case |\n|--------|------|-------------|---------------|----------|\n| pg_dump | Logical | Database/table | Medium | App-level restore, migration |\n| pg_basebackup | Physical | Full cluster | Fast | Disaster recovery, replica init |\n| PITR (base + WAL) | Physical | Any timestamp | Medium | Accidental data loss recovery |\n| pg_dumpall | Logical | All databases | Slow | Full cluster logical backup |\n",
+  "sections": [
+    {
+      "id": "pg-dump",
+      "title": "pg_dump",
+      "body": "Logical backup of a single database. Custom format (`-Fc`) is compressed and supports selective restore. Directory format (`-Fd`) enables parallel dump/restore with `-j`. Plain format (`-Fp`) outputs human-readable SQL. Use `pg_restore` for custom/directory formats, `psql -f` for plain SQL. Always use `--clean --if-exists` flags when restoring to drop existing objects first. See [[postgres/queries]] for verifying restored data.",
+      "tags": ["pg-dump", "pg-restore", "custom-format", "directory-format", "parallel"]
+    },
+    {
+      "id": "pg-basebackup",
+      "title": "pg_basebackup",
+      "body": "Physical backup of the entire cluster via streaming replication protocol. Requires a replication user. Use `-Xs` to stream WAL during backup for consistency. Compressed tar format (`-Ft -z`) is most storage-efficient. The backup can initialize a standby (see [[postgres/replication#streaming-replication]]) or serve as the foundation for PITR.",
+      "tags": ["pg-basebackup", "physical", "cluster", "replication", "streaming"]
+    },
+    {
+      "id": "pitr",
+      "title": "Point-in-time recovery",
+      "body": "PITR combines a base backup with WAL archives to restore to any timestamp. Configure `archive_mode = on` and `archive_command` to copy WAL segments to safe storage (local filesystem, S3, GCS). Restore by extracting the base backup, setting `restore_command` and `recovery_target_time`, and creating `recovery.signal`. PostgreSQL replays WAL up to the target time. Essential for recovering from accidental `DROP TABLE` or `DELETE` without `WHERE`.",
+      "tags": ["pitr", "point-in-time", "wal-archive", "recovery-target", "restore-command"]
+    },
+    {
+      "id": "restore",
+      "title": "Restore procedures",
+      "body": "For pg_dump: `pg_restore -d dbname backup.dump` (custom/directory) or `psql -d dbname -f backup.sql` (plain). Use `-j 4` for parallel restore. For pg_basebackup: extract to data directory, start PostgreSQL. For PITR: extract base backup, configure recovery, create `recovery.signal`, start PostgreSQL. Always test restores in a staging environment before relying on backups for production recovery.",
+      "tags": ["restore", "pg-restore", "psql", "testing", "staging"]
+    },
+    {
+      "id": "scheduling",
+      "title": "Backup scheduling",
+      "body": "Use cron for automated backups. Daily pg_dump for application-level restore capability. Weekly pg_basebackup for disaster recovery. Continuous WAL archiving for PITR granularity. Rotate old backups with `find -mtime -delete`. For cloud storage, upload to S3/GCS with lifecycle policies for automatic expiration. Monitor backup success with health checks and alerting.",
+      "tags": ["cron", "scheduling", "rotation", "retention", "monitoring", "automation"]
+    }
+  ],
+  "links": [
+    { "uri": "postgres/replication#streaming-replication", "context": "pg_basebackup initializes streaming replicas" },
+    { "uri": "postgres/replication", "context": "Replication complements backup for high availability" },
+    { "uri": "postgres/performance#config-tuning", "context": "WAL and archive configuration settings" },
+    { "uri": "postgres/queries", "context": "Verify restored data with queries" }
+  ],
+  "related": [
+    { "uri": "database/backup", "relation": "extends", "note": "PostgreSQL-specific implementation of general database backup strategies" },
+    { "uri": "aws/s3", "relation": "see-also", "note": "Store pg_dump and WAL archives in S3 for durable offsite backup" }
+  ],
+  "scripts": [
+    {
+      "id": "backup-postgres",
+      "name": "Backup PostgreSQL",
+      "description": "Create a PostgreSQL backup using pg_dump with configurable format and compression",
+      "lang": "bash",
+      "runtime": "bash>=4",
+      "entry": "./scripts/backup-postgres.sh",
+      "env": {
+        "DATABASE_URL": { "required": true, "secret": true, "description": "PostgreSQL connection string" },
+        "BACKUP_DIR": { "required": true, "secret": false, "description": "Directory to store backup files" },
+        "PGPASSWORD": { "required": false, "secret": true, "description": "PostgreSQL password (alternative to connection string)" }
+      },
+      "packages": ["postgresql-client"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "databaseUrl": { "type": "string", "description": "PostgreSQL connection string" },
+        "format": { "type": "string", "enum": ["custom", "directory", "plain", "tar"], "description": "Backup format" },
+        "compress": { "type": "boolean", "default": true, "description": "Enable compression" }
+      },
+      "required": ["databaseUrl"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "backupPath": { "type": "string", "description": "Path to the backup file or directory" },
+        "size": { "type": "string", "description": "Backup file size (human-readable)" },
+        "duration": { "type": "string", "description": "Time taken for backup (e.g. '2m 15s')" }
+      }
+    }
+  },
+  "more": {
+    "pg_dump": "https://www.postgresql.org/docs/current/app-pgdump.html",
+    "pg_basebackup": "https://www.postgresql.org/docs/current/app-pgbasebackup.html",
+    "pitr": "https://www.postgresql.org/docs/current/continuous-archiving.html",
+    "pg_restore": "https://www.postgresql.org/docs/current/app-pgrestore.html"
+  },
+  "frontmatter": {
+    "created": "2026-04-10",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "developers, AI agents, database administrators",
+    "estimated_reading_time": "7 min",
+    "prerequisites": [],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

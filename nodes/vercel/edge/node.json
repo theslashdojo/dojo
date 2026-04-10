@@ -1,0 +1,129 @@
+{
+  "name": "edge",
+  "version": "1.0.0",
+  "uri": "vercel/edge",
+  "type": "skill",
+  "context": "Build Vercel Edge Functions and Middleware for low-latency compute at the CDN edge",
+  "info": "Vercel Edge Functions and Middleware run on V8 isolates at CDN nodes worldwide, providing sub-millisecond cold starts and low-latency request processing. Edge Middleware intercepts every request before it reaches the origin, enabling authentication checks, A/B testing, geolocation-based routing, and request rewriting without a round-trip to the origin server. Edge Functions are standalone compute endpoints using the Web standard Request/Response API. The edge runtime is a subset of Node.js — it supports fetch, crypto, TextEncoder, URL, and other Web APIs but does not support Node.js-specific modules like fs, net, or child_process. Use edge for latency-critical paths; use [[vercel/serverless]] for full Node.js API compatibility.",
+  "parent": "vercel",
+  "tags": ["edge", "middleware", "edge-functions", "cdn", "low-latency", "geolocation"],
+  "aliases": [
+    "vercel edge",
+    "edge functions",
+    "edge middleware",
+    "vercel middleware",
+    "edge compute",
+    "cdn compute",
+    "edge runtime",
+    "v8 isolates"
+  ],
+  "triggers": [
+    "create edge middleware",
+    "add vercel middleware",
+    "build an edge function",
+    "geolocation routing on vercel",
+    "intercept requests on vercel",
+    "a/b testing with edge middleware",
+    "low-latency function on vercel"
+  ],
+  "body": "# Edge Functions and Middleware\n\nVercel Edge Functions and Middleware execute on V8 isolates at CDN nodes worldwide. They start in under 1ms (no cold start penalty) and process requests close to the end user. The edge runtime uses Web standard APIs (fetch, Request, Response, crypto) rather than Node.js APIs.\n\n## Edge Middleware\n\nMiddleware runs before every matched request. Define it in `middleware.ts` (or `.js`) at the project root:\n\n```typescript\n// middleware.ts\nimport { NextResponse } from \"next/server\";\nimport type { NextRequest } from \"next/server\";\n\nexport function middleware(request: NextRequest) {\n  // Geolocation-based routing\n  const country = request.geo?.country || \"US\";\n  if (country === \"DE\") {\n    return NextResponse.redirect(new URL(\"/de\", request.url));\n  }\n\n  // Add custom headers\n  const response = NextResponse.next();\n  response.headers.set(\"x-country\", country);\n  return response;\n}\n\nexport const config = {\n  matcher: [\"/api/:path*\", \"/dashboard/:path*\"],\n};\n```\n\n## Edge Functions\n\nStandalone edge functions use the `edge` runtime:\n\n```typescript\n// app/api/fast/route.ts\nexport const runtime = \"edge\";\n\nexport async function GET(request: Request) {\n  const data = await fetch(\"https://api.example.com/data\");\n  return new Response(JSON.stringify(await data.json()), {\n    headers: { \"Content-Type\": \"application/json\" },\n  });\n}\n```\n\n### Standalone (api/ directory)\n\n```javascript\n// api/location.js\nexport const config = { runtime: \"edge\" };\n\nexport default async function handler(req) {\n  return new Response(\n    JSON.stringify({\n      city: req.geo?.city,\n      country: req.geo?.country,\n      region: req.geo?.region,\n    }),\n    { headers: { \"Content-Type\": \"application/json\" } }\n  );\n}\n```\n\n## Matchers\n\nControl which paths middleware applies to:\n\n```typescript\nexport const config = {\n  matcher: [\n    \"/api/:path*\",           // all API routes\n    \"/dashboard/:path*\",     // dashboard pages\n    \"/((?!_next|favicon.ico).*)\",  // all except static assets\n  ],\n};\n```\n\n## Geolocation\n\nThe `request.geo` object provides:\n\n| Property | Type | Example |\n|----------|------|----------|\n| `city` | string | `\"San Francisco\"` |\n| `country` | string | `\"US\"` |\n| `region` | string | `\"CA\"` |\n| `latitude` | string | `\"37.7749\"` |\n| `longitude` | string | `\"-122.4194\"` |\n\n## Edge vs Serverless\n\n| Feature | Edge | Serverless |\n|---------|------|------------|\n| Cold start | <1ms | 100ms-2s |\n| Runtime | V8 isolates (Web APIs) | Full Node.js / Python / Go |\n| Max duration | 30s | 10s-900s |\n| Node.js APIs | Limited (no fs, net) | Full support |\n| Global distribution | All CDN nodes | Single region |\n| Best for | Auth, routing, geolocation | DB queries, heavy compute |\n",
+  "sections": [
+    {
+      "id": "edge-functions",
+      "title": "Edge functions",
+      "body": "Edge functions are API endpoints that run on the edge runtime. Set `export const runtime = 'edge'` in Next.js route handlers or `export const config = { runtime: 'edge' }` in standalone `api/` files. Edge functions use the Web standard Request/Response API. They execute at the nearest CDN node to the user, providing low-latency responses.",
+      "tags": ["edge-functions", "api", "runtime", "v8", "web-api"]
+    },
+    {
+      "id": "middleware",
+      "title": "Edge middleware",
+      "body": "Middleware intercepts requests before they reach the origin. Define a `middleware.ts` file at the project root. The function receives a `NextRequest` and can rewrite URLs, redirect, set headers, or return responses directly. Middleware runs on every request matching the configured `matcher` patterns. Use for auth checks, A/B testing, feature flags, and geolocation routing. See [[vercel/deploy]] for deploying middleware with the project.",
+      "tags": ["middleware", "intercept", "rewrite", "redirect", "auth", "a-b-testing"]
+    },
+    {
+      "id": "matchers",
+      "title": "Path matchers",
+      "body": "The `config.matcher` array controls which URL paths trigger middleware execution. Use Next.js path patterns with `:path*` for catch-all segments. Exclude static assets and internal paths (`_next`) with negative lookaheads. Without a matcher, middleware runs on every request. Keep matchers specific to avoid unnecessary middleware execution on static asset requests.",
+      "tags": ["matcher", "paths", "routing", "patterns", "config"]
+    },
+    {
+      "id": "geolocation",
+      "title": "Geolocation data",
+      "body": "Edge functions and middleware receive geolocation data via `request.geo` (or `request.headers` with `x-vercel-ip-city`, `x-vercel-ip-country`, etc.). Use geolocation for country-based redirects, regional content, compliance (GDPR), and localization. Geolocation is derived from the client IP and is available only at the edge — [[vercel/serverless]] functions receive forwarded headers instead.",
+      "tags": ["geolocation", "geo", "country", "city", "ip", "localization"]
+    },
+    {
+      "id": "limitations",
+      "title": "Edge runtime limitations",
+      "body": "The edge runtime does not support Node.js built-in modules (`fs`, `net`, `child_process`, `crypto` Node.js API). Use Web standard equivalents (`fetch`, `crypto.subtle`, `TextEncoder`). Maximum execution time is 30 seconds. Maximum response body is 4MB. No access to the filesystem. Database access requires HTTP-based clients (e.g., Prisma Edge, PlanetScale serverless driver). For full Node.js support, use [[vercel/serverless]].",
+      "tags": ["limitations", "restrictions", "no-fs", "web-api", "compatibility"]
+    }
+  ],
+  "links": [
+    { "uri": "vercel/serverless", "context": "Full-runtime serverless functions for Node.js API compatibility" },
+    { "uri": "vercel/serverless#cold-starts", "context": "Cold start comparison between serverless and edge" },
+    { "uri": "vercel/deploy", "context": "Deploying edge functions and middleware with the project" },
+    { "uri": "vercel/env-vars", "context": "Environment variables available in edge functions" },
+    { "uri": "vercel/domains", "context": "Custom domains served through edge middleware" },
+    { "uri": "vercel/deploy#build-settings", "context": "Build configuration affecting edge function bundling" }
+  ],
+  "related": [
+    { "uri": "vercel/serverless", "relation": "see-also", "note": "Use serverless functions when edge runtime limitations are blocking" },
+    { "uri": "vercel/deploy", "relation": "see-also", "note": "Edge middleware deploys as part of the project deployment" },
+    { "uri": "vercel/domains", "relation": "see-also", "note": "Edge middleware processes requests on custom domains" }
+  ],
+  "scripts": [
+    {
+      "id": "create-edge-function",
+      "name": "Create Edge Function",
+      "description": "Scaffold and deploy a Vercel edge function or middleware",
+      "lang": "javascript",
+      "runtime": "node>=18",
+      "entry": "./scripts/create-edge-function.js",
+      "env": {
+        "VERCEL_TOKEN": { "required": true, "secret": true, "description": "Vercel authentication token" }
+      },
+      "packages": ["vercel"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "path": { "type": "string", "description": "File path for the edge function or middleware (e.g. middleware.ts, api/fast.js)" },
+        "matcher": { "type": "array", "items": { "type": "string" }, "description": "URL path patterns the middleware should match" }
+      },
+      "required": ["path"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "functionUrl": { "type": "string", "description": "URL endpoint for the deployed edge function" },
+        "regions": { "type": "array", "items": { "type": "string" }, "description": "CDN regions where the function is deployed" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "vercel/deploy", "reason": "Edge functions deploy as part of the project deployment" }
+  ],
+  "more": {
+    "docs": "https://vercel.com/docs/functions/edge-functions",
+    "middleware": "https://vercel.com/docs/functions/edge-middleware",
+    "api": "https://vercel.com/docs/functions/edge-functions/edge-functions-api"
+  },
+  "frontmatter": {
+    "created": "2026-04-10",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "5 min",
+    "prerequisites": ["vercel/deploy"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

@@ -150,19 +150,19 @@ The registry server exposes discovery, knowledge, and agent endpoints under `/v1
 
 ```bash
 # Registry info
-curl http://localhost:3000/v1
+curl https://slashdojo.com/v1
 
 # Find a skill by need
-curl 'http://localhost:3000/v1/resolve?need=send%20eth'
+curl 'https://slashdojo.com/v1/resolve?need=send%20eth'
 
 # Learn about a topic
-curl 'http://localhost:3000/v1/learn/dojo?question=where%20is%20the%20bundle%20route'
+curl 'https://slashdojo.com/v1/learn/dojo?question=where%20is%20the%20bundle%20route'
 
 # Export a portable bundle
-curl 'http://localhost:3000/v1/bundle/dojo/skill'
+curl 'https://slashdojo.com/v1/bundle/dojo/skill'
 
 # Agent ask flow
-curl -X POST http://localhost:3000/v1/agent/ask \
+curl -X POST https://slashdojo.com/v1/agent/ask \
   -H 'Content-Type: application/json' \
   -d '{"message": "deploy a contract to Base"}'
 ```
@@ -174,7 +174,7 @@ The JavaScript SDK (`sdk/src/index.js`) wraps the registry API for agent workflo
 ```js
 import { Dojo } from '@dojo/sdk';
 
-const dojo = new Dojo({ registry: 'http://localhost:3000' });
+const dojo = new Dojo({ registry: 'https://slashdojo.com' });
 
 // Find a skill by natural language
 const skill = await dojo.need('send an ethereum transaction');

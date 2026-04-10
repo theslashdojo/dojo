@@ -1,0 +1,133 @@
+{
+  "name": "rds",
+  "version": "1.0.0",
+  "uri": "aws/rds",
+  "type": "skill",
+  "context": "Create and manage Amazon RDS managed database instances",
+  "info": "Amazon RDS (Relational Database Service) provides managed relational databases in the cloud. RDS handles provisioning, patching, backups, recovery, and scaling — you focus on your application and queries. Supported engines include MySQL, PostgreSQL, MariaDB, Oracle, SQL Server, and Amazon Aurora (MySQL/PostgreSQL-compatible with up to 5x performance). RDS instances run in a VPC with security group access control. Automated backups enable point-in-time recovery. Read replicas provide horizontal read scaling. The AWS SDK v3 `@aws-sdk/client-rds` package provides CreateDBInstance, DescribeDBInstances, and other management commands. Use [[aws/cloudformation]] to provision RDS instances as infrastructure-as-code and [[aws/iam]] for IAM database authentication.",
+  "parent": "aws",
+  "tags": ["rds", "database", "managed", "mysql", "postgres", "aurora"],
+  "aliases": [
+    "rds",
+    "amazon rds",
+    "aws database",
+    "managed database",
+    "rds instance",
+    "rds mysql",
+    "rds postgres",
+    "aurora",
+    "aws relational database"
+  ],
+  "triggers": [
+    "create a database on aws",
+    "launch an rds instance",
+    "set up a managed database",
+    "provision a postgres database",
+    "create an aurora database",
+    "manage rds backups",
+    "set up read replicas"
+  ],
+  "body": "# Amazon RDS\n\nRDS is AWS's managed relational database service. It handles the heavy lifting of database administration — provisioning, patching, backups, failover, and scaling — so you can focus on your schema and queries. Unlike running a database on [[aws/ec2]], RDS automates operational tasks.\n\n## Create an Instance\n\n```javascript\nimport { RDSClient, CreateDBInstanceCommand } from \"@aws-sdk/client-rds\";\n\nconst rds = new RDSClient({ region: process.env.AWS_REGION });\n\nawait rds.send(new CreateDBInstanceCommand({\n  DBInstanceIdentifier: \"my-database\",\n  Engine: \"postgres\",\n  EngineVersion: \"16.1\",\n  DBInstanceClass: \"db.t3.micro\",\n  AllocatedStorage: 20,\n  MasterUsername: \"admin\",\n  MasterUserPassword: \"SecurePassword123!\", // Use Secrets Manager in production\n  DBName: \"myapp\",\n  VpcSecurityGroupIds: [\"sg-0123456789abcdef0\"],\n  PubliclyAccessible: false,\n  StorageEncrypted: true,\n  BackupRetentionPeriod: 7,\n}));\n```\n\nSet `PubliclyAccessible: false` and use VPC security groups to restrict access. Store credentials in AWS Secrets Manager, not in code. See [[aws/iam#best-practices]] for credential management.\n\n## Database Engines\n\nRDS supports multiple engines — choose based on your application needs:\n\n| Engine | Version | Use Case |\n|--------|---------|----------|\n| PostgreSQL | 13-16 | General purpose, advanced features, JSON support |\n| MySQL | 8.0 | Widely adopted, good for web applications |\n| MariaDB | 10.6-10.11 | MySQL-compatible, community driven |\n| Aurora PostgreSQL | Compatible with PG 13-16 | 3-5x PostgreSQL performance, auto-scaling storage |\n| Aurora MySQL | Compatible with MySQL 8.0 | 5x MySQL performance, multi-master |\n| Oracle | 19c, 21c | Enterprise workloads, Oracle-specific features |\n| SQL Server | 2019, 2022 | Windows/.NET ecosystems |\n\nAurora is recommended for production workloads requiring high performance and availability. For standard PostgreSQL workflows and query patterns, see [[postgres]].\n\n## Backups and Snapshots\n\nRDS provides two backup mechanisms:\n\n- **Automated backups** — daily snapshots + transaction logs. Enable point-in-time recovery (PITR) to restore to any second within the retention period (1-35 days).\n- **Manual snapshots** — on-demand snapshots that persist until you delete them. Use before major changes.\n\n```javascript\nimport { CreateDBSnapshotCommand } from \"@aws-sdk/client-rds\";\n\nawait rds.send(new CreateDBSnapshotCommand({\n  DBSnapshotIdentifier: \"my-database-pre-migration\",\n  DBInstanceIdentifier: \"my-database\",\n}));\n```\n\n## Read Replicas\n\nRead replicas provide horizontal scaling for read-heavy workloads:\n\n- Create up to 5 read replicas per source instance (15 for Aurora)\n- Replicas can be in different availability zones or regions\n- Applications direct read queries to replicas, write queries to the primary\n- Replicas use asynchronous replication — slight lag is possible\n- Promote a replica to a standalone instance for disaster recovery\n\nRead replicas reduce load on the primary instance and improve read throughput. For database design patterns and query optimization, see [[database]].\n\n## Environment Variables\n\n| Variable | Purpose |\n|----------|----------|\n| `AWS_ACCESS_KEY_ID` | IAM access key for the RDS client |\n| `AWS_SECRET_ACCESS_KEY` | IAM secret key for the RDS client |\n| `AWS_REGION` | Target region for the RDS instance |\n",
+  "sections": [
+    {
+      "id": "create-instance",
+      "title": "Create a database instance",
+      "body": "Use `CreateDBInstanceCommand` with engine, instance class, storage, and credentials. Choose `db.t3.micro` for free tier. Set `PubliclyAccessible: false` and restrict via security groups. Enable `StorageEncrypted: true` for encryption at rest. Store master credentials in AWS Secrets Manager. Use [[aws/cloudformation]] to provision RDS instances declaratively.",
+      "tags": ["create", "instance", "provision", "storage", "encryption", "secrets-manager"]
+    },
+    {
+      "id": "engines",
+      "title": "Database engines",
+      "body": "PostgreSQL and MySQL are the most common open-source engines. Aurora (PostgreSQL/MySQL-compatible) offers 3-5x performance with auto-scaling storage. Oracle and SQL Server for enterprise. Choose based on application requirements, team expertise, and cost. For PostgreSQL-specific features and query patterns, see [[postgres]].",
+      "tags": ["engine", "postgres", "mysql", "aurora", "mariadb", "oracle", "sql-server"]
+    },
+    {
+      "id": "backups-snapshots",
+      "title": "Backups and snapshots",
+      "body": "Automated backups run daily with transaction log archiving for point-in-time recovery (PITR). Retention period 1-35 days. Manual snapshots persist indefinitely — take before migrations or major changes. Restore to a new instance from any backup or snapshot. Cross-region snapshot copy for disaster recovery.",
+      "tags": ["backup", "snapshot", "pitr", "recovery", "restore", "retention"]
+    },
+    {
+      "id": "read-replicas",
+      "title": "Read replicas",
+      "body": "Create read replicas with `CreateDBInstanceReadReplicaCommand`. Route read queries to replicas, writes to primary. Up to 5 replicas per instance (15 for Aurora). Cross-AZ and cross-region replicas available. Asynchronous replication — monitor replica lag. Promote replicas for disaster recovery. For query optimization patterns, see [[database]].",
+      "tags": ["read-replica", "scaling", "replication", "promote", "cross-region", "lag"]
+    }
+  ],
+  "links": [
+    { "uri": "aws/iam", "context": "IAM policies and database authentication control RDS access" },
+    { "uri": "aws/ec2", "context": "EC2 instances connect to RDS within the same VPC" },
+    { "uri": "aws/cloudformation", "context": "Provision RDS instances via CloudFormation templates" },
+    { "uri": "aws/iam#roles", "context": "Use IAM authentication instead of database passwords" },
+    { "uri": "aws/iam#best-practices", "context": "Store database credentials in Secrets Manager" },
+    { "uri": "aws/cloudformation#template-anatomy", "context": "Define AWS::RDS::DBInstance resources in templates" },
+    { "uri": "aws/ec2#security-groups", "context": "Security groups control network access to RDS" }
+  ],
+  "related": [
+    { "uri": "postgres", "relation": "prerequisite", "note": "PostgreSQL knowledge is essential for RDS PostgreSQL and Aurora PostgreSQL engines" },
+    { "uri": "database", "relation": "see-also", "note": "General database design patterns and query optimization apply to RDS" },
+    { "uri": "aws/iam", "relation": "prerequisite", "note": "IAM credentials and policies are required for RDS management" },
+    { "uri": "aws/ec2", "relation": "see-also", "note": "EC2 is the alternative for self-managed databases with full OS control" },
+    { "uri": "aws/cloudformation", "relation": "see-also", "note": "CloudFormation is the recommended way to provision RDS in production" }
+  ],
+  "scripts": [
+    {
+      "id": "manage-rds",
+      "name": "Manage RDS",
+      "description": "Create and manage Amazon RDS managed database instances",
+      "lang": "javascript",
+      "runtime": "node>=18",
+      "entry": "./scripts/manage-rds.js",
+      "env": {
+        "AWS_ACCESS_KEY_ID": { "required": true, "secret": true, "description": "IAM access key identifier" },
+        "AWS_SECRET_ACCESS_KEY": { "required": true, "secret": true, "description": "IAM secret access key" },
+        "AWS_REGION": { "required": true, "secret": false, "description": "AWS region for the RDS instance" }
+      },
+      "packages": ["@aws-sdk/client-rds"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "engine": { "type": "string", "enum": ["postgres", "mysql", "mariadb", "aurora-postgresql", "aurora-mysql", "oracle-ee", "sqlserver-ee"], "description": "Database engine type" },
+        "instanceClass": { "type": "string", "description": "RDS instance class (e.g. db.t3.micro, db.r6g.large)" },
+        "dbName": { "type": "string", "description": "Name of the initial database to create" },
+        "masterUsername": { "type": "string", "description": "Master username for the database" }
+      },
+      "required": ["engine", "instanceClass", "dbName", "masterUsername"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "endpoint": { "type": "string", "description": "Database endpoint hostname" },
+        "port": { "type": "integer", "description": "Database port number" },
+        "status": { "type": "string", "description": "Instance status (creating, available, deleting, etc.)" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "aws/iam", "reason": "IAM credentials with rds:CreateDBInstance permission are required" }
+  ],
+  "more": {
+    "docs": "https://docs.aws.amazon.com/rds/",
+    "sdk": "https://docs.aws.amazon.com/AWSJavaScriptSDK/v3/latest/client/rds/",
+    "pricing": "https://aws.amazon.com/rds/pricing/",
+    "aurora": "https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/"
+  },
+  "frontmatter": {
+    "created": "2026-04-10",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "developers, AI agents, database administrators",
+    "estimated_reading_time": "5 min",
+    "prerequisites": ["aws/iam", "postgres"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

@@ -1,0 +1,89 @@
+{
+  "name": "env-vars",
+  "version": "1.0.0",
+  "uri": "vercel/env-vars",
+  "type": "context",
+  "content_type": "guide",
+  "context": "Vercel environment variables — development, preview, and production scopes, encrypted secrets",
+  "info": "Vercel environment variables provide configuration and secrets to builds and serverless functions. Each variable is scoped to one or more environments: development (local via `vercel dev`), preview (branch and PR deployments), and production (production domain deployments). Variables can be plain text or encrypted (Sensitive). Encrypted variables are stored at rest with AES-256 and decrypted only at build time or function runtime. Use the dashboard, CLI (`vercel env`), or API to manage variables. Variables are injected as `process.env` in Node.js, `os.environ` in Python, and `os.Getenv()` in Go. For local development, `vercel env pull` writes a `.env.local` file. Never commit secrets to source control — use Vercel environment variables instead.",
+  "parent": "vercel",
+  "tags": ["env-vars", "environment", "secrets", "scopes", "development", "preview", "production"],
+  "aliases": [
+    "vercel env vars",
+    "environment variables",
+    "vercel secrets",
+    "vercel env",
+    "env configuration",
+    "vercel environment",
+    "project variables",
+    "deployment secrets"
+  ],
+  "triggers": [
+    "set environment variables on vercel",
+    "add a secret to vercel",
+    "configure env vars for preview",
+    "manage vercel environment variables",
+    "pull env vars for local development",
+    "set production secrets on vercel",
+    "scope environment variables"
+  ],
+  "body": "# Environment Variables\n\nVercel environment variables store configuration and secrets for builds and runtime. Each variable is scoped to specific environments, ensuring preview deployments use different values than production.\n\n## Scopes\n\n| Scope | When Used | Example |\n|-------|-----------|----------|\n| **Production** | Deployments on the production branch | `DATABASE_URL=postgres://prod-db/...` |\n| **Preview** | Branch and PR deployments | `DATABASE_URL=postgres://staging-db/...` |\n| **Development** | Local dev via `vercel dev` | `DATABASE_URL=postgres://localhost/...` |\n\nA single variable can be assigned to multiple scopes. Common pattern: same key name, different values per scope.\n\n## Managing Variables\n\n### CLI\n\n```bash\n# Add a variable (interactive scope selection)\nvercel env add DATABASE_URL\n\n# Add with specific scope\nvercel env add API_KEY production\nvercel env add API_KEY preview\n\n# List all variables\nvercel env ls\n\n# Remove a variable\nvercel env rm DATABASE_URL production\n\n# Pull to .env.local for local development\nvercel env pull .env.local\n```\n\n### API\n\n```bash\ncurl -X POST \"https://api.vercel.com/v10/projects/$VERCEL_PROJECT_ID/env\" \\\n  -H \"Authorization: Bearer $VERCEL_TOKEN\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\n    \"key\": \"DATABASE_URL\",\n    \"value\": \"postgres://prod-db/myapp\",\n    \"target\": [\"production\"],\n    \"type\": \"encrypted\"\n  }'\n```\n\n### Dashboard\n\nNavigate to Project Settings > Environment Variables. Add variables with scope checkboxes and optional encryption.\n\n## Encrypted (Sensitive) Variables\n\nMark variables as \"Sensitive\" to encrypt them at rest with AES-256. Encrypted variables:\n\n- Are **not** visible in the dashboard after creation (write-only)\n- Are decrypted only at build time and function runtime\n- Cannot be read via the API after creation\n- Appear as `***` in build logs\n\nUse encryption for database credentials, API keys, private keys, and any secret that should not be exposed in logs or UI.\n\n## Local Development\n\nPull variables to a local `.env.local` file:\n\n```bash\nvercel env pull .env.local\n```\n\nThis writes development-scoped variables to `.env.local`. Add `.env.local` to `.gitignore` — never commit secrets. The `vercel dev` command automatically loads these variables.\n\n## System Environment Variables\n\nVercel automatically injects system variables:\n\n| Variable | Value |\n|----------|--------|\n| `VERCEL` | `1` (always set on Vercel) |\n| `VERCEL_ENV` | `production`, `preview`, or `development` |\n| `VERCEL_URL` | Deployment URL (without protocol) |\n| `VERCEL_GIT_COMMIT_SHA` | Git commit SHA |\n| `VERCEL_GIT_COMMIT_MESSAGE` | Git commit message |\n| `VERCEL_GIT_REPO_SLUG` | Repository name |\n| `VERCEL_GIT_REPO_OWNER` | Repository owner |\n",
+  "sections": [
+    {
+      "id": "scopes",
+      "title": "Environment scopes",
+      "body": "Each variable targets one or more scopes: `production` (live domain traffic via [[vercel/domains]]), `preview` (branch/PR deployments via [[vercel/deploy#preview]]), and `development` (local `vercel dev`). Different values per scope allow safe separation of production secrets from development credentials. Use `VERCEL_ENV` system variable to detect the current scope at runtime.",
+      "tags": ["scopes", "production", "preview", "development", "target"]
+    },
+    {
+      "id": "add-manage",
+      "title": "Adding and managing variables",
+      "body": "Use `vercel env add <KEY> [scope]` to add via CLI. Use `vercel env ls` to list. Use the dashboard for visual management. The API supports programmatic CRUD operations. Variables are available in [[vercel/serverless]] functions via `process.env` and in [[vercel/edge]] functions via the edge runtime environment. Changes take effect on the next deployment — existing deployments are not affected.",
+      "tags": ["add", "manage", "cli", "dashboard", "api", "crud"]
+    },
+    {
+      "id": "encrypted",
+      "title": "Encrypted secrets",
+      "body": "Mark variables as `type: encrypted` (API) or \"Sensitive\" (dashboard) for AES-256 encryption at rest. Encrypted values are write-only — they cannot be read back via API or dashboard after creation. They are decrypted at build time and injected into the runtime environment. Use for database URLs, API keys, signing secrets, and private keys. Encrypted variables appear as `***` in build logs.",
+      "tags": ["encrypted", "sensitive", "aes-256", "secrets", "write-only"]
+    },
+    {
+      "id": "local-development",
+      "title": "Local development",
+      "body": "Run `vercel env pull .env.local` to download development-scoped variables to a local file. The `.env.local` file is loaded by `vercel dev`, Next.js dev server, and other frameworks automatically. Always add `.env.local` to `.gitignore`. For team workflows, each developer pulls their own copy. Use `vercel dev` for full parity with the Vercel runtime including [[vercel/serverless]] function execution.",
+      "tags": ["local", "env-pull", "env-local", "vercel-dev", "gitignore"]
+    }
+  ],
+  "links": [
+    { "uri": "vercel/deploy", "context": "Environment variables are applied during deployment" },
+    { "uri": "vercel/deploy#preview", "context": "Preview deployments use preview-scoped variables" },
+    { "uri": "vercel/serverless#env-vars", "context": "Accessing variables in serverless functions" },
+    { "uri": "vercel/edge", "context": "Edge functions access environment variables at runtime" },
+    { "uri": "vercel/domains", "context": "Production variables apply to custom domain traffic" }
+  ],
+  "related": [
+    { "uri": "vercel/deploy", "relation": "see-also", "note": "Variables are injected at build time and affect deployment behavior" },
+    { "uri": "vercel/serverless", "relation": "see-also", "note": "Serverless functions consume environment variables at runtime" },
+    { "uri": "vercel/edge", "relation": "see-also", "note": "Edge functions access environment variables for configuration" }
+  ],
+  "more": {
+    "docs": "https://vercel.com/docs/projects/environment-variables",
+    "limits": "https://vercel.com/docs/projects/environment-variables/limitations",
+    "api": "https://vercel.com/docs/rest-api/endpoints/environment-variables"
+  },
+  "frontmatter": {
+    "created": "2026-04-10",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "4 min",
+    "prerequisites": [],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

@@ -8,6 +8,15 @@ import { dirname, extname, join, relative, resolve } from 'path';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
+export function shouldAutoStart(entryArg = process.argv[1], pmExecPath = process.env.pm_exec_path) {
+  const entryPath = entryArg ? resolve(entryArg) : null;
+  const pm2EntryPath = pmExecPath ? resolve(pmExecPath) : null;
+
+  // PM2 can keep the process alive on its IPC channel even when argv[1] does not
+  // point at the app entry, so include its exec path in the direct-run check.
+  return entryPath === __filename || pm2EntryPath === __filename;
+}
+
 export const DEFAULT_MANIFEST_DIRS = [
   resolve(__dirname, '../../nodes'),
   resolve(__dirname, '../../examples')
@@ -1398,6 +1407,6 @@ export function startServer(options = {}) {
   return { app, store, server };
 }
 
-if (process.argv[1] && resolve(process.argv[1]) === __filename) {
+if (shouldAutoStart()) {
   startServer();
 }

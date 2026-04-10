@@ -1,0 +1,91 @@
+{
+  "name": "function-calling",
+  "version": "1.0.0",
+  "uri": "openai/function-calling",
+  "type": "standard",
+  "context": "Function/tool calling standard — define tools, handle tool calls, and return results",
+  "info": "Function calling (also called tool use) allows OpenAI models to invoke structured tools during a conversation. You define tools as JSON Schema objects in the `tools` parameter of a chat completion request (see [[openai/chat]]). When the model determines a tool should be called, it returns a `tool_calls` array with the function name and JSON arguments instead of plain text. Your application executes the function, then sends the result back as a tool message. This enables structured data extraction, external API integration, multi-step workflows, and agent-like behavior. Models can request multiple tool calls in parallel. Function calling works with both direct [[openai/chat]] completions and [[openai/assistants]] runs.",
+  "parent": "openai",
+  "tags": ["function-calling", "tools", "tool-use", "json-schema", "structured-output"],
+  "aliases": [
+    "function calling",
+    "tool calling",
+    "tool use",
+    "openai tools",
+    "openai functions",
+    "structured tool calls",
+    "function calling api",
+    "define tools for gpt",
+    "tool integration"
+  ],
+  "triggers": [
+    "use function calling with openai",
+    "define tools for the model",
+    "handle tool calls from gpt",
+    "structured data extraction with tools",
+    "integrate external apis with openai",
+    "parallel function calling",
+    "build an agent with tool use"
+  ],
+  "body": "# Function Calling\n\nFunction calling enables OpenAI models to invoke structured tools during a conversation. You define tools with JSON Schema, the model decides when to call them, and your application executes the functions and returns results.\n\n## Define Tools\n\nTools are defined as JSON Schema objects in the `tools` parameter:\n\n```javascript\nimport OpenAI from \"openai\";\n\nconst client = new OpenAI(); // reads OPENAI_API_KEY from env\n\nconst tools = [\n  {\n    type: \"function\",\n    function: {\n      name: \"get_weather\",\n      description: \"Get the current weather for a location\",\n      parameters: {\n        type: \"object\",\n        properties: {\n          location: {\n            type: \"string\",\n            description: \"City and state (e.g. San Francisco, CA)\",\n          },\n          unit: {\n            type: \"string\",\n            enum: [\"celsius\", \"fahrenheit\"],\n            description: \"Temperature unit\",\n          },\n        },\n        required: [\"location\"],\n      },\n    },\n  },\n  {\n    type: \"function\",\n    function: {\n      name: \"search_database\",\n      description: \"Search a database for records matching a query\",\n      parameters: {\n        type: \"object\",\n        properties: {\n          query: { type: \"string\", description: \"Search query\" },\n          limit: { type: \"integer\", description: \"Max results to return\", default: 10 },\n        },\n        required: [\"query\"],\n      },\n    },\n  },\n];\n```\n\n## Handle Tool Calls\n\nWhen the model wants to call a function, the response has `finish_reason: \"tool_calls\"` and a `tool_calls` array:\n\n```javascript\nconst messages = [\n  { role: \"user\", content: \"What's the weather in San Francisco and New York?\" },\n];\n\nconst response = await client.chat.completions.create({\n  model: \"gpt-4o\",\n  messages,\n  tools,\n});\n\nconst choice = response.choices[0];\n\nif (choice.finish_reason === \"tool_calls\") {\n  // The model wants to call one or more functions\n  const toolCalls = choice.message.tool_calls;\n\n  // Add the assistant's message (with tool_calls) to the conversation\n  messages.push(choice.message);\n\n  // Execute each tool call and add results\n  for (const toolCall of toolCalls) {\n    const { name, arguments: args } = toolCall.function;\n    const parsedArgs = JSON.parse(args);\n\n    // Execute the function (your implementation)\n    let result;\n    if (name === \"get_weather\") {\n      result = await getWeather(parsedArgs.location, parsedArgs.unit);\n    } else if (name === \"search_database\") {\n      result = await searchDatabase(parsedArgs.query, parsedArgs.limit);\n    }\n\n    // Add the tool result as a tool message\n    messages.push({\n      role: \"tool\",\n      tool_call_id: toolCall.id,\n      content: JSON.stringify(result),\n    });\n  }\n\n  // Send the results back to the model for a final response\n  const finalResponse = await client.chat.completions.create({\n    model: \"gpt-4o\",\n    messages,\n    tools,\n  });\n\n  console.log(finalResponse.choices[0].message.content);\n}\n```\n\n## Parallel Tool Calls\n\nModels can request multiple tool calls in a single response. In the example above, asking about weather in two cities may produce two `get_weather` calls simultaneously:\n\n```javascript\n// toolCalls might contain:\n// [{ function: { name: \"get_weather\", arguments: '{\"location\":\"San Francisco, CA\"}' } },\n//  { function: { name: \"get_weather\", arguments: '{\"location\":\"New York, NY\"}' } }]\n```\n\nProcess all calls, add all tool messages, then send the complete set back to the model. The model synthesizes all results into a coherent response.\n\nTo disable parallel tool calls, set `parallel_tool_calls: false`.\n\n## Structured Output with Tools\n\nFunction calling is also a powerful mechanism for structured data extraction — even when you do not actually call an external function:\n\n```javascript\nconst tools = [{\n  type: \"function\",\n  function: {\n    name: \"extract_contact\",\n    description: \"Extract contact information from text\",\n    parameters: {\n      type: \"object\",\n      properties: {\n        name: { type: \"string\" },\n        email: { type: \"string\", format: \"email\" },\n        phone: { type: \"string\" },\n        company: { type: \"string\" },\n      },\n      required: [\"name\"],\n    },\n  },\n}];\n\nconst response = await client.chat.completions.create({\n  model: \"gpt-4o\",\n  messages: [{ role: \"user\", content: \"John Doe, john@example.com, works at Acme Corp\" }],\n  tools,\n  tool_choice: { type: \"function\", function: { name: \"extract_contact\" } },\n});\n\nconst extracted = JSON.parse(response.choices[0].message.tool_calls[0].function.arguments);\n// { name: \"John Doe\", email: \"john@example.com\", company: \"Acme Corp\" }\n```\n\nUse `tool_choice` to force the model to call a specific function. This guarantees structured JSON output matching your schema. See also [[openai/chat#structured-output]] for the `response_format` approach.\n\n## Tool Choice Options\n\n| Value | Behavior |\n|-------|----------|\n| `\"auto\"` | Model decides whether to call tools (default) |\n| `\"none\"` | Model will not call any tools |\n| `\"required\"` | Model must call at least one tool |\n| `{ type: \"function\", function: { name: \"...\" } }` | Model must call the specified function |\n\n## In Assistants\n\nFunction calling works identically in the [[openai/assistants]] API. Define tools on the assistant, and when a run enters `requires_action` status, process the tool calls and submit outputs with `runs.submitToolOutputs()`. See [[openai/assistants#tools]] for details.\n",
+  "sections": [
+    {
+      "id": "define-tools",
+      "title": "Define tools",
+      "body": "Tools are JSON objects with `type: 'function'` and a `function` property containing `name`, `description`, and `parameters` (JSON Schema). Clear descriptions help the model decide when to call each tool. Parameter descriptions improve argument accuracy. Use `enum` to constrain string values. See [[openai/chat]] for passing tools to the Chat Completions API.",
+      "tags": ["define", "json-schema", "parameters", "description", "enum"]
+    },
+    {
+      "id": "handle-calls",
+      "title": "Handle tool calls",
+      "body": "Check `finish_reason === 'tool_calls'` in the response. Parse `tool_calls[].function.arguments` (JSON string). Execute the function in your application. Add the assistant message (with tool_calls) and tool result messages (role: tool, tool_call_id, content) to the conversation. Send the updated messages back to the model for a final response.",
+      "tags": ["handle", "execute", "tool-message", "tool-call-id", "response-loop"]
+    },
+    {
+      "id": "parallel-calls",
+      "title": "Parallel tool calls",
+      "body": "Models can request multiple tool calls in a single response. Process all calls, add all tool messages, then send the batch back. The model synthesizes all results into one coherent response. Disable with `parallel_tool_calls: false` if sequential execution is required.",
+      "tags": ["parallel", "batch", "multiple", "concurrent", "disable"]
+    },
+    {
+      "id": "structured-output",
+      "title": "Structured output via tools",
+      "body": "Use function calling for structured data extraction by defining an extraction schema as a tool. Set `tool_choice: { type: 'function', function: { name: '...' } }` to force the model to call it. Parse the `arguments` JSON for structured output. This approach complements [[openai/chat#structured-output]] (`response_format`) — use tools when you need multiple extraction schemas or when combining with real function calls.",
+      "tags": ["extraction", "structured", "tool-choice", "force", "schema"]
+    }
+  ],
+  "links": [
+    { "uri": "openai", "context": "OpenAI ecosystem overview and authentication" },
+    { "uri": "openai/chat", "context": "Chat Completions API where tools are passed" },
+    { "uri": "openai/chat#structured-output", "context": "Alternative structured output via response_format" },
+    { "uri": "openai/assistants", "context": "Function calling in the Assistants API" },
+    { "uri": "openai/assistants#tools", "context": "Defining tools on assistants and handling requires_action" },
+    { "uri": "openai/models", "context": "Model compatibility for function calling" },
+    { "uri": "openai#authentication", "context": "API key setup for function calling requests" }
+  ],
+  "related": [
+    { "uri": "openai/chat", "relation": "see-also", "note": "Function calling is a feature of the Chat Completions API" },
+    { "uri": "openai/assistants", "relation": "see-also", "note": "Assistants use function calling via the runs.submitToolOutputs() pattern" },
+    { "uri": "openai/chat#structured-output", "relation": "see-also", "note": "response_format is an alternative to tool-based structured extraction" }
+  ],
+  "more": {
+    "docs": "https://platform.openai.com/docs/api-reference/chat/create#chat-create-tools",
+    "guide": "https://platform.openai.com/docs/guides/function-calling",
+    "repo": "https://github.com/openai/openai-node"
+  },
+  "frontmatter": {
+    "created": "2026-04-10",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "developers, AI agents, integrators",
+    "estimated_reading_time": "6 min",
+    "prerequisites": ["openai", "openai/chat"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

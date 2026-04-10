@@ -1,0 +1,94 @@
+{
+  "name": "events",
+  "version": "1.0.0",
+  "uri": "slack/events",
+  "type": "context",
+  "content_type": "reference",
+  "context": "Slack Events API: subscribe to workspace events, verify requests, handle event payloads",
+  "info": "The Slack Events API delivers real-time notifications when things happen in a workspace — messages posted, reactions added, channels created, users joining, and more. Events are delivered either via HTTP POST to a Request URL or through Socket Mode WebSocket connections. HTTP delivery requires URL verification (a challenge handshake) and request signature verification using the signing secret. Socket Mode (see [[slack/bots#socket-mode]]) avoids these requirements by connecting outbound. Event payloads include the event type, user, channel, timestamp, and type-specific data. Bolt.js (see [[slack/bots]]) handles all verification and parsing automatically.",
+  "parent": "slack",
+  "tags": ["events", "events-api", "subscriptions", "verification", "payloads", "socket-mode"],
+  "aliases": [
+    "slack events",
+    "slack events api",
+    "event subscriptions",
+    "slack event listener",
+    "workspace events",
+    "slack real-time events",
+    "slack event types"
+  ],
+  "triggers": [
+    "subscribe to slack events",
+    "listen for slack events",
+    "handle slack event payloads",
+    "verify slack event requests",
+    "what slack events are available",
+    "set up slack events api"
+  ],
+  "body": "# Slack Events API\n\nThe Events API delivers real-time notifications when things happen in a workspace. Subscribe to event types, and Slack sends a JSON payload for each occurrence. Events power the listeners in [[slack/bots]] and enable reactive automations.\n\n## Setup\n\n### HTTP Mode\n\n1. Go to your app settings at https://api.slack.com/apps\n2. Navigate to **Event Subscriptions** and toggle it on\n3. Enter your **Request URL** (must be HTTPS and respond to the verification challenge)\n4. Subscribe to the events you need under **Subscribe to bot events**\n5. Reinstall the app to apply new event scopes\n\n### Socket Mode\n\nSocket Mode delivers events over WebSocket — no public URL needed:\n\n1. Enable **Socket Mode** in app settings\n2. Generate an app-level token (`xapp-`) with `connections:write` scope\n3. Subscribe to events in **Event Subscriptions** (same as HTTP mode)\n4. Connect using `@slack/socket-mode` or Bolt.js with `socketMode: true`\n\nSee [[slack/bots#socket-mode]] for the Bolt.js Socket Mode setup.\n\n## Event Types\n\nCommon event types and their required scopes:\n\n| Event | Description | Scope |\n|-------|-------------|-------|\n| `message` | Message posted in a channel the bot is in | `channels:history`, `groups:history` |\n| `app_mention` | Bot was @mentioned | `app_mentions:read` |\n| `reaction_added` | Emoji reaction added | `reactions:read` |\n| `reaction_removed` | Emoji reaction removed | `reactions:read` |\n| `member_joined_channel` | User joined a channel | `channels:read` |\n| `member_left_channel` | User left a channel | `channels:read` |\n| `channel_created` | New channel created | `channels:read` |\n| `channel_archive` | Channel archived | `channels:read` |\n| `team_join` | New user joined workspace | `users:read` |\n| `file_shared` | File was shared | `files:read` |\n| `app_home_opened` | User opened the App Home tab | — |\n| `message.im` | Direct message to the bot | `im:history` |\n\n### Event Payload Structure\n\n```json\n{\n  \"token\": \"verification_token\",\n  \"team_id\": \"T0123456\",\n  \"api_app_id\": \"A0123456\",\n  \"event\": {\n    \"type\": \"message\",\n    \"channel\": \"C0123456789\",\n    \"user\": \"U0123456\",\n    \"text\": \"Hello, bot!\",\n    \"ts\": \"1234567890.123456\",\n    \"event_ts\": \"1234567890.123456\",\n    \"channel_type\": \"channel\"\n  },\n  \"type\": \"event_callback\",\n  \"event_id\": \"Ev0123456\",\n  \"event_time\": 1234567890\n}\n```\n\n## Request Verification\n\nSlack sends a signing secret with every HTTP event delivery. Verify it to confirm the request came from Slack:\n\n```javascript\nimport crypto from \"crypto\";\n\nfunction verifySlackRequest(signingSecret, headers, body) {\n  const timestamp = headers[\"x-slack-request-timestamp\"];\n  const signature = headers[\"x-slack-signature\"];\n\n  // Reject requests older than 5 minutes (replay attack protection)\n  if (Math.abs(Date.now() / 1000 - timestamp) > 300) {\n    return false;\n  }\n\n  const sigBasestring = `v0:${timestamp}:${body}`;\n  const mySignature = \"v0=\" + crypto\n    .createHmac(\"sha256\", signingSecret)\n    .update(sigBasestring)\n    .digest(\"hex\");\n\n  return crypto.timingSafeEqual(\n    Buffer.from(mySignature),\n    Buffer.from(signature)\n  );\n}\n```\n\n**Note:** [[slack/bots]] using Bolt.js handle verification automatically — you do not need to implement this manually when using Bolt.\n\n### URL Verification Challenge\n\nWhen you first set the Request URL, Slack sends a challenge:\n\n```json\n{\n  \"token\": \"verification_token\",\n  \"challenge\": \"3eZbrw1aBm2rZgRNFdxV2595E9CY3gmdALWMmHkvFXO7tYXAYM8P\",\n  \"type\": \"url_verification\"\n}\n```\n\nRespond with the challenge value:\n\n```javascript\napp.post(\"/slack/events\", (req, res) => {\n  if (req.body.type === \"url_verification\") {\n    return res.json({ challenge: req.body.challenge });\n  }\n  // Handle actual events...\n});\n```\n\n## Socket Mode\n\nSocket Mode is the recommended approach for development and internal apps:\n\n- No public URL or TLS certificate needed\n- No request verification needed (connection is authenticated)\n- Events delivered over WebSocket with automatic reconnection\n- Supports all event types, commands, and interactions\n\n```javascript\nimport { SocketModeClient } from \"@slack/socket-mode\";\nimport { WebClient } from \"@slack/web-api\";\n\nconst socketClient = new SocketModeClient({ appToken: process.env.SLACK_APP_TOKEN });\nconst webClient = new WebClient(process.env.SLACK_BOT_TOKEN);\n\nsocketClient.on(\"message\", async ({ event, body, ack }) => {\n  await ack();\n  console.log(`Message from ${event.user}: ${event.text}`);\n});\n\nawait socketClient.start();\n```\n\nOr use Bolt.js (see [[slack/bots#socket-mode]]) which wraps the Socket Mode client with a cleaner API.\n\n## Retry Handling\n\nIf your server does not respond with HTTP 200 within 3 seconds, Slack retries the event delivery. Slack sends up to 3 retries with exponential backoff. The `X-Slack-Retry-Num` and `X-Slack-Retry-Reason` headers indicate retry attempts.\n\n- **Respond quickly** — acknowledge with 200 immediately, then process asynchronously\n- **Deduplicate** — use `event_id` to detect and skip duplicate deliveries\n- **Skip retries** — respond with `X-Slack-No-Retry: 1` header if you received but cannot process (use sparingly)\n\n```javascript\napp.post(\"/slack/events\", (req, res) => {\n  // Acknowledge immediately\n  res.status(200).send();\n\n  // Process asynchronously\n  const { event } = req.body;\n  processEvent(event).catch(console.error);\n});\n```\n",
+  "sections": [
+    {
+      "id": "setup",
+      "title": "Event subscription setup",
+      "body": "Enable Event Subscriptions in app settings. For HTTP mode, provide an HTTPS Request URL that responds to the url_verification challenge. For Socket Mode, generate an app-level token and connect via WebSocket (see [[slack/bots#socket-mode]]). Subscribe to bot events and reinstall the app to apply new scopes. See [[slack#scopes-permissions]] for required scopes per event type.",
+      "tags": ["setup", "subscribe", "request-url", "scopes"]
+    },
+    {
+      "id": "event-types",
+      "title": "Event types reference",
+      "body": "Key event types: `message` (channel messages), `app_mention` (bot @mentions), `reaction_added`/`reaction_removed` (emoji reactions), `member_joined_channel`/`member_left_channel` (membership), `channel_created`/`channel_archive` (channel lifecycle), `team_join` (new users), `file_shared` (uploads), `app_home_opened` (App Home tab). Each requires specific OAuth scopes.",
+      "tags": ["event-types", "message", "mention", "reaction", "channel", "reference"]
+    },
+    {
+      "id": "verification",
+      "title": "Request verification",
+      "body": "Verify HTTP event deliveries using the signing secret: compute HMAC-SHA256 of `v0:timestamp:body` and compare with the `x-slack-signature` header. Reject requests older than 5 minutes. [[slack/bots]] using Bolt.js handle this automatically. URL verification challenge must be answered when first configuring the Request URL.",
+      "tags": ["verification", "signing-secret", "hmac", "security", "challenge"]
+    },
+    {
+      "id": "socket-mode",
+      "title": "Socket Mode delivery",
+      "body": "Socket Mode delivers events over WebSocket — no public URL, TLS, or manual verification needed. Enable in app settings, generate an `xapp-` token with `connections:write` scope. Use `@slack/socket-mode` directly or Bolt.js with `socketMode: true` (see [[slack/bots#socket-mode]]). Supports automatic reconnection.",
+      "tags": ["socket-mode", "websocket", "app-token", "firewall"]
+    },
+    {
+      "id": "retry-handling",
+      "title": "Retry handling",
+      "body": "Slack retries event delivery up to 3 times if no HTTP 200 response within 3 seconds. Retries use exponential backoff. Headers: `X-Slack-Retry-Num`, `X-Slack-Retry-Reason`. Respond with 200 immediately and process asynchronously. Deduplicate using `event_id`. Optionally respond with `X-Slack-No-Retry: 1` to suppress retries.",
+      "tags": ["retry", "timeout", "deduplication", "async", "reliability"]
+    }
+  ],
+  "links": [
+    { "uri": "slack", "context": "Slack ecosystem overview and authentication" },
+    { "uri": "slack/bots", "context": "Bolt.js framework with built-in event handling" },
+    { "uri": "slack/bots#socket-mode", "context": "Socket Mode setup in Bolt.js" },
+    { "uri": "slack/bots#events", "context": "Event listener patterns in Bolt.js" },
+    { "uri": "slack/messages", "context": "Message events and responding to messages" },
+    { "uri": "slack#scopes-permissions", "context": "OAuth scopes required for event subscriptions" }
+  ],
+  "related": [
+    { "uri": "slack/bots", "relation": "see-also", "note": "Bolt.js provides the highest-level API for handling events with built-in verification" },
+    { "uri": "slack/messages", "relation": "see-also", "note": "Message events are the most common event type — respond with the messaging API" },
+    { "uri": "slack/block-kit", "relation": "see-also", "note": "Interactive component events (button clicks, menu selections) use Block Kit action_ids" }
+  ],
+  "more": {
+    "docs": "https://api.slack.com/events",
+    "api-ref": "https://api.slack.com/events/api",
+    "event-types": "https://api.slack.com/events?filter=Events"
+  },
+  "frontmatter": {
+    "created": "2026-04-10",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "5 min",
+    "prerequisites": ["slack"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

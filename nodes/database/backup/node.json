@@ -1,0 +1,131 @@
+{
+  "name": "backup",
+  "version": "1.0.0",
+  "uri": "database/backup",
+  "type": "skill",
+  "context": "Backup and restore database data — logical dumps, physical backups, point-in-time recovery",
+  "info": "Database backups protect against data loss from hardware failure, human error, and security incidents. This skill covers the three main approaches: logical backups (pg_dump, mysqldump — export SQL or custom-format archives), physical backups (filesystem-level copies of data directories), and point-in-time recovery (PITR) using WAL archiving (PostgreSQL) or binary logs (MySQL). It includes restore procedures for each method, compression strategies, scheduling with cron, retention policies, and verification testing. Every production database should have automated backups with tested restore procedures.",
+  "parent": "database",
+  "tags": ["backup", "restore", "pg-dump", "mysqldump", "pitr", "disaster-recovery"],
+  "aliases": [
+    "database backup",
+    "backup database",
+    "db backup",
+    "database restore",
+    "pg_dump",
+    "mysqldump",
+    "disaster recovery",
+    "data backup",
+    "database recovery"
+  ],
+  "triggers": [
+    "backup my database",
+    "restore a database backup",
+    "set up database backups",
+    "point in time recovery",
+    "how do i backup postgres",
+    "disaster recovery plan for database",
+    "schedule automated backups"
+  ],
+  "body": "# Backup and Restore\n\nEvery production [[database]] needs automated backups with tested restore procedures. Data loss can come from hardware failure, accidental deletion, migration errors (see [[database/migrations#rollback]]), or security breaches. This guide covers the three primary backup strategies and their restore workflows.\n\n## Logical Backups\n\nLogical backups export data as SQL statements or portable archive files. They are database-engine-aware and can restore to different versions or configurations.\n\n### PostgreSQL — pg_dump\n\n```bash\n# Custom format (compressed, supports parallel restore)\npg_dump -Fc -d $DATABASE_URL -f backup.dump\n\n# Plain SQL format (human-readable)\npg_dump -Fp -d $DATABASE_URL -f backup.sql\n\n# Specific tables only\npg_dump -Fc -d $DATABASE_URL -t users -t orders -f partial.dump\n\n# Schema only (no data)\npg_dump -Fc -d $DATABASE_URL --schema-only -f schema.dump\n\n# Data only (no schema)\npg_dump -Fc -d $DATABASE_URL --data-only -f data.dump\n```\n\n### MySQL — mysqldump\n\n```bash\n# Full database dump\nmysqldump -u root -p --databases mydb > backup.sql\n\n# All databases\nmysqldump -u root -p --all-databases > all.sql\n\n# With compression\nmysqldump -u root -p mydb | gzip > backup.sql.gz\n\n# Single transaction (consistent snapshot for InnoDB)\nmysqldump -u root -p --single-transaction mydb > backup.sql\n```\n\n## Physical Backups\n\nPhysical backups copy the raw data files at the filesystem level. They are faster for large databases but tied to the exact database version and configuration.\n\n### PostgreSQL — pg_basebackup\n\n```bash\n# Base backup for PITR\npg_basebackup -D /backup/base -Ft -z -P -d $DATABASE_URL\n\n# Stream WAL during backup\npg_basebackup -D /backup/base -Ft -z -Xs -P -d $DATABASE_URL\n```\n\n### Filesystem Snapshot\n\n```bash\n# LVM snapshot (Linux)\nlvcreate --snapshot --name db_snap --size 10G /dev/vg0/db_data\n\n# AWS EBS snapshot\naws ec2 create-snapshot --volume-id vol-xxx --description \"DB backup\"\n```\n\n## Point-in-Time Recovery (PITR)\n\nPITR lets you restore to any moment in time by replaying write-ahead logs (WAL in PostgreSQL) or binary logs (MySQL) on top of a base backup.\n\n### PostgreSQL WAL Archiving\n\n```ini\n# postgresql.conf\narchive_mode = on\narchive_command = 'cp %p /archive/wal/%f'\nwal_level = replica\n```\n\n```bash\n# Restore to a specific timestamp\n# 1. Stop PostgreSQL\n# 2. Replace data directory with base backup\n# 3. Create recovery.signal\n# 4. Configure restore_command in postgresql.conf:\nrestore_command = 'cp /archive/wal/%f %p'\nrecovery_target_time = '2026-04-10 14:30:00'\nrecovery_target_action = 'promote'\n# 5. Start PostgreSQL — it replays WAL up to the target time\n```\n\n### MySQL Binary Log Replay\n\n```bash\n# Restore from full backup, then replay binary logs\nmysql -u root -p mydb < full_backup.sql\nmysqlbinlog --start-datetime=\"2026-04-10 14:00:00\" \\\n            --stop-datetime=\"2026-04-10 14:30:00\" \\\n            /var/log/mysql/binlog.000042 | mysql -u root -p mydb\n```\n\n## Restore\n\n```bash\n# PostgreSQL — restore custom format\npg_restore -d $DATABASE_URL -Fc --clean --if-exists backup.dump\n\n# PostgreSQL — restore plain SQL\npsql $DATABASE_URL < backup.sql\n\n# PostgreSQL — parallel restore (4 jobs)\npg_restore -d $DATABASE_URL -Fc -j 4 backup.dump\n\n# MySQL — restore SQL dump\nmysql -u root -p mydb < backup.sql\n\n# MySQL — restore compressed dump\ngunzip < backup.sql.gz | mysql -u root -p mydb\n```\n\n## Scheduling\n\n```bash\n# Cron — daily logical backup at 2 AM\n0 2 * * * pg_dump -Fc -d $DATABASE_URL -f /backup/db_$(date +\\%Y\\%m\\%d).dump\n\n# Retention — delete backups older than 30 days\n0 3 * * * find /backup -name \"db_*.dump\" -mtime +30 -delete\n```\n\n## Best Practices\n\n- **Test restores regularly** — a backup that cannot be restored is not a backup\n- **Store backups offsite** — different region, different cloud provider, or physical location\n- **Encrypt backups** at rest and in transit for sensitive data\n- **Monitor backup jobs** — alert on failures immediately\n- **Document the restore procedure** — when disaster strikes, clarity saves time\n- **Use PITR for production** — logical dumps alone have a recovery gap from last backup to failure\n- **Backup before [[database/migrations]]** — always have a restore point before schema changes\n",
+  "sections": [
+    {
+      "id": "logical-backup",
+      "title": "Logical backups",
+      "body": "Logical backups (pg_dump, mysqldump) export data as SQL or custom-format archives. They are portable across database versions, support partial backups (specific tables), and can separate schema from data. Custom format (`-Fc`) in PostgreSQL supports compression and parallel restore. Use `--single-transaction` in mysqldump for consistent InnoDB snapshots. Slower than physical backups for very large databases but more flexible.",
+      "tags": ["logical", "pg-dump", "mysqldump", "sql", "custom-format", "portable"]
+    },
+    {
+      "id": "physical-backup",
+      "title": "Physical backups",
+      "body": "Physical backups copy raw data files at the filesystem level using pg_basebackup, LVM snapshots, or cloud volume snapshots (EBS, Persistent Disk). Faster to take and restore for large databases. Must match the exact database version. pg_basebackup can stream WAL during the backup for consistency. Filesystem snapshots require the database to be in backup mode or use crash-consistent snapshots.",
+      "tags": ["physical", "pg-basebackup", "lvm", "ebs", "snapshot", "filesystem"]
+    },
+    {
+      "id": "pitr",
+      "title": "Point-in-time recovery",
+      "body": "PITR combines a base backup with continuous WAL archiving (PostgreSQL) or binary logs (MySQL) to restore to any moment in time. Essential for minimizing data loss — recovery gap is only the unarchived WAL/binlog. Configure `archive_mode` and `archive_command` in PostgreSQL. Set `recovery_target_time` in `postgresql.conf` and create `recovery.signal` to restore. For MySQL, replay binary logs with `mysqlbinlog --stop-datetime`. See [[database/migrations#rollback]] for using PITR to undo failed migrations.",
+      "tags": ["pitr", "wal", "binary-log", "archive", "recovery-target", "continuous"]
+    },
+    {
+      "id": "restore",
+      "title": "Restore procedures",
+      "body": "pg_restore handles custom-format backups with `--clean --if-exists` for idempotent restores. Use `-j N` for parallel restore. psql handles plain SQL backups. MySQL uses the mysql client to pipe SQL. Always restore to a staging environment first to verify integrity before touching production. Test that application queries work correctly after restore. Document restore steps and time estimates for your data volume.",
+      "tags": ["restore", "pg-restore", "psql", "parallel", "staging", "verify"]
+    },
+    {
+      "id": "scheduling",
+      "title": "Scheduling and retention",
+      "body": "Automate backups with cron, systemd timers, or cloud-native scheduling (AWS Backup, Cloud SQL automated backups). Run logical backups daily, PITR continuously. Retain daily backups for 30 days, weekly for 90 days, monthly for 1 year — adjust to your compliance requirements. Delete old backups automatically. Monitor backup completion and alert on failure. Store backups in a different region or cloud account for disaster resilience.",
+      "tags": ["scheduling", "cron", "retention", "monitoring", "offsite", "automation"]
+    }
+  ],
+  "links": [
+    { "uri": "database", "context": "Database ecosystem overview" },
+    { "uri": "database/migrations", "context": "Backup before running migrations" },
+    { "uri": "database/migrations#rollback", "context": "PITR as a rollback strategy for failed migrations" },
+    { "uri": "database/sql", "context": "SQL queries for verifying restored data integrity" },
+    { "uri": "database/indexing", "context": "Reindex after large restores if needed" }
+  ],
+  "related": [
+    { "uri": "database/migrations", "relation": "see-also", "note": "Always backup before running production migrations" },
+    { "uri": "database/sql", "relation": "see-also", "note": "SQL queries verify that restored data is complete and correct" }
+  ],
+  "scripts": [
+    {
+      "id": "backup-database",
+      "name": "Backup Database",
+      "description": "Create a logical backup of a PostgreSQL database using pg_dump",
+      "lang": "bash",
+      "runtime": "bash>=4",
+      "entry": "./scripts/backup-database.sh",
+      "env": {
+        "DATABASE_URL": { "required": true, "secret": true, "description": "PostgreSQL connection string" },
+        "BACKUP_PATH": { "required": true, "secret": false, "description": "Directory to store backup files" }
+      },
+      "packages": ["postgresql-client"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "databaseUrl": { "type": "string", "description": "PostgreSQL connection string" },
+        "format": { "type": "string", "enum": ["custom", "plain", "directory", "tar"], "default": "custom", "description": "Backup output format — custom supports parallel restore" },
+        "compress": { "type": "boolean", "default": true, "description": "Enable compression for the backup file" }
+      },
+      "required": ["databaseUrl"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "backupPath": { "type": "string", "description": "Path to the created backup file" },
+        "size": { "type": "string", "description": "Human-readable size of the backup file" },
+        "timestamp": { "type": "string", "format": "date-time", "description": "ISO 8601 timestamp of backup completion" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "database/sql", "reason": "Understanding SQL helps verify restored data integrity" }
+  ],
+  "more": {
+    "pg_dump": "https://www.postgresql.org/docs/current/app-pgdump.html",
+    "pg_restore": "https://www.postgresql.org/docs/current/app-pgrestore.html",
+    "pitr": "https://www.postgresql.org/docs/current/continuous-archiving.html"
+  },
+  "frontmatter": {
+    "created": "2026-04-10",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "developers, AI agents, DBAs",
+    "estimated_reading_time": "7 min",
+    "prerequisites": [],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

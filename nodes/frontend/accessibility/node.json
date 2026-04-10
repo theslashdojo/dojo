@@ -1,0 +1,97 @@
+{
+  "name": "accessibility",
+  "version": "1.0.0",
+  "uri": "frontend/accessibility",
+  "type": "context",
+  "context": "Web accessibility (a11y): ARIA, semantic HTML, keyboard navigation, screen readers, WCAG compliance",
+  "info": "Accessibility ensures web applications are usable by everyone, including people using screen readers, keyboard-only navigation, and assistive technologies. This guide covers semantic HTML as the foundation, ARIA roles and attributes for dynamic widgets, keyboard navigation patterns, testing tools for automated and manual audits, and a WCAG 2.1 AA compliance checklist. Accessibility is not an afterthought — it should be built into every component from the start. All [[frontend/react]] components should follow these patterns. Styles in [[frontend/css]] must meet color contrast and motion requirements.",
+  "parent": "frontend",
+  "tags": ["accessibility", "a11y", "aria", "wcag", "semantic-html", "keyboard", "screen-reader"],
+  "aliases": [
+    "accessibility",
+    "a11y",
+    "web accessibility",
+    "aria roles",
+    "wcag compliance",
+    "screen reader support",
+    "keyboard navigation",
+    "accessible components"
+  ],
+  "triggers": [
+    "make this accessible",
+    "add aria labels",
+    "keyboard navigation",
+    "screen reader support",
+    "wcag compliance",
+    "accessibility audit",
+    "fix accessibility issues",
+    "a11y check"
+  ],
+  "body": "# Web Accessibility (a11y)\n\nAccessibility means building web experiences that work for everyone — people using screen readers, keyboard-only users, users with low vision, motor impairments, or cognitive disabilities. The target standard is WCAG 2.1 Level AA.\n\n## Semantic HTML\n\nSemantic HTML is the foundation of accessibility. Native elements carry built-in roles, keyboard behavior, and screen reader announcements:\n\n```tsx\n{/* Bad: div soup */}\n<div onClick={handleClick}>Click me</div>\n\n{/* Good: semantic elements */}\n<button onClick={handleClick}>Click me</button>\n\n{/* Bad: generic container */}\n<div className=\"sidebar\">\n  <div className=\"nav-list\">...</div>\n</div>\n\n{/* Good: landmark elements */}\n<aside aria-label=\"Sidebar navigation\">\n  <nav aria-label=\"Main\">\n    <ul>\n      <li><a href=\"/dashboard\">Dashboard</a></li>\n      <li><a href=\"/settings\">Settings</a></li>\n    </ul>\n  </nav>\n</aside>\n```\n\n| Element | Built-in Role | Use For |\n|---------|---------------|---------|\n| `<button>` | button | Clickable actions |\n| `<a href>` | link | Navigation |\n| `<nav>` | navigation | Navigation groups |\n| `<main>` | main | Primary content |\n| `<aside>` | complementary | Sidebar content |\n| `<header>` | banner | Page header |\n| `<footer>` | contentinfo | Page footer |\n| `<h1>`-`<h6>` | heading | Document structure |\n| `<ul>`/`<ol>` | list | Lists of items |\n\n## ARIA Roles and Attributes\n\nUse ARIA only when native HTML elements cannot express the semantics. The first rule of ARIA: don't use ARIA if a native element works.\n\n```tsx\n{/* Custom dropdown — needs ARIA because there's no native element */}\n<div\n  role=\"combobox\"\n  aria-expanded={isOpen}\n  aria-haspopup=\"listbox\"\n  aria-controls=\"dropdown-list\"\n  aria-label=\"Select a country\"\n>\n  <input\n    type=\"text\"\n    aria-autocomplete=\"list\"\n    aria-activedescendant={activeId}\n  />\n  <ul id=\"dropdown-list\" role=\"listbox\">\n    {options.map(opt => (\n      <li key={opt.id} role=\"option\" aria-selected={opt.id === selectedId}>\n        {opt.label}\n      </li>\n    ))}\n  </ul>\n</div>\n\n{/* Live region for dynamic updates */}\n<div aria-live=\"polite\" aria-atomic=\"true\">\n  {statusMessage}\n</div>\n```\n\nCommon ARIA patterns:\n- `aria-label` / `aria-labelledby` — accessible name for elements\n- `aria-describedby` — additional description (error messages, help text)\n- `aria-expanded` — open/closed state for disclosure widgets\n- `aria-live` — announce dynamic content changes to screen readers\n- `aria-hidden=\"true\"` — hide decorative elements from assistive technology\n\n## Keyboard Navigation\n\nAll interactive elements must be operable with keyboard:\n\n| Key | Expected Behavior |\n|-----|--------------------|\n| `Tab` | Move focus to next interactive element |\n| `Shift+Tab` | Move focus to previous interactive element |\n| `Enter` / `Space` | Activate buttons and links |\n| `Escape` | Close modals, dropdowns, tooltips |\n| `Arrow keys` | Navigate within composite widgets (tabs, menus, listboxes) |\n| `Home` / `End` | Jump to first/last item in a list |\n\n```tsx\nfunction Modal({ isOpen, onClose, children }: ModalProps) {\n  const modalRef = useRef<HTMLDivElement>(null);\n\n  useEffect(() => {\n    if (!isOpen) return;\n    const previousFocus = document.activeElement as HTMLElement;\n    modalRef.current?.focus();\n    return () => previousFocus?.focus();\n  }, [isOpen]);\n\n  return isOpen ? (\n    <div\n      ref={modalRef}\n      role=\"dialog\"\n      aria-modal=\"true\"\n      aria-label=\"Modal\"\n      tabIndex={-1}\n      onKeyDown={(e) => e.key === \"Escape\" && onClose()}\n    >\n      {children}\n      <button onClick={onClose}>Close</button>\n    </div>\n  ) : null;\n}\n```\n\nFocus management rules:\n- Trap focus inside modals and dialogs\n- Return focus to the trigger element on close\n- Visible focus indicators on all interactive elements (see [[frontend/css#tailwind]] `ring-*` utilities)\n- Skip navigation links for keyboard users\n\n## Testing Tools\n\n| Tool | Type | Use |\n|------|------|-----|\n| axe-core / @axe-core/react | Automated | Catch common ARIA and contrast issues |\n| eslint-plugin-jsx-a11y | Linting | Catch issues at code time |\n| Playwright + axe | E2E | Automated accessibility in CI — see [[frontend/testing#accessibility-testing]] |\n| VoiceOver (macOS) | Manual | Screen reader testing |\n| NVDA (Windows) | Manual | Screen reader testing |\n| Chrome DevTools Accessibility | Manual | Inspect accessibility tree |\n\n## WCAG 2.1 AA Checklist\n\n- [ ] All images have `alt` text (or `alt=\"\"` for decorative)\n- [ ] Color contrast ratio: 4.5:1 for normal text, 3:1 for large text (see [[frontend/css#tailwind]])\n- [ ] All interactive elements are keyboard accessible\n- [ ] Focus is visible on all interactive elements\n- [ ] Page has a logical heading hierarchy (`h1` > `h2` > `h3`)\n- [ ] Forms have associated labels (`<label htmlFor>` or `aria-label`)\n- [ ] Error messages are associated with inputs via `aria-describedby`\n- [ ] Dynamic content updates are announced via `aria-live` regions\n- [ ] Animations respect `prefers-reduced-motion` (see [[frontend/css#animations]])\n- [ ] Touch targets are at least 44x44 CSS pixels\n- [ ] Language is set on `<html lang=\"en\">`\n- [ ] Page has skip navigation link\n",
+  "sections": [
+    {
+      "id": "semantic-html",
+      "title": "Semantic HTML",
+      "body": "Use native HTML elements that carry built-in roles and keyboard behavior: button, a, nav, main, aside, header, footer, h1-h6, ul/ol. Semantic elements are announced correctly by screen readers and receive keyboard focus automatically. Avoid div/span for interactive elements. See [[frontend/react#components-jsx]] for component patterns.",
+      "tags": ["semantic-html", "landmarks", "headings", "native-elements"]
+    },
+    {
+      "id": "aria-roles",
+      "title": "ARIA roles and attributes",
+      "body": "First rule: don't use ARIA if a native element works. aria-label and aria-labelledby for accessible names. aria-describedby for help text and errors. aria-expanded for disclosure widgets. aria-live for dynamic announcements. aria-hidden for decorative content. WAI-ARIA Authoring Practices provide patterns for tabs, menus, comboboxes, dialogs.",
+      "tags": ["aria", "aria-label", "aria-live", "aria-expanded", "wai-aria", "roles"]
+    },
+    {
+      "id": "keyboard-navigation",
+      "title": "Keyboard navigation",
+      "body": "Tab for focus order, Enter/Space to activate, Escape to close, Arrow keys within composite widgets. Trap focus in modals. Return focus on close. Visible focus indicators required — use Tailwind `focus-visible:ring-*` utilities (see [[frontend/css#tailwind]]). Skip navigation links for page structure. tabIndex={-1} for programmatic focus, tabIndex={0} for natural tab order.",
+      "tags": ["keyboard", "focus", "tab-order", "focus-trap", "skip-nav", "tabindex"]
+    },
+    {
+      "id": "testing-tools",
+      "title": "Accessibility testing tools",
+      "body": "axe-core for automated ARIA and contrast checks. eslint-plugin-jsx-a11y for lint-time issues. Playwright + axe for CI automation — see [[frontend/testing#accessibility-testing]]. VoiceOver (macOS) and NVDA (Windows) for manual screen reader testing. Chrome DevTools accessibility panel for inspecting the accessibility tree.",
+      "tags": ["axe-core", "eslint-jsx-a11y", "voiceover", "nvda", "chrome-devtools", "automated-testing"]
+    },
+    {
+      "id": "wcag-checklist",
+      "title": "WCAG 2.1 AA checklist",
+      "body": "Alt text on images, 4.5:1 color contrast for normal text, keyboard-accessible interactions, visible focus indicators, logical heading hierarchy, labeled form inputs, error messages linked via aria-describedby, aria-live for dynamic content, prefers-reduced-motion for animations (see [[frontend/css#animations]]), 44x44px touch targets, html lang attribute, skip navigation link.",
+      "tags": ["wcag", "wcag-2.1", "level-aa", "checklist", "compliance", "audit"]
+    }
+  ],
+  "links": [
+    { "uri": "frontend/react#components-jsx", "context": "Component patterns that should be accessible by default" },
+    { "uri": "frontend/css#tailwind", "context": "Tailwind focus-visible and contrast utilities" },
+    { "uri": "frontend/css#animations", "context": "Motion preferences and prefers-reduced-motion" },
+    { "uri": "frontend/testing#accessibility-testing", "context": "Automated accessibility testing in CI" },
+    { "uri": "frontend/react#patterns", "context": "Accessible component patterns (modals, tabs, menus)" },
+    { "uri": "frontend/testing#e2e", "context": "Playwright for end-to-end accessibility testing" }
+  ],
+  "related": [
+    { "uri": "frontend/react", "relation": "see-also", "note": "All React components should follow accessibility patterns" },
+    { "uri": "frontend/css", "relation": "see-also", "note": "CSS must meet color contrast and motion requirements" },
+    { "uri": "frontend/testing", "relation": "see-also", "note": "Accessibility testing should be automated in CI" }
+  ],
+  "content_type": "guide",
+  "more": {
+    "wcag": "https://www.w3.org/WAI/WCAG21/quickref/",
+    "aria-patterns": "https://www.w3.org/WAI/ARIA/apg/patterns/",
+    "mdn-a11y": "https://developer.mozilla.org/en-US/docs/Web/Accessibility"
+  },
+  "frontmatter": {
+    "created": "2026-04-10",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "developers, AI agents, designers",
+    "estimated_reading_time": "7 min",
+    "prerequisites": ["frontend/react"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

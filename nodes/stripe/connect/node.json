@@ -1,0 +1,88 @@
+{
+  "name": "connect",
+  "version": "1.0.0",
+  "uri": "stripe/connect",
+  "type": "context",
+  "content_type": "guide",
+  "context": "Stripe Connect: marketplace payments, platform accounts, onboarding, and payouts",
+  "info": "Stripe Connect enables marketplace and platform payment flows where a platform facilitates payments between buyers and sellers (or service providers). Connect supports three account types — Standard, Express, and Custom — each with different onboarding experiences and dashboard access. This guide covers account type selection, onboarding flows with Account Links, creating payments on behalf of connected accounts (direct charges, destination charges, separate charges and transfers), and managing payouts to connected accounts.",
+  "parent": "stripe",
+  "tags": ["connect", "marketplace", "platform", "onboarding", "payouts", "transfers", "accounts"],
+  "aliases": [
+    "stripe connect",
+    "marketplace payments",
+    "platform payments",
+    "connected accounts",
+    "stripe marketplace",
+    "multi-party payments",
+    "split payments",
+    "seller onboarding",
+    "stripe payouts"
+  ],
+  "triggers": [
+    "set up stripe connect",
+    "build a marketplace with stripe",
+    "onboard sellers to stripe",
+    "split payments between platform and seller",
+    "pay out to connected accounts",
+    "create a platform with stripe connect"
+  ],
+  "body": "# Stripe Connect\n\nStripe Connect enables platforms and marketplaces to facilitate payments between buyers and sellers. The platform controls the payment flow — collecting from buyers, taking a fee, and paying out to sellers. You will need a `STRIPE_SECRET_KEY` from your [[stripe]] dashboard with Connect permissions.\n\n## Account Types\n\nConnect offers three account types with different trade-offs:\n\n| Type | Onboarding | Dashboard | API Effort | Best For |\n|------|-----------|-----------|------------|----------|\n| **Standard** | Stripe-hosted, full | Full Stripe dashboard | Low | Established sellers |\n| **Express** | Stripe-hosted, streamlined | Limited Express dashboard | Medium | Gig/sharing economy |\n| **Custom** | Platform-built | None (platform provides) | High | Full white-label |\n\n```javascript\nimport Stripe from 'stripe';\nconst stripe = new Stripe(process.env.STRIPE_SECRET_KEY);\n\n// Create a connected account\nconst account = await stripe.accounts.create({\n  type: 'express',\n  country: 'US',\n  email: 'seller@example.com',\n  capabilities: {\n    card_payments: { requested: true },\n    transfers: { requested: true },\n  },\n});\nconsole.log(account.id); // acct_xxx\n```\n\n## Onboarding\n\nUse Account Links to send connected accounts through Stripe's hosted onboarding flow:\n\n```javascript\nconst accountLink = await stripe.accountLinks.create({\n  account: 'acct_xxx',\n  refresh_url: 'https://example.com/reauth',\n  return_url: 'https://example.com/onboarding-complete',\n  type: 'account_onboarding',\n});\n// Redirect seller to accountLink.url\n```\n\nAfter onboarding, check the account's `charges_enabled` and `payouts_enabled` fields to confirm readiness:\n\n```javascript\nconst account = await stripe.accounts.retrieve('acct_xxx');\nif (account.charges_enabled && account.payouts_enabled) {\n  // Account is ready to accept payments and receive payouts\n}\n```\n\nListen for `account.updated` events via [[stripe/webhooks]] to track onboarding progress asynchronously.\n\n## Payments and Transfers\n\nThree payment models for platforms:\n\n### Direct Charges\n\nCharge on behalf of the connected account — they are the merchant of record:\n\n```javascript\nconst paymentIntent = await stripe.paymentIntents.create({\n  amount: 5000,\n  currency: 'usd',\n  application_fee_amount: 500,  // Platform takes $5.00\n}, {\n  stripeAccount: 'acct_xxx',   // Connected account\n});\n```\n\n### Destination Charges\n\nCharge on the platform, transfer to a connected account:\n\n```javascript\nconst paymentIntent = await stripe.paymentIntents.create({\n  amount: 5000,\n  currency: 'usd',\n  transfer_data: {\n    destination: 'acct_xxx',\n    amount: 4500,  // Connected account receives $45.00\n  },\n});\n```\n\n### Separate Charges and Transfers\n\nCharge on the platform, then create transfers independently:\n\n```javascript\nconst charge = await stripe.paymentIntents.create({\n  amount: 10000,\n  currency: 'usd',\n});\n\n// Transfer to multiple connected accounts\nawait stripe.transfers.create({\n  amount: 4000,\n  currency: 'usd',\n  destination: 'acct_seller1',\n});\nawait stripe.transfers.create({\n  amount: 3000,\n  currency: 'usd',\n  destination: 'acct_seller2',\n});\n```\n\nSee [[stripe/payments#create-intent]] for general PaymentIntent creation details.\n\n## Payouts\n\nPayouts send funds from a connected account's Stripe balance to their bank account or debit card:\n\n```javascript\n// Payouts happen automatically on a schedule by default\n// Or create manual payouts:\nconst payout = await stripe.payouts.create({\n  amount: 5000,\n  currency: 'usd',\n}, {\n  stripeAccount: 'acct_xxx',\n});\n```\n\nPayout schedules can be `automatic` (daily, weekly, monthly) or `manual`. Check `account.payouts_enabled` before attempting payouts.\n\nListen for `payout.paid` and `payout.failed` events via [[stripe/webhooks]] to track payout status.\n\n## Environment Variables\n\n| Variable | Purpose |\n|----------|----------|\n| `STRIPE_SECRET_KEY` | Platform's server-side API key with Connect scope |\n",
+  "sections": [
+    {
+      "id": "account-types",
+      "title": "Connect account types",
+      "body": "**Standard** accounts use Stripe's full onboarding and dashboard — lowest integration effort but sellers manage their own Stripe dashboard. **Express** accounts use a streamlined onboarding with a limited dashboard — good for gig economy platforms. **Custom** accounts give the platform full control over onboarding UI and dashboard — highest effort but fully white-labeled. Choose based on the level of control your platform needs vs. integration effort.",
+      "tags": ["standard", "express", "custom", "account-types", "white-label"]
+    },
+    {
+      "id": "onboarding",
+      "title": "Onboarding flows",
+      "body": "Create accounts with `stripe.accounts.create({ type, country, email, capabilities })`. Generate onboarding links with `stripe.accountLinks.create({ account, refresh_url, return_url, type: 'account_onboarding' })`. Redirect sellers to the link URL. After completion, verify `charges_enabled` and `payouts_enabled`. Track progress asynchronously via `account.updated` events in [[stripe/webhooks]]. Account links expire — regenerate if the seller doesn't complete onboarding.",
+      "tags": ["onboarding", "account-links", "capabilities", "verification", "redirect"]
+    },
+    {
+      "id": "payments-transfers",
+      "title": "Payments and transfers",
+      "body": "**Direct charges**: create payment on the connected account with `stripeAccount` header, take `application_fee_amount`. **Destination charges**: charge on platform, specify `transfer_data.destination` and `transfer_data.amount`. **Separate charges and transfers**: charge on platform, then `stripe.transfers.create()` to one or more connected accounts. Direct charges work best for single-seller purchases. Destination charges for simple splits. Separate charges for complex multi-seller orders. See [[stripe/payments]] for PaymentIntent details.",
+      "tags": ["direct-charges", "destination-charges", "transfers", "application-fee", "split"]
+    },
+    {
+      "id": "payouts",
+      "title": "Payout management",
+      "body": "Payouts transfer funds from a connected account's Stripe balance to their external account (bank or debit card). Default schedule is automatic (daily in most countries). Set manual with `stripe.accounts.update(id, { settings: { payouts: { schedule: { interval: 'manual' } } } })`. Create manual payouts with `stripe.payouts.create({ amount, currency }, { stripeAccount })`. Track with `payout.paid` and `payout.failed` events via [[stripe/webhooks]].",
+      "tags": ["payouts", "bank-transfer", "schedule", "manual", "automatic", "balance"]
+    }
+  ],
+  "links": [
+    { "uri": "stripe", "context": "Stripe ecosystem overview, API keys, and test mode" },
+    { "uri": "stripe/payments", "context": "PaymentIntent creation for direct and destination charges" },
+    { "uri": "stripe/payments#create-intent", "context": "Create payment intents with application fees" },
+    { "uri": "stripe/webhooks", "context": "Listen for account.updated, payout.paid, and payout.failed events" },
+    { "uri": "stripe/checkout", "context": "Use checkout sessions with connected accounts" }
+  ],
+  "related": [
+    { "uri": "stripe/payments", "relation": "see-also", "note": "Platform payments use PaymentIntents with Connect-specific parameters" },
+    { "uri": "stripe/webhooks", "relation": "see-also", "note": "Track onboarding progress and payout status via webhooks" },
+    { "uri": "stripe/checkout", "relation": "see-also", "note": "Checkout supports connected account payments with on_behalf_of" }
+  ],
+  "more": {
+    "docs": "https://docs.stripe.com/connect",
+    "api": "https://docs.stripe.com/api/accounts"
+  },
+  "frontmatter": {
+    "created": "2026-04-10",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "developers, AI agents, platform builders",
+    "estimated_reading_time": "6 min",
+    "prerequisites": ["stripe"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

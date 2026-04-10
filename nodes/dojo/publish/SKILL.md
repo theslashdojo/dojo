@@ -15,7 +15,7 @@ Use `scripts/publish-node.sh` for the top-level release entrypoint.
 ## Fast path
 
 - Dry-run the release:
-  `bash scripts/publish-node.sh /abs/path/to/node.json http://localhost:3000 true`
+  `bash scripts/publish-node.sh /abs/path/to/node.json https://slashdojo.com true`
 - Bundle `dojo/publish/local` to rehearse route health against a registry.
 - Bundle `dojo/publish/registry` to perform the authenticated POST step.
 
@@ -29,7 +29,7 @@ Use `scripts/publish-node.sh` for the top-level release entrypoint.
 ## Examples
 
 - Dry-run preview:
-  `bash scripts/publish-node.sh /workspaces/Contracts/dojo/nodes/dojo/skill/node.json http://localhost:3000 true`
+  `bash scripts/publish-node.sh /workspaces/Contracts/dojo/nodes/dojo/skill/node.json https://slashdojo.com true`
 - Live publish:
   `DOJO_TOKEN=... bash scripts/publish-node.sh /workspaces/Contracts/dojo/nodes/dojo/skill/node.json https://registry.example false`
 

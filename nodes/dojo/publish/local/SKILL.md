@@ -2,7 +2,7 @@
 name: local
 description: Rehearse a Dojo release against a registry by checking search, skill, learn, and bundle routes before publishing. Use when a manifest should prove read-side health locally or in staging.
 license: MIT
-compatibility: Requires Bash, curl, and access to a Dojo registry URL; defaults to http://localhost:3000.
+compatibility: Requires Bash, curl, and access to a Dojo registry URL; defaults to https://slashdojo.com.
 metadata:
   canonical-uri: dojo/publish/local
   category: dojo
@@ -14,7 +14,7 @@ Use `scripts/rehearse-release.sh` to verify that a changed node is visible and u
 
 ## Example
 
-`bash scripts/rehearse-release.sh /workspaces/Contracts/dojo/nodes/dojo/skill/node.json dojo/skill dojo http://localhost:3000`
+`bash scripts/rehearse-release.sh /workspaces/Contracts/dojo/nodes/dojo/skill/node.json dojo/skill dojo https://slashdojo.com`
 
 ## Notes
 

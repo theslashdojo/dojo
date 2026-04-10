@@ -1,0 +1,91 @@
+{
+  "name": "volumes",
+  "version": "1.0.0",
+  "uri": "docker/volumes",
+  "type": "context",
+  "content_type": "guide",
+  "context": "Persistent storage with Docker volumes — named volumes, bind mounts, tmpfs",
+  "info": "Docker containers are ephemeral — data written to the container's writable layer is lost when the container is removed. Volumes provide persistent storage that survives container lifecycle events. Named volumes are managed by Docker and stored in `/var/lib/docker/volumes/`. Bind mounts map a host directory into the container — ideal for development with live code reload. tmpfs mounts store data in memory only, useful for secrets and temporary data. This guide covers volume types, creation and management, backup and restore strategies, and integration with Docker Compose.",
+  "parent": "docker",
+  "tags": ["volumes", "bind-mounts", "tmpfs", "persistent-storage", "data"],
+  "aliases": [
+    "docker volumes",
+    "container storage",
+    "persistent storage",
+    "bind mount",
+    "docker data",
+    "named volume",
+    "volume mount",
+    "tmpfs mount"
+  ],
+  "triggers": [
+    "persist data in docker",
+    "create a docker volume",
+    "mount host directory in container",
+    "docker bind mount",
+    "data lost when container restarts",
+    "back up docker volume",
+    "share files between containers"
+  ],
+  "body": "# Docker Volumes\n\nContainers are ephemeral — when a container is removed, its writable layer is lost. Volumes provide persistent storage that survives container lifecycle events (stop, restart, remove). Docker offers three mount types for different use cases.\n\n## Volume Types\n\n| Mount Type | Managed By | Persistence | Use Case |\n|------------|-----------|-------------|----------|\n| Named volume | Docker | Survives container removal | Database data, application state |\n| Bind mount | Host filesystem | Host directory | Development (live reload), config files |\n| tmpfs | Memory | Lost on container stop | Secrets, temporary data, caches |\n\n### Named Volumes\n\nNamed volumes are the preferred mechanism for persistent data. Docker manages the storage location (typically `/var/lib/docker/volumes/`).\n\n```bash\n# Create a named volume\ndocker volume create pgdata\n\n# Run a container with the volume\ndocker run -d \\\n  --name postgres \\\n  -v pgdata:/var/lib/postgresql/data \\\n  postgres:16-alpine\n\n# Volume survives container removal\ndocker rm -f postgres\ndocker volume ls  # pgdata still exists\n\n# Start a new container with the same volume — data intact\ndocker run -d \\\n  --name postgres-new \\\n  -v pgdata:/var/lib/postgresql/data \\\n  postgres:16-alpine\n```\n\nIn [[docker/compose]], declare named volumes in the top-level `volumes:` section:\n\n```yaml\nservices:\n  db:\n    image: postgres:16-alpine\n    volumes:\n      - pgdata:/var/lib/postgresql/data\n\nvolumes:\n  pgdata:\n```\n\nSee [[docker/compose#volumes-networks]] for details.\n\n### Bind Mounts\n\nBind mounts map a host directory directly into the container. Changes on either side are immediately visible to the other.\n\n```bash\n# Mount current directory into the container\ndocker run -d \\\n  --name dev \\\n  -v $(pwd):/app \\\n  -w /app \\\n  node:20-alpine \\\n  npm run dev\n\n# Read-only bind mount for config\ndocker run -d \\\n  -v /host/config/nginx.conf:/etc/nginx/nginx.conf:ro \\\n  nginx:alpine\n```\n\nBind mounts are essential for development workflows — edit code on the host and see changes immediately in the container. Pair with file watchers for live reload. See [[docker/build#best-practices]] for how this complements the build workflow.\n\n**Caution:** Bind mounts depend on the host filesystem structure. They are less portable than named volumes. Use named volumes for production data.\n\n### tmpfs Mounts\n\ntmpfs mounts store data in the host's memory. Data is never written to disk and is lost when the container stops.\n\n```bash\n# tmpfs mount for temporary data\ndocker run -d \\\n  --tmpfs /app/tmp:size=100m \\\n  myapp:latest\n\n# Using --mount syntax (more explicit)\ndocker run -d \\\n  --mount type=tmpfs,destination=/app/tmp,tmpfs-size=104857600 \\\n  myapp:latest\n```\n\nUse tmpfs for:\n- Secrets that should never touch disk\n- Build caches and temporary files\n- Scratch space for data processing\n\n## Backup and Restore\n\nBack up named volumes by mounting them into a temporary container:\n\n```bash\n# Backup volume to a tar archive\ndocker run --rm \\\n  -v pgdata:/source:ro \\\n  -v $(pwd):/backup \\\n  alpine \\\n  tar czf /backup/pgdata-backup.tar.gz -C /source .\n\n# Restore from backup\ndocker run --rm \\\n  -v pgdata:/target \\\n  -v $(pwd):/backup:ro \\\n  alpine \\\n  tar xzf /backup/pgdata-backup.tar.gz -C /target\n```\n\nFor production databases, prefer the database's native dump/restore tools (e.g., `pg_dump`, `mysqldump`) over filesystem-level backups.\n\n## Volume Management\n\n```bash\ndocker volume ls                    # list all volumes\ndocker volume inspect pgdata        # show volume details\ndocker volume rm pgdata             # remove a volume\ndocker volume prune                 # remove all unused volumes\n```\n\n**Warning:** `docker volume prune` removes all volumes not currently mounted by a container. Always verify before pruning in production.\n\n## Sharing Volumes Between Containers\n\nMultiple containers can mount the same named volume for shared data:\n\n```bash\n# Writer container\ndocker run -d --name writer -v shared-data:/data alpine sh -c 'while true; do date >> /data/log.txt; sleep 5; done'\n\n# Reader container\ndocker run -d --name reader -v shared-data:/data:ro alpine tail -f /data/log.txt\n```\n\nIn [[docker/compose]], multiple services can reference the same named volume. Use `:ro` for read-only access where appropriate.\n",
+  "sections": [
+    {
+      "id": "volume-types",
+      "title": "Volume types",
+      "body": "Named volumes are managed by Docker and persist independently of containers — use for databases and application state. Bind mounts map host directories into containers — use for development with live code reload. tmpfs mounts store data in memory only — use for secrets and temporary data. Named volumes are the most portable and recommended for production.",
+      "tags": ["named-volume", "bind-mount", "tmpfs", "types", "comparison"]
+    },
+    {
+      "id": "named-volumes",
+      "title": "Named volumes",
+      "body": "Create with `docker volume create` or declare in [[docker/compose]] under the `volumes:` top-level key. Mount with `-v name:/path` or `--mount type=volume,source=name,target=/path`. Data survives container removal. Stored in `/var/lib/docker/volumes/` on Linux. Multiple containers can share a named volume. Use for databases (see [[docker/compose#services]]), caches, and any data that must persist.",
+      "tags": ["named", "create", "mount", "persistent", "docker-managed"]
+    },
+    {
+      "id": "bind-mounts",
+      "title": "Bind mounts",
+      "body": "Map host paths directly into containers with `-v /host/path:/container/path`. Changes are bidirectional and immediate. Essential for development workflows — edit on host, see changes in container. Use `:ro` for read-only mounts (config files, certificates). Less portable than named volumes — depend on host filesystem. See [[docker/build]] for how bind mounts complement image builds during development.",
+      "tags": ["bind", "host-path", "development", "live-reload", "read-only"]
+    },
+    {
+      "id": "backup-restore",
+      "title": "Backup and restore",
+      "body": "Back up named volumes by mounting into a temporary `alpine` container and creating a tar archive. Restore by extracting the archive into the volume. For databases, prefer native dump tools (`pg_dump`, `mysqldump`) over filesystem backups. Automate backups with cron jobs or scheduled containers. Test restores regularly to verify backup integrity.",
+      "tags": ["backup", "restore", "tar", "pg-dump", "disaster-recovery"]
+    }
+  ],
+  "links": [
+    { "uri": "docker/compose", "context": "Compose manages named volumes declaratively" },
+    { "uri": "docker/compose#volumes-networks", "context": "Volume declarations in Compose files" },
+    { "uri": "docker/compose#services", "context": "Service volume mounts in Compose" },
+    { "uri": "docker/build", "context": "Build workflow paired with bind mounts for development" },
+    { "uri": "docker/build#best-practices", "context": "Volume considerations during image builds" },
+    { "uri": "docker/networking", "context": "Networking paired with volumes for data services" }
+  ],
+  "related": [
+    { "uri": "docker/compose", "relation": "see-also", "note": "Compose is the standard way to declare and manage volumes" },
+    { "uri": "docker/networking", "relation": "see-also", "note": "Networking and volumes together define how services communicate and persist data" },
+    { "uri": "docker/build", "relation": "see-also", "note": "Bind mounts during development complement the build workflow" }
+  ],
+  "more": {
+    "docs": "https://docs.docker.com/storage/",
+    "volumes": "https://docs.docker.com/storage/volumes/",
+    "bind-mounts": "https://docs.docker.com/storage/bind-mounts/",
+    "tmpfs": "https://docs.docker.com/storage/tmpfs/"
+  },
+  "frontmatter": {
+    "created": "2026-04-10",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "developers, AI agents, DevOps engineers",
+    "estimated_reading_time": "4 min",
+    "prerequisites": [],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

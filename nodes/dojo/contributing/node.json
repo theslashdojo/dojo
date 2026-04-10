@@ -1,82 +1,125 @@
 {
   "name": "contributing",
-  "version": "1.3.1",
+  "version": "2.0.0",
   "uri": "dojo/contributing",
   "type": "context",
   "content_type": "guide",
-  "context": "Contribution guide - create, validate, and submit Dojo nodes through GitHub",
-  "info": "Practical guide for contributing new Dojo manifests. Covers initialization, rich knowledge content, entry-versus-inline script choices, the dedicated `dojo/author` authoring skill, validation, and opening GitHub pull requests with `gh`.",
+  "context": "How to contribute to Dojo — authoring nodes, project structure, node hierarchy, validation checklist, and submission workflow",
+  "info": "The contributor guide for the Dojo project. Covers the full directory layout (nodes, server, sdk, web, schema), the five-type node hierarchy (ecosystem, standard, skill, context, sub) with nesting rules, how to author a node.json manifest with required and optional fields, URI conventions, discovery fields (aliases, triggers), knowledge-layer authoring (body, sections, links, related, wiki-links), script and schema contracts for executable nodes, dependency declarations, minimal templates for each type, and the validation checklist to run before submitting.",
   "parent": "dojo",
-  "tags": ["dojo", "contributing", "github", "gh", "pr", "validate", "workflow", "docs", "review"],
-  "aliases": ["how to contribute", "how to contribute to dojo", "open dojo pr", "dojo validate"],
-  "triggers": [
-    "how do i contribute to dojo",
-    "how do i open a dojo pr",
-    "how do i contribute to dojo on github",
-    "how do i validate a dojo manifest",
-    "what is the dojo contribution flow"
+  "tags": ["dojo", "contributing", "authoring", "guide", "node-creation", "manifest", "validation", "checklist", "getting-started", "github", "pr"],
+  "aliases": [
+    "dojo contributing",
+    "dojo contributor guide",
+    "how to contribute to dojo",
+    "how to add a node",
+    "how to create a dojo node",
+    "dojo authoring guide",
+    "contribute to dojo",
+    "add a node to dojo",
+    "open dojo pr",
+    "dojo validate"
   ],
-  "body": "# Contributing to Dojo\n\nRecommended flow:\n- run `dojo init` or use [[dojo/author#workflow]] to scaffold and package a new node\n- fill in `context`, `info`, `tags`, `triggers`, and any executable `scripts`\n- add rich docs fields like `aliases`, `body`, `sections`, `links`, and `related` when the node teaches or explains something\n- prefer `entry` scripts once the logic no longer fits comfortably inline\n- run [[dojo/validate]] and check [[dojo/validate/checklist#entry-and-tests]]\n- commit the change on a branch and open a pull request with `gh pr create --fill`\n- keep the PR description and diff focused so review is about the manifest quality, not unrelated churn\n\nA new top-level ecosystem should start with `nodes/<ecosystem>/node.json`. Legacy sample ecosystems may still live under `examples/` with `skill.json`, but the live Dojo tree in `nodes/dojo/` is the canonical reference shape.",
+  "triggers": [
+    "how do I contribute to dojo",
+    "how do I add a new node",
+    "how do I create a dojo node",
+    "what is the process for adding a node",
+    "show me the contributing guide",
+    "how do I author a node.json",
+    "what fields does a node need",
+    "how do I open a dojo pr",
+    "how do I validate a dojo manifest"
+  ],
+  "body": "# Contributing to Dojo\n\nDojo is a universal knowledge layer for AI agents — a registry of discoverable, composable, hierarchical nodes that agents query to learn and execute. Contributing means adding or improving nodes in the `nodes/` directory, which is the source of truth the server reads on startup and indexes into an in-memory store.\n\n## Project Layout\n\n```\ndojo/\n├── nodes/     Canonical node tree — all ecosystems and children\n├── schema/    JSON Schema for validating node.json manifests\n├── server/    Express registry server (REST API)\n├── sdk/       JavaScript SDK for discovery and execution\n├── web/       Vite + React browser UI\n├── skills/    Bundled agent-facing skill packages\n├── tests/     Server unit and integration tests\n└── docker/    Dockerfile and docker-compose setup\n```\n\n## Contribution Flow\n\n1. Pick the right node type based on what it does\n2. Create a directory under `nodes/` with a `node.json` manifest\n3. Fill in required fields, then discovery and knowledge fields\n4. Add scripts and schema for executable nodes\n5. Validate against the schema and confirm the server loads it\n6. Open a PR with `gh pr create --fill`\n\nSee [[dojo/contributing#quickstart]] for the step-by-step and [[dojo/contributing#checklist]] before submitting.",
   "sections": [
     {
       "id": "quickstart",
       "title": "Quickstart",
-      "body": "Use `dojo init my-skill --type skill --parent my-ecosystem/my-standard` or [[dojo/author#workflow]] to scaffold a manifest. Fill in the short decision text first, then the execution and knowledge fields.",
-      "tags": ["quickstart", "init", "manifest"]
+      "body": "1. **Pick the right type:** `skill` or `sub` if it has executable scripts, `standard` if it defines a protocol, `context` if it is info-only.\n2. **Create the directory:** add `nodes/<ecosystem>/<name>/node.json`. The directory name matches the node `name`.\n3. **Fill required fields:** `name`, `version` (semver), `uri` (matching directory path), `type`, `context` (one-line), `info` (detailed paragraph), `tags`, `parent` (null for ecosystems).\n4. **Add discovery fields:** `aliases` (phrases people actually say) and `triggers` (natural-language activation phrases).\n5. **Add knowledge fields:** `body` for long-form content, `sections` for addressable chunks, `links` for outgoing references, `related` for semantic edges.\n6. **For skills:** add `scripts` with entry points, `schema` for input/output, and `depends` for dependencies.\n7. **Validate:** run `cd nodes/dojo && node --test validate/tests/validate-node.test.js` or start the server and check your node loads.\n8. **Submit:** commit on a branch and open a pull request with `gh pr create --fill`.\n9. Confirm the checklist at [[dojo/contributing#checklist]] passes.",
+      "tags": ["quickstart", "getting-started", "steps", "workflow"]
     },
     {
-      "id": "rich-docs-fields",
-      "title": "Rich docs fields",
-      "body": "Do not stop at `context` and `info` for documentation-heavy nodes. Add `aliases` for natural phrasing, `body` for the overview, `sections` for structured reading, `links` for explicit graph edges, and `related` for softer semantic relationships. See [[dojo/knowledge#authoring-patterns]] for the why.",
-      "tags": ["docs", "aliases", "body", "sections", "links"]
+      "id": "node-hierarchy",
+      "title": "Node hierarchy and nesting rules",
+      "body": "Five node types form a tree:\n\n- **ecosystem** — broad domain, no parent, top of the tree (e.g. openai, github, docker, aws)\n- **standard** — protocol, spec, or convention; can live under ecosystem, skill, or another standard (e.g. rest, graphql, oauth2)\n- **skill** — concrete executable capability with scripts; can live under ecosystem, standard, or another skill (e.g. query, deploy, send)\n- **context** — info-only, wiki-like knowledge with no scripts; can live anywhere in the tree (e.g. indexing-guide, models, rate-limits)\n- **sub** — specialized variant of a skill; must have a skill parent (e.g. deploy-preview, query-explain)\n\nNesting rules: ecosystems have no parent. Standards can have any parent except `sub`. Skills can have any parent except `sub`. Context nodes can have any parent. Sub nodes must have a skill parent. Only `skill` and `sub` carry `scripts`. Any node can declare `depends` references.",
+      "tags": ["hierarchy", "nesting", "types", "rules", "ecosystem", "standard", "skill", "context", "sub"]
     },
     {
-      "id": "entry-vs-inline",
-      "title": "Entry versus inline",
-      "body": "Inline scripts are fine for short, local examples. Move to `entry` files once the logic becomes large enough that it deserves comments, tests, or reuse across related skills. The live Dojo node tree uses entry files for the query and validation skills so the manifest remains readable.",
-      "tags": ["scripts", "entry", "inline", "tests"]
+      "id": "manifest-fields",
+      "title": "Manifest fields reference",
+      "body": "**Required:** `name` (unique within parent), `version` (semver), `uri` (slash-separated path matching directory), `type`, `context` (one-line — agents read this first), `info` (detailed paragraph), `tags`, `parent` (null for ecosystems).\n\n**Discovery:** `aliases` (real phrases users say), `triggers` (natural-language activation phrases).\n\n**Knowledge:** `body` (long-form markdown with `[[uri]]` wiki-links and `{{uri}}` inline embeds), `sections` (addressable chunks with `id`, `title`, `body`, `tags`), `links` (outgoing references with context), `related` (semantic relationships: similar, evolution, equivalent, prerequisite, alternative, implements, extends, see-also), `frontmatter` (metadata: created, updated, author, audience, status, confidence).\n\n**Execution (skill/sub only):** `scripts` (array of entry-point or inline scripts with lang, runtime, env, packages), `schema` (JSON Schema for input/output), `depends` (references to other nodes).\n\nSee [[dojo/spec#manifest-core]] for the formal definition.",
+      "tags": ["manifest", "fields", "schema", "reference", "required", "optional"]
+    },
+    {
+      "id": "knowledge-authoring",
+      "title": "Knowledge authoring",
+      "body": "Use `body` for the long-form explanation. Use `sections` for addressable chunks — each has an `id`, `title`, `body`, and `tags`. Section order matters because the learn endpoint uses it to build a default reading path.\n\nUse `links` for explicit outgoing references with context annotations. Use `related` for semantic relationships (similarity, prerequisite, alternative, etc.).\n\nWiki-link syntax: `[[uri]]` links to another node, `[[uri#section-id]]` links to a specific section, `{{uri}}` inlines another node's context one-liner.\n\nA strong knowledge node starts with a short `context`, expands in `info`, teaches in `body`, slices into `sections`, points forward with `links`, and gives the reader at least one executable next step. See [[dojo/knowledge#authoring-patterns]] for quality patterns.",
+      "tags": ["knowledge", "body", "sections", "links", "wiki-links", "authoring", "quality"]
+    },
+    {
+      "id": "scripts-and-schema",
+      "title": "Scripts and schema",
+      "body": "Scripts make `skill` and `sub` nodes executable. Each script has `id`, `name`, `description`, `lang` (javascript, bash, python), `runtime` (e.g. node>=18), and either `entry` (file path like `./scripts/run.js`) or `inline` (short command). Scripts can declare `env` vars (with `required`, `secret`, `description`) and `packages` (npm dependencies).\n\nScripts receive input as JSON on stdin and return output as JSON on stdout. Exit 0 for success, exit 1 for failure with stderr for error messages.\n\nDefine `schema.input` and `schema.output` as JSON Schema objects so agents know the contract. Prefer `entry` files once the logic is large enough to deserve comments, tests, or reuse.",
+      "tags": ["scripts", "schema", "input", "output", "execution", "env", "entry", "inline"]
+    },
+    {
+      "id": "templates",
+      "title": "Minimal node templates",
+      "body": "**Ecosystem:** `{ name, version, uri, type: \"ecosystem\", context, info, parent: null, tags, author, license }`\n\n**Skill:** same core plus `type: \"skill\"`, `parent`, and a `scripts` array with at least one entry defining `id`, `name`, `description`, `lang`, `runtime`, and `entry`.\n\n**Context:** same core plus `type: \"context\"`, `parent`, and `body` with wiki-links to executable next steps.\n\n**Sub:** same core plus `type: \"sub\"`, `parent` pointing to a skill URI, and `scripts`.\n\nSee the CONTRIBUTING.md file in the project root for full JSON examples of each template.",
+      "tags": ["templates", "examples", "minimal", "ecosystem", "skill", "context", "sub"]
+    },
+    {
+      "id": "uri-format",
+      "title": "URI format",
+      "body": "URIs are slash-separated paths matching the directory structure under `nodes/`. The type is not encoded in the URI — it lives in the manifest. A node at `nodes/openai/chat/node.json` has URI `openai/chat`. The URI must match the node's actual location in `nodes/`.\n\nExamples: `openai` (ecosystem), `openai/chat` (skill), `openai/chat/stream` (sub), `openai/models` (context), `docker/compose/profiles` (standard under a skill).",
+      "tags": ["uri", "format", "path", "directory", "naming"]
+    },
+    {
+      "id": "checklist",
+      "title": "Submission checklist",
+      "body": "Before submitting, verify:\n- [ ] `node.json` has all required fields (`name`, `version`, `uri`, `type`, `context`, `info`, `tags`)\n- [ ] `uri` matches the directory path under `nodes/`\n- [ ] `parent` matches the actual parent node's URI (null for ecosystems)\n- [ ] `version` is valid semver\n- [ ] `type` is one of: `ecosystem`, `standard`, `skill`, `context`, `sub`\n- [ ] Scripts only exist on `skill` or `sub` nodes\n- [ ] `sub` nodes have a `skill` parent\n- [ ] Knowledge fields (`body`, `sections`, `links`) use valid `[[uri]]` wiki-link syntax\n- [ ] Validates against `schema/node.schema.json`\n- [ ] Server loads your node without errors (`npm run dev` and check logs)\n- [ ] For executable skills: scripts run, env vars are documented, input/output schema is defined",
+      "tags": ["checklist", "validation", "review", "submission", "quality"]
     },
     {
       "id": "github-pr-flow",
       "title": "GitHub pull request flow",
-      "body": "Create a focused branch, commit the manifest changes, push it, and open a draft or ready pull request with `gh pr create --fill`. Use the PR as the review surface: include validation results, explain why the node belongs where it does, and keep follow-up edits on the same branch with `gh pr edit` when the summary needs to change.",
-      "tags": ["github", "gh", "pr", "review"]
-    },
-    {
-      "id": "review-hygiene",
-      "title": "Review hygiene",
-      "body": "A good review checks more than JSON validity. Reviewers should inspect alias quality, section usefulness, graph connectivity, lifecycle metadata, and whether the node gives an agent a clear next step. That is why [[dojo/validate/knowledge]] exists beside schema validation.",
-      "tags": ["review", "quality", "knowledge"]
+      "body": "Create a focused branch, commit the manifest changes, push, and open a pull request with `gh pr create --fill`. Keep the PR description and diff focused so review is about manifest quality, not unrelated churn. Include validation results and explain why the node belongs where it does. Use `gh pr edit` to update the summary if needed.",
+      "tags": ["github", "gh", "pr", "review", "branch"]
     }
   ],
   "links": [
     { "uri": "dojo", "context": "Dojo ecosystem overview" },
-    { "uri": "dojo/author#workflow", "context": "Deeper authoring workflow and scaffold helper" },
-    { "uri": "dojo/spec#manifest-core", "context": "Hierarchy and schema rules" },
+    { "uri": "dojo/spec#manifest-core", "context": "Formal definition of the required manifest fields" },
+    { "uri": "dojo/spec#hierarchy", "context": "Node type nesting rules" },
     { "uri": "dojo/spec#execution-modes", "context": "Guidance on choosing inline versus entry scripts" },
+    { "uri": "dojo/knowledge#authoring-patterns", "context": "Quality patterns for writing knowledge that teaches well" },
+    { "uri": "dojo/validate", "context": "Run validation checks before submitting" },
+    { "uri": "dojo/validate/checklist#entry-and-tests", "context": "Checklist for entry scripts and tests" },
     { "uri": "dojo/architecture#package-layout", "context": "How runtime loading works" },
-    { "uri": "dojo/knowledge#authoring-patterns", "context": "Why rich docs materially improve the graph" },
-    { "uri": "dojo/validate#tree-aware-checks", "context": "Validation workflow before release" },
-    { "uri": "dojo/validate/checklist#entry-and-tests", "context": "Checklist for entry scripts and tests" }
+    { "uri": "dojo/api/query", "context": "Test your node by querying the registry" }
   ],
   "related": [
-    { "uri": "dojo/spec", "relation": "prerequisite", "note": "Contributors should know the rules before authoring new nodes" },
+    { "uri": "dojo/spec", "relation": "prerequisite", "note": "The spec defines the manifest contract this guide teaches you to fill in" },
+    { "uri": "dojo/knowledge", "relation": "prerequisite", "note": "Understanding the knowledge layer leads to much stronger manifests" },
+    { "uri": "dojo/validate", "relation": "see-also", "note": "Validation is the operational checkpoint before submission" },
     { "uri": "dojo/author", "relation": "see-also", "note": "Operational authoring workflow for new nodes and bundles" },
-    { "uri": "dojo/knowledge", "relation": "prerequisite", "note": "Understanding the knowledge layer leads to much stronger manifests" }
+    { "uri": "dojo/architecture", "relation": "see-also", "note": "How the server loads and indexes the node tree from the nodes/ directory" }
   ],
   "frontmatter": {
     "created": "2026-04-05",
     "updated": "2026-04-10",
     "author": "dojo-community",
     "audience": "contributors",
-    "estimated_reading_time": "7 min",
+    "estimated_reading_time": "8 min",
     "prerequisites": ["dojo/spec"],
     "status": "living",
     "confidence": "high"
   },
   "more": {
-    "docs": "https://github.com/dojo-registry/dojo",
-    "examples": "https://github.com/dojo-registry/dojo/tree/master/nodes/dojo"
+    "source": "https://github.com/dojo-registry/dojo/blob/master/CONTRIBUTING.md",
+    "schema": "https://github.com/dojo-registry/dojo/blob/master/schema/node.schema.json",
+    "nodes": "https://github.com/dojo-registry/dojo/tree/master/nodes/dojo"
   },
   "author": "dojo-community",
   "license": "MIT",

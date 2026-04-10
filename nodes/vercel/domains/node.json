@@ -1,0 +1,131 @@
+{
+  "name": "domains",
+  "version": "1.0.0",
+  "uri": "vercel/domains",
+  "type": "skill",
+  "context": "Configure custom domains, DNS records, and SSL certificates on Vercel projects",
+  "info": "Vercel provides automatic domain management with free SSL certificates via Let's Encrypt. Add custom domains to any project via the dashboard, CLI, or API. Vercel supports apex domains, subdomains, and wildcard domains. DNS can be managed through Vercel's nameservers (recommended) or via external DNS with CNAME records. SSL certificates are provisioned and renewed automatically. Domain verification ensures ownership before routing traffic. Use `vercel domains` CLI commands or the Domains API for programmatic management. See [[vercel/deploy]] for connecting domains to deployments and [[vercel/edge#middleware]] for request processing on custom domains.",
+  "parent": "vercel",
+  "tags": ["domains", "dns", "ssl", "custom-domain", "cname", "nameservers"],
+  "aliases": [
+    "vercel domains",
+    "custom domain",
+    "domain setup",
+    "dns configuration",
+    "ssl certificate",
+    "vercel dns",
+    "domain management",
+    "add domain to vercel"
+  ],
+  "triggers": [
+    "add a custom domain to vercel",
+    "configure dns on vercel",
+    "set up ssl for my domain",
+    "point domain to vercel",
+    "add subdomain to vercel project",
+    "configure wildcard domain",
+    "troubleshoot domain verification"
+  ],
+  "body": "# Custom Domains\n\nVercel routes production traffic through custom domains with automatic SSL. Every project can have multiple domains, including apex domains (`example.com`), subdomains (`app.example.com`), and wildcards (`*.example.com`).\n\n## Adding a Domain\n\n### CLI\n\n```bash\n# Add domain to project\nvercel domains add example.com\n\n# Add subdomain\nvercel domains add app.example.com\n\n# List domains\nvercel domains ls\n\n# Remove domain\nvercel domains rm example.com\n```\n\n### API\n\n```bash\ncurl -X POST \"https://api.vercel.com/v10/projects/$VERCEL_PROJECT_ID/domains\" \\\n  -H \"Authorization: Bearer $VERCEL_TOKEN\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"name\": \"example.com\"}'\n```\n\n## DNS Configuration\n\n### Option 1: Vercel Nameservers (Recommended)\n\nPoint your domain's nameservers to Vercel for full DNS management:\n\n```\nns1.vercel-dns.com\nns2.vercel-dns.com\n```\n\nThis enables apex domain support, automatic DNS records, and fastest propagation.\n\n### Option 2: External DNS with CNAME\n\nAdd a CNAME record pointing to `cname.vercel-dns.com`:\n\n```\napp    CNAME    cname.vercel-dns.com\n```\n\nNote: CNAME records cannot be set on apex domains (DNS limitation). Use Vercel nameservers or a DNS provider that supports CNAME flattening (Cloudflare, Route53) for apex domains.\n\n## SSL Certificates\n\nVercel automatically provisions and renews SSL certificates via Let's Encrypt for all custom domains. Certificates are issued within minutes of domain verification. Wildcard certificates are supported when using Vercel nameservers.\n\n| Feature | Vercel NS | External DNS |\n|---------|-----------|---------------|\n| Apex domain | Yes | Requires CNAME flattening |\n| Subdomains | Yes | Yes (CNAME) |\n| Wildcard | Yes | No |\n| Auto-renewal | Yes | Yes |\n| Provisioning time | < 1 min | 1-10 min |\n\n## Domain Verification\n\nVercel verifies domain ownership before routing traffic. Verification methods:\n\n1. **Nameserver** — point NS records to Vercel (automatic verification)\n2. **DNS TXT record** — add a `_vercel` TXT record with the provided verification token\n3. **CNAME** — the CNAME record itself serves as verification for subdomains\n\n## Troubleshooting\n\n| Issue | Solution |\n|-------|----------|\n| Domain not resolving | Check DNS propagation (allow 24-48h for NS changes) |\n| SSL not provisioning | Verify domain ownership, check CAA records |\n| 404 on custom domain | Ensure domain is assigned to the correct project |\n| Redirect loop | Check middleware and `vercel.json` redirects |\n| Apex not working | Switch to Vercel nameservers or use CNAME flattening |\n",
+  "sections": [
+    {
+      "id": "add-domain",
+      "title": "Adding domains",
+      "body": "Add domains via `vercel domains add <domain>`, the project dashboard, or the Domains API. Each domain must be verified before traffic is routed. Assign multiple domains to a single project. The first domain added becomes the primary (canonical) domain. Use `vercel domains inspect <domain>` to check configuration status.",
+      "tags": ["add", "assign", "primary", "cli", "api"]
+    },
+    {
+      "id": "dns-config",
+      "title": "DNS configuration",
+      "body": "Vercel nameservers (`ns1.vercel-dns.com`, `ns2.vercel-dns.com`) provide the simplest setup with apex domain support and automatic records. For external DNS, add a CNAME to `cname.vercel-dns.com` for subdomains. Apex domains with external DNS require CNAME flattening (Cloudflare CNAME, Route53 ALIAS). Manage DNS records with `vercel dns` CLI commands when using Vercel nameservers.",
+      "tags": ["dns", "nameservers", "cname", "apex", "cname-flattening", "records"]
+    },
+    {
+      "id": "ssl",
+      "title": "SSL certificates",
+      "body": "SSL certificates are provisioned automatically via Let's Encrypt after domain verification. Certificates renew before expiration with no manual intervention. Wildcard certificates (`*.example.com`) are supported with Vercel nameservers. Check certificate status in the project dashboard or via `vercel certs ls`. If provisioning fails, verify that CAA DNS records (if present) allow `letsencrypt.org`.",
+      "tags": ["ssl", "tls", "certificate", "lets-encrypt", "https", "wildcard"]
+    },
+    {
+      "id": "wildcard",
+      "title": "Wildcard domains",
+      "body": "Wildcard domains (`*.example.com`) route all subdomains to the project. Requires Vercel nameservers. Wildcard SSL certificates are automatically provisioned. Use [[vercel/edge#middleware]] to route wildcard subdomains to different content (e.g., `tenant1.example.com` to tenant-specific pages). Specific subdomain records take priority over wildcards.",
+      "tags": ["wildcard", "subdomains", "multi-tenant", "routing"]
+    },
+    {
+      "id": "troubleshooting",
+      "title": "Troubleshooting",
+      "body": "Common issues: DNS propagation delay (wait 24-48h after NS changes), SSL provisioning failure (check CAA records, verify domain ownership), 404 errors (verify project assignment), redirect loops (check [[vercel/edge#middleware]] and `vercel.json` rewrites). Use `vercel domains inspect` and `dig` to diagnose DNS issues. Check `https://vercel.com/projects/<project>/domains` for real-time status.",
+      "tags": ["troubleshooting", "debug", "dns-propagation", "ssl-failure", "404"]
+    }
+  ],
+  "links": [
+    { "uri": "vercel/deploy", "context": "Domains route traffic to production deployments" },
+    { "uri": "vercel/deploy#production-promote", "context": "Promoting deployments that serve on custom domains" },
+    { "uri": "vercel/edge#middleware", "context": "Middleware processes requests on custom domains" },
+    { "uri": "vercel/edge#geolocation", "context": "Geolocation-based routing on custom domains" },
+    { "uri": "vercel/env-vars", "context": "Environment variables scoped to production domains" },
+    { "uri": "vercel/env-vars#scopes", "context": "Production-scoped variables for custom domain deployments" }
+  ],
+  "related": [
+    { "uri": "vercel/deploy", "relation": "see-also", "note": "Custom domains serve production deployments" },
+    { "uri": "vercel/edge", "relation": "see-also", "note": "Edge middleware intercepts requests on custom domains" },
+    { "uri": "vercel/env-vars", "relation": "see-also", "note": "Production environment variables apply to custom domain traffic" }
+  ],
+  "scripts": [
+    {
+      "id": "add-domain",
+      "name": "Add Domain",
+      "description": "Add and configure a custom domain on a Vercel project",
+      "lang": "bash",
+      "runtime": "node>=18",
+      "entry": "./scripts/add-domain.sh",
+      "env": {
+        "VERCEL_TOKEN": { "required": true, "secret": true, "description": "Vercel authentication token" },
+        "VERCEL_PROJECT_ID": { "required": true, "secret": false, "description": "Vercel project ID" }
+      },
+      "packages": ["vercel"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "domain": { "type": "string", "description": "Domain name to add (e.g. example.com, app.example.com)" },
+        "projectId": { "type": "string", "description": "Vercel project ID to assign the domain to" }
+      },
+      "required": ["domain", "projectId"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "domain": { "type": "string", "description": "Configured domain name" },
+        "verified": { "type": "boolean", "description": "Whether domain ownership is verified" },
+        "configured": { "type": "boolean", "description": "Whether DNS is correctly configured" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "vercel/deploy", "reason": "A deployed project is required before adding domains" }
+  ],
+  "more": {
+    "docs": "https://vercel.com/docs/projects/domains",
+    "dns": "https://vercel.com/docs/projects/domains/dns",
+    "api": "https://vercel.com/docs/rest-api/endpoints/domains"
+  },
+  "frontmatter": {
+    "created": "2026-04-10",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "4 min",
+    "prerequisites": ["vercel/deploy"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

@@ -35,7 +35,7 @@ function pickFirstValue(...values) {
 }
 
 function normalizeBaseUrl(baseUrl) {
-  return String(baseUrl || 'http://localhost:3000').replace(/\/+$/, '');
+  return String(baseUrl || 'https://slashdojo.com').replace(/\/+$/, '');
 }
 
 function parseCliArgs(argv) {
@@ -186,7 +186,7 @@ function buildHelpText() {
     'Notes:',
     '  - Arrays like tags or current_context accept comma-separated values or JSON arrays.',
     '  - agent_context and query_options accept JSON objects.',
-    '  - Defaults to http://localhost:3000 when base_url is omitted.'
+    '  - Defaults to https://slashdojo.com when base_url is omitted.'
   ].join('\n');
 }
 
@@ -216,7 +216,7 @@ async function request(baseUrl, method, path, body) {
 async function useDojoSkill(options = {}) {
   const {
     operation,
-    base_url = 'http://localhost:3000',
+    base_url = 'https://slashdojo.com',
     need,
     q,
     message,

@@ -1,0 +1,98 @@
+{
+  "name": "state",
+  "version": "1.0.0",
+  "uri": "frontend/state",
+  "type": "context",
+  "context": "State management patterns: React state, context, Zustand, Jotai, Redux Toolkit, TanStack Query",
+  "info": "State management is choosing the right tool for the right kind of state. Local component state uses useState/useReducer. Cross-component state uses React context or external stores like Zustand or Jotai. Server state (data fetched from APIs) uses TanStack Query for caching, deduplication, and background refetching. Redux Toolkit remains viable for large teams with complex shared state. This guide helps agents select the right pattern based on the state's scope, update frequency, and persistence needs. All patterns integrate with [[frontend/react]] components.",
+  "parent": "frontend",
+  "tags": ["state-management", "zustand", "jotai", "redux", "tanstack-query", "context", "hooks"],
+  "aliases": [
+    "state management",
+    "react state",
+    "zustand",
+    "jotai",
+    "redux toolkit",
+    "tanstack query",
+    "react query",
+    "global state",
+    "server state"
+  ],
+  "triggers": [
+    "manage state in react",
+    "which state library should i use",
+    "add global state",
+    "fetch and cache data",
+    "use zustand",
+    "use tanstack query",
+    "state management pattern",
+    "share state between components"
+  ],
+  "body": "# State Management\n\nState management is about choosing the right tool for the right scope. Not all state is the same — local UI state, shared client state, and server state each have different optimal patterns.\n\n## State Categories\n\n| Category | Examples | Recommended Tool |\n|----------|----------|------------------|\n| Local UI state | Form inputs, toggles, modals | `useState` / `useReducer` |\n| Shared UI state | Theme, sidebar open, user preferences | Zustand or React context |\n| Server state | API data, user profile, list data | TanStack Query |\n| URL state | Filters, pagination, search params | `useSearchParams` / URL |\n| Form state | Complex multi-step forms | React Hook Form or Formik |\n\n## Local State\n\n```tsx\nfunction Counter() {\n  const [count, setCount] = useState(0);\n  return (\n    <button onClick={() => setCount(c => c + 1)}>\n      Count: {count}\n    </button>\n  );\n}\n```\n\nUse `useState` for simple values. Use `useReducer` when state transitions are complex or depend on previous state. Keep state as close to where it's used as possible — lift only when necessary.\n\n## Context API\n\n```tsx\nconst AuthContext = createContext<AuthState | null>(null);\n\nexport function AuthProvider({ children }: { children: React.ReactNode }) {\n  const [user, setUser] = useState<User | null>(null);\n  return (\n    <AuthContext.Provider value={{ user, setUser }}>\n      {children}\n    </AuthContext.Provider>\n  );\n}\n\nexport function useAuth() {\n  const context = useContext(AuthContext);\n  if (!context) throw new Error(\"useAuth must be used within AuthProvider\");\n  return context;\n}\n```\n\nContext works for infrequently-changing values (theme, auth, locale). Avoid context for frequently-updated state — every consumer re-renders on change. See [[frontend/react#context]] for more patterns.\n\n## Zustand\n\nZustand is a lightweight store with a hook-based API — no providers, no boilerplate:\n\n```tsx\nimport { create } from \"zustand\";\n\ninterface CartStore {\n  items: CartItem[];\n  addItem: (item: CartItem) => void;\n  removeItem: (id: string) => void;\n  total: () => number;\n}\n\nconst useCartStore = create<CartStore>((set, get) => ({\n  items: [],\n  addItem: (item) => set((state) => ({ items: [...state.items, item] })),\n  removeItem: (id) => set((state) => ({ items: state.items.filter(i => i.id !== id) })),\n  total: () => get().items.reduce((sum, item) => sum + item.price, 0),\n}));\n\n// In components — only re-renders when selected state changes\nfunction CartCount() {\n  const count = useCartStore((state) => state.items.length);\n  return <span>{count} items</span>;\n}\n```\n\nZustand supports middleware: `persist` (localStorage), `devtools` (Redux DevTools), `immer` (immutable updates).\n\n## TanStack Query\n\nTanStack Query (React Query) manages server state — fetching, caching, deduplication, background refetching, and optimistic updates:\n\n```tsx\nimport { useQuery, useMutation, useQueryClient } from \"@tanstack/react-query\";\n\nfunction UserList() {\n  const { data: users, isLoading, error } = useQuery({\n    queryKey: [\"users\"],\n    queryFn: () => fetch(\"/api/users\").then(r => r.json()),\n    staleTime: 5 * 60 * 1000, // 5 minutes\n  });\n\n  if (isLoading) return <Skeleton />;\n  if (error) return <ErrorMessage error={error} />;\n  return <ul>{users.map(u => <li key={u.id}>{u.name}</li>)}</ul>;\n}\n\nfunction CreateUser() {\n  const queryClient = useQueryClient();\n  const mutation = useMutation({\n    mutationFn: (newUser: NewUser) =>\n      fetch(\"/api/users\", { method: \"POST\", body: JSON.stringify(newUser) }),\n    onSuccess: () => queryClient.invalidateQueries({ queryKey: [\"users\"] }),\n  });\n  // ...\n}\n```\n\n## When to Use What\n\n- **Start with `useState`** — most state is local\n- **Lift state up** only when siblings need the same data\n- **Use context** for app-wide, infrequently-changing values (theme, auth)\n- **Use Zustand** for shared client state that changes often (cart, UI preferences, filters)\n- **Use TanStack Query** for any data from an API — never `useEffect` + `useState` for fetching\n- **Use Jotai** when you want atomic, bottom-up state (alternative to Zustand)\n- **Use Redux Toolkit** for large teams with established Redux patterns\n",
+  "sections": [
+    {
+      "id": "local-state",
+      "title": "Local component state",
+      "body": "useState for simple values, useReducer for complex transitions. Keep state close to where it's used. Lift state up only when siblings share it. Derived values should be computed during render, not stored in state. See [[frontend/react#hooks]] for hook details.",
+      "tags": ["useState", "useReducer", "local-state", "lifting-state"]
+    },
+    {
+      "id": "context-api",
+      "title": "React context",
+      "body": "createContext + Provider for cross-cutting, infrequently-changing values: theme, auth, locale, feature flags. Wrap useContext in a custom hook. All consumers re-render on any context value change — avoid for high-frequency updates. See [[frontend/react#context]] for implementation patterns.",
+      "tags": ["context", "provider", "theme", "auth", "locale"]
+    },
+    {
+      "id": "zustand",
+      "title": "Zustand",
+      "body": "Lightweight store with hook-based API. No providers needed. Selector-based subscriptions prevent unnecessary re-renders. Built-in middleware: persist (localStorage/sessionStorage), devtools (Redux DevTools), immer (immutable updates), subscribeWithSelector. Ideal for shared client state: cart, UI preferences, filters, navigation state.",
+      "tags": ["zustand", "store", "selectors", "middleware", "persist", "devtools"]
+    },
+    {
+      "id": "tanstack-query",
+      "title": "TanStack Query",
+      "body": "Server state management: fetching, caching, deduplication, background refetching, optimistic updates, infinite scroll. useQuery for reads, useMutation for writes, useInfiniteQuery for pagination. queryKey-based cache invalidation. staleTime controls cache freshness. Never use useEffect + useState for data fetching — use TanStack Query instead.",
+      "tags": ["tanstack-query", "react-query", "caching", "fetching", "mutations", "optimistic"]
+    },
+    {
+      "id": "when-to-use",
+      "title": "Choosing the right tool",
+      "body": "Start with useState. Lift state when siblings share data. Use context for infrequent global values (theme, auth). Use Zustand for frequent shared client state. Use TanStack Query for all server/API state. Use Jotai for atomic bottom-up state. Use Redux Toolkit only if team already uses Redux. The wrong choice is not fatal — all patterns are interchangeable.",
+      "tags": ["decision-guide", "architecture", "patterns"]
+    }
+  ],
+  "links": [
+    { "uri": "frontend/react#hooks", "context": "useState, useReducer, useContext hook details" },
+    { "uri": "frontend/react#context", "context": "React context implementation patterns" },
+    { "uri": "frontend/testing#component-tests", "context": "Testing components that use state stores" },
+    { "uri": "frontend/react#server-components", "context": "Server components access data directly, reducing client state" },
+    { "uri": "frontend/testing#unit-tests", "context": "Unit testing Zustand stores and custom hooks" },
+    { "uri": "frontend/bundling#tree-shaking", "context": "Zustand and Jotai are tree-shakeable, Redux Toolkit is heavier" }
+  ],
+  "related": [
+    { "uri": "frontend/react", "relation": "prerequisite", "note": "State management is consumed by React components via hooks" },
+    { "uri": "frontend/testing", "relation": "see-also", "note": "State stores and hooks should be unit tested" }
+  ],
+  "content_type": "guide",
+  "more": {
+    "zustand": "https://docs.pmnd.rs/zustand",
+    "tanstack-query": "https://tanstack.com/query/latest",
+    "jotai": "https://jotai.org",
+    "redux-toolkit": "https://redux-toolkit.js.org"
+  },
+  "frontmatter": {
+    "created": "2026-04-10",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "6 min",
+    "prerequisites": ["frontend/react"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

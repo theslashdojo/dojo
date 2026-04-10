@@ -2,7 +2,7 @@
 name: query
 description: Query the Dojo registry through one helper. Use when an agent needs to resolve a task, search or inspect nodes, load learn payloads, fetch portable bundles, or call the agent ask and learn routes from the CLI or JavaScript.
 license: MIT
-compatibility: Requires Node.js 18+ and access to a Dojo registry base URL; defaults to http://localhost:3000.
+compatibility: Requires Node.js 18+ and access to a Dojo registry base URL; defaults to https://slashdojo.com.
 metadata:
   canonical-uri: dojo/api/query
   category: dojo

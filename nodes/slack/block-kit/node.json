@@ -1,0 +1,101 @@
+{
+  "name": "block-kit",
+  "version": "1.0.0",
+  "uri": "slack/block-kit",
+  "type": "standard",
+  "context": "Block Kit: Slack's UI framework for rich, interactive messages with blocks, elements, and composition objects",
+  "info": "Block Kit is Slack's component-based UI framework for building rich, interactive message layouts. Messages are composed from stackable blocks (section, actions, input, header, divider, context, image), each containing elements (buttons, menus, date pickers, text inputs) and composition objects (text, confirm dialogs, option groups). Block Kit powers interactive messages in [[slack/messages]], bot responses in [[slack/bots]], webhook payloads in [[slack/webhooks]], and modal views. Use the Block Kit Builder at https://app.slack.com/block-kit-builder to visually design and preview layouts.",
+  "parent": "slack",
+  "tags": ["block-kit", "blocks", "elements", "actions", "modals", "interactive", "ui"],
+  "aliases": [
+    "block kit",
+    "slack block kit",
+    "slack blocks",
+    "slack ui",
+    "slack interactive messages",
+    "slack modals",
+    "block kit builder",
+    "slack rich messages"
+  ],
+  "triggers": [
+    "design a block kit message",
+    "build slack ui",
+    "create interactive slack message",
+    "add buttons to slack message",
+    "open a slack modal",
+    "use block kit builder",
+    "slack message layout"
+  ],
+  "body": "# Block Kit\n\nBlock Kit is Slack's UI framework for composing rich, interactive messages. Messages are built from stackable **blocks**, each containing **elements** and **composition objects**. Block Kit is used everywhere: [[slack/messages]], [[slack/bots]] responses, [[slack/webhooks]] payloads, and modal views.\n\n## Blocks\n\nBlocks are the top-level layout containers. Stack them to build a message:\n\n| Block | Purpose | Example |\n|-------|---------|---------|\n| `section` | Text with optional accessory (button, image, menu) | Main content |\n| `header` | Large bold text | Title |\n| `divider` | Horizontal line | Visual separator |\n| `actions` | Row of interactive elements | Button group |\n| `context` | Small text and images | Metadata, timestamps |\n| `input` | Form input (modals only) | Text field, select |\n| `image` | Full-width image | Charts, screenshots |\n| `rich_text` | Rich text with formatting | Formatted content |\n\n```json\n{\n  \"blocks\": [\n    {\n      \"type\": \"header\",\n      \"text\": { \"type\": \"plain_text\", \"text\": \"Deploy Report\" }\n    },\n    { \"type\": \"divider\" },\n    {\n      \"type\": \"section\",\n      \"text\": {\n        \"type\": \"mrkdwn\",\n        \"text\": \"*Service:* `api-gateway`\\n*Status:* :white_check_mark: Success\\n*Duration:* 3m 42s\"\n      },\n      \"accessory\": {\n        \"type\": \"button\",\n        \"text\": { \"type\": \"plain_text\", \"text\": \"View Logs\" },\n        \"url\": \"https://example.com/logs\",\n        \"action_id\": \"view_logs\"\n      }\n    },\n    {\n      \"type\": \"context\",\n      \"elements\": [\n        { \"type\": \"mrkdwn\", \"text\": \"Deployed by <@U0123456> | main branch | commit `a1b2c3d`\" }\n      ]\n    }\n  ]\n}\n```\n\n## Elements\n\nElements are the interactive and display components inside blocks:\n\n| Element | Type | Used In |\n|---------|------|---------|\n| Button | `button` | section, actions |\n| Static select | `static_select` | section, actions, input |\n| External select | `external_select` | section, actions, input |\n| Multi-select | `multi_static_select` | section, actions, input |\n| Date picker | `datepicker` | section, actions, input |\n| Time picker | `timepicker` | actions, input |\n| Plain text input | `plain_text_input` | input |\n| Checkbox group | `checkboxes` | section, actions, input |\n| Radio buttons | `radio_buttons` | section, actions, input |\n| Overflow menu | `overflow` | section, actions |\n| Image | `image` | section, context |\n\nAll interactive elements need an `action_id` for handling responses. See [[slack/bots#interactions]] for wiring up handlers.\n\n## Composition Objects\n\nComposition objects are reusable structures used within blocks and elements:\n\n- **Text object** — `{ type: \"mrkdwn\", text: \"...\" }` or `{ type: \"plain_text\", text: \"...\" }`. mrkdwn supports Slack formatting (see [[slack/messages#formatting]]).\n- **Confirm dialog** — `{ title, text, confirm, deny }` — attach to any interactive element for user confirmation before action.\n- **Option object** — `{ text, value, description }` — used in selects, checkboxes, and radio buttons.\n- **Option group** — `{ label, options }` — group related options in select menus.\n- **Filter object** — filter conversation lists by type (public, private, DM, mpim).\n\n```json\n{\n  \"type\": \"button\",\n  \"text\": { \"type\": \"plain_text\", \"text\": \"Delete\" },\n  \"style\": \"danger\",\n  \"action_id\": \"delete_item\",\n  \"confirm\": {\n    \"title\": { \"type\": \"plain_text\", \"text\": \"Are you sure?\" },\n    \"text\": { \"type\": \"mrkdwn\", \"text\": \"This action cannot be undone.\" },\n    \"confirm\": { \"type\": \"plain_text\", \"text\": \"Delete\" },\n    \"deny\": { \"type\": \"plain_text\", \"text\": \"Cancel\" }\n  }\n}\n```\n\n## Actions Block\n\nThe `actions` block holds up to 25 interactive elements in a horizontal row:\n\n```json\n{\n  \"type\": \"actions\",\n  \"elements\": [\n    {\n      \"type\": \"button\",\n      \"text\": { \"type\": \"plain_text\", \"text\": \"Approve\" },\n      \"style\": \"primary\",\n      \"action_id\": \"approve_request\"\n    },\n    {\n      \"type\": \"button\",\n      \"text\": { \"type\": \"plain_text\", \"text\": \"Reject\" },\n      \"style\": \"danger\",\n      \"action_id\": \"reject_request\"\n    },\n    {\n      \"type\": \"static_select\",\n      \"placeholder\": { \"type\": \"plain_text\", \"text\": \"Assign to...\" },\n      \"action_id\": \"assign_request\",\n      \"options\": [\n        { \"text\": { \"type\": \"plain_text\", \"text\": \"Alice\" }, \"value\": \"U001\" },\n        { \"text\": { \"type\": \"plain_text\", \"text\": \"Bob\" }, \"value\": \"U002\" }\n      ]\n    }\n  ]\n}\n```\n\n## Modals\n\nModals are popup views with input forms. Opened via `views.open` with a `trigger_id` from a command or interaction:\n\n```json\n{\n  \"type\": \"modal\",\n  \"callback_id\": \"create_ticket\",\n  \"title\": { \"type\": \"plain_text\", \"text\": \"New Ticket\" },\n  \"submit\": { \"type\": \"plain_text\", \"text\": \"Create\" },\n  \"close\": { \"type\": \"plain_text\", \"text\": \"Cancel\" },\n  \"blocks\": [\n    {\n      \"type\": \"input\",\n      \"block_id\": \"title_block\",\n      \"element\": {\n        \"type\": \"plain_text_input\",\n        \"action_id\": \"title_input\"\n      },\n      \"label\": { \"type\": \"plain_text\", \"text\": \"Title\" }\n    },\n    {\n      \"type\": \"input\",\n      \"block_id\": \"priority_block\",\n      \"element\": {\n        \"type\": \"static_select\",\n        \"action_id\": \"priority_select\",\n        \"options\": [\n          { \"text\": { \"type\": \"plain_text\", \"text\": \"Low\" }, \"value\": \"low\" },\n          { \"text\": { \"type\": \"plain_text\", \"text\": \"Medium\" }, \"value\": \"medium\" },\n          { \"text\": { \"type\": \"plain_text\", \"text\": \"High\" }, \"value\": \"high\" }\n        ]\n      },\n      \"label\": { \"type\": \"plain_text\", \"text\": \"Priority\" }\n    },\n    {\n      \"type\": \"input\",\n      \"block_id\": \"desc_block\",\n      \"element\": {\n        \"type\": \"plain_text_input\",\n        \"action_id\": \"desc_input\",\n        \"multiline\": true\n      },\n      \"label\": { \"type\": \"plain_text\", \"text\": \"Description\" },\n      \"optional\": true\n    }\n  ]\n}\n```\n\nHandle submissions with `app.view(\"create_ticket\", handler)` in [[slack/bots#interactions]]. Access values at `view.state.values[block_id][action_id].value`.\n\n## Block Kit Builder\n\nUse the visual builder at https://app.slack.com/block-kit-builder to:\n\n- Drag and drop blocks to compose layouts\n- Preview messages as they will appear in Slack\n- Copy the generated JSON payload\n- Test with sample data\n\nPaste the generated JSON into your `blocks` array in [[slack/messages]], [[slack/webhooks]], or [[slack/bots]] code.\n",
+  "sections": [
+    {
+      "id": "blocks",
+      "title": "Block types",
+      "body": "Blocks are the top-level containers: `section` (text + optional accessory), `header` (large bold text), `divider` (horizontal rule), `actions` (interactive element row), `context` (small metadata), `input` (form fields in modals), `image` (full-width), `rich_text` (formatted content). A message can contain up to 50 blocks.",
+      "tags": ["blocks", "section", "header", "divider", "context", "image"]
+    },
+    {
+      "id": "elements",
+      "title": "Interactive elements",
+      "body": "Elements live inside blocks: `button`, `static_select`, `external_select`, `multi_static_select`, `datepicker`, `timepicker`, `plain_text_input`, `checkboxes`, `radio_buttons`, `overflow`. Each interactive element needs an `action_id`. Handle interactions in [[slack/bots#interactions]].",
+      "tags": ["elements", "button", "select", "datepicker", "input", "checkbox"]
+    },
+    {
+      "id": "composition",
+      "title": "Composition objects",
+      "body": "Reusable structures: text objects (`mrkdwn` or `plain_text`), confirm dialogs (attach to any interactive element), option objects (for selects and checkboxes), option groups (categorized options), and filter objects (for conversation selects). Text objects are used everywhere — see [[slack/messages#formatting]] for mrkdwn syntax.",
+      "tags": ["composition", "text-object", "confirm", "options", "filter"]
+    },
+    {
+      "id": "actions",
+      "title": "Actions block",
+      "body": "The `actions` block holds up to 25 interactive elements in a row — buttons, selects, date pickers. Each element has an `action_id` that maps to a handler in [[slack/bots#interactions]]. Use `style: \"primary\"` (green) or `style: \"danger\"` (red) on buttons for visual emphasis.",
+      "tags": ["actions", "buttons", "selects", "interactive", "handlers"]
+    },
+    {
+      "id": "modals",
+      "title": "Modal views",
+      "body": "Modals are popup forms opened with `views.open` using a `trigger_id` from a command or interaction. Use `input` blocks with form elements. Handle submission with `app.view(callback_id, handler)` in [[slack/bots#interactions]]. Access form values at `view.state.values[block_id][action_id].value`. Modals support stacking up to 3 views deep with `views.push`.",
+      "tags": ["modals", "views", "forms", "input", "trigger_id", "submission"]
+    },
+    {
+      "id": "block-kit-builder",
+      "title": "Block Kit Builder tool",
+      "body": "Visual drag-and-drop builder at https://app.slack.com/block-kit-builder. Design layouts, preview rendering, copy JSON output. Paste the JSON into the `blocks` field of [[slack/messages]], [[slack/webhooks]], or [[slack/bots]] payloads. Supports all block types and elements with live preview.",
+      "tags": ["builder", "visual", "preview", "design", "tool"]
+    }
+  ],
+  "links": [
+    { "uri": "slack", "context": "Slack ecosystem overview" },
+    { "uri": "slack/messages", "context": "Send messages with Block Kit layouts" },
+    { "uri": "slack/bots", "context": "Handle Block Kit interactions in bots" },
+    { "uri": "slack/bots#interactions", "context": "Wire up handlers for button clicks, menus, and modal submissions" },
+    { "uri": "slack/webhooks", "context": "Send Block Kit messages via webhooks" },
+    { "uri": "slack/messages#formatting", "context": "Mrkdwn formatting syntax for text objects" }
+  ],
+  "related": [
+    { "uri": "slack/messages", "relation": "see-also", "note": "Messages are the primary vehicle for Block Kit layouts" },
+    { "uri": "slack/bots", "relation": "see-also", "note": "Bots handle the interactive responses from Block Kit elements" },
+    { "uri": "slack/webhooks", "relation": "see-also", "note": "Webhooks support Block Kit for rich notification messages" }
+  ],
+  "more": {
+    "docs": "https://api.slack.com/block-kit",
+    "builder": "https://app.slack.com/block-kit-builder",
+    "reference": "https://api.slack.com/reference/block-kit"
+  },
+  "frontmatter": {
+    "created": "2026-04-10",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "developers, AI agents, designers",
+    "estimated_reading_time": "6 min",
+    "prerequisites": ["slack"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

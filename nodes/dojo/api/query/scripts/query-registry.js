@@ -24,7 +24,7 @@ function requireField(value, field, operation) {
 }
 
 function normalizeBaseUrl(baseUrl) {
-  return String(baseUrl || 'http://localhost:3000').replace(/\/+$/, '');
+  return String(baseUrl || 'https://slashdojo.com').replace(/\/+$/, '');
 }
 
 function parseCliArgs(argv) {
@@ -162,7 +162,7 @@ function normalizeOperationName(operation) {
 async function query(options = {}) {
   const {
     operation,
-    base_url = 'http://localhost:3000',
+    base_url = 'https://slashdojo.com',
     need,
     q,
     message,

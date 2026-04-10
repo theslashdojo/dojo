@@ -4,7 +4,7 @@ set -euo pipefail
 path="${1:?path to manifest is required}"
 uri="${2:?uri is required}"
 ecosystem="${3:?ecosystem is required}"
-registry="${4:-${DOJO_REGISTRY_URL:-http://localhost:3000}}"
+registry="${4:-${DOJO_REGISTRY_URL:-https://slashdojo.com}}"
 query="${uri##*/}"
 
 if [[ ! -f "$path" ]]; then

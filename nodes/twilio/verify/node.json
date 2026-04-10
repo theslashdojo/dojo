@@ -1,0 +1,125 @@
+{
+  "name": "verify",
+  "version": "1.0.0",
+  "uri": "twilio/verify",
+  "type": "skill",
+  "context": "Verify phone numbers and email addresses using Twilio Verify (OTP, push, TOTP)",
+  "info": "This skill covers phone number and email verification using the Twilio Verify API. It handles sending one-time passcodes (OTP) via SMS, voice, email, or WhatsApp, and checking the code the user submits. Verify manages code generation, delivery, expiration, rate limiting, and fraud detection — you do not need to build these yourself. The two-step flow is: (1) create a Verification to send the code, (2) create a Verification Check to validate the user's input. Verify also supports push notifications and TOTP (authenticator apps) for advanced 2FA use cases.",
+  "parent": "twilio",
+  "tags": ["verify", "otp", "2fa", "phone-verification", "email-verification", "totp"],
+  "aliases": [
+    "phone verification",
+    "verify phone number",
+    "otp verification",
+    "twilio verify",
+    "two-factor authentication",
+    "2fa",
+    "sms verification",
+    "email verification",
+    "one-time password"
+  ],
+  "triggers": [
+    "verify a phone number",
+    "send an otp code",
+    "implement two-factor authentication",
+    "check a verification code",
+    "phone number verification",
+    "email address verification",
+    "add 2fa to my app"
+  ],
+  "body": "# Phone and Email Verification\n\nVerify phone numbers and email addresses using the Twilio Verify API. Verify handles the entire OTP lifecycle: code generation, delivery, expiration, rate limiting, and fraud detection.\n\n## Sending a Verification Code\n\n```javascript\nconst twilio = require(\"twilio\");\n\nconst client = twilio(\n  process.env.TWILIO_ACCOUNT_SID,\n  process.env.TWILIO_AUTH_TOKEN\n);\n\nconst verification = await client.verify.v2\n  .services(process.env.TWILIO_VERIFY_SERVICE_SID)\n  .verifications.create({\n    to: \"+15551234567\",\n    channel: \"sms\", // \"sms\", \"call\", \"email\", \"whatsapp\"\n  });\n\nconsole.log(verification.sid); // VE...\nconsole.log(verification.status); // \"pending\"\n```\n\n## Checking the Code\n\n```javascript\nconst verificationCheck = await client.verify.v2\n  .services(process.env.TWILIO_VERIFY_SERVICE_SID)\n  .verificationChecks.create({\n    to: \"+15551234567\",\n    code: \"123456\", // Code entered by the user\n  });\n\nconsole.log(verificationCheck.status); // \"approved\" or \"pending\"\nconsole.log(verificationCheck.valid); // true or false\n```\n\n## Channels\n\nVerify supports multiple delivery channels:\n\n| Channel | Value | Description |\n|---------|-------|-------------|\n| SMS | `sms` | 6-digit code via text message |\n| Voice | `call` | Code read aloud via phone call |\n| Email | `email` | Code sent to email address (requires SendGrid integration) |\n| WhatsApp | `whatsapp` | Code sent via WhatsApp message (see [[twilio/whatsapp]]) |\n| Push | `push` | Push notification to a registered device (requires Verify Push SDK) |\n| TOTP | `totp` | Time-based one-time password via authenticator app |\n\n## Rate Limits\n\nVerify enforces built-in rate limits to prevent abuse:\n\n- **5 verification attempts** per phone number per service per 10 minutes\n- **5 check attempts** per verification (locks after 5 failed checks)\n- Verifications expire after **10 minutes** by default\n\nCustom rate limits can be configured per service for stricter control.\n\n## Verify Service Setup\n\nCreate a Verify Service in the Twilio Console (Verify > Services) or via the API:\n\n```javascript\nconst service = await client.verify.v2.services.create({\n  friendlyName: \"My App Verification\",\n  codeLength: 6,\n});\n\nconsole.log(service.sid); // VA...\n// Store this as TWILIO_VERIFY_SERVICE_SID\n```\n\nThe service SID (starts with `VA`) is used for all verification operations. Configure code length, delivery channels, and branding in the service settings.\n",
+  "sections": [
+    {
+      "id": "send-code",
+      "title": "Send verification code",
+      "body": "Use `client.verify.v2.services(serviceSid).verifications.create({ to, channel })` to send a code. The `to` field is a phone number (E.164) for SMS/call/WhatsApp or an email address for the email channel. The `channel` selects the delivery method. Response includes `verificationSid` and `status` (`pending`). See [[twilio#authentication]] for credential setup.",
+      "tags": ["send", "create", "verification", "otp", "code"]
+    },
+    {
+      "id": "check-code",
+      "title": "Check verification code",
+      "body": "Use `client.verify.v2.services(serviceSid).verificationChecks.create({ to, code })` to validate the user's input. If the code matches, `status` is `approved` and `valid` is `true`. If incorrect, `status` remains `pending` and `valid` is `false`. After 5 failed attempts, the verification is locked and a new one must be sent.",
+      "tags": ["check", "validate", "approved", "pending", "code"]
+    },
+    {
+      "id": "channels",
+      "title": "Delivery channels",
+      "body": "SMS is the default and most common channel. Voice reads the code aloud (useful as fallback — see [[twilio/voice]]). Email requires a SendGrid integration configured on the Verify Service. WhatsApp delivers via the WhatsApp Business API (see [[twilio/whatsapp]]). Push requires the Verify Push SDK in the mobile app. TOTP works with standard authenticator apps (Google Authenticator, Authy).",
+      "tags": ["channels", "sms", "voice", "email", "whatsapp", "push", "totp"]
+    },
+    {
+      "id": "rate-limits",
+      "title": "Rate limits and security",
+      "body": "Built-in rate limits: 5 sends per number per 10 minutes, 5 check attempts per verification, 10-minute expiration. Custom rate limits can be configured per service. Verify also includes fraud detection via Fraud Guard, which blocks high-risk verifications to known fraud destinations. Enable Fraud Guard in the Verify Service settings.",
+      "tags": ["rate-limits", "security", "fraud", "expiration", "abuse"]
+    }
+  ],
+  "scripts": [
+    {
+      "id": "send-verification",
+      "name": "Send Verification",
+      "description": "Send a verification code to a phone number or email using Twilio Verify",
+      "lang": "javascript",
+      "runtime": "node>=18",
+      "entry": "./scripts/send-verification.js",
+      "env": {
+        "TWILIO_ACCOUNT_SID": { "required": true, "secret": true, "description": "Twilio Account SID (starts with AC)" },
+        "TWILIO_AUTH_TOKEN": { "required": true, "secret": true, "description": "Twilio Auth Token" },
+        "TWILIO_VERIFY_SERVICE_SID": { "required": true, "secret": false, "description": "Verify Service SID (starts with VA)" }
+      },
+      "packages": ["twilio"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "to": { "type": "string", "description": "Phone number (E.164) or email address to verify" },
+        "channel": { "type": "string", "enum": ["sms", "call", "email", "whatsapp", "push", "totp"], "description": "Delivery channel for the verification code" }
+      },
+      "required": ["to", "channel"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "verificationSid": { "type": "string", "description": "Unique identifier for the verification (starts with VE)" },
+        "status": { "type": "string", "description": "Verification status (pending, approved, canceled)" },
+        "valid": { "type": "boolean", "description": "Whether the submitted code was valid (on check)" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "twilio", "reason": "Requires Twilio account credentials and a Verify Service" }
+  ],
+  "links": [
+    { "uri": "twilio/sms", "context": "SMS is the primary delivery channel for verification codes" },
+    { "uri": "twilio/voice", "context": "Voice channel reads the code aloud as a fallback" },
+    { "uri": "twilio/whatsapp", "context": "WhatsApp channel for verification delivery" },
+    { "uri": "twilio#authentication", "context": "Account credentials for Verify API access" }
+  ],
+  "related": [
+    { "uri": "twilio/sms", "relation": "see-also", "note": "Verify uses SMS as its primary delivery channel" },
+    { "uri": "twilio/voice", "relation": "see-also", "note": "Voice is a common fallback channel for OTP delivery" },
+    { "uri": "twilio/whatsapp", "relation": "see-also", "note": "WhatsApp provides an alternative OTP delivery channel" }
+  ],
+  "more": {
+    "docs": "https://www.twilio.com/docs/verify",
+    "api-ref": "https://www.twilio.com/docs/verify/api",
+    "quickstart": "https://www.twilio.com/docs/verify/quickstarts/node-express"
+  },
+  "frontmatter": {
+    "created": "2026-04-10",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "4 min",
+    "prerequisites": ["twilio"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

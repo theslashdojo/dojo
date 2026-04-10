@@ -2,7 +2,7 @@
 name: skill
 description: Find answers in Dojo, inspect why a node matched, and fetch or execute portable skill bundles. Use when an agent needs information from Dojo or wants to export a skill with its full knowledge context.
 license: MIT
-compatibility: Requires Node.js 18+ and access to a Dojo registry base URL; defaults to http://localhost:3000.
+compatibility: Requires Node.js 18+ and access to a Dojo registry base URL; defaults to https://slashdojo.com.
 metadata:
   short-description: Find answers in Dojo and export executable bundles
   canonical-uri: dojo/skill

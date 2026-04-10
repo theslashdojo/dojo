@@ -1,0 +1,94 @@
+{
+  "name": "twiml",
+  "version": "1.0.0",
+  "uri": "twilio/twiml",
+  "type": "standard",
+  "context": "TwiML: Twilio's XML markup language for controlling voice calls and messaging responses",
+  "info": "TwiML (Twilio Markup Language) is an XML-based language that instructs Twilio how to handle voice calls and incoming messages. When Twilio receives a call or message, it requests TwiML from your application's webhook URL and executes the instructions. Voice TwiML verbs include Say (text-to-speech), Play (audio files), Gather (DTMF and speech input), Record (audio recording), Dial (call transfer and conferencing), and Redirect (flow control). Messaging TwiML verbs include Message (send a reply) and Redirect. TwiML Bins provide hosted TwiML snippets for simple use cases without running a server.",
+  "parent": "twilio",
+  "tags": ["twiml", "xml", "voice-response", "messaging-response", "say", "gather", "record"],
+  "aliases": [
+    "twiml",
+    "twilio markup language",
+    "twilio xml",
+    "voice response",
+    "messaging response",
+    "twiml bins",
+    "call control xml"
+  ],
+  "triggers": [
+    "write twiml",
+    "create a voice response",
+    "build an ivr menu",
+    "gather dtmf input",
+    "text to speech twiml",
+    "twiml for incoming calls",
+    "reply to sms with twiml"
+  ],
+  "body": "# TwiML (Twilio Markup Language)\n\nTwiML is Twilio's XML-based instruction set for controlling voice calls and messaging. When a call or message arrives at your Twilio number, Twilio makes an HTTP request to your webhook and executes the TwiML you return.\n\n## Voice Verbs\n\nVoice TwiML controls what happens during a phone call:\n\n```xml\n<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<Response>\n  <Say voice=\"alice\">Welcome to our service.</Say>\n  <Gather numDigits=\"1\" action=\"/menu\">\n    <Say>Press 1 for sales. Press 2 for support.</Say>\n  </Gather>\n  <Say>We didn't receive any input. Goodbye.</Say>\n</Response>\n```\n\n| Verb | Purpose |\n|------|----------|\n| `<Say>` | Text-to-speech — reads text aloud |\n| `<Play>` | Play an audio file (MP3, WAV) |\n| `<Gather>` | Collect DTMF digits or speech input |\n| `<Record>` | Record audio from the caller |\n| `<Dial>` | Connect to another number, SIP, or conference |\n| `<Redirect>` | Redirect to a different TwiML URL |\n| `<Pause>` | Wait for a specified number of seconds |\n| `<Hangup>` | End the call |\n| `<Reject>` | Reject an incoming call |\n| `<Enqueue>` | Place the caller in a queue |\n\n## Messaging Verbs\n\nMessaging TwiML controls replies to inbound SMS and WhatsApp messages:\n\n```xml\n<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<Response>\n  <Message>Thanks for your message! We'll get back to you soon.</Message>\n</Response>\n```\n\n| Verb | Purpose |\n|------|----------|\n| `<Message>` | Send a reply message (text and/or media) |\n| `<Redirect>` | Redirect to a different TwiML URL |\n\nSend media in a reply:\n\n```xml\n<Response>\n  <Message>\n    <Body>Here is your receipt</Body>\n    <Media>https://example.com/receipt.pdf</Media>\n  </Message>\n</Response>\n```\n\n## Gathering Input\n\nThe `<Gather>` verb collects DTMF (keypad) or speech input during a call:\n\n```javascript\nconst { VoiceResponse } = require(\"twilio\").twiml;\n\nconst twiml = new VoiceResponse();\nconst gather = twiml.gather({\n  numDigits: 1,\n  action: \"/handle-input\",\n  method: \"POST\",\n  input: \"dtmf speech\",\n  speechTimeout: \"auto\",\n});\ngather.say(\"Press 1 or say sales for sales. Press 2 or say support for support.\");\ntwiml.say(\"No input received. Goodbye.\");\n```\n\nWhen the user provides input, Twilio POSTs to the `action` URL with `Digits` (DTMF) or `SpeechResult` (speech) parameters.\n\n## Say and Play\n\nThe `<Say>` verb converts text to speech with configurable voice and language:\n\n```xml\n<Say voice=\"Polly.Joanna\" language=\"en-US\">Hello, how can I help you today?</Say>\n```\n\nAvailable voices: `alice` (default), `man`, `woman`, and Amazon Polly voices (`Polly.Joanna`, `Polly.Matthew`, etc.). The `<Play>` verb streams an audio file:\n\n```xml\n<Play>https://example.com/hold-music.mp3</Play>\n```\n\n## TwiML Bins\n\nTwiML Bins are Twilio-hosted TwiML snippets for simple use cases. Create them in the Console (Runtime > TwiML Bins) and point your phone number's webhook to the Bin URL. Bins support handlebars-style template variables like `{{From}}` and `{{To}}`:\n\n```xml\n<Response>\n  <Say>Hello caller from {{From}}. You reached {{To}}.</Say>\n</Response>\n```\n\nBins are ideal for static responses, prototyping, and simple IVR flows without a server.\n\n## Programmatic TwiML\n\nUse the Twilio helper library to build TwiML in code:\n\n```javascript\nconst { VoiceResponse, MessagingResponse } = require(\"twilio\").twiml;\n\n// Voice\nconst voiceTwiml = new VoiceResponse();\nvoiceTwiml.say({ voice: \"alice\" }, \"Hello!\");\nvoiceTwiml.play(\"https://example.com/audio.mp3\");\nconsole.log(voiceTwiml.toString()); // XML string\n\n// Messaging\nconst msgTwiml = new MessagingResponse();\nmsgTwiml.message(\"Got your message!\");\nconsole.log(msgTwiml.toString()); // XML string\n```\n",
+  "sections": [
+    {
+      "id": "voice-verbs",
+      "title": "Voice TwiML verbs",
+      "body": "Voice verbs control call flow: `<Say>` for text-to-speech, `<Play>` for audio files, `<Gather>` for DTMF/speech input, `<Record>` for recording, `<Dial>` for transfers and conferencing, `<Redirect>` for flow control, `<Pause>` for delays, `<Hangup>` to end, `<Reject>` to decline, `<Enqueue>` for queuing. Verbs execute sequentially. Nest `<Say>` or `<Play>` inside `<Gather>` to prompt while collecting input. See [[twilio/voice#twiml-response]] for server-side examples.",
+      "tags": ["voice", "say", "play", "gather", "record", "dial", "redirect", "hangup"]
+    },
+    {
+      "id": "messaging-verbs",
+      "title": "Messaging TwiML verbs",
+      "body": "Messaging verbs: `<Message>` sends a reply with optional `<Body>` and `<Media>` child elements, `<Redirect>` fetches TwiML from another URL. Use messaging TwiML in webhook responses for inbound SMS (see [[twilio/sms#receive]]) and WhatsApp messages (see [[twilio/whatsapp]]). Multiple `<Message>` elements send multiple replies.",
+      "tags": ["messaging", "message", "body", "media", "redirect"]
+    },
+    {
+      "id": "gather-input",
+      "title": "Gathering input",
+      "body": "The `<Gather>` verb collects DTMF digits (`numDigits`, `finishOnKey`) or speech (`input=\"speech\"`, `speechTimeout`). When input is received, Twilio POSTs to the `action` URL with `Digits` or `SpeechResult`. If no input is received before timeout, execution continues to the next verb. Nest `<Say>` or `<Play>` inside `<Gather>` to prompt the caller. See [[twilio/voice#outbound-call]] for IVR examples.",
+      "tags": ["gather", "dtmf", "speech", "input", "ivr", "menu"]
+    },
+    {
+      "id": "say-play",
+      "title": "Say and Play",
+      "body": "`<Say>` converts text to speech with configurable `voice` (alice, man, woman, Polly voices), `language`, and `loop`. `<Play>` streams audio from a URL (MP3, WAV). Both can be nested inside `<Gather>`. Use Amazon Polly voices for natural-sounding speech. `<Play digits=\"ww1928\">` sends DTMF tones.",
+      "tags": ["say", "play", "tts", "audio", "polly", "voice"]
+    },
+    {
+      "id": "bins",
+      "title": "TwiML Bins",
+      "body": "TwiML Bins are Twilio-hosted TwiML documents created in the Console (Runtime > TwiML Bins). They support handlebars variables (`{{From}}`, `{{To}}`, `{{Body}}`) for dynamic content without a server. Assign a Bin URL as the webhook for a phone number. Bins are ideal for prototyping, static responses, and simple flows.",
+      "tags": ["bins", "hosted", "templates", "handlebars", "no-server"]
+    }
+  ],
+  "links": [
+    { "uri": "twilio/voice#twiml-response", "context": "Using TwiML to handle inbound voice calls" },
+    { "uri": "twilio/voice#conference", "context": "Conference call setup with Dial and Conference TwiML" },
+    { "uri": "twilio/sms#receive", "context": "Replying to inbound SMS with messaging TwiML" },
+    { "uri": "twilio/whatsapp", "context": "WhatsApp webhook responses use messaging TwiML" },
+    { "uri": "twilio/voice#recording", "context": "Recording calls with the Record TwiML verb" }
+  ],
+  "related": [
+    { "uri": "twilio/voice", "relation": "prerequisite", "note": "Voice calls are the primary consumer of TwiML voice verbs" },
+    { "uri": "twilio/sms", "relation": "see-also", "note": "Inbound SMS webhooks respond with messaging TwiML" },
+    { "uri": "twilio/whatsapp", "relation": "see-also", "note": "WhatsApp inbound webhooks also use messaging TwiML" }
+  ],
+  "more": {
+    "docs": "https://www.twilio.com/docs/voice/twiml",
+    "voice-ref": "https://www.twilio.com/docs/voice/twiml#voice-verbs",
+    "messaging-ref": "https://www.twilio.com/docs/messaging/twiml",
+    "bins": "https://www.twilio.com/docs/serverless/twiml-bins"
+  },
+  "frontmatter": {
+    "created": "2026-04-10",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "5 min",
+    "prerequisites": [],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

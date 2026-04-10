@@ -1,0 +1,97 @@
+{
+  "name": "clustering",
+  "version": "1.0.0",
+  "uri": "redis/clustering",
+  "type": "context",
+  "content_type": "guide",
+  "context": "Redis high availability: clustering, Sentinel, replication, and failover",
+  "info": "This guide covers Redis high availability and horizontal scaling. Redis Cluster partitions data across multiple master nodes using hash slots (16384 total), with each master having one or more replicas for failover. Redis Sentinel monitors master-replica topologies and performs automatic failover when a master becomes unreachable. Replication provides read scaling and data durability through asynchronous master-to-replica streaming. Client configuration differs by mode: standalone, Sentinel-managed, and Cluster. The ioredis client supports all three modes natively with automatic reconnection and slot redirection.",
+  "parent": "redis",
+  "tags": ["clustering", "sentinel", "replication", "high-availability", "failover", "sharding"],
+  "aliases": [
+    "redis cluster",
+    "redis clustering",
+    "redis sentinel",
+    "redis replication",
+    "redis high availability",
+    "redis ha",
+    "redis failover",
+    "redis sharding",
+    "redis master-replica",
+    "redis scale"
+  ],
+  "triggers": [
+    "set up redis clustering",
+    "configure redis sentinel",
+    "replicate redis data",
+    "handle redis failover",
+    "scale redis horizontally",
+    "configure redis high availability"
+  ],
+  "body": "# Redis High Availability\n\nProduction Redis deployments require high availability to handle node failures, network partitions, and scaling demands. Redis provides three complementary mechanisms: clustering for horizontal scaling, Sentinel for automated failover, and replication for data durability and read scaling. See [[redis#connection]] for connection URL formats for each mode.\n\n## Cluster Mode\n\nRedis Cluster distributes data across multiple master nodes using **hash slots**. There are 16384 hash slots in total. Each key maps to a slot via `CRC16(key) % 16384`. Each master owns a subset of slots.\n\n```\nMaster A (slots 0-5460)       \u2500\u2500\u2500> Replica A1\nMaster B (slots 5461-10922)   \u2500\u2500\u2500> Replica B1\nMaster C (slots 10923-16383)  \u2500\u2500\u2500> Replica C1\n```\n\n### Connecting with ioredis\n\n```javascript\nimport Redis from \"ioredis\";\n\nconst cluster = new Redis.Cluster([\n  { host: \"node1\", port: 6379 },\n  { host: \"node2\", port: 6379 },\n  { host: \"node3\", port: 6379 },\n], {\n  redisOptions: {\n    password: process.env.REDIS_PASSWORD,\n  },\n  scaleReads: \"slave\", // read from replicas for scaling\n});\n\n// Operations work transparently \u2014 ioredis handles slot redirection\nawait cluster.set(\"key\", \"value\");\nconst value = await cluster.get(\"key\");\n```\n\n### Hash Tags\n\nForce related keys to the same slot using hash tags `{tag}` so multi-key operations work:\n\n```javascript\n// These keys hash to the same slot because of {user:1001}\nawait cluster.set(\"{user:1001}:profile\", JSON.stringify(profile));\nawait cluster.set(\"{user:1001}:prefs\", JSON.stringify(prefs));\n\n// Multi-key operations work when keys share the same slot\nconst [profile, prefs] = await cluster.mget(\n  \"{user:1001}:profile\",\n  \"{user:1001}:prefs\"\n);\n```\n\n### Cluster Limitations\n\n- Multi-key operations (MGET, MSET, pipelines) require all keys in the **same hash slot**\n- Lua scripts must use keys in the same slot\n- [[redis/pub-sub]] messages are broadcast across all nodes (no slot restriction)\n- [[redis/streams]] consumer groups operate per-stream, and the stream key determines the slot\n- Database selection (`SELECT db`) is not supported; only database 0 is available\n\n## Sentinel\n\nRedis Sentinel provides automatic failover for non-clustered master-replica setups. Sentinel monitors the master, detects failure via quorum voting, promotes a replica to master, and reconfigures other replicas.\n\n```\nSentinel 1  \u2500\u2500\u2510\nSentinel 2  \u2500\u2500\u253c\u2500\u2500 monitors \u2500\u2500> Master \u2500\u2500\u2500> Replica 1\nSentinel 3  \u2500\u2500\u2518                           \u2514\u2500\u2500> Replica 2\n```\n\n### Connecting with ioredis\n\n```javascript\nimport Redis from \"ioredis\";\n\nconst redis = new Redis({\n  sentinels: [\n    { host: \"sentinel1\", port: 26379 },\n    { host: \"sentinel2\", port: 26379 },\n    { host: \"sentinel3\", port: 26379 },\n  ],\n  name: \"mymaster\", // Sentinel master name\n  password: process.env.REDIS_PASSWORD,\n});\n\n// ioredis handles failover transparently\nawait redis.set(\"key\", \"value\");\n```\n\n### Sentinel vs Cluster\n\n| Feature | Sentinel | Cluster |\n|---------|----------|----------|\n| Data distribution | Single master | Sharded across masters |\n| Scaling | Vertical (one master) | Horizontal (add nodes) |\n| Multi-key operations | Unrestricted | Same hash slot only |\n| Failover | Automatic via quorum | Automatic via gossip |\n| Max data size | Single node memory | Aggregate of all nodes |\n| Best for | Small/medium data, simple HA | Large datasets, high throughput |\n\n## Replication\n\nRedis uses asynchronous replication from master to replica. Replicas maintain a copy of the master's data and can serve read queries.\n\n```bash\n# Configure replica in redis.conf\nreplicaof master-host 6379\n\n# Or at runtime\nredis-cli REPLICAOF master-host 6379\n```\n\n```javascript\n// Read from replicas for scaling (standalone mode)\nconst master = new Redis(process.env.REDIS_URL);\nconst replica = new Redis(process.env.REDIS_REPLICA_URL);\n\n// Write to master\nawait master.set(\"key\", \"value\");\n\n// Read from replica (eventually consistent)\nconst value = await replica.get(\"key\");\n```\n\n### Replication Characteristics\n\n- **Asynchronous** \u2014 writes acknowledge on the master before replicating (eventual consistency)\n- **Non-blocking** \u2014 replica serves reads during sync\n- **Full + partial sync** \u2014 initial full dataset transfer, then incremental replication stream\n- **Multiple replicas** \u2014 a master can have multiple replicas; replicas can have sub-replicas\n\n## Failover\n\nFailover behavior depends on the deployment mode:\n\n### Sentinel Failover\n\n1. Sentinels detect master is unreachable (configurable `down-after-milliseconds`)\n2. Quorum of sentinels agree the master is down (prevents false positives)\n3. One sentinel is elected leader and initiates failover\n4. A replica is promoted to master based on priority and replication offset\n5. Other replicas are reconfigured to replicate from the new master\n6. Clients are notified via Sentinel pub/sub and reconnect\n\n### Cluster Failover\n\n1. Replicas detect their master is unreachable\n2. Replicas request votes from other masters via the gossip protocol\n3. A replica with majority votes is promoted and takes over the master's hash slots\n4. Clients receive MOVED redirections and update their slot map\n\n## Client Configuration\n\n```javascript\nimport Redis from \"ioredis\";\n\n// Standalone\nconst standalone = new Redis(process.env.REDIS_URL);\n\n// Sentinel\nconst sentinel = new Redis({\n  sentinels: [{ host: \"s1\", port: 26379 }, { host: \"s2\", port: 26379 }],\n  name: \"mymaster\",\n});\n\n// Cluster\nconst cluster = new Redis.Cluster([\n  { host: \"n1\", port: 6379 },\n  { host: \"n2\", port: 6379 },\n]);\n\n// All three support the same Redis command interface\n// ioredis handles reconnection, redirection, and failover transparently\n```\n",
+  "sections": [
+    {
+      "id": "cluster-mode",
+      "title": "Cluster mode",
+      "body": "Redis Cluster shards data across masters using 16384 hash slots. Each key maps to a slot via CRC16. Use `Redis.Cluster()` in ioredis with seed nodes. Multi-key operations require hash tags `{tag}` to ensure keys land on the same slot. Read scaling via `scaleReads: 'slave'`. See [[redis/caching#eviction-policies]] for per-node maxmemory configuration.",
+      "tags": ["cluster", "hash-slots", "crc16", "sharding", "hash-tags", "scale-reads"]
+    },
+    {
+      "id": "sentinel",
+      "title": "Sentinel",
+      "body": "Sentinel monitors a master-replica topology and performs automatic failover via quorum voting. Deploy at least 3 Sentinel instances for reliability. Configure with `sentinels` array and `name` in ioredis. Sentinel provides simpler HA than Cluster when data fits on a single node. No hash slot restrictions on multi-key operations.",
+      "tags": ["sentinel", "quorum", "monitoring", "automatic-failover", "promotion"]
+    },
+    {
+      "id": "replication",
+      "title": "Replication",
+      "body": "Asynchronous master-to-replica replication provides data durability and read scaling. Configure with `REPLICAOF` command or `replicaof` in redis.conf. Replicas are eventually consistent. Full sync on first connect, then incremental replication stream. Multiple replicas supported. Replicas can serve read-only queries while syncing.",
+      "tags": ["replication", "replicaof", "async", "read-scaling", "durability", "sync"]
+    },
+    {
+      "id": "failover",
+      "title": "Failover mechanisms",
+      "body": "Sentinel failover: quorum detects master down, leader sentinel promotes a replica, reconfigures topology, notifies clients. Cluster failover: replicas request votes from masters via gossip, promoted replica takes over hash slots, clients receive MOVED redirections. Both modes provide automatic recovery. Configure `down-after-milliseconds` to control detection sensitivity.",
+      "tags": ["failover", "promotion", "gossip", "moved", "recovery", "detection"]
+    },
+    {
+      "id": "client-config",
+      "title": "Client configuration",
+      "body": "ioredis supports standalone, Sentinel, and Cluster modes with the same command interface. Standalone: `new Redis(url)`. Sentinel: `new Redis({ sentinels, name })`. Cluster: `new Redis.Cluster(nodes)`. All modes handle reconnection and failover transparently. Use [[redis#connection]] URL formats for each mode.",
+      "tags": ["ioredis", "client", "standalone", "sentinel-client", "cluster-client", "reconnection"]
+    }
+  ],
+  "links": [
+    { "uri": "redis", "context": "Redis ecosystem overview and connection URL formats" },
+    { "uri": "redis/caching", "context": "Caching operations and eviction across cluster nodes" },
+    { "uri": "redis/pub-sub", "context": "Pub/sub broadcast behavior across cluster nodes" },
+    { "uri": "redis/streams", "context": "Stream and consumer group behavior in cluster mode" },
+    { "uri": "redis/caching#eviction-policies", "context": "Per-node memory and eviction configuration" },
+    { "uri": "redis#connection", "context": "Connection URL formats for each deployment mode" }
+  ],
+  "related": [
+    { "uri": "redis/caching", "relation": "see-also", "note": "Cache eviction is configured per-node in cluster mode" },
+    { "uri": "redis/streams", "relation": "see-also", "note": "Stream keys are sharded by hash slot in cluster mode" },
+    { "uri": "redis/pub-sub", "relation": "see-also", "note": "Pub/sub messages are broadcast to all cluster nodes regardless of slots" }
+  ],
+  "more": {
+    "cluster-docs": "https://redis.io/docs/latest/operate/oss_and_stack/management/scaling/",
+    "sentinel-docs": "https://redis.io/docs/latest/operate/oss_and_stack/management/sentinel/",
+    "replication-docs": "https://redis.io/docs/latest/operate/oss_and_stack/management/replication/"
+  },
+  "frontmatter": {
+    "created": "2026-04-10",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "developers, AI agents, ops engineers",
+    "estimated_reading_time": "6 min",
+    "prerequisites": ["redis"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

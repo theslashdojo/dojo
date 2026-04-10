@@ -1,0 +1,135 @@
+{
+  "name": "testing",
+  "version": "1.0.0",
+  "uri": "frontend/testing",
+  "type": "skill",
+  "context": "Test frontend components: Vitest, React Testing Library, Playwright, accessibility audits",
+  "info": "This skill covers testing frontend applications at every level: unit tests for utilities and hooks, component tests for React components with Testing Library, end-to-end tests with Playwright, and automated accessibility audits with axe-core. Vitest is the recommended test runner — it shares Vite's config and transforms, making it fast and zero-config for Vite projects. React Testing Library encourages testing behavior over implementation details. Playwright provides cross-browser E2E testing with auto-waiting and built-in assertions. Accessibility testing should be automated in CI — see [[frontend/accessibility]] for WCAG requirements.",
+  "parent": "frontend",
+  "tags": ["testing", "vitest", "react-testing-library", "playwright", "jest", "e2e", "unit"],
+  "aliases": [
+    "frontend testing",
+    "component testing",
+    "unit testing",
+    "e2e testing",
+    "vitest",
+    "react testing library",
+    "playwright",
+    "test react components",
+    "integration testing"
+  ],
+  "triggers": [
+    "test this component",
+    "write a test",
+    "add unit tests",
+    "set up vitest",
+    "add e2e tests",
+    "test with playwright",
+    "run accessibility tests",
+    "check test coverage"
+  ],
+  "body": "# Frontend Testing\n\nFrontend testing verifies that components render correctly, respond to user interactions, manage state properly, and meet accessibility requirements. Test at the right level: unit tests for logic, component tests for UI behavior, E2E tests for critical user flows.\n\n## Testing Pyramid\n\n| Level | Tool | Speed | Scope |\n|-------|------|-------|-------|\n| Unit | Vitest | Fast | Functions, hooks, utilities |\n| Component | Vitest + Testing Library | Medium | Single component behavior |\n| Integration | Vitest + Testing Library | Medium | Multi-component interactions |\n| E2E | Playwright | Slow | Full user flows in a browser |\n| Accessibility | axe-core + Playwright | Medium | WCAG compliance audits |\n\n## Unit Tests\n\nVitest for testing pure functions, custom hooks, and utilities:\n\n```typescript\n// utils/format.test.ts\nimport { describe, it, expect } from \"vitest\";\nimport { formatCurrency, truncateText } from \"./format\";\n\ndescribe(\"formatCurrency\", () => {\n  it(\"formats USD with two decimal places\", () => {\n    expect(formatCurrency(1234.5, \"USD\")).toBe(\"$1,234.50\");\n  });\n\n  it(\"handles zero\", () => {\n    expect(formatCurrency(0, \"USD\")).toBe(\"$0.00\");\n  });\n});\n```\n\nTest custom hooks with `renderHook`:\n\n```typescript\nimport { renderHook, act } from \"@testing-library/react\";\nimport { useCounter } from \"./useCounter\";\n\nit(\"increments counter\", () => {\n  const { result } = renderHook(() => useCounter());\n  act(() => result.current.increment());\n  expect(result.current.count).toBe(1);\n});\n```\n\nSee [[frontend/react#hooks]] for custom hook patterns and [[frontend/state]] for testing state stores.\n\n## Component Tests\n\nReact Testing Library tests components by simulating user behavior, not inspecting implementation:\n\n```tsx\nimport { render, screen } from \"@testing-library/react\";\nimport userEvent from \"@testing-library/user-event\";\nimport { LoginForm } from \"./LoginForm\";\n\ndescribe(\"LoginForm\", () => {\n  it(\"submits with email and password\", async () => {\n    const onSubmit = vi.fn();\n    render(<LoginForm onSubmit={onSubmit} />);\n\n    await userEvent.type(screen.getByLabelText(\"Email\"), \"user@example.com\");\n    await userEvent.type(screen.getByLabelText(\"Password\"), \"secret123\");\n    await userEvent.click(screen.getByRole(\"button\", { name: \"Sign in\" }));\n\n    expect(onSubmit).toHaveBeenCalledWith({\n      email: \"user@example.com\",\n      password: \"secret123\",\n    });\n  });\n\n  it(\"shows validation error for empty email\", async () => {\n    render(<LoginForm onSubmit={vi.fn()} />);\n    await userEvent.click(screen.getByRole(\"button\", { name: \"Sign in\" }));\n    expect(screen.getByText(\"Email is required\")).toBeInTheDocument();\n  });\n});\n```\n\nKey principles:\n- Query by role, label, or text — not by class name or test ID\n- Use `userEvent` over `fireEvent` for realistic interactions\n- Test behavior (\"what the user sees\") not implementation (\"what state changed\")\n- Wrap state providers if the component uses [[frontend/state#zustand]] or [[frontend/state#context-api]]\n\n## End-to-End Tests\n\nPlaywright tests full user flows in real browsers:\n\n```typescript\n// tests/checkout.spec.ts\nimport { test, expect } from \"@playwright/test\";\n\ntest(\"complete checkout flow\", async ({ page }) => {\n  await page.goto(\"/products\");\n  await page.getByRole(\"button\", { name: \"Add to cart\" }).first().click();\n  await page.getByRole(\"link\", { name: \"Cart (1)\" }).click();\n\n  await expect(page.getByRole(\"heading\", { name: \"Your Cart\" })).toBeVisible();\n  await page.getByRole(\"button\", { name: \"Checkout\" }).click();\n\n  await page.getByLabel(\"Email\").fill(\"user@example.com\");\n  await page.getByLabel(\"Card number\").fill(\"4242424242424242\");\n  await page.getByRole(\"button\", { name: \"Pay\" }).click();\n\n  await expect(page.getByText(\"Order confirmed\")).toBeVisible();\n});\n```\n\nPlaywright features:\n- Cross-browser (Chromium, Firefox, WebKit)\n- Auto-waiting for elements\n- Built-in assertions with `expect`\n- Network interception for mocking APIs\n- Trace viewer for debugging failures\n\n## Accessibility Testing\n\nAutomate accessibility audits with axe-core in Playwright:\n\n```typescript\nimport { test, expect } from \"@playwright/test\";\nimport AxeBuilder from \"@axe-core/playwright\";\n\ntest(\"homepage has no accessibility violations\", async ({ page }) => {\n  await page.goto(\"/\");\n  const results = await new AxeBuilder({ page })\n    .withTags([\"wcag2a\", \"wcag2aa\"])\n    .analyze();\n  expect(results.violations).toEqual([]);\n});\n```\n\nRun axe on every page in CI. See [[frontend/accessibility#wcag-checklist]] for the full WCAG 2.1 AA checklist and [[frontend/accessibility#testing-tools]] for manual testing tools.\n\n## Coverage\n\nVitest has built-in coverage via `v8` or `istanbul`:\n\n```bash\n# Run with coverage\nnpx vitest run --coverage\n\n# vitest.config.ts\nexport default defineConfig({\n  test: {\n    coverage: {\n      provider: \"v8\",\n      reporter: [\"text\", \"html\", \"lcov\"],\n      thresholds: {\n        branches: 80,\n        functions: 80,\n        lines: 80,\n        statements: 80,\n      },\n    },\n  },\n});\n```\n\nAim for 80%+ coverage on business-critical code. 100% coverage is not a goal — focus on testing behavior, not lines.\n\n## Test Commands\n\n```bash\n# Vitest\nnpx vitest              # Watch mode\nnpx vitest run          # Single run (CI)\nnpx vitest run --coverage  # With coverage\n\n# Playwright\nnpx playwright test     # Run all E2E tests\nnpx playwright test --ui  # Interactive UI mode\nnpx playwright show-report  # View HTML report\n```\n",
+  "sections": [
+    {
+      "id": "unit-tests",
+      "title": "Unit tests",
+      "body": "Vitest for pure functions, custom hooks (with renderHook from Testing Library), and utility modules. Fast, isolated, no DOM needed for pure logic. Use vi.fn() for mocks, vi.spyOn() for spies. Test custom hooks from [[frontend/react#hooks]] and state stores from [[frontend/state]].",
+      "tags": ["unit-tests", "vitest", "renderHook", "mocks", "spies", "pure-functions"]
+    },
+    {
+      "id": "component-tests",
+      "title": "Component tests",
+      "body": "React Testing Library renders components and queries by role, label, or text — not implementation details. Use userEvent for realistic interactions. Test what the user sees and does, not internal state. Wrap with providers if component uses context or state stores. See [[frontend/react#patterns]] for testable component patterns.",
+      "tags": ["component-tests", "react-testing-library", "userEvent", "queries", "render"]
+    },
+    {
+      "id": "e2e",
+      "title": "End-to-end tests",
+      "body": "Playwright runs tests in real browsers (Chromium, Firefox, WebKit). Auto-waiting, built-in assertions, network interception, trace viewer. Test critical user flows: auth, checkout, form submissions. Run in CI on every PR. Use page.getByRole() and page.getByLabel() for accessible selectors — consistent with [[frontend/accessibility#semantic-html]].",
+      "tags": ["e2e", "playwright", "cross-browser", "auto-waiting", "trace-viewer", "ci"]
+    },
+    {
+      "id": "accessibility-testing",
+      "title": "Accessibility testing",
+      "body": "Automate with @axe-core/playwright in E2E tests. Run axe with WCAG 2.1 AA tags on every page. Catches ARIA issues, missing labels, contrast failures. Complement with manual screen reader testing (VoiceOver, NVDA). See [[frontend/accessibility#testing-tools]] for the full tool list and [[frontend/accessibility#wcag-checklist]] for the compliance checklist.",
+      "tags": ["accessibility-testing", "axe-core", "wcag", "automated-audit", "ci"]
+    },
+    {
+      "id": "coverage",
+      "title": "Test coverage",
+      "body": "Vitest v8 or istanbul coverage providers. Set thresholds in vitest.config.ts (aim for 80%+ on business logic). Reporter formats: text (terminal), html (visual), lcov (CI integration). Coverage measures lines, branches, functions, and statements. Focus on behavior coverage, not line count.",
+      "tags": ["coverage", "v8", "istanbul", "thresholds", "lcov", "ci"]
+    }
+  ],
+  "links": [
+    { "uri": "frontend/react#hooks", "context": "Custom hooks tested with renderHook" },
+    { "uri": "frontend/react#patterns", "context": "Testable component patterns" },
+    { "uri": "frontend/state", "context": "Testing state stores and hooks" },
+    { "uri": "frontend/accessibility#wcag-checklist", "context": "WCAG 2.1 AA compliance checklist" },
+    { "uri": "frontend/accessibility#testing-tools", "context": "Manual and automated accessibility testing tools" },
+    { "uri": "frontend/accessibility#semantic-html", "context": "Semantic HTML enables accessible test selectors" },
+    { "uri": "frontend/bundling", "context": "Tests should pass before production builds" },
+    { "uri": "frontend/state#zustand", "context": "Testing components that use Zustand stores" },
+    { "uri": "frontend/state#context-api", "context": "Wrapping components in context providers for tests" }
+  ],
+  "related": [
+    { "uri": "frontend/react", "relation": "see-also", "note": "Components and hooks are the primary targets of frontend tests" },
+    { "uri": "frontend/accessibility", "relation": "see-also", "note": "Accessibility audits are automated alongside component tests" },
+    { "uri": "frontend/bundling", "relation": "see-also", "note": "Tests should pass before creating production bundles" },
+    { "uri": "frontend/state", "relation": "see-also", "note": "State stores and hooks require test setup with providers" }
+  ],
+  "scripts": [
+    {
+      "id": "run-tests",
+      "name": "Run Tests",
+      "description": "Execute the test suite with optional coverage and watch mode",
+      "lang": "bash",
+      "runtime": "node>=18",
+      "entry": "./scripts/run-tests.sh",
+      "env": {
+        "TEST_COMMAND": { "required": false, "secret": false, "description": "Test command to execute (default: npx vitest run)" }
+      },
+      "packages": ["vitest", "@testing-library/react", "@testing-library/user-event"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "testPattern": { "type": "string", "description": "Glob pattern to match test files (e.g. **/*.test.tsx)" },
+        "coverage": { "type": "boolean", "default": false, "description": "Whether to collect code coverage" },
+        "watch": { "type": "boolean", "default": false, "description": "Whether to run in watch mode" }
+      },
+      "required": []
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "passed": { "type": "integer", "description": "Number of tests that passed" },
+        "failed": { "type": "integer", "description": "Number of tests that failed" },
+        "coverage": { "type": "number", "description": "Overall code coverage percentage" }
+      }
+    }
+  },
+  "depends": [],
+  "more": {
+    "vitest": "https://vitest.dev",
+    "testing-library": "https://testing-library.com/docs/react-testing-library/intro",
+    "playwright": "https://playwright.dev"
+  },
+  "frontmatter": {
+    "created": "2026-04-10",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "7 min",
+    "prerequisites": ["frontend/react"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

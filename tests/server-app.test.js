@@ -1,8 +1,10 @@
 const { test, before, after } = require('node:test');
 const assert = require('node:assert/strict');
+const path = require('node:path');
 
 let server;
 let baseUrl;
+const SERVER_ENTRY = path.resolve(__dirname, '../server/src/server.js');
 
 before(async () => {
   const { createApp, SkillStore, DEFAULT_MANIFEST_DIRS } = await import('../server/src/server.js');
@@ -54,6 +56,14 @@ test('index exposes discover and bundle routes', async () => {
   assert.equal(status, 200);
   assert.equal(data.routes.discover, '/v1/discover');
   assert.equal(data.routes.bundle, '/v1/bundle/*');
+});
+
+test('server auto-start detection supports PM2 exec paths', async () => {
+  const { shouldAutoStart } = await import('../server/src/server.js');
+
+  assert.equal(shouldAutoStart(SERVER_ENTRY), true);
+  assert.equal(shouldAutoStart('/tmp/not-the-server.js', SERVER_ENTRY), true);
+  assert.equal(shouldAutoStart('/tmp/not-the-server.js', '/tmp/also-not-the-server.js'), false);
 });
 
 test('discover returns learn-first and then-do guidance', async () => {

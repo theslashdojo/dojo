@@ -1,0 +1,121 @@
+{
+  "name": "replication",
+  "version": "1.0.0",
+  "uri": "postgres/replication",
+  "type": "skill",
+  "context": "Set up PostgreSQL streaming replication, logical replication, and high availability",
+  "info": "This skill covers PostgreSQL replication for high availability and read scaling. Streaming replication sends WAL (Write-Ahead Log) records from a primary to one or more standby servers for an exact physical copy — used for failover and read replicas. Logical replication uses publications and subscriptions to replicate specific tables or data subsets — used for zero-downtime migrations, cross-version upgrades, and selective data distribution. High availability configurations use tools like Patroni, pg_auto_failover, or cloud-managed failover to automatically promote a standby when the primary fails. Monitoring replication lag and WAL position is critical for ensuring data consistency.",
+  "parent": "postgres",
+  "tags": ["replication", "streaming", "logical", "high-availability", "failover", "wal"],
+  "aliases": [
+    "postgres replication",
+    "postgresql replication",
+    "streaming replication",
+    "logical replication",
+    "read replica",
+    "standby server",
+    "postgres failover",
+    "high availability postgres",
+    "wal replication"
+  ],
+  "triggers": [
+    "set up postgres replication",
+    "create a read replica",
+    "configure streaming replication",
+    "set up logical replication",
+    "configure high availability",
+    "postgres failover setup",
+    "replicate a database"
+  ],
+  "body": "# PostgreSQL Replication\n\nReplication keeps copies of your data on multiple servers for high availability, read scaling, and disaster recovery. PostgreSQL supports both physical (streaming) and logical replication.\n\n## Streaming Replication\n\nStreaming replication sends WAL records from the primary to standby servers. The standby is an exact physical copy.\n\n### Primary Configuration\n\n```ini\n# postgresql.conf on primary\nwal_level = replica\nmax_wal_senders = 10\nwal_keep_size = 1GB\nhot_standby = on\n```\n\n```sql\n-- Create replication user\nCREATE ROLE replicator WITH REPLICATION LOGIN PASSWORD 'secure_password';\n```\n\n```ini\n# pg_hba.conf — allow replication connections\nhost replication replicator replica_ip/32 scram-sha-256\n```\n\n### Standby Setup\n\n```bash\n# Take a base backup from the primary\npg_basebackup -h primary_host -U replicator -D /var/lib/postgresql/data -Fp -Xs -P -R\n\n# The -R flag creates standby.signal and sets primary_conninfo in postgresql.auto.conf\n# Start the standby — it will begin streaming WAL from the primary\npg_ctl start -D /var/lib/postgresql/data\n```\n\n### Verify Replication\n\n```sql\n-- On primary: check connected standbys\nSELECT client_addr, state, sent_lsn, write_lsn, flush_lsn, replay_lsn,\n       sent_lsn - replay_lsn AS replication_lag\nFROM pg_stat_replication;\n\n-- On standby: check recovery status\nSELECT pg_is_in_recovery(), pg_last_wal_receive_lsn(), pg_last_wal_replay_lsn();\n```\n\n## Logical Replication\n\nLogical replication replicates specific tables using publications and subscriptions. Unlike streaming replication, it works across different PostgreSQL versions and allows selective data replication.\n\n```ini\n# postgresql.conf on publisher\nwal_level = logical\nmax_replication_slots = 10\nmax_wal_senders = 10\n```\n\n```sql\n-- On publisher: create a publication\nCREATE PUBLICATION my_pub FOR TABLE users, orders;\n-- or replicate all tables\nCREATE PUBLICATION my_pub FOR ALL TABLES;\n\n-- On subscriber: create a subscription\nCREATE SUBSCRIPTION my_sub\n  CONNECTION 'host=publisher_host dbname=mydb user=replicator password=secure_password'\n  PUBLICATION my_pub;\n\n-- Monitor subscription status\nSELECT * FROM pg_stat_subscription;\n\n-- Monitor replication slots\nSELECT slot_name, active, restart_lsn, confirmed_flush_lsn\nFROM pg_replication_slots;\n```\n\n## Failover\n\nManual failover for streaming replication:\n\n```bash\n# Promote standby to primary\npg_ctl promote -D /var/lib/postgresql/data\n\n# Or via SQL\nSELECT pg_promote();\n```\n\nAutomated failover tools:\n\n| Tool | Approach | Features |\n|------|----------|----------|\n| Patroni | etcd/Consul/ZooKeeper consensus | Industry standard, automatic failover, REST API |\n| pg_auto_failover | Built-in monitor node | Simpler setup, PostgreSQL-native |\n| Stolon | etcd/Consul consensus | Kubernetes-friendly |\n| Cloud managed | Provider handles failover | AWS RDS, Cloud SQL, Azure — zero config |\n\n### Patroni Example\n\n```yaml\n# patroni.yml\nscope: postgres-cluster\nname: node1\n\nrestapi:\n  listen: 0.0.0.0:8008\n\netcd:\n  hosts: etcd1:2379,etcd2:2379,etcd3:2379\n\nbootstrap:\n  dcs:\n    ttl: 30\n    loop_wait: 10\n    retry_timeout: 10\n    maximum_lag_on_failover: 1048576\n  postgresql:\n    parameters:\n      wal_level: replica\n      max_wal_senders: 10\n      max_replication_slots: 10\n\npostgresql:\n  listen: 0.0.0.0:5432\n  data_dir: /var/lib/postgresql/data\n  authentication:\n    replication:\n      username: replicator\n      password: secure_password\n    superuser:\n      username: postgres\n      password: secure_password\n```\n\n## Monitoring\n\n```sql\n-- Replication lag in bytes\nSELECT\n  client_addr,\n  pg_wal_lsn_diff(sent_lsn, replay_lsn) AS lag_bytes,\n  state\nFROM pg_stat_replication;\n\n-- Replication lag in time (standby)\nSELECT\n  CASE WHEN pg_is_in_recovery()\n    THEN EXTRACT(EPOCH FROM (now() - pg_last_xact_replay_timestamp()))\n    ELSE 0\n  END AS lag_seconds;\n\n-- WAL generation rate\nSELECT pg_wal_lsn_diff(pg_current_wal_lsn(), '0/0') AS total_wal_bytes;\n```\n",
+  "sections": [
+    {
+      "id": "streaming-replication",
+      "title": "Streaming replication",
+      "body": "Physical replication via WAL streaming. Set `wal_level = replica` on primary, create a replication user, use `pg_basebackup` with `-R` to initialize the standby. The standby continuously receives and replays WAL records. Hot standby allows read queries on the standby. See [[postgres/performance#config-tuning]] for WAL-related settings.",
+      "tags": ["streaming", "wal", "standby", "hot-standby", "pg-basebackup", "physical"]
+    },
+    {
+      "id": "logical-replication",
+      "title": "Logical replication",
+      "body": "Table-level replication using publications and subscriptions. Set `wal_level = logical`. Publisher creates `PUBLICATION`, subscriber creates `SUBSCRIPTION`. Works across PostgreSQL versions. Supports selective table replication. Does not replicate DDL changes — schema changes must be applied manually on both sides. See [[postgres/queries]] for the SQL involved.",
+      "tags": ["logical", "publication", "subscription", "cross-version", "selective"]
+    },
+    {
+      "id": "failover",
+      "title": "Failover",
+      "body": "Manual failover with `pg_ctl promote` or `SELECT pg_promote()`. Automated failover with Patroni (industry standard, uses etcd/Consul for consensus), pg_auto_failover (simpler, PostgreSQL-native), or cloud-managed solutions. Patroni provides a REST API for cluster status and switchover operations. See [[postgres/backup]] for combining replication with backup strategies.",
+      "tags": ["failover", "patroni", "pg-auto-failover", "promote", "switchover", "ha"]
+    },
+    {
+      "id": "monitoring",
+      "title": "Monitoring",
+      "body": "Monitor `pg_stat_replication` on the primary for connected standbys and lag. `pg_wal_lsn_diff()` computes lag in bytes. On the standby, `pg_last_xact_replay_timestamp()` shows when the last transaction was replayed — compare with `now()` for time-based lag. Alert when replication lag exceeds your RPO (Recovery Point Objective). See [[postgres/performance]] for general monitoring queries.",
+      "tags": ["monitoring", "lag", "pg-stat-replication", "wal-lsn", "rpo"]
+    }
+  ],
+  "links": [
+    { "uri": "postgres/backup", "context": "Combine replication with backups for full disaster recovery" },
+    { "uri": "postgres/performance#config-tuning", "context": "WAL and replication-related configuration settings" },
+    { "uri": "postgres/queries", "context": "SQL commands for managing replication" },
+    { "uri": "postgres/performance", "context": "General monitoring and performance queries" }
+  ],
+  "related": [],
+  "scripts": [
+    {
+      "id": "setup-replication",
+      "name": "Setup Replication",
+      "description": "Configure PostgreSQL streaming or logical replication between primary and replica",
+      "lang": "bash",
+      "runtime": "bash>=4",
+      "entry": "./scripts/setup-replication.sh",
+      "env": {
+        "PRIMARY_HOST": { "required": true, "secret": false, "description": "Primary server hostname or IP" },
+        "REPLICA_HOST": { "required": true, "secret": false, "description": "Replica server hostname or IP" },
+        "REPLICATION_USER": { "required": true, "secret": false, "description": "PostgreSQL replication user name" },
+        "REPLICATION_PASSWORD": { "required": true, "secret": true, "description": "Replication user password" }
+      },
+      "packages": ["postgresql-client"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "primaryHost": { "type": "string", "description": "Primary server hostname or IP" },
+        "replicaHost": { "type": "string", "description": "Replica server hostname or IP" },
+        "mode": { "type": "string", "enum": ["streaming", "logical"], "description": "Replication mode" }
+      },
+      "required": ["primaryHost", "replicaHost", "mode"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "replicationSlot": { "type": "string", "description": "Name of the replication slot created" },
+        "walPosition": { "type": "string", "description": "Current WAL LSN position" },
+        "status": { "type": "string", "description": "Replication status (streaming, catchup, etc.)" }
+      }
+    }
+  },
+  "more": {
+    "docs": "https://www.postgresql.org/docs/current/high-availability.html",
+    "streaming": "https://www.postgresql.org/docs/current/warm-standby.html",
+    "logical": "https://www.postgresql.org/docs/current/logical-replication.html",
+    "patroni": "https://patroni.readthedocs.io"
+  },
+  "frontmatter": {
+    "created": "2026-04-10",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "developers, AI agents, database administrators",
+    "estimated_reading_time": "7 min",
+    "prerequisites": [],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

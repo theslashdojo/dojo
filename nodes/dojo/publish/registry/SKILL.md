@@ -15,7 +15,7 @@ Use `scripts/publish-registry.sh` for the final authenticated publish step.
 ## Example
 
 - Dry-run:
-  `bash scripts/publish-registry.sh /workspaces/Contracts/dojo/nodes/dojo/skill/node.json http://localhost:3000 true`
+  `bash scripts/publish-registry.sh /workspaces/Contracts/dojo/nodes/dojo/skill/node.json https://slashdojo.com true`
 - Live publish:
   `DOJO_TOKEN=... bash scripts/publish-registry.sh /workspaces/Contracts/dojo/nodes/dojo/skill/node.json https://registry.example false`
 

@@ -1,0 +1,95 @@
+{
+  "name": "models",
+  "version": "1.0.0",
+  "uri": "openai/models",
+  "type": "context",
+  "content_type": "guide",
+  "context": "OpenAI model selection guide — GPT-4o, GPT-4o-mini, o1, o3, embeddings, and DALL-E",
+  "info": "OpenAI offers multiple model families optimized for different tasks. GPT-4o is the flagship multimodal model for general-purpose text and vision tasks. GPT-4o-mini is optimized for speed and cost on simpler tasks. o1 and o3 are reasoning models that use chain-of-thought internally before answering, excelling at complex math, code, and analysis. text-embedding-3-small and text-embedding-3-large produce vector embeddings for search and RAG (see [[openai/embeddings]]). DALL-E 3 generates images from text prompts (see [[openai/images]]). This guide compares capabilities, pricing, context windows, and best-use scenarios to help select the right model for each task.",
+  "parent": "openai",
+  "tags": ["models", "gpt-4o", "gpt-4o-mini", "o1", "o3", "pricing", "context-window", "capabilities"],
+  "aliases": [
+    "openai models",
+    "model selection",
+    "gpt models",
+    "which openai model",
+    "model comparison",
+    "openai pricing",
+    "gpt-4o vs gpt-4o-mini",
+    "o1 model",
+    "o3 model",
+    "model guide"
+  ],
+  "triggers": [
+    "which openai model should i use",
+    "compare openai models",
+    "openai model pricing",
+    "gpt-4o vs gpt-4o-mini",
+    "what is o1 model",
+    "openai model capabilities",
+    "choose the right model"
+  ],
+  "body": "# Model Selection Guide\n\nOpenAI provides several model families, each optimized for different workloads. This guide helps you select the right model based on task complexity, latency requirements, and budget.\n\n## Model Comparison\n\n| Model | Type | Context Window | Input Price | Output Price | Best For |\n|-------|------|---------------|-------------|--------------|----------|\n| GPT-4o | Chat | 128k tokens | $2.50/1M | $10.00/1M | General-purpose, multimodal, coding |\n| GPT-4o-mini | Chat | 128k tokens | $0.15/1M | $0.60/1M | Fast tasks, high volume, cost-sensitive |\n| o1 | Reasoning | 200k tokens | $15.00/1M | $60.00/1M | Complex reasoning, math, analysis |\n| o3 | Reasoning | 200k tokens | $10.00/1M | $40.00/1M | Advanced reasoning, code, research |\n| o3-mini | Reasoning | 200k tokens | $1.10/1M | $4.40/1M | Cost-effective reasoning |\n| text-embedding-3-small | Embedding | 8,191 tokens | $0.02/1M | N/A | High-volume search, RAG |\n| text-embedding-3-large | Embedding | 8,191 tokens | $0.13/1M | N/A | Maximum retrieval accuracy |\n| DALL-E 3 | Image | N/A | $0.04-0.12/image | N/A | Image generation |\n\n*Prices are approximate and subject to change. Check [platform.openai.com/pricing](https://platform.openai.com/pricing) for current rates.*\n\n## Pricing Considerations\n\nCosts are measured in tokens (roughly 4 characters per token for English text):\n\n- **Input tokens** — your prompt, system message, and conversation history\n- **Output tokens** — the model's response (usually more expensive)\n- **Reasoning tokens** — o1/o3 models also charge for internal chain-of-thought tokens\n\nStrategies to reduce cost:\n- Use GPT-4o-mini for simple tasks (classification, extraction, summarization)\n- Use GPT-4o for complex tasks requiring nuance and accuracy\n- Use o1/o3 only when complex reasoning is essential\n- Keep system prompts concise to reduce input tokens\n- Set `max_tokens` to limit output length\n- Use [[openai/embeddings]] with smaller dimensions to reduce vector storage costs\n\n## Context Windows\n\n| Model | Context Window | Effective Long-Context Use |\n|-------|---------------|---------------------------|\n| GPT-4o | 128k tokens | ~300 pages of text |\n| GPT-4o-mini | 128k tokens | ~300 pages of text |\n| o1 | 200k tokens | ~500 pages of text |\n| o3 | 200k tokens | ~500 pages of text |\n\nLarger context windows enable:\n- Analyzing long documents without chunking\n- Multi-file code review\n- Extended conversation history\n- RAG with more retrieved context (see [[openai/embeddings#use-cases]])\n\n## Best Practices\n\n### Model Selection by Task\n\n| Task | Recommended Model | Reason |\n|------|------------------|--------|\n| General Q&A | GPT-4o-mini | Fast, cheap, sufficient quality |\n| Code generation | GPT-4o | Strong coding, good accuracy |\n| Complex reasoning | o1 or o3 | Chain-of-thought reasoning |\n| Data extraction | GPT-4o-mini + structured output | Fast, schema-constrained (see [[openai/chat#structured-output]]) |\n| Document analysis | GPT-4o | Long context, multimodal |\n| Image understanding | GPT-4o | Vision capabilities (see [[openai/chat#vision]]) |\n| Semantic search | text-embedding-3-small | Cost-effective embeddings (see [[openai/embeddings]]) |\n| High-accuracy RAG | text-embedding-3-large | Best retrieval quality (see [[openai/embeddings#models]]) |\n| Image generation | DALL-E 3 | High-quality images (see [[openai/images]]) |\n| Agent with tools | GPT-4o | Reliable function calling (see [[openai/function-calling]]) |\n| Persistent assistant | GPT-4o | Full assistant features (see [[openai/assistants]]) |\n\n### General Guidelines\n\n- Start with GPT-4o-mini, upgrade to GPT-4o if quality is insufficient\n- Use structured output (see [[openai/chat#structured-output]]) for reliable data extraction\n- Set temperature=0 for deterministic outputs, higher for creative tasks\n- Monitor token usage via the `usage` field in API responses\n- Implement retry with exponential backoff for rate limit errors (see [[openai#rate-limits]])\n",
+  "sections": [
+    {
+      "id": "model-comparison",
+      "title": "Model comparison",
+      "body": "GPT-4o: flagship multimodal (text + vision), 128k context, best general-purpose quality. GPT-4o-mini: fast and cheap, 128k context, ideal for high-volume simple tasks. o1: reasoning model, 200k context, excels at math, science, complex analysis. o3: advanced reasoning and code, 200k context. o3-mini: cost-effective reasoning. text-embedding-3-small/large: vector embeddings (see [[openai/embeddings]]). DALL-E 3: image generation (see [[openai/images]]).",
+      "tags": ["comparison", "gpt-4o", "gpt-4o-mini", "o1", "o3", "embeddings", "dall-e"]
+    },
+    {
+      "id": "pricing",
+      "title": "Pricing",
+      "body": "Costs are per million tokens. GPT-4o-mini is ~17x cheaper than GPT-4o for input. o1/o3 reasoning models also charge for internal chain-of-thought tokens. Embedding models charge input only. DALL-E charges per image. Use GPT-4o-mini for volume, GPT-4o for quality, o1/o3 for complex reasoning. Check platform.openai.com/pricing for current rates.",
+      "tags": ["pricing", "cost", "tokens", "budget", "optimization"]
+    },
+    {
+      "id": "context-windows",
+      "title": "Context windows",
+      "body": "GPT-4o and GPT-4o-mini: 128k tokens (~300 pages). o1 and o3: 200k tokens (~500 pages). Embedding models: 8,191 tokens per input. Larger context enables long document analysis, extended conversations, and more RAG context. Token count includes system prompt, conversation history, and tools.",
+      "tags": ["context-window", "tokens", "128k", "200k", "long-context"]
+    },
+    {
+      "id": "best-practices",
+      "title": "Best practices",
+      "body": "Start with GPT-4o-mini, upgrade if needed. Use structured output for data extraction (see [[openai/chat#structured-output]]). Set temperature=0 for deterministic results. Monitor `usage` in responses. Implement retry with backoff (see [[openai#rate-limits]]). Use [[openai/function-calling]] for tool integration. Choose embedding dimensions based on quality/storage tradeoffs (see [[openai/embeddings#dimensions]]).",
+      "tags": ["best-practices", "guidelines", "optimization", "temperature", "retry"]
+    }
+  ],
+  "links": [
+    { "uri": "openai", "context": "OpenAI ecosystem overview and authentication" },
+    { "uri": "openai/chat", "context": "Chat Completions API using these models" },
+    { "uri": "openai/embeddings", "context": "Embedding models for vector search and RAG" },
+    { "uri": "openai/images", "context": "DALL-E models for image generation" },
+    { "uri": "openai/assistants", "context": "Assistants API model configuration" },
+    { "uri": "openai/function-calling", "context": "Function calling model compatibility" },
+    { "uri": "openai/chat#structured-output", "context": "Structured output for reliable data extraction" },
+    { "uri": "openai/embeddings#dimensions", "context": "Configurable embedding dimensions for storage optimization" },
+    { "uri": "openai#rate-limits", "context": "Rate limits vary by model tier" }
+  ],
+  "related": [
+    { "uri": "openai/chat", "relation": "see-also", "note": "Chat completions is the primary consumer of GPT models" },
+    { "uri": "openai/embeddings", "relation": "see-also", "note": "Embedding model selection impacts RAG quality and cost" },
+    { "uri": "openai/images", "relation": "see-also", "note": "DALL-E model versions affect image quality and features" }
+  ],
+  "more": {
+    "docs": "https://platform.openai.com/docs/models",
+    "pricing": "https://platform.openai.com/pricing",
+    "limits": "https://platform.openai.com/account/limits"
+  },
+  "frontmatter": {
+    "created": "2026-04-10",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "developers, AI agents, architects",
+    "estimated_reading_time": "5 min",
+    "prerequisites": [],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

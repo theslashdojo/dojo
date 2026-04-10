@@ -1,0 +1,131 @@
+{
+  "name": "bundling",
+  "version": "1.0.0",
+  "uri": "frontend/bundling",
+  "type": "skill",
+  "context": "Bundle frontend apps for production: Vite, esbuild, webpack, tree-shaking, code splitting",
+  "info": "This skill covers bundling frontend applications for production deployment. Vite is the recommended bundler — it provides instant dev server startup with native ES modules and optimized Rollup-based production builds. esbuild handles transpilation and minification at extreme speed. The guide covers code splitting (route-based and component-based), tree-shaking to eliminate dead code, minification, asset optimization (images, fonts), and output analysis. Webpack remains relevant for legacy projects. Build output should be deployed to edge platforms like Vercel or Cloudflare — the bundler produces static assets and optionally server-side rendering bundles.",
+  "parent": "frontend",
+  "tags": ["bundling", "vite", "esbuild", "webpack", "tree-shaking", "code-splitting", "minification"],
+  "aliases": [
+    "bundling",
+    "build for production",
+    "vite build",
+    "webpack build",
+    "frontend build",
+    "production build",
+    "bundle optimization",
+    "tree shaking",
+    "code splitting"
+  ],
+  "triggers": [
+    "bundle for production",
+    "build the frontend",
+    "configure vite",
+    "optimize bundle size",
+    "add code splitting",
+    "tree shake unused code",
+    "analyze bundle size",
+    "production build setup"
+  ],
+  "body": "# Frontend Bundling\n\nBundling transforms your source code (TypeScript, JSX, CSS) into optimized assets for production. The bundler resolves imports, tree-shakes unused code, splits bundles for lazy loading, minifies output, and generates hashed filenames for cache busting.\n\n## Vite\n\nVite is the recommended bundler for modern frontend projects:\n\n```typescript\n// vite.config.ts\nimport { defineConfig } from \"vite\";\nimport react from \"@vitejs/plugin-react\";\n\nexport default defineConfig({\n  plugins: [react()],\n  build: {\n    target: \"es2022\",\n    outDir: \"dist\",\n    sourcemap: true,\n    rollupOptions: {\n      output: {\n        manualChunks: {\n          vendor: [\"react\", \"react-dom\"],\n          query: [\"@tanstack/react-query\"],\n        },\n      },\n    },\n  },\n  css: {\n    modules: {\n      localsConvention: \"camelCase\",\n    },\n  },\n});\n```\n\nVite features:\n- **Dev server** — native ES modules, instant HMR, no bundling in development\n- **Production build** — Rollup-based, optimized chunks, CSS extraction\n- **CSS** — PostCSS, Tailwind, CSS Modules built in (see [[frontend/css]])\n- **TypeScript** — transpiles via esbuild, type checking via `tsc --noEmit`\n- **Plugins** — React, Vue, Svelte, PWA, compression, and more\n\n## esbuild\n\nesbuild is an extremely fast bundler/minifier written in Go:\n\n```bash\n# Bundle a library\nesbuild src/index.ts --bundle --outdir=dist --format=esm --minify --sourcemap\n\n# Minify only\nesbuild dist/bundle.js --minify --outfile=dist/bundle.min.js\n```\n\nVite uses esbuild internally for:\n- TypeScript and JSX transpilation in dev\n- Dependency pre-bundling (node_modules)\n- CSS and JS minification in production\n\n## Code Splitting\n\nCode splitting loads only the code needed for the current route or interaction:\n\n```tsx\nimport { lazy, Suspense } from \"react\";\n\n// Route-based splitting\nconst Dashboard = lazy(() => import(\"./pages/Dashboard\"));\nconst Settings = lazy(() => import(\"./pages/Settings\"));\n\nfunction App() {\n  return (\n    <Suspense fallback={<Loading />}>\n      <Routes>\n        <Route path=\"/dashboard\" element={<Dashboard />} />\n        <Route path=\"/settings\" element={<Settings />} />\n      </Routes>\n    </Suspense>\n  );\n}\n\n// Component-based splitting for heavy components\nconst Chart = lazy(() => import(\"./components/Chart\"));\n```\n\nDynamic `import()` creates a split point. The bundler generates a separate chunk that loads on demand. Use `<Suspense>` to show a fallback while loading.\n\n## Tree-Shaking\n\nTree-shaking eliminates unused exports from the final bundle:\n\n- Use **named exports** instead of default exports — see [[frontend/react#components-jsx]]\n- Use **ES modules** (`import`/`export`), not CommonJS (`require`/`module.exports`)\n- Mark packages as **side-effect-free** in `package.json`: `\"sideEffects\": false`\n- Vite and Rollup tree-shake automatically in production builds\n- Tailwind CSS purges unused utility classes at build time — see [[frontend/css#tailwind]]\n\n## Optimization\n\n| Technique | Impact | Tool |\n|-----------|--------|------|\n| Minification | 50-70% size reduction | esbuild / Terser |\n| Tree-shaking | Remove unused exports | Rollup / esbuild |\n| Code splitting | Load only what's needed | Dynamic import() |\n| Compression | 70-90% transfer reduction | gzip / Brotli |\n| Image optimization | 40-80% image size reduction | sharp / squoosh |\n| Font subsetting | Load only used glyphs | fonttools |\n| CSS purging | Remove unused CSS | Tailwind / PurgeCSS |\n\nAnalyze bundle size with `rollup-plugin-visualizer` or `source-map-explorer`:\n\n```bash\n# Add to vite.config.ts plugins\nimport { visualizer } from \"rollup-plugin-visualizer\";\nplugins: [react(), visualizer({ open: true })]\n\n# Or use source-map-explorer\nnpx source-map-explorer dist/assets/*.js\n```\n\n## Build Commands\n\n```bash\n# Vite\nnpm run build          # vite build\nnpm run preview        # vite preview (serve production build locally)\n\n# Next.js\nnpm run build          # next build\nnpm run start          # next start\n\n# Custom\nVITE_API_URL=https://api.example.com npm run build\n```\n",
+  "sections": [
+    {
+      "id": "vite",
+      "title": "Vite",
+      "body": "Recommended bundler. Native ES modules in dev for instant startup and HMR. Rollup-based production builds with optimized chunking. Built-in support for TypeScript, JSX, CSS Modules, PostCSS, and Tailwind (see [[frontend/css#tailwind]]). Configure via vite.config.ts. Use manualChunks for vendor splitting. Plugin ecosystem for React, compression, PWA.",
+      "tags": ["vite", "rollup", "hmr", "dev-server", "production-build", "plugins"]
+    },
+    {
+      "id": "esbuild",
+      "title": "esbuild",
+      "body": "Extremely fast Go-based bundler and minifier. Used internally by Vite for TypeScript/JSX transpilation and dependency pre-bundling. Can be used standalone for library bundling. Supports ESM and CJS output formats. Limited plugin API compared to Rollup but 10-100x faster.",
+      "tags": ["esbuild", "minification", "transpilation", "go", "speed"]
+    },
+    {
+      "id": "code-splitting",
+      "title": "Code splitting",
+      "body": "Dynamic import() creates split points. Route-based splitting with React.lazy() and Suspense. Component-based splitting for heavy widgets (charts, editors, maps). Vite generates separate chunks loaded on demand. Use manualChunks in Rollup config for vendor bundle control. Next.js splits by page automatically.",
+      "tags": ["code-splitting", "lazy-loading", "dynamic-import", "suspense", "chunks"]
+    },
+    {
+      "id": "tree-shaking",
+      "title": "Tree-shaking",
+      "body": "Eliminates unused exports from bundles. Requires ES modules (import/export). Named exports tree-shake better than default exports — see [[frontend/react#components-jsx]]. Mark packages as side-effect-free in package.json. Tailwind purges unused CSS automatically (see [[frontend/css#tailwind]]). Rollup and esbuild handle tree-shaking in production.",
+      "tags": ["tree-shaking", "dead-code-elimination", "named-exports", "side-effects", "es-modules"]
+    },
+    {
+      "id": "optimization",
+      "title": "Build optimization",
+      "body": "Minification (esbuild/Terser) reduces code size 50-70%. Compression (gzip/Brotli) reduces transfer size 70-90%. Image optimization with sharp or squoosh. Font subsetting for used glyphs only. Bundle analysis with rollup-plugin-visualizer or source-map-explorer. Target modern browsers with build.target in Vite config.",
+      "tags": ["optimization", "minification", "compression", "gzip", "brotli", "images", "fonts", "analysis"]
+    }
+  ],
+  "links": [
+    { "uri": "frontend/react#components-jsx", "context": "Named exports for better tree-shaking" },
+    { "uri": "frontend/css#tailwind", "context": "Tailwind CSS purging in the build pipeline" },
+    { "uri": "frontend/css#css-modules", "context": "CSS Modules processed by Vite" },
+    { "uri": "frontend/testing", "context": "Run tests before building for production" },
+    { "uri": "frontend/state#tanstack-query", "context": "TanStack Query as a vendor chunk candidate" },
+    { "uri": "frontend/accessibility", "context": "Ensure accessibility is preserved after bundling" }
+  ],
+  "related": [
+    { "uri": "frontend/react", "relation": "see-also", "note": "React components are the primary input to the bundler" },
+    { "uri": "frontend/css", "relation": "see-also", "note": "CSS is processed and optimized during bundling" },
+    { "uri": "frontend/testing", "relation": "prerequisite", "note": "Tests should pass before creating a production build" }
+  ],
+  "scripts": [
+    {
+      "id": "build-bundle",
+      "name": "Build Bundle",
+      "description": "Run the production build command to generate optimized bundles",
+      "lang": "bash",
+      "runtime": "node>=18",
+      "entry": "./scripts/build-bundle.sh",
+      "env": {
+        "BUILD_COMMAND": { "required": false, "secret": false, "description": "Build command to execute (default: npm run build)" }
+      },
+      "packages": ["vite", "@vitejs/plugin-react"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "entry": { "type": "string", "description": "Entry point file (e.g. src/main.tsx)" },
+        "outDir": { "type": "string", "default": "dist", "description": "Output directory for built assets" },
+        "minify": { "type": "boolean", "default": true, "description": "Whether to minify the output" }
+      },
+      "required": ["entry"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "bundlePath": { "type": "string", "description": "Path to the output directory" },
+        "size": { "type": "string", "description": "Total bundle size (gzipped)" },
+        "chunks": { "type": "array", "items": { "type": "string" }, "description": "List of generated chunk filenames" }
+      }
+    }
+  },
+  "depends": [],
+  "more": {
+    "vite": "https://vite.dev",
+    "esbuild": "https://esbuild.github.io",
+    "rollup": "https://rollupjs.org"
+  },
+  "frontmatter": {
+    "created": "2026-04-10",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "6 min",
+    "prerequisites": ["frontend/react"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

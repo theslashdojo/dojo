@@ -2,7 +2,7 @@
 set -euo pipefail
 
 path="${1:?path to manifest is required}"
-registry="${2:-${DOJO_REGISTRY_URL:-http://localhost:3000}}"
+registry="${2:-${DOJO_REGISTRY_URL:-https://slashdojo.com}}"
 dry_run="${3:-${DOJO_DRY_RUN:-true}}"
 
 if [[ ! -f "$path" ]]; then
