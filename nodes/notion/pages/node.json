@@ -1,0 +1,129 @@
+{
+  "name": "pages",
+  "version": "1.0.0",
+  "uri": "notion/pages",
+  "type": "skill",
+  "context": "Create, read, update, and archive Notion pages via the API",
+  "info": "This skill covers the full lifecycle of Notion pages: creating new pages under a parent page or database, reading page properties and content, updating titles and property values, and archiving pages. Pages in Notion are composed of properties (title, rich text, dates, selects, relations, etc.) and content blocks (paragraphs, headings, lists, etc.). The API supports setting all property types at creation or update time, and appending child blocks for page content. Use @notionhq/client to interact with the Pages endpoints.",
+  "parent": "notion",
+  "tags": ["pages", "create", "update", "archive", "properties"],
+  "aliases": [
+    "notion pages",
+    "notion page",
+    "create notion page",
+    "update notion page",
+    "notion page api",
+    "manage notion pages",
+    "page properties",
+    "archive notion page"
+  ],
+  "triggers": [
+    "create a notion page",
+    "update a notion page",
+    "archive a notion page",
+    "read a notion page",
+    "set page properties",
+    "add content to a notion page",
+    "get page from notion"
+  ],
+  "body": "# Notion Pages\n\nPages are the fundamental content unit in Notion. Every page lives under a parent (either another page or a database) and contains properties and content blocks. The Pages API lets agents create, read, update, and archive pages programmatically.\n\n## Create\n\nTo create a page, POST to `/v1/pages` with a `parent` (page ID or database ID), `properties` (at minimum a title), and optional `children` (block content).\n\n```javascript\nconst { Client } = require('@notionhq/client');\nconst notion = new Client({ auth: process.env.NOTION_TOKEN });\n\nconst page = await notion.pages.create({\n  parent: { database_id: parentId },\n  properties: {\n    Name: {\n      title: [{ text: { content: 'My New Page' } }]\n    },\n    Status: {\n      select: { name: 'In Progress' }\n    }\n  },\n  children: [\n    {\n      object: 'block',\n      type: 'paragraph',\n      paragraph: {\n        rich_text: [{ text: { content: 'Page content goes here.' } }]\n      }\n    }\n  ]\n});\n```\n\n## Read and Update\n\nRetrieve a page with `notion.pages.retrieve({ page_id })`. Update properties with `notion.pages.update({ page_id, properties })`. To update content blocks, use the Blocks API (see [[notion/blocks#append-children]]).\n\n```javascript\n// Retrieve\nconst existing = await notion.pages.retrieve({ page_id: pageId });\n\n// Update properties\nconst updated = await notion.pages.update({\n  page_id: pageId,\n  properties: {\n    Status: { select: { name: 'Done' } }\n  }\n});\n```\n\n## Properties\n\nPage properties depend on the parent database schema. Common property types:\n\n| Type | API Format | Example |\n|------|-----------|----------|\n| Title | `title: [{ text: { content } }]` | Page name |\n| Rich text | `rich_text: [{ text: { content } }]` | Description field |\n| Number | `number: 42` | Priority score |\n| Select | `select: { name: 'Option' }` | Status dropdown |\n| Multi-select | `multi_select: [{ name: 'Tag' }]` | Labels |\n| Date | `date: { start: '2026-04-10' }` | Due date |\n| Checkbox | `checkbox: true` | Completion flag |\n| URL | `url: 'https://...'` | Link field |\n| Relation | `relation: [{ id: 'page-id' }]` | Cross-database link |\n\n## Content Blocks\n\nPage content is composed of blocks appended as children. Blocks include paragraphs, headings, lists, toggles, callouts, code, images, and embeds. See [[notion/blocks]] for the full block type reference and [[notion/blocks#rich-text]] for text formatting.\n\n## Archive\n\nArchive a page by setting `archived: true` in an update call. This is a soft delete \u2014 the page moves to trash and can be restored.\n\n```javascript\nawait notion.pages.update({\n  page_id: pageId,\n  archived: true\n});\n```\n",
+  "sections": [
+    {
+      "id": "create",
+      "title": "Create pages",
+      "body": "POST to `/v1/pages` with `parent` (page_id or database_id), `properties` (must include title), and optional `children` (array of block objects). When creating under a database, properties must match the database schema. The response includes the new `page_id` and `url`. Use `notion.pages.create()` in the SDK. See [[notion/databases]] for database-backed page creation.",
+      "tags": ["create", "parent", "properties", "children", "database"]
+    },
+    {
+      "id": "read-update",
+      "title": "Read and update pages",
+      "body": "Retrieve a page with `GET /v1/pages/{page_id}` or `notion.pages.retrieve()`. The response contains all properties but not content blocks \u2014 use `notion.blocks.children.list()` for content (see [[notion/blocks#append-children]]). Update properties with `PATCH /v1/pages/{page_id}` or `notion.pages.update()`. Only include the properties you want to change. The `last_edited_time` updates automatically.",
+      "tags": ["read", "retrieve", "update", "patch", "properties"]
+    },
+    {
+      "id": "properties",
+      "title": "Property types",
+      "body": "Properties follow the parent database schema. Title is always required. Rich text, number, select, multi-select, date, checkbox, URL, email, phone, relation, rollup, formula, people, files, and created/last-edited time are all supported. Each type has a specific JSON format. Select uses `{ name: 'value' }`, dates use ISO 8601 strings, relations use arrays of page IDs. See [[notion/databases#property-types]] for the database schema side.",
+      "tags": ["properties", "title", "select", "date", "relation", "schema"]
+    },
+    {
+      "id": "content-blocks",
+      "title": "Content blocks",
+      "body": "Page content is an ordered list of blocks. Append blocks at creation time via the `children` parameter or after creation via `notion.blocks.children.append()`. Blocks can be nested (e.g., toggle contents, list sub-items). See [[notion/blocks#block-types]] for supported types and [[notion/blocks#nesting]] for nesting rules.",
+      "tags": ["blocks", "children", "content", "append", "nesting"]
+    }
+  ],
+  "links": [
+    { "uri": "notion/databases", "context": "Database schema defines available page properties" },
+    { "uri": "notion/blocks", "context": "Block types used as page content" },
+    { "uri": "notion/blocks#block-types", "context": "Full reference of supported block types" },
+    { "uri": "notion/blocks#append-children", "context": "Append content blocks to an existing page" },
+    { "uri": "notion/blocks#rich-text", "context": "Rich text formatting for page content" },
+    { "uri": "notion/databases#property-types", "context": "Database property type definitions" },
+    { "uri": "notion/integrations", "context": "Set up an integration to obtain NOTION_TOKEN" },
+    { "uri": "notion#authentication", "context": "Authentication requirements for API calls" },
+    { "uri": "notion#rate-limits", "context": "Rate limit considerations for bulk page operations" }
+  ],
+  "related": [
+    { "uri": "notion/databases", "relation": "see-also", "note": "Pages created under databases inherit the database property schema" },
+    { "uri": "notion/blocks", "relation": "see-also", "note": "Page content is composed of blocks" },
+    { "uri": "notion/integrations", "relation": "prerequisite", "note": "An integration token is required before making any page API calls" }
+  ],
+  "scripts": [
+    {
+      "id": "manage-pages",
+      "name": "Manage Pages",
+      "description": "Create, read, update, and archive Notion pages via the API",
+      "lang": "javascript",
+      "runtime": "node>=18",
+      "entry": "./scripts/manage-pages.js",
+      "env": {
+        "NOTION_TOKEN": { "required": true, "secret": true, "description": "Notion integration token (ntn_...)" }
+      },
+      "packages": ["@notionhq/client"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "parentId": { "type": "string", "description": "Parent page ID or database ID" },
+        "title": { "type": "string", "description": "Page title text" },
+        "properties": { "type": "object", "description": "Page properties matching parent database schema" },
+        "children": { "type": "array", "description": "Array of block objects for page content" }
+      },
+      "required": ["parentId", "title"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "pageId": { "type": "string", "description": "Created or updated page ID" },
+        "url": { "type": "string", "description": "Notion URL for the page" },
+        "lastEdited": { "type": "string", "format": "date-time", "description": "Last edited timestamp" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "notion/integrations", "reason": "A Notion integration token is required for API authentication" }
+  ],
+  "more": {
+    "docs": "https://developers.notion.com/reference/page",
+    "create": "https://developers.notion.com/reference/post-page",
+    "update": "https://developers.notion.com/reference/patch-page"
+  },
+  "frontmatter": {
+    "created": "2026-04-10",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "5 min",
+    "prerequisites": ["notion/integrations"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

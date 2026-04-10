@@ -1,0 +1,132 @@
+{
+  "name": "webhooks",
+  "version": "1.0.0",
+  "uri": "github/webhooks",
+  "type": "skill",
+  "context": "Configure GitHub webhooks for event-driven automation",
+  "info": "This skill covers GitHub webhooks: creating and managing webhook endpoints that receive real-time HTTP POST notifications when events occur in a repository or organization. Agents use this skill to build event-driven automations that react to pushes, pull requests, issues, releases, and other GitHub events. Webhooks complement [[github/actions]] by enabling external systems to respond to GitHub events. Payload signatures ensure authenticity. See [[github/auth]] for authentication and [[github/repos]] for repository context.",
+  "parent": "github",
+  "tags": ["webhooks", "events", "hooks", "automation"],
+  "aliases": [
+    "github webhooks",
+    "webhooks",
+    "github hooks",
+    "event hooks",
+    "webhook automation",
+    "github event notifications",
+    "webhook endpoint",
+    "github webhook api"
+  ],
+  "triggers": [
+    "set up a github webhook",
+    "configure webhooks",
+    "listen for github events",
+    "create a webhook",
+    "react to push events",
+    "handle webhook payloads",
+    "verify webhook signatures"
+  ],
+  "body": "# GitHub Webhooks\n\nWebhooks deliver real-time HTTP POST notifications to your server when events occur on GitHub. When a push, pull request, issue, or other event happens, GitHub sends a JSON payload to your configured URL. This enables event-driven automation without polling the API.\n\n## Creating a Webhook\n\n```javascript\nimport { Octokit } from \"@octokit/rest\";\n\nconst octokit = new Octokit({ auth: process.env.GITHUB_TOKEN });\n\nconst { data: hook } = await octokit.repos.createWebhook({\n  owner: \"my-org\",\n  repo: \"my-project\",\n  config: {\n    url: \"https://my-server.com/webhooks/github\",\n    content_type: \"json\",\n    secret: process.env.WEBHOOK_SECRET,\n    insecure_ssl: \"0\",\n  },\n  events: [\"push\", \"pull_request\", \"issues\"],\n  active: true,\n});\nconsole.log(hook.id, hook.active, hook.events);\n```\n\n## Common Events\n\n| Event | Fires When |\n|-------|------------|\n| `push` | Commits pushed to a branch |\n| `pull_request` | PR opened, closed, merged, or updated |\n| `issues` | Issue created, edited, labeled, or closed |\n| `create` | Branch or tag created |\n| `delete` | Branch or tag deleted |\n| `release` | Release published |\n| `workflow_run` | Actions workflow run completes |\n| `star` | Repository starred |\n| `fork` | Repository forked |\n| `ping` | Webhook created (test event) |\n\n## Payload Format\n\nEvery webhook delivery includes:\n\n```http\nPOST /webhooks/github HTTP/1.1\nContent-Type: application/json\nX-GitHub-Event: push\nX-GitHub-Delivery: 72d3162e-cc78-11e3-81ab-4c9367dc0958\nX-Hub-Signature-256: sha256=abc123...\n\n{\n  \"action\": \"opened\",\n  \"repository\": { \"full_name\": \"my-org/my-project\" },\n  \"sender\": { \"login\": \"developer-1\" },\n  ...\n}\n```\n\n## Signature Verification\n\nAlways verify webhook signatures to ensure payloads come from GitHub:\n\n```javascript\nimport crypto from \"crypto\";\n\nfunction verifySignature(payload, signature, secret) {\n  const expected = \"sha256=\" + crypto\n    .createHmac(\"sha256\", secret)\n    .update(payload)\n    .digest(\"hex\");\n  return crypto.timingSafeEqual(\n    Buffer.from(signature),\n    Buffer.from(expected)\n  );\n}\n\n// In your Express handler\napp.post(\"/webhooks/github\", (req, res) => {\n  const sig = req.headers[\"x-hub-signature-256\"];\n  if (!verifySignature(JSON.stringify(req.body), sig, process.env.WEBHOOK_SECRET)) {\n    return res.status(401).send(\"Invalid signature\");\n  }\n  const event = req.headers[\"x-github-event\"];\n  // Handle event...\n  res.status(200).send(\"OK\");\n});\n```\n\n## Managing Webhooks\n\n```javascript\n// List webhooks\nconst { data: hooks } = await octokit.repos.listWebhooks({\n  owner: \"my-org\",\n  repo: \"my-project\",\n});\n\n// Update a webhook\nawait octokit.repos.updateWebhook({\n  owner: \"my-org\",\n  repo: \"my-project\",\n  hook_id: hook.id,\n  events: [\"push\", \"pull_request\", \"issues\", \"release\"],\n  active: true,\n});\n\n// Delete a webhook\nawait octokit.repos.deleteWebhook({\n  owner: \"my-org\",\n  repo: \"my-project\",\n  hook_id: hook.id,\n});\n```\n\n## Environment Variables\n\n| Variable | Purpose |\n|----------|----------|\n| `GITHUB_TOKEN` | Personal access token or installation token |\n| `WEBHOOK_SECRET` | Shared secret for payload signature verification |\n",
+  "sections": [
+    {
+      "id": "setup",
+      "title": "Webhook setup",
+      "body": "Create webhooks with `octokit.repos.createWebhook()` specifying `url`, `content_type` (json), `secret`, and `events`. Set `active: true` to enable delivery. The webhook URL must be publicly accessible over HTTPS. GitHub sends a `ping` event on creation to verify connectivity. See [[github/auth]] for token setup.",
+      "tags": ["setup", "create", "configure", "url", "https"]
+    },
+    {
+      "id": "events",
+      "title": "Webhook events",
+      "body": "Subscribe to specific events: `push`, `pull_request` (integrates with [[github/pull-requests]]), `issues` (integrates with [[github/issues]]), `create`, `delete`, `release`, `workflow_run` (from [[github/actions]]). Use `*` to receive all events. Choose only the events you need to minimize traffic and processing overhead.",
+      "tags": ["events", "push", "pull-request", "issues", "release", "workflow-run"]
+    },
+    {
+      "id": "payload-format",
+      "title": "Payload format",
+      "body": "Payloads are JSON POST requests with headers: `X-GitHub-Event` (event type), `X-GitHub-Delivery` (unique delivery ID), `X-Hub-Signature-256` (HMAC signature). The body includes `action`, `repository`, `sender`, and event-specific data. Parse the `X-GitHub-Event` header to route to the correct handler.",
+      "tags": ["payload", "json", "headers", "delivery", "format"]
+    },
+    {
+      "id": "security-signatures",
+      "title": "Security and signatures",
+      "body": "Always verify the `X-Hub-Signature-256` header using HMAC-SHA256 with your webhook secret. Use `crypto.timingSafeEqual()` to prevent timing attacks. Reject requests with missing or invalid signatures. Rotate secrets periodically. Never log or expose the webhook secret. See [[github/auth]] for credential management best practices.",
+      "tags": ["security", "signature", "hmac", "sha256", "verification", "timing-safe"]
+    }
+  ],
+  "links": [
+    { "uri": "github/auth", "context": "Authentication for webhook API access" },
+    { "uri": "github/repos", "context": "Webhooks are configured per-repository" },
+    { "uri": "github/pull-requests", "context": "React to pull_request webhook events" },
+    { "uri": "github/issues", "context": "React to issues webhook events" },
+    { "uri": "github/actions", "context": "Actions complement webhooks for automation" },
+    { "uri": "github/auth#personal-access-tokens", "context": "PAT for webhook API access" },
+    { "uri": "github/repos#create", "context": "Create a repo before adding webhooks" },
+    { "uri": "github/pull-requests#create", "context": "PR events trigger webhook deliveries" },
+    { "uri": "github/issues#create", "context": "Issue events trigger webhook deliveries" },
+    { "uri": "github/actions#triggers", "context": "Actions can also react to the same events" }
+  ],
+  "related": [
+    { "uri": "github/auth", "relation": "prerequisite", "note": "A valid token is required for webhook API operations" },
+    { "uri": "github/actions", "relation": "see-also", "note": "Actions provide an alternative event-driven automation layer inside GitHub" },
+    { "uri": "github/pull-requests", "relation": "see-also", "note": "Pull request events are among the most common webhook triggers" },
+    { "uri": "github/issues", "relation": "see-also", "note": "Issue events drive triage automation via webhooks" }
+  ],
+  "scripts": [
+    {
+      "id": "create-webhook",
+      "name": "Create Webhook",
+      "description": "Create a GitHub webhook for event-driven automation via the REST API",
+      "lang": "javascript",
+      "runtime": "node>=18",
+      "entry": "./scripts/create-webhook.js",
+      "env": {
+        "GITHUB_TOKEN": { "required": true, "secret": true, "description": "GitHub personal access token or installation token" }
+      },
+      "packages": ["@octokit/rest"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "owner": { "type": "string", "description": "Repository owner (user or org)" },
+        "repo": { "type": "string", "description": "Repository name" },
+        "url": { "type": "string", "description": "Webhook endpoint URL (must be HTTPS)" },
+        "events": { "type": "array", "items": { "type": "string" }, "description": "Events to subscribe to" },
+        "secret": { "type": "string", "description": "Shared secret for signature verification" }
+      },
+      "required": ["owner", "repo", "url", "events"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "hookId": { "type": "integer", "description": "Webhook ID" },
+        "active": { "type": "boolean", "description": "Whether the webhook is active" },
+        "events": { "type": "array", "items": { "type": "string" }, "description": "Subscribed events" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "github/auth", "reason": "A valid GitHub token is required for webhook API calls" }
+  ],
+  "more": {
+    "docs": "https://docs.github.com/en/webhooks",
+    "octokit": "https://octokit.github.io/rest.js/v20/#repos-create-webhook",
+    "events": "https://docs.github.com/en/webhooks/webhook-events-and-payloads"
+  },
+  "frontmatter": {
+    "created": "2026-04-10",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "5 min",
+    "prerequisites": ["github/auth"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

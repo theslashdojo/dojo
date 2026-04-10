@@ -1,0 +1,129 @@
+{
+  "name": "cloudformation",
+  "version": "1.0.0",
+  "uri": "aws/cloudformation",
+  "type": "skill",
+  "context": "Provision and manage AWS infrastructure using CloudFormation templates",
+  "info": "AWS CloudFormation lets you define cloud infrastructure as code using JSON or YAML templates. A template describes a collection of AWS resources (EC2 instances, S3 buckets, Lambda functions, IAM roles, RDS databases, etc.) as a stack. CloudFormation provisions and configures resources in the correct order, handles dependencies, and supports rollback on failure. Change sets let you preview modifications before applying them. Nested stacks compose large infrastructures from reusable templates. The AWS CDK (Cloud Development Kit) generates CloudFormation templates from TypeScript, Python, Java, or Go code. The AWS SDK v3 `@aws-sdk/client-cloudformation` package provides CreateStack, UpdateStack, DeleteStack, and DescribeStacks commands.",
+  "parent": "aws",
+  "tags": ["cloudformation", "iac", "infrastructure", "templates", "stacks", "cdk"],
+  "aliases": [
+    "cloudformation",
+    "aws cloudformation",
+    "cfn",
+    "infrastructure as code",
+    "aws iac",
+    "cloudformation template",
+    "cloudformation stack",
+    "aws cdk"
+  ],
+  "triggers": [
+    "create a cloudformation stack",
+    "provision aws infrastructure",
+    "write a cloudformation template",
+    "deploy infrastructure as code",
+    "update a cloudformation stack",
+    "use aws cdk",
+    "define aws resources in code"
+  ],
+  "body": "# AWS CloudFormation\n\nCloudFormation is AWS's infrastructure-as-code service. Define your entire infrastructure in a JSON or YAML template, and CloudFormation provisions and manages it as a stack. Stacks are atomic — if any resource fails to create, the entire stack rolls back.\n\n## Template Anatomy\n\nA CloudFormation template has these sections:\n\n```yaml\nAWSTemplateFormatVersion: '2010-09-09'\nDescription: My application stack\n\nParameters:\n  Environment:\n    Type: String\n    AllowedValues: [dev, staging, prod]\n    Default: dev\n\nResources:\n  MyBucket:\n    Type: AWS::S3::Bucket\n    Properties:\n      BucketName: !Sub 'my-app-${Environment}'\n      VersioningConfiguration:\n        Status: Enabled\n\n  MyFunction:\n    Type: AWS::Lambda::Function\n    Properties:\n      FunctionName: !Sub 'my-function-${Environment}'\n      Runtime: nodejs20.x\n      Handler: index.handler\n      Role: !GetAtt MyRole.Arn\n      Code:\n        S3Bucket: !Ref MyBucket\n        S3Key: function.zip\n\n  MyRole:\n    Type: AWS::IAM::Role\n    Properties:\n      AssumeRolePolicyDocument:\n        Statement:\n          - Effect: Allow\n            Principal:\n              Service: lambda.amazonaws.com\n            Action: sts:AssumeRole\n\nOutputs:\n  BucketArn:\n    Value: !GetAtt MyBucket.Arn\n  FunctionArn:\n    Value: !GetAtt MyFunction.Arn\n```\n\nKey sections: Parameters (input values), Resources (AWS resources to create), Outputs (values to export). Use `!Ref` and `!GetAtt` to reference resources and their attributes.\n\n## Deploy a Stack\n\n```javascript\nimport { CloudFormationClient, CreateStackCommand } from \"@aws-sdk/client-cloudformation\";\nimport { readFileSync } from \"fs\";\n\nconst cfn = new CloudFormationClient({ region: process.env.AWS_REGION });\n\nawait cfn.send(new CreateStackCommand({\n  StackName: \"my-app-stack\",\n  TemplateBody: readFileSync(\"./template.yaml\", \"utf-8\"),\n  Parameters: [\n    { ParameterKey: \"Environment\", ParameterValue: \"prod\" },\n  ],\n  Capabilities: [\"CAPABILITY_IAM\"], // required when creating IAM resources\n}));\n```\n\nInclude `CAPABILITY_IAM` or `CAPABILITY_NAMED_IAM` when your template creates [[aws/iam]] resources.\n\n## Parameters and Outputs\n\nParameters allow templates to be reusable across environments (dev, staging, prod). Define type, constraints, and defaults. Outputs export values (ARNs, endpoints, IDs) that other stacks or scripts can consume. Use `Fn::ImportValue` to reference outputs across stacks.\n\n## Change Sets\n\nBefore updating a stack, create a change set to preview what will change:\n\n1. `CreateChangeSet` — generate a diff of proposed changes\n2. Review additions, modifications, and deletions\n3. `ExecuteChangeSet` — apply the changes\n4. Or `DeleteChangeSet` — discard without applying\n\nChange sets prevent unexpected resource replacements or deletions.\n\n## Nested Stacks\n\nBreak large templates into reusable nested stacks:\n\n```yaml\nResources:\n  NetworkStack:\n    Type: AWS::CloudFormation::Stack\n    Properties:\n      TemplateURL: https://s3.amazonaws.com/my-templates/network.yaml\n      Parameters:\n        VpcCidr: '10.0.0.0/16'\n```\n\nNested stacks promote reuse and keep individual templates manageable. Store nested templates in [[aws/s3]].\n\n## Environment Variables\n\n| Variable | Purpose |\n|----------|----------|\n| `AWS_ACCESS_KEY_ID` | IAM access key for the CloudFormation client |\n| `AWS_SECRET_ACCESS_KEY` | IAM secret key for the CloudFormation client |\n| `AWS_REGION` | Target region for stack deployment |\n",
+  "sections": [
+    {
+      "id": "template-anatomy",
+      "title": "Template anatomy",
+      "body": "Templates have Parameters (inputs), Resources (AWS resources), and Outputs (exported values). Resources use types like `AWS::S3::Bucket`, `AWS::Lambda::Function`, `AWS::IAM::Role` — corresponding to [[aws/s3]], [[aws/lambda]], [[aws/iam]] services. Use `!Ref` for resource references and `!GetAtt` for attributes. `!Sub` for string substitution. DependsOn controls creation order.",
+      "tags": ["template", "parameters", "resources", "outputs", "ref", "getatt", "sub"]
+    },
+    {
+      "id": "parameters-outputs",
+      "title": "Parameters and outputs",
+      "body": "Parameters make templates reusable: define Environment (dev/staging/prod), instance types, bucket names as inputs. Use AllowedValues, Default, and constraints. Outputs export stack values (ARNs, endpoints, URLs) for cross-stack references via `Fn::ImportValue`. Use SSM Parameter Store for shared configuration across stacks.",
+      "tags": ["parameters", "outputs", "cross-stack", "import-value", "ssm", "reusable"]
+    },
+    {
+      "id": "change-sets",
+      "title": "Change sets",
+      "body": "Change sets preview updates before applying them. Create with `CreateChangeSetCommand`, review the diff (additions, modifications, replacements, deletions), then execute or discard. Critical for production stacks where unexpected resource replacement could cause downtime. Always use change sets for updates to stacks containing [[aws/rds]] databases or [[aws/ec2]] instances.",
+      "tags": ["change-set", "preview", "update", "diff", "safe-deploy"]
+    },
+    {
+      "id": "nested-stacks",
+      "title": "Nested stacks",
+      "body": "Use `AWS::CloudFormation::Stack` to embed child stacks. Store nested templates in [[aws/s3]]. Pass parameters down and receive outputs up. Common patterns: network stack (VPC, subnets), compute stack ([[aws/ec2]], [[aws/lambda]]), data stack ([[aws/s3]], [[aws/rds]]). Keeps individual templates under the 1 MB limit.",
+      "tags": ["nested", "modular", "reuse", "child-stack", "composition"]
+    }
+  ],
+  "links": [
+    { "uri": "aws/iam", "context": "Templates often create IAM roles and policies" },
+    { "uri": "aws/s3", "context": "S3 stores nested templates and Lambda code packages" },
+    { "uri": "aws/lambda", "context": "Define Lambda functions in CloudFormation templates" },
+    { "uri": "aws/ec2", "context": "Provision EC2 instances and networking via CloudFormation" },
+    { "uri": "aws/rds", "context": "Create RDS database instances in CloudFormation stacks" },
+    { "uri": "aws/iam#roles", "context": "Create execution roles and policies in templates" },
+    { "uri": "aws/s3#bucket-policies", "context": "Define bucket policies alongside bucket resources" },
+    { "uri": "aws/lambda#create-deploy", "context": "Deploy Lambda functions via CloudFormation" }
+  ],
+  "related": [
+    { "uri": "aws/iam", "relation": "see-also", "note": "Most stacks create IAM roles — requires CAPABILITY_IAM" },
+    { "uri": "aws/s3", "relation": "see-also", "note": "S3 hosts nested templates and deployment artifacts" },
+    { "uri": "aws/lambda", "relation": "see-also", "note": "Lambda functions are commonly deployed via CloudFormation" }
+  ],
+  "scripts": [
+    {
+      "id": "deploy-stack",
+      "name": "Deploy CloudFormation Stack",
+      "description": "Create or update an AWS CloudFormation stack from a template",
+      "lang": "javascript",
+      "runtime": "node>=18",
+      "entry": "./scripts/deploy-stack.js",
+      "env": {
+        "AWS_ACCESS_KEY_ID": { "required": true, "secret": true, "description": "IAM access key identifier" },
+        "AWS_SECRET_ACCESS_KEY": { "required": true, "secret": true, "description": "IAM secret access key" },
+        "AWS_REGION": { "required": true, "secret": false, "description": "AWS region for stack deployment" }
+      },
+      "packages": ["@aws-sdk/client-cloudformation"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "stackName": { "type": "string", "description": "Name of the CloudFormation stack" },
+        "templateBody": { "type": "string", "description": "JSON or YAML template content" },
+        "parameters": { "type": "array", "items": { "type": "object", "properties": { "ParameterKey": { "type": "string" }, "ParameterValue": { "type": "string" } } }, "description": "Stack parameters as key-value pairs" }
+      },
+      "required": ["stackName", "templateBody"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "stackId": { "type": "string", "description": "ARN of the created/updated stack" },
+        "status": { "type": "string", "description": "Stack status (CREATE_COMPLETE, UPDATE_COMPLETE, ROLLBACK_COMPLETE, etc.)" },
+        "outputs": { "type": "array", "items": { "type": "object" }, "description": "Stack output values" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "aws/iam", "reason": "IAM credentials with cloudformation:CreateStack permission are required" }
+  ],
+  "more": {
+    "docs": "https://docs.aws.amazon.com/cloudformation/",
+    "sdk": "https://docs.aws.amazon.com/AWSJavaScriptSDK/v3/latest/client/cloudformation/",
+    "cdk": "https://docs.aws.amazon.com/cdk/"
+  },
+  "frontmatter": {
+    "created": "2026-04-10",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "developers, AI agents, DevOps engineers",
+    "estimated_reading_time": "5 min",
+    "prerequisites": ["aws/iam"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

@@ -1,0 +1,140 @@
+{
+  "name": "integrations",
+  "version": "1.0.0",
+  "uri": "notion/integrations",
+  "type": "skill",
+  "context": "Build Notion integrations — internal integrations and public OAuth apps",
+  "info": "This skill covers building both types of Notion integrations: internal integrations (private to a single workspace, using a fixed token) and public integrations (distributed via OAuth 2.0, usable across any workspace). Internal integrations are the quickest way to get started — create one in the Notion integrations dashboard, share the target pages or databases with it, and use the provided token. Public integrations require OAuth configuration: redirect URI, client ID, client secret, and the authorization code exchange flow. Both integration types can request granular capabilities: read content, update content, insert content, read comments, create comments, and read user information.",
+  "parent": "notion",
+  "tags": ["integrations", "oauth", "internal", "bot", "permissions", "capabilities"],
+  "aliases": [
+    "notion integrations",
+    "notion integration",
+    "notion bot",
+    "notion oauth",
+    "notion internal integration",
+    "notion public integration",
+    "notion app",
+    "build notion integration",
+    "notion api token"
+  ],
+  "triggers": [
+    "build a notion integration",
+    "create a notion bot",
+    "set up notion oauth",
+    "get a notion api token",
+    "notion integration setup",
+    "connect to notion api",
+    "create notion app",
+    "notion permissions setup"
+  ],
+  "body": "# Notion Integrations\n\nIntegrations are the gateway to the Notion API. Every API call requires an integration token. Notion supports two integration types: internal (private, single workspace) and public (OAuth, any workspace).\n\n## Internal Setup\n\nInternal integrations are the fastest path to API access:\n\n1. **Create** \u2014 go to [notion.so/my-integrations](https://www.notion.so/my-integrations) and click \"New integration\"\n2. **Configure** \u2014 name the integration, select the workspace, and choose capabilities (read/update/insert content, read/create comments)\n3. **Copy token** \u2014 the integration token starts with `ntn_` (store it securely as `NOTION_TOKEN`)\n4. **Share** \u2014 in Notion, open the target page or database, click \"...\" > \"Connections\" > add your integration\n\n```javascript\nconst { Client } = require('@notionhq/client');\nconst notion = new Client({ auth: process.env.NOTION_TOKEN });\n\n// Now you can call any API endpoint the integration has capabilities for\nconst pages = await notion.search({ query: 'Meeting Notes' });\n```\n\nInternal integrations only see content explicitly shared with them. This is a security feature \u2014 share only what the integration needs.\n\n## OAuth Flow\n\nPublic integrations use OAuth 2.0 to access workspaces on behalf of users:\n\n1. **Register** \u2014 create a public integration at [notion.so/my-integrations](https://www.notion.so/my-integrations) with a redirect URI\n2. **Authorize** \u2014 redirect users to the Notion authorization URL:\n\n```\nhttps://api.notion.com/v1/oauth/authorize?\n  client_id={NOTION_OAUTH_CLIENT_ID}&\n  response_type=code&\n  owner=user&\n  redirect_uri={REDIRECT_URI}\n```\n\n3. **Exchange code** \u2014 POST to `/v1/oauth/token` with the authorization code:\n\n```javascript\nconst response = await fetch('https://api.notion.com/v1/oauth/token', {\n  method: 'POST',\n  headers: {\n    'Content-Type': 'application/json',\n    Authorization: `Basic ${Buffer.from(\n      `${process.env.NOTION_OAUTH_CLIENT_ID}:${process.env.NOTION_OAUTH_CLIENT_SECRET}`\n    ).toString('base64')}`\n  },\n  body: JSON.stringify({\n    grant_type: 'authorization_code',\n    code: authorizationCode,\n    redirect_uri: redirectUri\n  })\n});\n\nconst { access_token, bot_id, workspace_id } = await response.json();\n```\n\n4. **Use token** \u2014 the returned `access_token` works like an internal token but is scoped to the pages the user selected during authorization\n\n## Permissions\n\nIntegrations request capabilities at creation time:\n\n| Capability | Description |\n|-----------|-------------|\n| Read content | Retrieve pages, databases, blocks |\n| Update content | Update page properties, block content |\n| Insert content | Create pages, append blocks |\n| Read comments | List comments on pages and blocks |\n| Create comments | Add comments to pages and blocks |\n| Read user info | Access workspace member details |\n\nCapabilities cannot be changed after creation for internal integrations. Public integrations can update capabilities, but users must re-authorize.\n\n## Sharing\n\nIntegrations only access content explicitly shared with them. Share pages or databases via the Notion UI: open the item, click \"...\" > \"Connections\" > select the integration. Child pages and databases inherit the connection from their parent. For public integrations, users choose what to share during the OAuth authorization flow.\n",
+  "sections": [
+    {
+      "id": "internal-setup",
+      "title": "Internal integration setup",
+      "body": "Create at notion.so/my-integrations. Select workspace, name, and capabilities. Copy the `ntn_` token and store as `NOTION_TOKEN`. Share target pages/databases with the integration via the Notion UI (\"...\" > Connections). Internal integrations are limited to a single workspace. Token does not expire but can be regenerated. See [[notion#authentication]] for request header format.",
+      "tags": ["internal", "token", "setup", "workspace", "share"]
+    },
+    {
+      "id": "oauth-flow",
+      "title": "OAuth 2.0 flow",
+      "body": "Register a public integration with a redirect URI. Redirect users to `https://api.notion.com/v1/oauth/authorize` with `client_id`, `response_type=code`, `owner=user`, and `redirect_uri`. After user approval, Notion redirects back with a `code` parameter. Exchange the code at `POST /v1/oauth/token` using Basic auth (client_id:client_secret base64-encoded). The response includes `access_token`, `bot_id`, `workspace_id`, and `workspace_name`. Tokens do not expire but users can revoke access. Store tokens securely per-workspace.",
+      "tags": ["oauth", "public", "authorization", "token-exchange", "redirect"]
+    },
+    {
+      "id": "permissions",
+      "title": "Capabilities and permissions",
+      "body": "Integrations declare capabilities: read content, update content, insert content, read comments, create comments, read user info. Request only the capabilities your integration needs (principle of least privilege). Internal integration capabilities are fixed at creation. Public integration capability changes require user re-authorization. All API calls are scoped to shared content \u2014 even with read content capability, the integration cannot see pages not shared with it.",
+      "tags": ["permissions", "capabilities", "read", "update", "insert", "comments", "scope"]
+    },
+    {
+      "id": "sharing",
+      "title": "Content sharing",
+      "body": "Integrations only access explicitly shared content. In the Notion UI, use \"...\" > \"Connections\" to add an integration to a page or database. Children inherit parent connections. For databases, sharing the database also grants access to all pages within it. For public OAuth integrations, users select which pages to share during the authorization flow. Use `notion.search()` to discover all content the integration can access. See [[notion/pages]] and [[notion/databases]] for working with shared content.",
+      "tags": ["sharing", "connections", "access", "scope", "inheritance"]
+    }
+  ],
+  "links": [
+    { "uri": "notion/pages", "context": "Manage pages after integration is configured" },
+    { "uri": "notion/databases", "context": "Query databases after sharing with integration" },
+    { "uri": "notion/blocks", "context": "Manipulate block content via the integration" },
+    { "uri": "notion#authentication", "context": "Request header format for authenticated API calls" },
+    { "uri": "notion#rate-limits", "context": "Rate limits applied per integration" },
+    { "uri": "notion#api-overview", "context": "API endpoint overview" },
+    { "uri": "notion/pages#create", "context": "Create pages using the integration token" },
+    { "uri": "notion/databases#query-filter", "context": "Query databases shared with the integration" }
+  ],
+  "related": [
+    { "uri": "notion/pages", "relation": "see-also", "note": "Pages API requires an integration token to access" },
+    { "uri": "notion/databases", "relation": "see-also", "note": "Databases must be shared with the integration before querying" },
+    { "uri": "notion/blocks", "relation": "see-also", "note": "Block operations require content access capabilities" }
+  ],
+  "scripts": [
+    {
+      "id": "setup-integration",
+      "name": "Setup Integration",
+      "description": "Configure and test a Notion integration, including OAuth token exchange for public integrations",
+      "lang": "javascript",
+      "runtime": "node>=18",
+      "entry": "./scripts/setup-integration.js",
+      "env": {
+        "NOTION_TOKEN": { "required": true, "secret": true, "description": "Notion integration token (ntn_...) for internal integrations" },
+        "NOTION_OAUTH_CLIENT_ID": { "required": false, "secret": false, "description": "OAuth client ID for public integrations" },
+        "NOTION_OAUTH_CLIENT_SECRET": { "required": false, "secret": true, "description": "OAuth client secret for public integrations" }
+      },
+      "packages": ["@notionhq/client"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "type": { "type": "string", "enum": ["internal", "public"], "description": "Integration type: internal (fixed token) or public (OAuth)" },
+        "name": { "type": "string", "description": "Integration display name" },
+        "capabilities": {
+          "type": "object",
+          "properties": {
+            "readContent": { "type": "boolean", "default": true },
+            "updateContent": { "type": "boolean", "default": true },
+            "insertContent": { "type": "boolean", "default": true },
+            "readComments": { "type": "boolean", "default": false },
+            "createComments": { "type": "boolean", "default": false },
+            "readUserInfo": { "type": "boolean", "default": false }
+          },
+          "description": "Requested integration capabilities"
+        }
+      },
+      "required": ["type", "name"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "integrationId": { "type": "string", "description": "Integration ID" },
+        "botId": { "type": "string", "description": "Bot user ID for the integration" },
+        "token": { "type": "string", "description": "Access token (internal) or exchanged token (OAuth)" }
+      }
+    }
+  },
+  "depends": [],
+  "more": {
+    "docs": "https://developers.notion.com/docs/authorization",
+    "oauth": "https://developers.notion.com/docs/authorization#public-integration-auth-flow-set-up",
+    "dashboard": "https://www.notion.so/my-integrations"
+  },
+  "frontmatter": {
+    "created": "2026-04-10",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "developers, AI agents, integrators",
+    "estimated_reading_time": "6 min",
+    "prerequisites": [],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

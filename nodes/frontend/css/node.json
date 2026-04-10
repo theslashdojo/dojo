@@ -1,0 +1,100 @@
+{
+  "name": "css",
+  "version": "1.0.0",
+  "uri": "frontend/css",
+  "type": "context",
+  "context": "CSS styling: Tailwind CSS, CSS Modules, CSS-in-JS, responsive design, and animations",
+  "info": "This guide covers styling frontend applications with modern CSS approaches. Tailwind CSS v4 is the recommended utility-first framework — it generates only the CSS you use and integrates with any component framework. CSS Modules provide scoped class names for component-level styles. CSS-in-JS libraries like styled-components and Emotion embed styles in JavaScript but add runtime cost. The guide also covers responsive design with media queries and container queries, Flexbox and Grid layout patterns, and CSS animations and transitions. All examples assume React components — see [[frontend/react]] for component patterns.",
+  "parent": "frontend",
+  "tags": ["css", "tailwind", "css-modules", "css-in-js", "responsive", "animations", "flexbox", "grid"],
+  "aliases": [
+    "css styling",
+    "tailwind css",
+    "css modules",
+    "responsive design",
+    "css animations",
+    "styling",
+    "web styling",
+    "flexbox layout",
+    "css grid",
+    "css-in-js"
+  ],
+  "triggers": [
+    "style a component",
+    "add tailwind classes",
+    "make it responsive",
+    "use css modules",
+    "add css animation",
+    "flexbox layout",
+    "css grid layout",
+    "style with tailwind"
+  ],
+  "body": "# CSS Styling\n\nModern CSS offers multiple approaches to styling components. Tailwind CSS v4 is the recommended default for utility-first styling. CSS Modules provide scoped styles when you need traditional CSS. Responsive design, Flexbox, Grid, and animations are core CSS skills.\n\n## Tailwind CSS\n\nTailwind provides utility classes that map directly to CSS properties. Version 4 uses a CSS-first configuration:\n\n```tsx\nexport function Card({ title, children }: CardProps) {\n  return (\n    <div className=\"rounded-lg border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800\">\n      <h2 className=\"text-lg font-semibold text-gray-900 dark:text-white\">\n        {title}\n      </h2>\n      <div className=\"mt-4 text-gray-600 dark:text-gray-300\">\n        {children}\n      </div>\n    </div>\n  );\n}\n```\n\nTailwind v4 features:\n- **CSS-first config** — configure in `app.css` with `@theme` instead of `tailwind.config.js`\n- **Automatic content detection** — no need to specify content paths\n- **Container queries** — `@container` support built in\n- **Dark mode** — `dark:` variant uses `prefers-color-scheme` by default\n\n## CSS Modules\n\nCSS Modules scope class names to the component, preventing global conflicts:\n\n```css\n/* Button.module.css */\n.button {\n  padding: 0.5rem 1rem;\n  border-radius: 0.375rem;\n  font-weight: 600;\n}\n.primary {\n  background-color: #3b82f6;\n  color: white;\n}\n```\n\n```tsx\nimport styles from \"./Button.module.css\";\n\nexport function Button({ variant, children }: ButtonProps) {\n  return (\n    <button className={`${styles.button} ${styles[variant]}`}>\n      {children}\n    </button>\n  );\n}\n```\n\nVite and Next.js support CSS Modules out of the box. See [[frontend/bundling#vite]] for configuration.\n\n## Responsive Design\n\nUse Tailwind responsive prefixes or CSS media queries:\n\n```tsx\n{/* Mobile-first: stack on small screens, side-by-side on medium+ */}\n<div className=\"flex flex-col md:flex-row gap-4\">\n  <aside className=\"w-full md:w-64\">Sidebar</aside>\n  <main className=\"flex-1\">Content</main>\n</div>\n```\n\nBreakpoints: `sm` (640px), `md` (768px), `lg` (1024px), `xl` (1280px), `2xl` (1536px).\n\nContainer queries scope responsive rules to a parent container rather than the viewport — ideal for reusable components.\n\n## Flexbox and Grid\n\n| Layout | Use Case |\n|--------|----------|\n| Flexbox | One-dimensional layouts (rows or columns), alignment, spacing |\n| Grid | Two-dimensional layouts, complex page structures, equal-height cards |\n\n```css\n/* Flexbox: center content */\n.container { display: flex; align-items: center; justify-content: center; }\n\n/* Grid: responsive card grid */\n.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1.5rem; }\n```\n\n## Animations\n\nCSS transitions for simple state changes, keyframe animations for complex sequences:\n\n```css\n/* Transition */\n.button { transition: background-color 150ms ease-in-out, transform 150ms ease-in-out; }\n.button:hover { background-color: #2563eb; transform: scale(1.02); }\n\n/* Keyframe animation */\n@keyframes fadeIn {\n  from { opacity: 0; transform: translateY(8px); }\n  to { opacity: 1; transform: translateY(0); }\n}\n.card { animation: fadeIn 200ms ease-out; }\n```\n\nTailwind includes animation utilities: `animate-spin`, `animate-pulse`, `animate-bounce`, `animate-ping`. Use `motion-safe:` variant to respect `prefers-reduced-motion` for [[frontend/accessibility]].\n",
+  "sections": [
+    {
+      "id": "tailwind",
+      "title": "Tailwind CSS",
+      "body": "Tailwind v4 uses CSS-first config with @theme directive. Utility classes map to CSS properties (e.g. `p-4` = padding 1rem, `flex` = display flex). Automatic content detection, built-in dark mode with `dark:` variant, container queries with `@container`. Generates only the CSS your markup uses. See [[frontend/bundling#vite]] for build integration.",
+      "tags": ["tailwind", "utility-first", "dark-mode", "container-queries", "tailwind-v4"]
+    },
+    {
+      "id": "css-modules",
+      "title": "CSS Modules",
+      "body": "CSS Modules scope class names to the importing component, preventing global style conflicts. Import as `import styles from './Component.module.css'` and apply with `className={styles.className}`. Supported natively by Vite and Next.js. Use when you need traditional CSS with scoping, or when migrating from global CSS.",
+      "tags": ["css-modules", "scoped-styles", "component-styles", "vite", "next-js"]
+    },
+    {
+      "id": "responsive-design",
+      "title": "Responsive design",
+      "body": "Mobile-first approach: default styles for mobile, then add breakpoint prefixes for larger screens (`sm:`, `md:`, `lg:`, `xl:`, `2xl:`). Container queries scope responsive rules to parent containers instead of viewport — better for reusable components. Use `clamp()` for fluid typography and spacing.",
+      "tags": ["responsive", "mobile-first", "breakpoints", "container-queries", "fluid-typography"]
+    },
+    {
+      "id": "flexbox-grid",
+      "title": "Flexbox and Grid",
+      "body": "Flexbox for one-dimensional layouts: rows or columns, alignment, distribution, ordering. Grid for two-dimensional layouts: page structures, card grids, dashboard panels. Tailwind provides utility classes for both: `flex`, `grid`, `gap-*`, `grid-cols-*`, `items-center`, `justify-between`. Use `auto-fill`/`auto-fit` with `minmax()` for responsive grids without media queries.",
+      "tags": ["flexbox", "grid", "layout", "alignment", "auto-fill", "minmax"]
+    },
+    {
+      "id": "animations",
+      "title": "CSS animations",
+      "body": "CSS transitions for hover/focus state changes (`transition-colors`, `transition-transform`). Keyframe animations for complex sequences. Tailwind includes `animate-spin`, `animate-pulse`, `animate-bounce`, `animate-ping`. Respect `prefers-reduced-motion` with `motion-safe:` and `motion-reduce:` variants — see [[frontend/accessibility]] for accessibility considerations.",
+      "tags": ["animations", "transitions", "keyframes", "motion", "prefers-reduced-motion"]
+    }
+  ],
+  "links": [
+    { "uri": "frontend/react", "context": "React components that consume these styles" },
+    { "uri": "frontend/accessibility", "context": "Accessible color contrast, motion preferences, focus styles" },
+    { "uri": "frontend/bundling#vite", "context": "Vite processes Tailwind and CSS Modules in the build pipeline" },
+    { "uri": "frontend/testing#component-tests", "context": "Test visual behavior and responsive layouts" },
+    { "uri": "frontend/react#components-jsx", "context": "Component patterns that use className for styling" },
+    { "uri": "frontend/accessibility#wcag-checklist", "context": "WCAG color contrast and motion requirements" },
+    { "uri": "frontend/bundling#tree-shaking", "context": "Tailwind purges unused CSS at build time" }
+  ],
+  "related": [
+    { "uri": "frontend/react", "relation": "see-also", "note": "Styles are applied to React components via className" },
+    { "uri": "frontend/accessibility", "relation": "see-also", "note": "Styling must meet WCAG color contrast and motion requirements" },
+    { "uri": "frontend/bundling", "relation": "see-also", "note": "CSS is processed and optimized during the build step" }
+  ],
+  "content_type": "guide",
+  "more": {
+    "tailwind": "https://tailwindcss.com/docs",
+    "css-modules": "https://github.com/css-modules/css-modules",
+    "mdn-css": "https://developer.mozilla.org/en-US/docs/Web/CSS"
+  },
+  "frontmatter": {
+    "created": "2026-04-10",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "developers, AI agents, designers",
+    "estimated_reading_time": "5 min",
+    "prerequisites": [],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

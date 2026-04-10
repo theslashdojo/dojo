@@ -1,0 +1,114 @@
+{
+  "name": "client",
+  "version": "1.0.0",
+  "uri": "ethereum/x402/client",
+  "type": "skill",
+  "context": "Send x402 stablecoin payments as an HTTP client using fetch, axios, or the Python/Go SDK",
+  "info": "This skill enables any HTTP client or AI agent to automatically pay for resources protected by x402. The client wraps standard fetch or axios with x402 awareness: when a server returns 402, the client reads the payment requirements, signs an EIP-3009 or Permit2 authorization using the configured wallet, attaches it as a PAYMENT-SIGNATURE header, and retries. The entire flow is transparent — the caller just makes a normal HTTP request and gets back the resource. SDKs handle signing, header encoding, and retry logic. The client needs a funded wallet with USDC (or the required token) on the target chain.",
+  "parent": "ethereum/x402",
+  "tags": ["x402", "client", "fetch", "axios", "payment", "agent", "usdc", "buyer", "http-client"],
+  "aliases": [
+    "x402 client",
+    "send x402 payment",
+    "x402 fetch",
+    "x402 axios",
+    "pay for api",
+    "x402 buyer",
+    "agent payment",
+    "pay with usdc http"
+  ],
+  "triggers": [
+    "send x402 payment",
+    "pay for an api with x402",
+    "make x402 client requests",
+    "set up x402 client",
+    "agent pays for api",
+    "call a paid api with x402",
+    "use x402 fetch wrapper"
+  ],
+  "body": "# x402 Client Integration\n\nWrap your HTTP client with x402 to automatically pay for resources. This implements the client side of the [[ethereum/x402]] protocol. You need a funded [[ethereum/wallets]] with the required token on the target chain.\n\n## TypeScript — fetch wrapper\n\n```typescript\nimport { wrapFetch } from \"@x402/fetch\";\nimport { createWalletClient, http } from \"viem\";\nimport { privateKeyToAccount } from \"viem/accounts\";\nimport { base } from \"viem/chains\";\n\nconst account = privateKeyToAccount(process.env.PRIVATE_KEY as `0x${string}`);\nconst walletClient = createWalletClient({\n  account,\n  chain: base,\n  transport: http(),\n});\n\nconst fetch402 = wrapFetch(fetch, walletClient);\n\n// Use like normal fetch — x402 is handled automatically\nconst response = await fetch402(\"https://api.example.com/weather\");\nconst data = await response.json();\n```\n\n## TypeScript — axios interceptor\n\n```typescript\nimport axios from \"axios\";\nimport { withX402 } from \"@x402/axios\";\n\nconst client = withX402(axios.create(), walletClient);\nconst { data } = await client.get(\"https://api.example.com/weather\");\n```\n\n## Python\n\n```python\nfrom x402 import x402_fetch\n\nresponse = x402_fetch(\n    url=\"https://api.example.com/weather\",\n    private_key=os.environ[\"PRIVATE_KEY\"],\n    chain=\"base\",\n)\ndata = response.json()\n```\n\n## How It Works\n\n1. Client makes a normal HTTP request\n2. Server responds 402 with `PAYMENT-REQUIRED` header\n3. SDK reads payment requirements (price, token, chain, recipient)\n4. SDK signs an EIP-3009 `transferWithAuthorization` or Permit2 approval using the wallet\n5. SDK retries the request with `PAYMENT-SIGNATURE` header\n6. Server verifies, settles, and returns 200 with the resource\n7. Caller receives the response as if no payment occurred\n\nSee [[ethereum/x402#protocol-flow]] for the full sequence diagram and [[ethereum/x402#payment-schemes]] for EIP-3009 vs Permit2 details.\n\n## Requirements\n\n- A funded wallet with the required token (usually USDC) on the target chain\n- Private key accessible to the SDK for signing\n- The wallet must have token balance ≥ the price (no ETH needed for gas — the facilitator pays gas for EIP-3009)\n\n## Environment Variables\n\n| Variable | Purpose |\n|----------|----------|\n| `PRIVATE_KEY` | Wallet private key for signing payments |\n| `CHAIN` | Default chain (optional, auto-detected from 402 response) |\n",
+  "sections": [
+    {
+      "id": "fetch-wrapper",
+      "title": "Fetch wrapper",
+      "body": "Install `@x402/fetch`. Create a viem wallet client from your private key (see [[ethereum/wallets#create-wallet]]). Call `wrapFetch(fetch, walletClient)` to get an x402-aware fetch. Use it exactly like `fetch()` — payment is handled transparently on 402 responses.",
+      "tags": ["fetch", "typescript", "viem", "wrapper"]
+    },
+    {
+      "id": "axios-interceptor",
+      "title": "Axios interceptor",
+      "body": "Install `@x402/axios`. Call `withX402(axios.create(), walletClient)` to get an x402-aware axios instance. Use standard axios methods — the interceptor handles 402 responses automatically.",
+      "tags": ["axios", "interceptor", "typescript"]
+    },
+    {
+      "id": "python-client",
+      "title": "Python client",
+      "body": "Install `x402` via pip. Use `x402_fetch(url, private_key, chain)` for simple requests. The Python SDK handles signing, retry, and header encoding.",
+      "tags": ["python", "pip", "x402-fetch"]
+    },
+    {
+      "id": "gasless-payments",
+      "title": "Gasless payments",
+      "body": "When using EIP-3009 (USDC, EURC), the client only needs token balance — no ETH for gas (see [[ethereum/gas#l2-costs]] for fee context). The facilitator submits the transaction and pays gas (see [[ethereum/x402#facilitator]]). This makes x402 ideal for agents that hold only stablecoins.",
+      "tags": ["gasless", "eip-3009", "agent", "usdc"]
+    }
+  ],
+  "links": [
+    { "uri": "ethereum/x402", "context": "x402 protocol overview" },
+    { "uri": "ethereum/x402/server", "context": "Server-side integration to test against" },
+    { "uri": "ethereum/x402#payment-schemes", "context": "EIP-3009 vs Permit2 signing details" },
+    { "uri": "ethereum/wallets", "context": "Wallet setup and key management" }
+  ],
+  "related": [
+    { "uri": "ethereum/x402/server", "relation": "see-also", "note": "Build the server side to accept payments from this client" },
+    { "uri": "ethereum/wallets", "relation": "prerequisite", "note": "Client needs a funded wallet for signing payments" }
+  ],
+  "scripts": [
+    {
+      "id": "x402-client",
+      "name": "x402 Client Request",
+      "description": "Make an x402-aware HTTP request that auto-pays on 402",
+      "lang": "typescript",
+      "runtime": "node>=18",
+      "entry": "./scripts/x402-client.ts",
+      "env": {
+        "PRIVATE_KEY": { "required": true, "secret": true, "description": "Wallet private key for signing" },
+        "TARGET_URL": { "required": true, "secret": false, "description": "URL of the x402-protected resource" }
+      },
+      "packages": ["@x402/core", "@x402/fetch", "@x402/evm", "viem"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "url": { "type": "string", "description": "Target URL" },
+        "method": { "type": "string", "enum": ["GET", "POST", "PUT", "DELETE"], "default": "GET" },
+        "chain": { "type": "string", "description": "Preferred chain for payment" },
+        "maxPrice": { "type": "string", "description": "Maximum USD amount willing to pay per request" }
+      },
+      "required": ["url"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "status": { "type": "integer" },
+        "body": { "type": "string" },
+        "paymentTxHash": { "type": "string", "description": "Settlement transaction hash" },
+        "amountPaid": { "type": "string", "description": "Amount paid in USD" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "ethereum/wallets", "reason": "A funded wallet is required for signing payments" }
+  ],
+  "more": {
+    "docs": "https://docs.cdp.coinbase.com/x402/welcome",
+    "repo": "https://github.com/coinbase/x402"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

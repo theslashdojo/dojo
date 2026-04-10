@@ -1,0 +1,133 @@
+{
+  "name": "checkout",
+  "version": "1.0.0",
+  "uri": "stripe/checkout",
+  "type": "skill",
+  "context": "Build hosted checkout sessions for one-time and recurring payments",
+  "info": "Stripe Checkout provides a hosted payment page that handles UI, validation, SCA/3DS, and localization. A Checkout Session is created server-side with line items, mode (payment, subscription, or setup), and redirect URLs. Stripe hosts the entire payment flow — no custom payment forms needed. This skill covers creating sessions for one-time payments and subscriptions, configuring line items with prices or ad-hoc amounts, adding custom fields, and handling post-payment fulfillment via success URLs and webhooks.",
+  "parent": "stripe",
+  "tags": ["checkout", "sessions", "hosted", "one-time", "recurring", "payment-links"],
+  "aliases": [
+    "stripe checkout",
+    "checkout session",
+    "hosted checkout",
+    "payment page",
+    "stripe checkout session",
+    "buy button",
+    "payment link",
+    "checkout form"
+  ],
+  "triggers": [
+    "create a checkout session",
+    "build a payment page with stripe",
+    "set up stripe checkout",
+    "create a payment link",
+    "hosted checkout for subscriptions",
+    "redirect to stripe checkout"
+  ],
+  "body": "# Stripe Checkout\n\nCheckout provides a Stripe-hosted payment page that handles the entire payment UI, including card input, validation, SCA/3DS authentication, and localization. Create a session server-side, redirect the customer to the hosted page, and handle the result. You will need a `STRIPE_SECRET_KEY` from your [[stripe]] dashboard.\n\n## Create a Checkout Session\n\n### One-Time Payment\n\n```javascript\nimport Stripe from 'stripe';\nconst stripe = new Stripe(process.env.STRIPE_SECRET_KEY);\n\nconst session = await stripe.checkout.sessions.create({\n  mode: 'payment',\n  line_items: [\n    {\n      price_data: {\n        currency: 'usd',\n        product_data: { name: 'T-Shirt' },\n        unit_amount: 2000,  // $20.00\n      },\n      quantity: 1,\n    },\n  ],\n  success_url: 'https://example.com/success?session_id={CHECKOUT_SESSION_ID}',\n  cancel_url: 'https://example.com/cancel',\n});\n\nconsole.log(session.id);   // cs_xxx\nconsole.log(session.url);  // https://checkout.stripe.com/c/pay/cs_xxx\n// Redirect customer to session.url\n```\n\n### Subscription\n\n```javascript\nconst session = await stripe.checkout.sessions.create({\n  mode: 'subscription',\n  line_items: [\n    { price: 'price_xxx', quantity: 1 },  // Existing recurring price\n  ],\n  success_url: 'https://example.com/success?session_id={CHECKOUT_SESSION_ID}',\n  cancel_url: 'https://example.com/cancel',\n});\n// Creates a customer and subscription automatically\n```\n\nSee [[stripe/subscriptions#prices-products]] for setting up recurring prices.\n\n## Line Items\n\nLine items define what the customer is buying:\n\n```javascript\n// Using an existing price\n{ price: 'price_xxx', quantity: 2 }\n\n// Using ad-hoc price data\n{\n  price_data: {\n    currency: 'usd',\n    product_data: {\n      name: 'Custom Item',\n      description: 'A detailed description',\n      images: ['https://example.com/image.png'],\n    },\n    unit_amount: 1500,  // $15.00\n  },\n  quantity: 1,\n}\n\n// Adjustable quantity\n{\n  price: 'price_xxx',\n  quantity: 1,\n  adjustable_quantity: { enabled: true, minimum: 1, maximum: 10 },\n}\n```\n\n## Custom Fields\n\nCollect additional information during checkout:\n\n```javascript\nconst session = await stripe.checkout.sessions.create({\n  mode: 'payment',\n  line_items: [{ price: 'price_xxx', quantity: 1 }],\n  custom_fields: [\n    {\n      key: 'engraving',\n      label: { type: 'custom', custom: 'Engraving text' },\n      type: 'text',\n      optional: false,\n    },\n  ],\n  success_url: 'https://example.com/success',\n  cancel_url: 'https://example.com/cancel',\n});\n```\n\n## Fulfillment\n\nAfter payment, fulfill the order using one of two approaches:\n\n1. **Success URL** — retrieve the session on your success page:\n\n```javascript\nconst session = await stripe.checkout.sessions.retrieve(sessionId, {\n  expand: ['line_items'],\n});\nif (session.payment_status === 'paid') {\n  // Fulfill the order\n}\n```\n\n2. **Webhooks** (recommended) — listen for `checkout.session.completed`:\n\nSee [[stripe/webhooks]] for setting up webhook handlers. The webhook approach is more reliable because customers may close the browser before reaching the success URL.\n\n## Environment Variables\n\n| Variable | Purpose |\n|----------|----------|\n| `STRIPE_SECRET_KEY` | Server-side API key (`sk_test_...` or `sk_live_...`) |\n",
+  "sections": [
+    {
+      "id": "create-session",
+      "title": "Create checkout session",
+      "body": "Call `stripe.checkout.sessions.create()` with `mode` (`payment`, `subscription`, or `setup`), `line_items`, `success_url`, and `cancel_url`. The response includes `id`, `url`, and `status`. Redirect the customer to `session.url`. For subscriptions, Stripe automatically creates a customer and subscription object. Use `{CHECKOUT_SESSION_ID}` placeholder in URLs for session retrieval.",
+      "tags": ["create", "session", "mode", "redirect", "url"]
+    },
+    {
+      "id": "line-items",
+      "title": "Line items configuration",
+      "body": "Line items accept either a `price` ID (from [[stripe/subscriptions#prices-products]]) or inline `price_data` with `currency`, `unit_amount`, and `product_data`. Set `quantity` or enable `adjustable_quantity` for customer control. Multiple line items create an itemized checkout page. Images in `product_data.images` display on the checkout page.",
+      "tags": ["line-items", "price", "price-data", "quantity", "product"]
+    },
+    {
+      "id": "custom-fields",
+      "title": "Custom fields",
+      "body": "Add `custom_fields` to collect extra information (text, dropdown, numeric). Each field has a `key`, `label`, `type`, and `optional` flag. Retrieve submitted values from the completed session's `custom_fields` array. Useful for personalization (engraving, notes) and compliance (tax IDs, company names).",
+      "tags": ["custom-fields", "text", "dropdown", "personalization"]
+    },
+    {
+      "id": "fulfillment",
+      "title": "Post-payment fulfillment",
+      "body": "Use webhooks (recommended) or success URL retrieval for fulfillment. Listen for `checkout.session.completed` via [[stripe/webhooks]] — this fires when payment succeeds. Retrieve the session with `expand: ['line_items']` to get order details. For subscriptions, also listen for `customer.subscription.created`. Never rely solely on the success URL redirect — customers may not reach it.",
+      "tags": ["fulfillment", "success", "webhook", "checkout-completed", "order"]
+    }
+  ],
+  "links": [
+    { "uri": "stripe", "context": "Stripe ecosystem overview, API keys, and test mode" },
+    { "uri": "stripe/payments", "context": "Lower-level payment intents for custom payment flows" },
+    { "uri": "stripe/subscriptions", "context": "Create and manage the subscriptions initiated by checkout" },
+    { "uri": "stripe/subscriptions#prices-products", "context": "Set up products and prices for checkout line items" },
+    { "uri": "stripe/webhooks", "context": "Handle checkout.session.completed for reliable fulfillment" }
+  ],
+  "related": [
+    { "uri": "stripe/payments", "relation": "see-also", "note": "Use payment intents directly for fully custom payment UIs" },
+    { "uri": "stripe/subscriptions", "relation": "see-also", "note": "Checkout in subscription mode creates subscriptions automatically" },
+    { "uri": "stripe/webhooks", "relation": "see-also", "note": "Webhooks are the reliable way to confirm checkout completion" }
+  ],
+  "scripts": [
+    {
+      "id": "create-checkout",
+      "name": "Create Checkout Session",
+      "description": "Create a Stripe Checkout session with line items and redirect URLs",
+      "lang": "javascript",
+      "runtime": "node>=18",
+      "entry": "./scripts/create-checkout.js",
+      "env": {
+        "STRIPE_SECRET_KEY": { "required": true, "secret": true, "description": "Stripe secret API key (sk_test_... or sk_live_...)" }
+      },
+      "packages": ["stripe"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "lineItems": {
+          "type": "array",
+          "description": "Array of line item objects with price or price_data and quantity",
+          "items": {
+            "type": "object",
+            "properties": {
+              "price": { "type": "string", "description": "Existing price ID (price_xxx)" },
+              "quantity": { "type": "integer", "description": "Item quantity" }
+            }
+          }
+        },
+        "mode": { "type": "string", "enum": ["payment", "subscription", "setup"], "description": "Checkout mode", "default": "payment" },
+        "successUrl": { "type": "string", "description": "URL to redirect after successful payment" },
+        "cancelUrl": { "type": "string", "description": "URL to redirect if customer cancels" }
+      },
+      "required": ["lineItems", "mode", "successUrl", "cancelUrl"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "sessionId": { "type": "string", "description": "Checkout session ID (cs_xxx)" },
+        "url": { "type": "string", "description": "Hosted checkout page URL to redirect the customer to" },
+        "status": { "type": "string", "description": "Session status: open, complete, expired" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "stripe", "reason": "Requires a Stripe account and API key" }
+  ],
+  "more": {
+    "docs": "https://docs.stripe.com/checkout",
+    "api": "https://docs.stripe.com/api/checkout/sessions"
+  },
+  "frontmatter": {
+    "created": "2026-04-10",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "4 min",
+    "prerequisites": ["stripe"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

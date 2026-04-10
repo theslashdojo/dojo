@@ -1,0 +1,135 @@
+{
+  "name": "build",
+  "version": "1.0.0",
+  "uri": "docker/build",
+  "type": "skill",
+  "context": "Build Docker images from Dockerfiles with multi-stage builds and layer caching",
+  "info": "This skill covers writing Dockerfiles, building images with `docker build` or `docker buildx`, leveraging multi-stage builds for smaller production images, and optimizing layer caching for fast rebuilds. BuildKit is the modern build backend that enables parallel stage execution, secret mounts, SSH forwarding, and advanced caching strategies. Build arguments parameterize builds at build time. The target flag selects a specific stage in a multi-stage Dockerfile. Image tagging follows the `repository:tag` convention. Best practices include ordering layers from least to most frequently changed, using `.dockerignore`, and choosing minimal base images like `alpine` or `distroless`.",
+  "parent": "docker",
+  "tags": ["build", "dockerfile", "multi-stage", "layer-cache", "buildkit"],
+  "aliases": [
+    "docker build",
+    "build image",
+    "dockerfile",
+    "build docker image",
+    "container build",
+    "image build",
+    "multi-stage build",
+    "buildkit"
+  ],
+  "triggers": [
+    "build a docker image",
+    "write a dockerfile",
+    "create a docker image",
+    "multi-stage docker build",
+    "optimize docker build cache",
+    "build with buildkit",
+    "reduce docker image size"
+  ],
+  "body": "# Building Docker Images\n\nBuilding a Docker image involves writing a Dockerfile that defines the image layers, then running `docker build` to execute the instructions and produce a tagged image. Each instruction (`FROM`, `RUN`, `COPY`, etc.) creates a layer that is cached and reused on subsequent builds if the inputs haven't changed.\n\n## Dockerfile Syntax\n\n```dockerfile\n# Base image\nFROM node:20-alpine AS base\n\n# Set working directory\nWORKDIR /app\n\n# Copy dependency manifests first (cache-friendly)\nCOPY package.json package-lock.json ./\n\n# Install dependencies\nRUN npm ci --production\n\n# Copy application source\nCOPY . .\n\n# Expose port\nEXPOSE 3000\n\n# Start command\nCMD [\"node\", \"server.js\"]\n```\n\n## Multi-Stage Builds\n\nMulti-stage builds use multiple `FROM` statements to separate build-time dependencies from the runtime image. This drastically reduces final image size.\n\n```dockerfile\n# Stage 1: Build\nFROM node:20-alpine AS builder\nWORKDIR /app\nCOPY package.json package-lock.json ./\nRUN npm ci\nCOPY . .\nRUN npm run build\n\n# Stage 2: Production\nFROM node:20-alpine AS production\nWORKDIR /app\nCOPY --from=builder /app/dist ./dist\nCOPY --from=builder /app/node_modules ./node_modules\nEXPOSE 3000\nCMD [\"node\", \"dist/server.js\"]\n```\n\nUse `--target builder` to build only a specific stage. See [[docker/compose#services]] for how Compose leverages build targets.\n\n## Build Arguments\n\nBuild arguments parameterize the build without hardcoding values:\n\n```dockerfile\nARG NODE_VERSION=20\nFROM node:${NODE_VERSION}-alpine\n\nARG APP_ENV=production\nENV APP_ENV=${APP_ENV}\n```\n\n```bash\ndocker build --build-arg NODE_VERSION=18 --build-arg APP_ENV=staging -t myapp:staging .\n```\n\n## Layer Caching\n\nDocker caches each layer. If an instruction and its inputs haven't changed, the cached layer is reused. Optimize by:\n\n1. **Order layers from least to most frequently changed** — base image and system packages first, application code last\n2. **Copy dependency manifests before source** — `COPY package.json` before `COPY .` so dependency install is cached when only source changes\n3. **Use `.dockerignore`** — exclude `node_modules`, `.git`, build artifacts to prevent unnecessary cache invalidation\n4. **Leverage BuildKit cache mounts** — `RUN --mount=type=cache,target=/root/.npm npm ci` persists the npm cache across builds\n\n## BuildKit Features\n\nEnable BuildKit with `DOCKER_BUILDKIT=1` or use `docker buildx`:\n\n- **Parallel execution** — independent stages build concurrently\n- **Cache mounts** — persist package manager caches across builds\n- **Secret mounts** — `RUN --mount=type=secret,id=mytoken` exposes secrets without baking them into layers\n- **SSH forwarding** — `RUN --mount=type=ssh git clone` for private repos\n\n## Best Practices\n\n- Use minimal base images: `alpine`, `slim`, or `distroless`\n- Run as non-root user: `USER node` or `USER 1000`\n- Pin versions: `FROM node:20.11.1-alpine` not `FROM node:latest`\n- Combine `RUN` commands to reduce layers: `RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*`\n- Use `HEALTHCHECK` for container health monitoring (see [[docker/compose#healthchecks]])\n- Tag images for [[docker/registry]] with the full repository path\n",
+  "sections": [
+    {
+      "id": "dockerfile-syntax",
+      "title": "Dockerfile syntax",
+      "body": "A Dockerfile is a text file with instructions: `FROM` sets the base image, `WORKDIR` sets the working directory, `COPY` and `ADD` bring files into the image, `RUN` executes commands, `EXPOSE` documents ports, `ENV` sets environment variables, `ARG` defines build-time variables, `CMD` and `ENTRYPOINT` define the default command. Each instruction creates a cached layer.",
+      "tags": ["dockerfile", "from", "run", "copy", "cmd", "entrypoint", "expose"]
+    },
+    {
+      "id": "multi-stage",
+      "title": "Multi-stage builds",
+      "body": "Use multiple `FROM` statements to separate build and runtime stages. `COPY --from=builder` copies artifacts from a named stage. The final stage contains only runtime dependencies, reducing image size by 50-90%. Use `--target` to build a specific stage. Stages run in parallel with BuildKit when they don't depend on each other.",
+      "tags": ["multi-stage", "from", "copy-from", "target", "size-reduction"]
+    },
+    {
+      "id": "build-args",
+      "title": "Build arguments",
+      "body": "Define with `ARG name=default` in the Dockerfile, pass with `--build-arg name=value` at build time. Build args are available during the build but not at runtime (use `ENV` to persist). Common uses: base image version, build environment, feature flags. Never pass secrets as build args — they are visible in image history. Use BuildKit secret mounts instead.",
+      "tags": ["build-arg", "arg", "parameterize", "env"]
+    },
+    {
+      "id": "caching",
+      "title": "Layer caching strategies",
+      "body": "Docker caches each layer and reuses it if the instruction and inputs are unchanged. Order instructions from least to most frequently changed. Copy dependency manifests before source code. Use `.dockerignore` to exclude files that cause unnecessary cache invalidation. BuildKit cache mounts (`--mount=type=cache`) persist package manager caches across builds. Use `--no-cache` to force a full rebuild when needed.",
+      "tags": ["cache", "layers", "dockerignore", "cache-mount", "invalidation"]
+    },
+    {
+      "id": "best-practices",
+      "title": "Best practices",
+      "body": "Use minimal base images (`alpine`, `distroless`). Pin image versions for reproducibility. Run as non-root. Combine `RUN` commands to reduce layers. Use `HEALTHCHECK` for monitoring (see [[docker/compose#healthchecks]]). Scan images for vulnerabilities with `docker scout`. Keep `.dockerignore` in sync with `.gitignore`. Tag images consistently for [[docker/registry]] pushes.",
+      "tags": ["best-practices", "security", "non-root", "alpine", "distroless", "healthcheck"]
+    }
+  ],
+  "links": [
+    { "uri": "docker/compose", "context": "Compose uses build config to build images for services" },
+    { "uri": "docker/registry", "context": "Push built images to container registries" },
+    { "uri": "docker/compose#services", "context": "Service build configuration in Compose files" },
+    { "uri": "docker/compose#healthchecks", "context": "HEALTHCHECK instruction for container readiness" },
+    { "uri": "docker/networking#port-mapping", "context": "EXPOSE and port mapping for built images" },
+    { "uri": "docker/volumes#bind-mounts", "context": "Bind mounts for development builds with live reload" }
+  ],
+  "related": [
+    { "uri": "docker/compose", "relation": "see-also", "note": "Compose defines build configuration for multi-service applications" },
+    { "uri": "docker/registry", "relation": "see-also", "note": "Built images are pushed to registries for distribution" },
+    { "uri": "docker/volumes", "relation": "see-also", "note": "Volumes are used alongside builds for development workflows" }
+  ],
+  "scripts": [
+    {
+      "id": "build-image",
+      "name": "Build Image",
+      "description": "Build a Docker image from a Dockerfile with optional multi-stage target and build arguments",
+      "lang": "bash",
+      "runtime": "docker>=20",
+      "entry": "./scripts/build-image.sh",
+      "env": {
+        "DOCKER_IMAGE": { "required": true, "secret": false, "description": "Image repository name (e.g. myapp)" },
+        "DOCKER_TAG": { "required": true, "secret": false, "description": "Image tag (e.g. latest, v1.0.0)" },
+        "DOCKERFILE_PATH": { "required": false, "secret": false, "description": "Path to Dockerfile (default: ./Dockerfile)" }
+      },
+      "packages": ["docker", "buildkit"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "context": { "type": "string", "description": "Build context directory path" },
+        "dockerfile": { "type": "string", "description": "Path to Dockerfile (default: ./Dockerfile)" },
+        "tag": { "type": "string", "description": "Image tag in repository:tag format" },
+        "target": { "type": "string", "description": "Target stage in multi-stage build" },
+        "buildArgs": { "type": "object", "description": "Key-value pairs of build arguments" }
+      },
+      "required": ["context", "tag"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "imageId": { "type": "string", "description": "SHA256 digest of the built image" },
+        "tag": { "type": "string", "description": "Full image tag (repository:tag)" },
+        "size": { "type": "string", "description": "Image size in human-readable format" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "docker", "reason": "Docker Engine must be installed and running to build images" }
+  ],
+  "more": {
+    "docs": "https://docs.docker.com/build/",
+    "dockerfile-ref": "https://docs.docker.com/reference/dockerfile/",
+    "buildkit": "https://docs.docker.com/build/buildkit/"
+  },
+  "frontmatter": {
+    "created": "2026-04-10",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "developers, AI agents, DevOps engineers",
+    "estimated_reading_time": "5 min",
+    "prerequisites": [],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

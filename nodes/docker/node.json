@@ -1,0 +1,89 @@
+{
+  "name": "docker",
+  "version": "1.0.0",
+  "uri": "docker",
+  "type": "ecosystem",
+  "context": "Docker containerization — build images, compose services, manage registries, container networking and volumes",
+  "info": "The Docker ecosystem covers containerized application development and deployment: writing Dockerfiles, building images with multi-stage builds and layer caching, orchestrating multi-container applications with Docker Compose, pushing and pulling images from registries (Docker Hub, GHCR, ECR), configuring container networking (bridge, host, overlay), and managing persistent storage with volumes and bind mounts. This tree is organized around the jobs an agent actually performs: building images, running containers, composing multi-service applications, and pushing to registries. Docker Engine is the core runtime. BuildKit is the modern build backend. Compose V2 is the standard for multi-container orchestration.",
+  "parent": null,
+  "tags": ["docker", "containers", "images", "compose", "dockerfile", "registry", "devops", "microservices"],
+  "aliases": [
+    "docker",
+    "docker containers",
+    "containerization",
+    "docker development",
+    "container platform",
+    "docker engine",
+    "container orchestration",
+    "docker build",
+    "docker compose"
+  ],
+  "triggers": [
+    "work with docker",
+    "build a docker image",
+    "containerize an application",
+    "run docker compose",
+    "push image to registry",
+    "set up container networking",
+    "manage docker volumes"
+  ],
+  "body": "# Docker Ecosystem\n\nDocker is a containerization platform where agents build images, run containers, compose multi-service applications, and manage container registries. The Docker Engine runs containers as isolated processes sharing the host kernel, providing lightweight virtualization without the overhead of full VMs.\n\n## Agent Jobs\n\nThe primary tasks an agent performs in this ecosystem:\n\n- **Build images** — write Dockerfiles, execute multi-stage builds, leverage layer caching for fast rebuilds. See [[docker/build]].\n- **Compose services** — define multi-container applications in `docker-compose.yml`, manage service dependencies, profiles, and health checks. See [[docker/compose]].\n- **Push to registries** — tag images, authenticate with registries, push and pull images across Docker Hub, GHCR, and ECR. See [[docker/registry]].\n- **Configure networking** — set up bridge, host, and overlay networks, map ports, configure DNS resolution between containers. See [[docker/networking]].\n- **Manage volumes** — create named volumes, configure bind mounts, back up and restore persistent data. See [[docker/volumes]].\n\n## Architecture\n\nDocker uses a client-server architecture:\n\n| Component | Role |\n|-----------|------|\n| Docker CLI | Client that sends commands to the daemon |\n| Docker Daemon (dockerd) | Manages images, containers, networks, volumes |\n| containerd | Low-level container runtime |\n| BuildKit | Modern build backend with parallel builds and cache |\n| Docker Compose | Multi-container orchestration via YAML |\n| Docker Registry | Image storage and distribution (Docker Hub, GHCR, ECR) |\n\n## Image vs Container\n\n- **Image** — read-only template built from a Dockerfile. Layers are cached and shared. Identified by `repository:tag` or digest.\n- **Container** — running instance of an image. Writable layer on top. Has its own filesystem, networking, and process namespace.\n\nImages are built once and run many times. Containers are ephemeral by default — use [[docker/volumes]] for persistent data.\n\n## Docker Engine\n\nThe Docker Engine provides the core runtime:\n\n- **Namespaces** — process, network, mount, user isolation\n- **cgroups** — CPU, memory, I/O resource limits\n- **Union filesystem** — overlay2 layered filesystem for images and containers\n- **Networking** — bridge, host, overlay, macvlan drivers\n- **Storage** — volumes, bind mounts, tmpfs mounts\n\n## Key Commands\n\n```bash\n# Build an image\ndocker build -t myapp:latest .\n\n# Run a container\ndocker run -d -p 8080:80 --name myapp myapp:latest\n\n# Compose multi-service app\ndocker compose up -d\n\n# Push to registry\ndocker push myregistry/myapp:latest\n\n# Inspect and manage\ndocker ps\ndocker logs myapp\ndocker exec -it myapp /bin/sh\n```\n",
+  "sections": [
+    {
+      "id": "architecture",
+      "title": "Docker architecture",
+      "body": "Docker uses a client-server model. The Docker CLI sends commands to the Docker daemon (dockerd), which manages images, containers, networks, and volumes. containerd is the low-level runtime. BuildKit provides parallel, cached builds. Docker Compose orchestrates multi-container apps via YAML definitions.",
+      "tags": ["architecture", "daemon", "containerd", "buildkit", "client-server"]
+    },
+    {
+      "id": "image-vs-container",
+      "title": "Image vs container",
+      "body": "An image is a read-only template built from a Dockerfile — layers are cached and shared across builds. A container is a running instance of an image with a writable layer on top. Images are built once and run many times. Containers are ephemeral by default — use [[docker/volumes]] for data that must survive container restarts.",
+      "tags": ["image", "container", "layers", "writable-layer", "ephemeral"]
+    },
+    {
+      "id": "docker-engine",
+      "title": "Docker Engine",
+      "body": "The Docker Engine provides process isolation via Linux namespaces (PID, NET, MNT, USER), resource limits via cgroups (CPU, memory, I/O), layered filesystems via overlay2, and pluggable networking and storage drivers. This is the foundation all other Docker features build on.",
+      "tags": ["engine", "namespaces", "cgroups", "overlay2", "runtime"]
+    }
+  ],
+  "links": [
+    { "uri": "docker/build", "context": "Build Docker images from Dockerfiles" },
+    { "uri": "docker/compose", "context": "Define and run multi-container applications" },
+    { "uri": "docker/registry", "context": "Push, pull, and manage container images in registries" },
+    { "uri": "docker/networking", "context": "Container networking: bridge, host, overlay, DNS, ports" },
+    { "uri": "docker/volumes", "context": "Persistent storage with volumes and bind mounts" },
+    { "uri": "docker/build#multi-stage", "context": "Multi-stage builds for smaller production images" },
+    { "uri": "docker/build#caching", "context": "Layer caching strategies for fast rebuilds" },
+    { "uri": "docker/compose#services", "context": "Defining services, dependencies, and scaling" },
+    { "uri": "docker/compose#healthchecks", "context": "Health checks for service readiness" },
+    { "uri": "docker/registry#push-pull", "context": "Pushing and pulling images to/from registries" },
+    { "uri": "docker/networking#network-types", "context": "Bridge, host, and overlay network drivers" },
+    { "uri": "docker/volumes#volume-types", "context": "Named volumes, bind mounts, and tmpfs" }
+  ],
+  "related": [
+    { "uri": "docker/build", "relation": "see-also", "note": "Image building is the primary development workflow" },
+    { "uri": "docker/compose", "relation": "see-also", "note": "Compose is the standard for multi-container local development" }
+  ],
+  "more": {
+    "docs": "https://docs.docker.com",
+    "repo": "https://github.com/docker"
+  },
+  "frontmatter": {
+    "created": "2026-04-10",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "developers, AI agents, DevOps engineers",
+    "estimated_reading_time": "5 min",
+    "prerequisites": [],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://github.com/docker",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

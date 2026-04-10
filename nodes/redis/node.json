@@ -1,0 +1,90 @@
+{
+  "name": "redis",
+  "version": "1.0.0",
+  "uri": "redis",
+  "type": "ecosystem",
+  "context": "Redis in-memory data store — caching, pub/sub messaging, streams, and data structures",
+  "info": "The Redis ecosystem covers in-memory data storage, caching with TTL and eviction policies, real-time pub/sub messaging across channels, durable event streaming with consumer groups, and advanced data structures including sorted sets, hashes, bitmaps, and HyperLogLog. Redis operates as a single-threaded, sub-millisecond key-value store that can also function as a message broker and stream processor. This tree is organized around the jobs an agent actually performs: caching data for fast retrieval, publishing and subscribing to real-time channels, processing ordered event streams, and leveraging specialized data structures for counting, ranking, and membership queries. The ioredis library is the primary Node.js client. Clustering, Sentinel, and replication provide high availability.",
+  "parent": null,
+  "tags": ["redis", "cache", "pub-sub", "streams", "key-value", "in-memory", "data-structures", "queues"],
+  "aliases": [
+    "redis",
+    "redis cache",
+    "redis server",
+    "in-memory store",
+    "key-value store",
+    "redis database",
+    "redis messaging",
+    "redis streams",
+    "redis data structures"
+  ],
+  "triggers": [
+    "work with redis",
+    "cache data in redis",
+    "use redis pub/sub",
+    "process redis streams",
+    "set up redis caching",
+    "publish messages to redis",
+    "use redis data structures",
+    "connect to redis"
+  ],
+  "body": "# Redis Ecosystem\n\nRedis is an in-memory data store where agents cache values, publish and subscribe to real-time message channels, process durable event streams, and leverage advanced data structures for counting, ranking, and membership. Redis delivers sub-millisecond latency and supports persistence to disk via RDB snapshots and AOF logs.\n\n## Agent Jobs\n\nThe primary tasks an agent performs in this ecosystem:\n\n- **Cache data** \u2014 store and retrieve key-value pairs with TTL, eviction policies, and cache patterns (aside, through, ahead). See [[redis/caching]].\n- **Publish/subscribe messages** \u2014 send and receive real-time messages across channels with pattern matching. See [[redis/pub-sub]].\n- **Process event streams** \u2014 append events with XADD, read with XREAD, manage consumer groups for reliable processing. See [[redis/streams]].\n- **Use data structures** \u2014 work with strings, lists, sets, sorted sets, hashes, bitmaps, and HyperLogLog for specialized workloads. See [[redis/data-structures]].\n- **Configure high availability** \u2014 set up clustering, Sentinel, replication, and failover for production resilience. See [[redis/clustering]].\n\n## Connection\n\nAll skills in this tree connect via a Redis URL:\n\n```javascript\nimport Redis from \"ioredis\";\n\nconst redis = new Redis(process.env.REDIS_URL);\n// Default: redis://localhost:6379\n```\n\n| Connection Format | Example | Use Case |\n|-------------------|---------|----------|\n| Standard | `redis://localhost:6379` | Local development |\n| With auth | `redis://:password@host:6379` | Password-protected instances |\n| TLS | `rediss://host:6380` | Cloud-managed Redis (AWS, GCP) |\n| Sentinel | `redis+sentinel://host:26379` | High-availability setups |\n| Cluster | `redis://node1:6379,node2:6379` | Cluster mode |\n\n## Data Model\n\nRedis stores all data as key-value pairs. Keys are strings. Values can be:\n\n| Type | Commands | Use Case |\n|------|----------|----------|\n| String | GET, SET, INCR | Caching, counters, simple values |\n| List | LPUSH, RPOP, LRANGE | Queues, recent items, timelines |\n| Set | SADD, SMEMBERS, SINTER | Tags, unique items, membership |\n| Sorted Set | ZADD, ZRANGE, ZRANK | Leaderboards, rate limiting, scheduling |\n| Hash | HSET, HGET, HGETALL | Objects, user profiles, sessions |\n| Stream | XADD, XREAD, XREADGROUP | Event logs, message queues |\n| Bitmap | SETBIT, BITCOUNT | Feature flags, daily active users |\n| HyperLogLog | PFADD, PFCOUNT | Cardinality estimation |\n\n## Libraries\n\n- **ioredis** \u2014 full-featured Redis client for Node.js with cluster and sentinel support\n- **redis (node-redis)** \u2014 official Node.js client\n- **redis-py** \u2014 Python Redis client\n- **go-redis** \u2014 Go Redis client\n- **Redlock** \u2014 distributed locking across Redis instances\n",
+  "sections": [
+    {
+      "id": "overview",
+      "title": "Overview",
+      "body": "Redis is a single-threaded, in-memory data store delivering sub-millisecond latency for reads and writes. It supports persistence via RDB snapshots and append-only files (AOF). Beyond simple key-value operations, Redis provides pub/sub messaging, durable streams with consumer groups, and specialized data structures. Use [[redis/caching]] for cache operations, [[redis/pub-sub]] for messaging, [[redis/streams]] for event processing, and [[redis/data-structures]] for advanced types.",
+      "tags": ["overview", "in-memory", "persistence", "latency", "single-threaded"]
+    },
+    {
+      "id": "connection",
+      "title": "Connection and configuration",
+      "body": "Connect via `REDIS_URL` environment variable. Default is `redis://localhost:6379`. Use `rediss://` for TLS connections. ioredis handles reconnection, pipelining, and connection pooling automatically. For cluster mode, see [[redis/clustering#cluster-mode]]. For Sentinel-based HA, see [[redis/clustering#sentinel]].",
+      "tags": ["connection", "ioredis", "tls", "url", "config"]
+    },
+    {
+      "id": "data-model",
+      "title": "Data model",
+      "body": "Keys are always strings. Values can be strings, lists, sets, sorted sets, hashes, streams, bitmaps, or HyperLogLog structures. Each type has dedicated commands optimized for its access patterns. See [[redis/data-structures]] for comprehensive coverage of each type, [[redis/caching]] for string-based cache patterns, and [[redis/streams]] for stream-based event processing.",
+      "tags": ["data-model", "keys", "values", "types", "commands"]
+    }
+  ],
+  "links": [
+    { "uri": "redis/caching", "context": "Key-value caching with TTL and eviction policies" },
+    { "uri": "redis/pub-sub", "context": "Real-time publish/subscribe messaging" },
+    { "uri": "redis/streams", "context": "Durable event stream processing with consumer groups" },
+    { "uri": "redis/data-structures", "context": "Strings, lists, sets, sorted sets, hashes, bitmaps, HyperLogLog" },
+    { "uri": "redis/clustering", "context": "High availability with clustering, Sentinel, and replication" },
+    { "uri": "redis/caching#patterns", "context": "Cache-aside, cache-through, and cache-ahead patterns" },
+    { "uri": "redis/caching#eviction-policies", "context": "LRU, LFU, and TTL-based eviction strategies" },
+    { "uri": "redis/pub-sub#pattern-matching", "context": "Pattern-based channel subscriptions" },
+    { "uri": "redis/streams#consumer-groups", "context": "Consumer groups for reliable stream processing" },
+    { "uri": "redis/data-structures#sets-sorted-sets", "context": "Sorted sets for leaderboards and ranking" },
+    { "uri": "redis/clustering#sentinel", "context": "Sentinel for automatic failover" },
+    { "uri": "redis/clustering#replication", "context": "Master-replica replication for read scaling" }
+  ],
+  "related": [
+    { "uri": "redis/caching", "relation": "see-also", "note": "Caching is the most common Redis use case" },
+    { "uri": "redis/streams", "relation": "see-also", "note": "Streams provide durable, ordered event processing" }
+  ],
+  "more": {
+    "docs": "https://redis.io/docs",
+    "repo": "https://github.com/redis/redis"
+  },
+  "frontmatter": {
+    "created": "2026-04-10",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "developers, AI agents, integrators",
+    "estimated_reading_time": "5 min",
+    "prerequisites": [],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://github.com/redis/redis",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

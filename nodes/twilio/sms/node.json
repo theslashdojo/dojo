@@ -1,0 +1,133 @@
+{
+  "name": "sms",
+  "version": "1.0.0",
+  "uri": "twilio/sms",
+  "type": "skill",
+  "context": "Send and receive SMS messages using the Twilio Messaging API",
+  "info": "This skill covers sending and receiving SMS and MMS messages through the Twilio Messaging API. It handles outbound message creation, inbound webhook configuration, delivery status callbacks, MMS media attachments, and Messaging Services for high-volume sending. The primary interface is the `client.messages.create()` method in the Twilio Node.js helper library. Messages are sent from a Twilio phone number or Messaging Service SID to any E.164-formatted destination number. Status callbacks provide real-time delivery tracking.",
+  "parent": "twilio",
+  "tags": ["sms", "messaging", "send", "receive", "mms", "text"],
+  "aliases": [
+    "send sms",
+    "text message",
+    "send text",
+    "sms api",
+    "twilio sms",
+    "messaging api",
+    "mms",
+    "send mms",
+    "bulk sms"
+  ],
+  "triggers": [
+    "send an sms message",
+    "send a text message",
+    "receive sms webhooks",
+    "send mms with image",
+    "track message delivery",
+    "set up sms notifications",
+    "send bulk text messages"
+  ],
+  "body": "# SMS Messaging\n\nSend and receive SMS and MMS messages through the Twilio Messaging API. Messages are delivered globally via Twilio's carrier network from a purchased phone number or Messaging Service.\n\n## Sending an SMS\n\n```javascript\nconst twilio = require(\"twilio\");\n\nconst client = twilio(\n  process.env.TWILIO_ACCOUNT_SID,\n  process.env.TWILIO_AUTH_TOKEN\n);\n\nconst message = await client.messages.create({\n  to: \"+15551234567\",\n  from: process.env.TWILIO_PHONE_NUMBER,\n  body: \"Hello from Twilio!\",\n});\n\nconsole.log(message.sid); // SM...\nconsole.log(message.status); // \"queued\"\n```\n\n## Receiving SMS\n\nConfigure a webhook URL in the Twilio Console (Phone Numbers > Active Numbers > Messaging). When an SMS arrives, Twilio sends a POST request with `From`, `To`, `Body`, and other fields. Respond with TwiML to reply (see [[twilio/twiml#messaging-verbs]]).\n\n```javascript\nconst express = require(\"express\");\nconst { MessagingResponse } = require(\"twilio\").twiml;\n\nconst app = express();\napp.use(express.urlencoded({ extended: false }));\n\napp.post(\"/sms\", (req, res) => {\n  const twiml = new MessagingResponse();\n  twiml.message(`You said: ${req.body.Body}`);\n  res.type(\"text/xml\").send(twiml.toString());\n});\n```\n\n## MMS Media\n\nSend images, GIFs, and other media by including a `mediaUrl` array:\n\n```javascript\nconst message = await client.messages.create({\n  to: \"+15551234567\",\n  from: process.env.TWILIO_PHONE_NUMBER,\n  body: \"Check out this image!\",\n  mediaUrl: [\"https://example.com/image.jpg\"],\n});\n```\n\nMMS is supported on US and Canadian numbers. International numbers fall back to SMS with a link.\n\n## Status Callbacks\n\nTrack delivery status by providing a `statusCallback` URL:\n\n```javascript\nconst message = await client.messages.create({\n  to: \"+15551234567\",\n  from: process.env.TWILIO_PHONE_NUMBER,\n  body: \"Tracked message\",\n  statusCallback: \"https://example.com/status\",\n});\n```\n\nTwilio sends POST requests as the message progresses: `queued` > `sent` > `delivered` (or `failed` / `undelivered`).\n\n## Messaging Services\n\nFor high-volume sending, use a Messaging Service instead of a single number. A Messaging Service pools multiple phone numbers, handles opt-out compliance, and provides intelligent sender selection:\n\n```javascript\nconst message = await client.messages.create({\n  to: \"+15551234567\",\n  messagingServiceSid: \"MG...\",\n  body: \"Sent via Messaging Service\",\n});\n```\n",
+  "sections": [
+    {
+      "id": "send",
+      "title": "Sending SMS",
+      "body": "Use `client.messages.create({ to, from, body })` to send an SMS. The `to` number must be in E.164 format (`+1XXXXXXXXXX`). The `from` must be a Twilio phone number you own or a Messaging Service SID. The response includes `messageSid`, `status` (initially `queued`), and `dateCreated`. See [[twilio#phone-numbers]] for purchasing numbers.",
+      "tags": ["send", "create", "outbound", "e164"]
+    },
+    {
+      "id": "receive",
+      "title": "Receiving SMS",
+      "body": "Configure a webhook URL on your Twilio phone number. Twilio POSTs inbound messages with `From`, `To`, `Body`, `NumMedia`, and `MessageSid`. Respond with TwiML to reply automatically (see [[twilio/twiml#messaging-verbs]]). Use request validation to verify that webhooks originate from Twilio.",
+      "tags": ["receive", "webhook", "inbound", "twiml"]
+    },
+    {
+      "id": "status-callbacks",
+      "title": "Status callbacks",
+      "body": "Set `statusCallback` on message creation to receive delivery updates. Twilio POSTs status changes: `queued`, `sent`, `delivered`, `failed`, `undelivered`. The callback includes `MessageSid`, `MessageStatus`, `ErrorCode` (if failed), and `To`. Use this to track delivery rates and retry failed messages.",
+      "tags": ["status", "callback", "delivery", "tracking", "retry"]
+    },
+    {
+      "id": "mms-media",
+      "title": "MMS media",
+      "body": "Include `mediaUrl` (array of URLs) to send MMS with images, GIFs, audio, or video. Twilio fetches the media from the URL and attaches it. Maximum 10 media items per message. MMS is supported on US/Canadian long codes and short codes. For international, use WhatsApp (see [[twilio/whatsapp#media]]).",
+      "tags": ["mms", "media", "image", "attachment", "mediaUrl"]
+    },
+    {
+      "id": "messaging-service",
+      "title": "Messaging Services",
+      "body": "Messaging Services pool multiple phone numbers for high-volume sending. They handle sender selection, opt-out management (`STOP`/`START`), sticky sender (same number to same recipient), and compliance. Create a service in the Console, add numbers to its pool, and use `messagingServiceSid` instead of `from` in message creation.",
+      "tags": ["messaging-service", "pool", "opt-out", "compliance", "high-volume"]
+    }
+  ],
+  "scripts": [
+    {
+      "id": "send-sms",
+      "name": "Send SMS",
+      "description": "Send an SMS message to a phone number using the Twilio Messaging API",
+      "lang": "javascript",
+      "runtime": "node>=18",
+      "entry": "./scripts/send-sms.js",
+      "env": {
+        "TWILIO_ACCOUNT_SID": { "required": true, "secret": true, "description": "Twilio Account SID (starts with AC)" },
+        "TWILIO_AUTH_TOKEN": { "required": true, "secret": true, "description": "Twilio Auth Token" },
+        "TWILIO_PHONE_NUMBER": { "required": true, "secret": false, "description": "Twilio phone number to send from (E.164 format)" }
+      },
+      "packages": ["twilio"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "to": { "type": "string", "description": "Destination phone number in E.164 format (e.g. +15551234567)" },
+        "body": { "type": "string", "description": "Text content of the SMS message" },
+        "from": { "type": "string", "description": "Twilio phone number or Messaging Service SID to send from" },
+        "mediaUrl": { "type": "array", "items": { "type": "string" }, "description": "Array of media URLs to attach as MMS" }
+      },
+      "required": ["to", "body"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "messageSid": { "type": "string", "description": "Unique identifier for the message (starts with SM)" },
+        "status": { "type": "string", "description": "Message status (queued, sent, delivered, failed, undelivered)" },
+        "dateCreated": { "type": "string", "description": "ISO 8601 timestamp of message creation" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "twilio", "reason": "Requires Twilio account credentials and a phone number" }
+  ],
+  "links": [
+    { "uri": "twilio/twiml#messaging-verbs", "context": "TwiML verbs for replying to inbound SMS" },
+    { "uri": "twilio/whatsapp", "context": "WhatsApp as an alternative messaging channel" },
+    { "uri": "twilio/verify", "context": "Use Verify instead of raw SMS for OTP delivery" },
+    { "uri": "twilio#phone-numbers", "context": "Purchasing and managing Twilio phone numbers" }
+  ],
+  "related": [
+    { "uri": "twilio/whatsapp", "relation": "see-also", "note": "WhatsApp is an alternative channel for rich messaging" },
+    { "uri": "twilio/verify", "relation": "see-also", "note": "For OTP use cases, Verify handles rate limiting and fraud detection automatically" },
+    { "uri": "twilio/twiml", "relation": "see-also", "note": "TwiML is used to reply to inbound SMS messages" }
+  ],
+  "more": {
+    "docs": "https://www.twilio.com/docs/messaging",
+    "api-ref": "https://www.twilio.com/docs/messaging/api/message-resource",
+    "quickstart": "https://www.twilio.com/docs/messaging/quickstart/node"
+  },
+  "frontmatter": {
+    "created": "2026-04-10",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "4 min",
+    "prerequisites": ["twilio"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

@@ -1,0 +1,135 @@
+{
+  "name": "ec2",
+  "version": "1.0.0",
+  "uri": "aws/ec2",
+  "type": "skill",
+  "context": "Launch, manage, and terminate EC2 virtual machine instances",
+  "info": "Amazon EC2 (Elastic Compute Cloud) provides resizable virtual machine instances in the cloud. Choose from a wide range of instance types optimized for compute, memory, storage, or GPU workloads. EC2 instances run Amazon Machine Images (AMIs) — pre-configured OS templates. Security groups act as virtual firewalls controlling inbound/outbound traffic. Key pairs provide SSH access. Elastic IPs provide static public addresses. The AWS SDK v3 `@aws-sdk/client-ec2` package provides RunInstances, DescribeInstances, TerminateInstances, and other commands. Use [[aws/iam]] for instance profiles and [[aws/cloudformation]] for infrastructure-as-code deployments.",
+  "parent": "aws",
+  "tags": ["ec2", "compute", "instances", "virtual-machines", "ami"],
+  "aliases": [
+    "ec2",
+    "amazon ec2",
+    "ec2 instance",
+    "virtual machine",
+    "aws vm",
+    "cloud server",
+    "compute instance",
+    "aws instance"
+  ],
+  "triggers": [
+    "launch an ec2 instance",
+    "start a virtual machine on aws",
+    "create an ec2 server",
+    "manage ec2 instances",
+    "terminate an instance",
+    "choose an instance type",
+    "set up security groups"
+  ],
+  "body": "# Amazon EC2\n\nEC2 provides virtual machine instances for persistent compute workloads. Unlike [[aws/lambda]] (serverless, event-driven), EC2 gives you full control over the operating system, networking, and storage.\n\n## Launch an Instance\n\n```javascript\nimport { EC2Client, RunInstancesCommand } from \"@aws-sdk/client-ec2\";\n\nconst ec2 = new EC2Client({ region: process.env.AWS_REGION });\n\nconst { Instances } = await ec2.send(new RunInstancesCommand({\n  ImageId: \"ami-0abcdef1234567890\", // Amazon Linux 2023\n  InstanceType: \"t3.micro\",\n  KeyName: \"my-key-pair\",\n  SecurityGroupIds: [\"sg-0123456789abcdef0\"],\n  MinCount: 1,\n  MaxCount: 1,\n  TagSpecifications: [{\n    ResourceType: \"instance\",\n    Tags: [{ Key: \"Name\", Value: \"my-instance\" }],\n  }],\n}));\n\nconst instanceId = Instances[0].InstanceId;\n```\n\n## Instance Types\n\nChoose based on workload requirements:\n\n| Family | Type | Use Case |\n|--------|------|----------|\n| General Purpose | t3.micro, t3.small, m6i.large | Web servers, dev environments |\n| Compute Optimized | c6i.large, c7g.xlarge | CPU-intensive workloads, batch processing |\n| Memory Optimized | r6i.large, r7g.xlarge | Databases, in-memory caching |\n| Storage Optimized | i3.large, d3.xlarge | Data warehousing, distributed file systems |\n| Accelerated | p4d.24xlarge, g5.xlarge | Machine learning, GPU rendering |\n\n`t3.micro` is free-tier eligible (750 hours/month for 12 months).\n\n## Security Groups\n\nSecurity groups act as virtual firewalls for instances:\n\n```javascript\nimport { CreateSecurityGroupCommand, AuthorizeSecurityGroupIngressCommand } from \"@aws-sdk/client-ec2\";\n\n// Create security group\nconst { GroupId } = await ec2.send(new CreateSecurityGroupCommand({\n  GroupName: \"web-server-sg\",\n  Description: \"Allow HTTP and SSH\",\n  VpcId: \"vpc-0123456789abcdef0\",\n}));\n\n// Allow SSH (port 22) and HTTP (port 80)\nawait ec2.send(new AuthorizeSecurityGroupIngressCommand({\n  GroupId,\n  IpPermissions: [\n    { IpProtocol: \"tcp\", FromPort: 22, ToPort: 22, IpRanges: [{ CidrIp: \"YOUR_IP/32\" }] },\n    { IpProtocol: \"tcp\", FromPort: 80, ToPort: 80, IpRanges: [{ CidrIp: \"0.0.0.0/0\" }] },\n  ],\n}));\n```\n\nFollow least-privilege: restrict SSH to known IPs, open only required ports. See [[aws/iam#best-practices]] for general security guidance.\n\n## Key Pairs\n\nKey pairs provide SSH access to Linux instances. Create a key pair before launching:\n\n```javascript\nimport { CreateKeyPairCommand } from \"@aws-sdk/client-ec2\";\n\nconst { KeyMaterial } = await ec2.send(new CreateKeyPairCommand({\n  KeyName: \"my-key-pair\",\n}));\n// Save KeyMaterial (private key PEM) to a file, chmod 400\n```\n\n## Elastic IP\n\nElastic IPs provide a static public IPv4 address. Associate one with an instance so its public IP persists across stop/start cycles.\n\n## Environment Variables\n\n| Variable | Purpose |\n|----------|----------|\n| `AWS_ACCESS_KEY_ID` | IAM access key for the EC2 client |\n| `AWS_SECRET_ACCESS_KEY` | IAM secret key for the EC2 client |\n| `AWS_REGION` | Target region for instance launch |\n",
+  "sections": [
+    {
+      "id": "launch",
+      "title": "Launch instances",
+      "body": "Use `RunInstancesCommand` with an AMI ID, instance type, key pair, and security groups. Tag instances for identification. Use `DescribeInstancesCommand` to check state. Instances launch in `pending` state and transition to `running`. Assign IAM instance profiles via [[aws/iam#roles]] for service access without hardcoded credentials.",
+      "tags": ["launch", "run-instances", "ami", "start", "tag"]
+    },
+    {
+      "id": "instance-types",
+      "title": "Instance types",
+      "body": "General purpose (t3, m6i) for balanced workloads. Compute optimized (c6i, c7g) for CPU-bound tasks. Memory optimized (r6i, r7g) for [[aws/rds]]-like in-memory workloads. Storage optimized (i3, d3) for high I/O. Accelerated (p4d, g5) for ML and GPU. Use `t3.micro` for free tier. Graviton-based (g suffix) instances offer better price-performance.",
+      "tags": ["instance-type", "t3", "m6i", "c6i", "graviton", "free-tier"]
+    },
+    {
+      "id": "security-groups",
+      "title": "Security groups",
+      "body": "Security groups are stateful firewalls. Inbound rules control incoming traffic; outbound rules control outgoing (default: allow all outbound). Restrict SSH to known IPs. Open only required ports. Security groups can reference other security groups for internal communication. Define them in [[aws/cloudformation]] for reproducibility.",
+      "tags": ["security-group", "firewall", "inbound", "outbound", "ssh", "ports"]
+    },
+    {
+      "id": "key-pairs",
+      "title": "Key pairs and SSH access",
+      "body": "Create key pairs with `CreateKeyPairCommand`. Save the private key PEM file and set permissions to 400. Specify the key pair name when launching instances. Use `ssh -i key.pem ec2-user@public-ip` to connect. For Windows instances, use the key pair to decrypt the administrator password.",
+      "tags": ["key-pair", "ssh", "pem", "access", "remote"]
+    },
+    {
+      "id": "elastic-ip",
+      "title": "Elastic IPs",
+      "body": "Allocate Elastic IPs with `AllocateAddressCommand`. Associate with an instance using `AssociateAddressCommand`. Elastic IPs are free when associated with a running instance. Unassociated Elastic IPs incur charges. Use Elastic IPs for instances that need a stable public address across restarts.",
+      "tags": ["elastic-ip", "static-ip", "public-ip", "allocate", "associate"]
+    }
+  ],
+  "links": [
+    { "uri": "aws/iam", "context": "Instance profiles and IAM roles for EC2 service access" },
+    { "uri": "aws/cloudformation", "context": "Define EC2 instances and networking in CloudFormation" },
+    { "uri": "aws/lambda", "context": "Alternative to EC2 for event-driven, short-lived workloads" },
+    { "uri": "aws/iam#roles", "context": "Assign IAM roles to EC2 instances via instance profiles" },
+    { "uri": "aws/iam#best-practices", "context": "Security best practices for instance access" },
+    { "uri": "aws/cloudformation#template-anatomy", "context": "Define EC2 resources in CloudFormation templates" },
+    { "uri": "aws/rds", "context": "Use RDS instead of self-managed databases on EC2" }
+  ],
+  "related": [
+    { "uri": "aws/iam", "relation": "prerequisite", "note": "IAM credentials and instance profiles control EC2 access" },
+    { "uri": "aws/lambda", "relation": "see-also", "note": "Lambda is a serverless alternative for event-driven workloads" },
+    { "uri": "aws/cloudformation", "relation": "see-also", "note": "Use CloudFormation to provision EC2 instances reproducibly" }
+  ],
+  "scripts": [
+    {
+      "id": "manage-instances",
+      "name": "Manage EC2 Instances",
+      "description": "Launch, describe, and terminate EC2 virtual machine instances",
+      "lang": "javascript",
+      "runtime": "node>=18",
+      "entry": "./scripts/manage-instances.js",
+      "env": {
+        "AWS_ACCESS_KEY_ID": { "required": true, "secret": true, "description": "IAM access key identifier" },
+        "AWS_SECRET_ACCESS_KEY": { "required": true, "secret": true, "description": "IAM secret access key" },
+        "AWS_REGION": { "required": true, "secret": false, "description": "AWS region for instance launch" }
+      },
+      "packages": ["@aws-sdk/client-ec2"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "instanceType": { "type": "string", "description": "EC2 instance type (e.g. t3.micro, m6i.large)" },
+        "amiId": { "type": "string", "description": "Amazon Machine Image ID" },
+        "keyName": { "type": "string", "description": "Name of the SSH key pair" },
+        "securityGroups": { "type": "array", "items": { "type": "string" }, "description": "Security group IDs to attach" }
+      },
+      "required": ["instanceType", "amiId"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "instanceId": { "type": "string", "description": "EC2 instance ID" },
+        "publicIp": { "type": "string", "description": "Public IPv4 address of the instance" },
+        "state": { "type": "string", "description": "Instance state (pending, running, stopping, stopped, terminated)" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "aws/iam", "reason": "IAM credentials with ec2:RunInstances permission are required" }
+  ],
+  "more": {
+    "docs": "https://docs.aws.amazon.com/ec2/",
+    "sdk": "https://docs.aws.amazon.com/AWSJavaScriptSDK/v3/latest/client/ec2/",
+    "pricing": "https://aws.amazon.com/ec2/pricing/"
+  },
+  "frontmatter": {
+    "created": "2026-04-10",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "5 min",
+    "prerequisites": ["aws/iam"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

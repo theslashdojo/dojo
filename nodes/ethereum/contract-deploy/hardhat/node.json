@@ -1,0 +1,101 @@
+{
+  "name": "hardhat",
+  "version": "1.0.0",
+  "uri": "ethereum/contract-deploy/hardhat",
+  "type": "sub",
+  "context": "Deploy Solidity contracts using Hardhat Ignition with TypeScript deployment modules",
+  "info": "Hardhat is a JavaScript/TypeScript development environment for Ethereum. Deployment uses Hardhat Ignition, which defines deployment modules as declarative TypeScript. Ignition handles dependency ordering, constructor args, and deployment tracking. It supports local (Hardhat Network), testnet, and mainnet targets. Configure networks in `hardhat.config.ts` with RPC URLs and accounts. After deployment, Ignition writes artifacts to `ignition/deployments/` including deployed addresses and ABIs.",
+  "parent": "ethereum/contract-deploy",
+  "tags": ["hardhat", "ignition", "typescript", "deploy", "solidity", "npx"],
+  "aliases": [
+    "hardhat deploy",
+    "hardhat ignition",
+    "npx hardhat deploy",
+    "hardhat deployment",
+    "deploy with hardhat"
+  ],
+  "triggers": [
+    "deploy with hardhat",
+    "use hardhat to deploy",
+    "hardhat ignition deploy",
+    "npx hardhat ignition deploy"
+  ],
+  "body": "# Hardhat Deployment\n\n## Setup\n\n```bash\nnpm install --save-dev hardhat @nomicfoundation/hardhat-toolbox\nnpx hardhat init\n```\n\n## Ignition Module\n\nCreate `ignition/modules/MyContract.ts`:\n\n```typescript\nimport { buildModule } from \"@nomicfoundation/hardhat-ignition/modules\";\n\nexport default buildModule(\"MyContract\", (m) => {\n  const arg1 = m.getParameter(\"arg1\", \"default\");\n  const contract = m.contract(\"MyContract\", [arg1]);\n  return { contract };\n});\n```\n\n## Deploy\n\n```bash\nnpx hardhat ignition deploy ignition/modules/MyContract.ts --network base\n```\n\n## Configuration\n\n`hardhat.config.ts`:\n\n```typescript\nimport { HardhatUserConfig } from \"hardhat/config\";\nimport \"@nomicfoundation/hardhat-toolbox\";\n\nconst config: HardhatUserConfig = {\n  solidity: \"0.8.24\",\n  networks: {\n    base: {\n      url: process.env.RPC_URL,\n      accounts: [process.env.PRIVATE_KEY!],\n    },\n  },\n  etherscan: {\n    apiKey: process.env.ETHERSCAN_API_KEY,\n  },\n};\n\nexport default config;\n```\n\n## Verification\n\nIgnition supports `--verify` flag:\n\n```bash\nnpx hardhat ignition deploy ignition/modules/MyContract.ts --network base --verify\n```\n\nOr verify separately via [[ethereum/contract-deploy/verify]].\n",
+  "sections": [
+    {
+      "id": "setup",
+      "title": "Project setup",
+      "body": "Install hardhat and toolbox: `npm install --save-dev hardhat @nomicfoundation/hardhat-toolbox`. Initialize with `npx hardhat init`. Choose TypeScript when prompted.",
+      "tags": ["setup", "install", "init"]
+    },
+    {
+      "id": "ignition-module",
+      "title": "Ignition deployment module",
+      "body": "Create deployment modules in `ignition/modules/`. Use `buildModule` to define contracts, parameters, and dependencies. Ignition resolves deployment order automatically. Parameters can be passed via `--parameters` flag or JSON file.",
+      "tags": ["ignition", "module", "parameters", "declarative"]
+    },
+    {
+      "id": "deploy-command",
+      "title": "Deploy command",
+      "body": "`npx hardhat ignition deploy ignition/modules/MyContract.ts --network <name>`. Add `--verify` to verify on deploy. Add `--parameters '{\"MyContract\": {\"arg1\": \"value\"}}'` for constructor args. Deployment state is tracked in `ignition/deployments/`.",
+      "tags": ["command", "cli", "parameters", "tracking"]
+    }
+  ],
+  "links": [
+    { "uri": "ethereum/contract-deploy", "context": "Parent deployment skill with general workflow" },
+    { "uri": "ethereum/contract-deploy/verify", "context": "Post-deploy source verification" },
+    { "uri": "ethereum/contract-deploy/foundry", "context": "Alternative toolchain using Foundry" },
+    { "uri": "ethereum/wallets#create-wallet", "context": "Create the deployer wallet used in hardhat.config accounts" },
+    { "uri": "ethereum/gas#estimation", "context": "Estimate deployment gas before submitting" },
+    { "uri": "ethereum/contract-deploy#env-vars", "context": "Environment variables for deployment configuration" },
+    { "uri": "ethereum/contract-deploy/verify#hardhat-verify", "context": "Post-deploy verification with Hardhat verify plugin" }
+  ],
+  "related": [
+    { "uri": "ethereum/contract-deploy/foundry", "relation": "alternative", "note": "Foundry is the Rust-based alternative to Hardhat" }
+  ],
+  "scripts": [
+    {
+      "id": "hardhat-deploy",
+      "name": "Hardhat Deploy",
+      "description": "Deploy a contract using Hardhat Ignition",
+      "lang": "bash",
+      "runtime": "node>=18",
+      "entry": "./scripts/hardhat-deploy.sh",
+      "env": {
+        "PRIVATE_KEY": { "required": true, "secret": true, "description": "Deployer private key" },
+        "RPC_URL": { "required": true, "secret": false, "description": "Target chain RPC" },
+        "ETHERSCAN_API_KEY": { "required": false, "secret": true, "description": "For auto-verification" }
+      },
+      "packages": ["hardhat", "@nomicfoundation/hardhat-toolbox"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "modulePath": { "type": "string", "description": "Path to Ignition module" },
+        "network": { "type": "string", "description": "Target network name from hardhat.config" },
+        "parameters": { "type": "object", "description": "Constructor parameters" },
+        "verify": { "type": "boolean", "default": true }
+      },
+      "required": ["modulePath", "network"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "contractAddress": { "type": "string" },
+        "transactionHash": { "type": "string" },
+        "deploymentDir": { "type": "string", "description": "Path to Ignition deployment artifacts" }
+      }
+    }
+  },
+  "more": {
+    "docs": "https://hardhat.org/hardhat-runner/docs/guides/deploying",
+    "ignition": "https://hardhat.org/ignition/docs/getting-started"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

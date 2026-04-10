@@ -1,0 +1,132 @@
+{
+  "name": "subscriptions",
+  "version": "1.0.0",
+  "uri": "stripe/subscriptions",
+  "type": "skill",
+  "context": "Create and manage recurring billing with Stripe Subscriptions, prices, and invoices",
+  "info": "Stripe Subscriptions automate recurring billing. A subscription ties a customer to one or more prices, generating invoices on a schedule. This skill covers creating subscriptions with trial periods, configuring products and prices (flat-rate, tiered, metered), handling upgrades and downgrades (proration), managing cancellations and pauses, and working with invoices. Subscriptions emit lifecycle events via webhooks for status changes, payment failures, and trial expirations.",
+  "parent": "stripe",
+  "tags": ["subscriptions", "recurring", "billing", "invoices", "prices", "plans", "trials"],
+  "aliases": [
+    "stripe subscriptions",
+    "recurring billing",
+    "stripe billing",
+    "subscription management",
+    "recurring payments",
+    "stripe invoices",
+    "subscription plans",
+    "saas billing"
+  ],
+  "triggers": [
+    "create a stripe subscription",
+    "set up recurring billing",
+    "manage subscription plans",
+    "add a trial period",
+    "upgrade or downgrade a subscription",
+    "cancel a subscription",
+    "create prices and products"
+  ],
+  "body": "# Stripe Subscriptions\n\nSubscriptions automate recurring billing by tying a customer to one or more prices on a schedule. Stripe handles invoice generation, payment collection, retry logic, and lifecycle events. You will need a `STRIPE_SECRET_KEY` from your [[stripe]] dashboard.\n\n## Create a Subscription\n\n```javascript\nimport Stripe from 'stripe';\nconst stripe = new Stripe(process.env.STRIPE_SECRET_KEY);\n\nconst subscription = await stripe.subscriptions.create({\n  customer: 'cus_xxx',\n  items: [{ price: 'price_xxx' }],\n  trial_period_days: 14,\n  metadata: { plan: 'pro' },\n});\n\nconsole.log(subscription.id);                  // sub_xxx\nconsole.log(subscription.status);              // 'trialing' or 'active'\nconsole.log(subscription.current_period_end);  // Unix timestamp\n```\n\n## Products and Prices\n\nProducts describe what you sell. Prices define how much and how often:\n\n```javascript\n// Create a product\nconst product = await stripe.products.create({\n  name: 'Pro Plan',\n  description: 'Full access to all features',\n});\n\n// Create a recurring price\nconst price = await stripe.prices.create({\n  product: product.id,\n  unit_amount: 2999,       // $29.99\n  currency: 'usd',\n  recurring: { interval: 'month' },\n});\n\n// Tiered pricing\nconst tieredPrice = await stripe.prices.create({\n  product: product.id,\n  currency: 'usd',\n  billing_scheme: 'tiered',\n  tiers_mode: 'graduated',\n  tiers: [\n    { up_to: 100, unit_amount: 10 },    // First 100 units at $0.10\n    { up_to: 'inf', unit_amount: 5 },    // Rest at $0.05\n  ],\n  recurring: { interval: 'month' },\n});\n```\n\n## Trial Periods\n\nTrials delay the first charge:\n\n```javascript\n// On subscription creation\nconst sub = await stripe.subscriptions.create({\n  customer: 'cus_xxx',\n  items: [{ price: 'price_xxx' }],\n  trial_period_days: 14,\n  // OR: trial_end: Math.floor(Date.now() / 1000) + 30 * 86400,\n});\n// sub.status === 'trialing'\n// Listen for 'customer.subscription.trial_will_end' via [[stripe/webhooks]]\n```\n\n## Upgrades and Downgrades\n\nSwitch prices with proration:\n\n```javascript\nconst subscription = await stripe.subscriptions.retrieve('sub_xxx');\n\nawait stripe.subscriptions.update('sub_xxx', {\n  items: [{\n    id: subscription.items.data[0].id,\n    price: 'price_new_xxx',  // New price ID\n  }],\n  proration_behavior: 'create_prorations',  // or 'none', 'always_invoice'\n});\n```\n\n## Cancellation\n\n```javascript\n// Cancel at period end (customer keeps access until then)\nawait stripe.subscriptions.update('sub_xxx', {\n  cancel_at_period_end: true,\n});\n\n// Cancel immediately\nawait stripe.subscriptions.cancel('sub_xxx');\n```\n\nListen for `customer.subscription.deleted` via [[stripe/webhooks]] to handle post-cancellation cleanup.\n\n## Environment Variables\n\n| Variable | Purpose |\n|----------|----------|\n| `STRIPE_SECRET_KEY` | Server-side API key (`sk_test_...` or `sk_live_...`) |\n",
+  "sections": [
+    {
+      "id": "create",
+      "title": "Create subscription",
+      "body": "Call `stripe.subscriptions.create()` with `customer`, `items` (array of `{ price }` objects), and optionally `trial_period_days`, `metadata`, and `default_payment_method`. The customer must have a payment method attached (see [[stripe/payments#payment-methods]]). Status starts as `active` or `trialing`. Listen for `customer.subscription.created` via [[stripe/webhooks]].",
+      "tags": ["create", "subscription", "customer", "items", "price"]
+    },
+    {
+      "id": "prices-products",
+      "title": "Products and prices",
+      "body": "Create products with `stripe.products.create({ name, description })`. Create prices with `stripe.prices.create({ product, unit_amount, currency, recurring: { interval } })`. Intervals: `day`, `week`, `month`, `year`. Pricing models: flat-rate (`unit_amount`), tiered (`billing_scheme: 'tiered'`), metered (`usage_type: 'metered'`). Products can have multiple prices for different tiers or billing cycles.",
+      "tags": ["products", "prices", "tiered", "metered", "flat-rate", "interval"]
+    },
+    {
+      "id": "trials",
+      "title": "Trial periods",
+      "body": "Set `trial_period_days` on subscription creation for a simple trial. Use `trial_end` (Unix timestamp) for a specific end date. During trial, `status === 'trialing'` and no charges are made. Stripe sends `customer.subscription.trial_will_end` three days before expiry (see [[stripe/webhooks#event-types]]). After trial, the first invoice is generated and payment is attempted automatically.",
+      "tags": ["trial", "trial-period", "free-trial", "trial-end"]
+    },
+    {
+      "id": "upgrades-downgrades",
+      "title": "Upgrades and downgrades",
+      "body": "Update the subscription's `items` array with a new `price` ID to switch plans. Control proration with `proration_behavior`: `create_prorations` (default, credits unused time), `none` (no adjustment), `always_invoice` (invoice immediately). Retrieve the subscription first to get the item ID. For multi-item subscriptions, add or remove items individually.",
+      "tags": ["upgrade", "downgrade", "proration", "switch-plan", "update"]
+    },
+    {
+      "id": "cancellation",
+      "title": "Cancellation",
+      "body": "Cancel at period end with `stripe.subscriptions.update(id, { cancel_at_period_end: true })` — the customer retains access until the current period expires. Cancel immediately with `stripe.subscriptions.cancel(id)`. Listen for `customer.subscription.deleted` via [[stripe/webhooks]] to revoke access and clean up resources. Pausing is also available via `pause_collection`.",
+      "tags": ["cancel", "cancellation", "period-end", "pause", "churn"]
+    }
+  ],
+  "links": [
+    { "uri": "stripe", "context": "Stripe ecosystem overview, API keys, and test mode" },
+    { "uri": "stripe/payments", "context": "Payment methods needed for subscription billing" },
+    { "uri": "stripe/payments#payment-methods", "context": "Attach payment methods to customers for recurring charges" },
+    { "uri": "stripe/checkout", "context": "Use checkout sessions to collect subscription signups" },
+    { "uri": "stripe/webhooks", "context": "Listen for subscription lifecycle events" },
+    { "uri": "stripe/webhooks#event-types", "context": "Subscription event types: created, updated, deleted, trial_will_end" }
+  ],
+  "related": [
+    { "uri": "stripe/payments", "relation": "see-also", "note": "Payment methods must be attached to customers before creating subscriptions" },
+    { "uri": "stripe/checkout", "relation": "see-also", "note": "Checkout sessions can create subscriptions with a hosted UI" },
+    { "uri": "stripe/webhooks", "relation": "see-also", "note": "Webhooks are essential for tracking subscription lifecycle changes" }
+  ],
+  "scripts": [
+    {
+      "id": "create-subscription",
+      "name": "Create Subscription",
+      "description": "Create a Stripe subscription with customer, price, and optional trial period",
+      "lang": "javascript",
+      "runtime": "node>=18",
+      "entry": "./scripts/create-subscription.js",
+      "env": {
+        "STRIPE_SECRET_KEY": { "required": true, "secret": true, "description": "Stripe secret API key (sk_test_... or sk_live_...)" }
+      },
+      "packages": ["stripe"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "customer": { "type": "string", "description": "Customer ID (cus_xxx) with an attached payment method" },
+        "priceId": { "type": "string", "description": "Price ID (price_xxx) for the subscription plan" },
+        "trialDays": { "type": "integer", "description": "Number of trial days before first charge (0 for no trial)" },
+        "metadata": { "type": "object", "description": "Key-value metadata to attach to the subscription" }
+      },
+      "required": ["customer", "priceId"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "subscriptionId": { "type": "string", "description": "Subscription ID (sub_xxx)" },
+        "status": { "type": "string", "description": "Subscription status: trialing, active, past_due, canceled, unpaid" },
+        "currentPeriodEnd": { "type": "integer", "description": "Unix timestamp of current billing period end" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "stripe", "reason": "Requires a Stripe account and API key" },
+    { "uri": "stripe/payments", "reason": "Customer must have a payment method attached" }
+  ],
+  "more": {
+    "docs": "https://docs.stripe.com/billing/subscriptions/overview",
+    "api": "https://docs.stripe.com/api/subscriptions"
+  },
+  "frontmatter": {
+    "created": "2026-04-10",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "5 min",
+    "prerequisites": ["stripe", "stripe/payments"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

@@ -1,0 +1,132 @@
+{
+  "name": "bots",
+  "version": "1.0.0",
+  "uri": "slack/bots",
+  "type": "skill",
+  "context": "Build Slack bots with Bolt.js: listen for events, respond to commands, handle interactions",
+  "info": "This skill covers building Slack bots using the Bolt.js framework. Bolt handles the low-level plumbing — request verification, OAuth, event parsing — so you can focus on bot logic. Bots can listen for events (messages, reactions, app mentions), register slash commands, handle interactive components (buttons, menus, modals), and use Socket Mode for firewall-friendly connections without a public URL. The framework supports both HTTP and Socket Mode transports. See [[slack/events]] for deeper coverage of the Events API and [[slack/block-kit]] for interactive UI components.",
+  "parent": "slack",
+  "tags": ["bots", "bolt", "commands", "interactions", "socket-mode", "app"],
+  "aliases": [
+    "slack bot",
+    "slack bots",
+    "bolt.js",
+    "slack bolt",
+    "slack app bot",
+    "slash commands",
+    "slack commands",
+    "slack interactions",
+    "build slack bot"
+  ],
+  "triggers": [
+    "build a slack bot",
+    "create a slack bot",
+    "set up bolt.js",
+    "handle slack slash commands",
+    "respond to slack events",
+    "create a slack app with interactions",
+    "use socket mode in slack"
+  ],
+  "body": "# Slack Bots with Bolt.js\n\nBolt.js is the official framework for building Slack apps. It handles request verification, event parsing, and OAuth so you can focus on bot logic. See [[slack]] for app creation and authentication.\n\n## Setup\n\n```javascript\nimport pkg from \"@slack/bolt\";\nconst { App } = pkg;\n\nconst app = new App({\n  token: process.env.SLACK_BOT_TOKEN,\n  signingSecret: process.env.SLACK_SIGNING_SECRET,\n  socketMode: true,\n  appToken: process.env.SLACK_APP_TOKEN\n});\n\n(async () => {\n  await app.start();\n  console.log(\"Bot is running!\");\n})();\n```\n\nSocket Mode requires an app-level token (`xapp-`). It connects via WebSocket, so no public URL is needed. For HTTP mode, omit `socketMode` and `appToken`, and expose a public endpoint.\n\n## Slash Commands\n\n```javascript\napp.command(\"/hello\", async ({ command, ack, respond }) => {\n  await ack();\n  await respond({\n    text: `Hello, <@${command.user_id}>! You said: ${command.text}`\n  });\n});\n```\n\nRegister commands in your app settings at https://api.slack.com/apps. The `ack()` call must happen within 3 seconds. Use `respond()` for follow-up messages.\n\n## Events\n\n```javascript\n// Listen for messages\napp.message(\"hello\", async ({ message, say }) => {\n  await say(`Hey there, <@${message.user}>!`);\n});\n\n// Listen for app mentions\napp.event(\"app_mention\", async ({ event, say }) => {\n  await say({\n    text: `Thanks for mentioning me, <@${event.user}>!`,\n    thread_ts: event.ts  // Reply in thread\n  });\n});\n\n// Listen for reactions\napp.event(\"reaction_added\", async ({ event, say }) => {\n  if (event.reaction === \"eyes\") {\n    await say({ text: \"I see you looking!\", channel: event.item.channel });\n  }\n});\n```\n\nSubscribe to events in your app settings under \"Event Subscriptions\". See [[slack/events]] for all available event types and subscription setup.\n\n## Interactions\n\nHandle button clicks, menu selections, and modal submissions:\n\n```javascript\n// Send a message with a button (see [[slack/block-kit]] for layout)\napp.command(\"/ticket\", async ({ command, ack, say }) => {\n  await ack();\n  await say({\n    blocks: [\n      {\n        type: \"section\",\n        text: { type: \"mrkdwn\", text: `New ticket from <@${command.user_id}>` },\n        accessory: {\n          type: \"button\",\n          text: { type: \"plain_text\", text: \"Claim\" },\n          action_id: \"claim_ticket\",\n          value: command.text\n        }\n      }\n    ],\n    text: \"New ticket created\"\n  });\n});\n\n// Handle the button click\napp.action(\"claim_ticket\", async ({ body, ack, say }) => {\n  await ack();\n  await say(`<@${body.user.id}> claimed the ticket!`);\n});\n```\n\n## Modals\n\n```javascript\napp.command(\"/feedback\", async ({ command, ack, client }) => {\n  await ack();\n  await client.views.open({\n    trigger_id: command.trigger_id,\n    view: {\n      type: \"modal\",\n      callback_id: \"feedback_modal\",\n      title: { type: \"plain_text\", text: \"Feedback\" },\n      submit: { type: \"plain_text\", text: \"Submit\" },\n      blocks: [\n        {\n          type: \"input\",\n          block_id: \"feedback_input\",\n          element: { type: \"plain_text_input\", action_id: \"feedback_text\", multiline: true },\n          label: { type: \"plain_text\", text: \"Your feedback\" }\n        }\n      ]\n    }\n  });\n});\n\napp.view(\"feedback_modal\", async ({ ack, view, body }) => {\n  await ack();\n  const feedback = view.state.values.feedback_input.feedback_text.value;\n  console.log(`Feedback from ${body.user.id}: ${feedback}`);\n});\n```\n\nSee [[slack/block-kit#modals]] for modal layout details and [[slack/block-kit#elements]] for input element types.\n\n## Socket Mode\n\nSocket Mode connects to Slack via WebSocket instead of HTTP. No public URL, firewall rules, or TLS certificate needed. Ideal for development and internal bots.\n\nEnable Socket Mode in app settings, generate an app-level token with `connections:write` scope, and pass it as `appToken` in the App constructor.\n",
+  "sections": [
+    {
+      "id": "setup",
+      "title": "Bot setup",
+      "body": "Install `@slack/bolt`. Create an App instance with `token` (bot token), `signingSecret`, and optionally `socketMode: true` with `appToken` for Socket Mode. Call `app.start()` to launch. See [[slack#authentication]] for token setup.",
+      "tags": ["setup", "bolt", "install", "configuration"]
+    },
+    {
+      "id": "commands",
+      "title": "Slash commands",
+      "body": "Register commands in app settings. Handle with `app.command(\"/name\", handler)`. Always `ack()` within 3 seconds. Use `respond()` for follow-up messages. Commands include `user_id`, `text`, `channel_id`, and `trigger_id` (for opening modals).",
+      "tags": ["commands", "slash", "ack", "respond"]
+    },
+    {
+      "id": "events",
+      "title": "Event listeners",
+      "body": "Use `app.message(pattern, handler)` for message matching, `app.event(type, handler)` for any event type. Subscribe to events in app settings. Common events: `message`, `app_mention`, `reaction_added`, `member_joined_channel`. See [[slack/events]] for full event reference.",
+      "tags": ["events", "message", "app_mention", "reaction", "listener"]
+    },
+    {
+      "id": "interactions",
+      "title": "Interactive components",
+      "body": "Handle button clicks and menu selections with `app.action(action_id, handler)`. Handle modal submissions with `app.view(callback_id, handler)`. Always `ack()` interactions. Use [[slack/block-kit#actions]] for building interactive layouts and [[slack/block-kit#modals]] for modal views.",
+      "tags": ["interactions", "buttons", "menus", "modals", "action"]
+    },
+    {
+      "id": "socket-mode",
+      "title": "Socket Mode",
+      "body": "Socket Mode uses WebSocket instead of HTTP. No public URL needed. Enable in app settings, generate an app-level token (`xapp-`) with `connections:write` scope, pass as `appToken`. Ideal for development, internal tools, and firewall-restricted environments. Also used by [[slack/events]] for real-time event delivery.",
+      "tags": ["socket-mode", "websocket", "appToken", "firewall"]
+    }
+  ],
+  "links": [
+    { "uri": "slack", "context": "Slack ecosystem overview and authentication" },
+    { "uri": "slack/messages", "context": "Message operations the bot can perform" },
+    { "uri": "slack/block-kit", "context": "Build interactive UIs for bot messages" },
+    { "uri": "slack/events", "context": "Event types and subscription setup" },
+    { "uri": "slack/block-kit#modals", "context": "Modal view layout and input elements" },
+    { "uri": "slack/block-kit#actions", "context": "Interactive components for button clicks and menus" }
+  ],
+  "related": [
+    { "uri": "slack/messages", "relation": "see-also", "note": "Bots use the same messaging APIs — Bolt wraps them with event-driven handlers" },
+    { "uri": "slack/events", "relation": "see-also", "note": "Events API is the foundation for bot event listeners" },
+    { "uri": "slack/block-kit", "relation": "see-also", "note": "Block Kit provides the interactive UI components bots use for buttons, menus, and modals" }
+  ],
+  "scripts": [
+    {
+      "id": "create-bot",
+      "name": "Create Slack Bot",
+      "description": "Scaffold a Bolt.js bot with event listeners, commands, and Socket Mode",
+      "lang": "javascript",
+      "runtime": "node>=18",
+      "entry": "./scripts/create-bot.js",
+      "env": {
+        "SLACK_BOT_TOKEN": { "required": true, "secret": true, "description": "Bot token (xoxb-) for API calls" },
+        "SLACK_SIGNING_SECRET": { "required": true, "secret": true, "description": "Signing secret for request verification" },
+        "SLACK_APP_TOKEN": { "required": true, "secret": true, "description": "App-level token (xapp-) for Socket Mode" }
+      },
+      "packages": ["@slack/bolt"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "command": { "type": "string", "description": "Slash command name (e.g., /hello)" },
+        "eventType": { "type": "string", "description": "Event type to listen for (e.g., app_mention, message)" },
+        "action": { "type": "string", "description": "Action ID for interactive component handlers" }
+      }
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "response": { "type": "string", "description": "Bot response message or action result" },
+        "ok": { "type": "boolean", "description": "Whether the operation succeeded" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "slack", "reason": "Requires a Slack app with bot token, signing secret, and app-level token" }
+  ],
+  "more": {
+    "docs": "https://slack.dev/bolt-js/getting-started",
+    "repo": "https://github.com/slackapi/bolt-js",
+    "api-ref": "https://api.slack.com/start/building/bolt-js"
+  },
+  "frontmatter": {
+    "created": "2026-04-10",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "5 min",
+    "prerequisites": ["slack"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

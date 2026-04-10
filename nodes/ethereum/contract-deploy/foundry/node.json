@@ -1,0 +1,101 @@
+{
+  "name": "foundry",
+  "version": "1.0.0",
+  "uri": "ethereum/contract-deploy/foundry",
+  "type": "sub",
+  "context": "Deploy Solidity contracts using Foundry forge scripts with Solidity-native deployment logic",
+  "info": "Foundry is a Rust-based Ethereum toolchain. Deployment uses `forge script` which executes Solidity scripts that call `vm.broadcast()` to send transactions. Foundry is faster than Hardhat for compilation and testing. Deployment scripts live in `script/` and use the `Script` base contract. Foundry tracks deployments via broadcast logs in `broadcast/`. It supports `--verify` for automatic Etherscan verification and `--resume` for recovering interrupted deployments.",
+  "parent": "ethereum/contract-deploy",
+  "tags": ["foundry", "forge", "cast", "deploy", "solidity", "script"],
+  "aliases": [
+    "foundry deploy",
+    "forge deploy",
+    "forge script",
+    "deploy with foundry",
+    "forge create"
+  ],
+  "triggers": [
+    "deploy with foundry",
+    "use forge to deploy",
+    "forge script deploy",
+    "foundry deployment"
+  ],
+  "body": "# Foundry Deployment\n\n## Setup\n\n```bash\ncurl -L https://foundry.paradigm.xyz | bash\nfoundryup\nforge init my-project\n```\n\n## Deployment Script\n\nCreate `script/Deploy.s.sol`:\n\n```solidity\n// SPDX-License-Identifier: MIT\npragma solidity ^0.8.24;\n\nimport {Script} from \"forge-std/Script.sol\";\nimport {MyContract} from \"../src/MyContract.sol\";\n\ncontract DeployScript is Script {\n    function run() external {\n        uint256 deployerKey = vm.envUint(\"PRIVATE_KEY\");\n        vm.startBroadcast(deployerKey);\n        new MyContract(constructorArg);\n        vm.stopBroadcast();\n    }\n}\n```\n\n## Deploy\n\n```bash\nforge script script/Deploy.s.sol --rpc-url $RPC_URL --broadcast --verify\n```\n\n## Key Flags\n\n- `--broadcast` — actually send transactions (dry-run without it)\n- `--verify` — verify on Etherscan after deployment\n- `--resume` — resume an interrupted deployment\n- `--slow` — send transactions one at a time\n- `--etherscan-api-key` — API key for verification\n\n## Quick Deploy (no script)\n\n```bash\nforge create src/MyContract.sol:MyContract --rpc-url $RPC_URL --private-key $PRIVATE_KEY --constructor-args arg1 arg2\n```\n\nUse `forge create` for one-off deploys. Use `forge script` for repeatable, multi-contract deployments. Verify after deployment via [[ethereum/contract-deploy/verify]]. Ensure your [[ethereum/wallets]] is funded with enough ETH for [[ethereum/gas#estimation]].\n",
+  "sections": [
+    {
+      "id": "setup",
+      "title": "Foundry setup",
+      "body": "Install with `curl -L https://foundry.paradigm.xyz | bash && foundryup`. Init project with `forge init`. Source goes in `src/`, tests in `test/`, scripts in `script/`.",
+      "tags": ["setup", "install", "init", "foundryup"]
+    },
+    {
+      "id": "forge-script",
+      "title": "Forge script deployment",
+      "body": "Deployment scripts extend `Script` from forge-std. Use `vm.startBroadcast(key)` / `vm.stopBroadcast()` to wrap deployment calls. Run with `forge script <path> --rpc-url <url> --broadcast`. Add `--verify` for auto-verification (see [[ethereum/contract-deploy/verify#foundry-verify]]). Broadcast logs go to `broadcast/`. Configure the deployer key per [[ethereum/wallets#key-storage]].",
+      "tags": ["forge-script", "broadcast", "vm", "deployment"]
+    },
+    {
+      "id": "forge-create",
+      "title": "Quick deploy with forge create",
+      "body": "`forge create src/Contract.sol:Contract --rpc-url $RPC_URL --private-key $PRIVATE_KEY --constructor-args arg1 arg2`. Simpler than scripts but not repeatable. Good for one-off deploys.",
+      "tags": ["forge-create", "quick", "one-off"]
+    }
+  ],
+  "links": [
+    { "uri": "ethereum/contract-deploy", "context": "Parent deployment skill" },
+    { "uri": "ethereum/contract-deploy/verify", "context": "Verification details beyond --verify flag" },
+    { "uri": "ethereum/contract-deploy/hardhat", "context": "Alternative toolchain using Hardhat" },
+    { "uri": "ethereum/wallets#create-wallet", "context": "Create the deployer wallet for forge scripts" },
+    { "uri": "ethereum/gas#estimation", "context": "Estimate gas before broadcasting deployment" },
+    { "uri": "ethereum/contract-deploy#env-vars", "context": "Required environment variables for deployment" },
+    { "uri": "ethereum/contract-deploy/verify#foundry-verify", "context": "Detailed verification steps with forge verify-contract" }
+  ],
+  "related": [
+    { "uri": "ethereum/contract-deploy/hardhat", "relation": "alternative", "note": "Hardhat is the JavaScript-based alternative to Foundry" }
+  ],
+  "scripts": [
+    {
+      "id": "foundry-deploy",
+      "name": "Foundry Deploy",
+      "description": "Deploy a contract using forge script",
+      "lang": "bash",
+      "runtime": "bash",
+      "entry": "./scripts/foundry-deploy.sh",
+      "env": {
+        "PRIVATE_KEY": { "required": true, "secret": true, "description": "Deployer private key" },
+        "RPC_URL": { "required": true, "secret": false, "description": "Target chain RPC" },
+        "ETHERSCAN_API_KEY": { "required": false, "secret": true, "description": "For auto-verification" }
+      },
+      "packages": []
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "scriptPath": { "type": "string", "description": "Path to forge deploy script" },
+        "rpcUrl": { "type": "string", "description": "Target chain RPC endpoint" },
+        "broadcast": { "type": "boolean", "default": true },
+        "verify": { "type": "boolean", "default": true }
+      },
+      "required": ["scriptPath", "rpcUrl"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "contractAddress": { "type": "string" },
+        "transactionHash": { "type": "string" },
+        "broadcastLog": { "type": "string", "description": "Path to broadcast log JSON" }
+      }
+    }
+  },
+  "more": {
+    "docs": "https://book.getfoundry.sh/forge/deploying",
+    "repo": "https://github.com/foundry-rs/foundry"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

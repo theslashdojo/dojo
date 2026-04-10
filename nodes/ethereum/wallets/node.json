@@ -1,0 +1,87 @@
+{
+  "name": "wallets",
+  "version": "1.0.0",
+  "uri": "ethereum/wallets",
+  "type": "context",
+  "context": "Wallet creation, key management, and transaction signing for Ethereum and EVM chains",
+  "info": "Wallets hold private keys and sign transactions. For agent workflows, wallets are typically derived from a private key hex string or mnemonic phrase. ethers.js Wallet and viem's privateKeyToAccount are the standard programmatic interfaces. For production, use hardware wallets (Ledger), cloud KMS (AWS KMS, GCP KMS), or MPC wallets (Coinbase Wallet SDK, Fireblocks). Never store raw private keys in source code — use environment variables or secret managers. Wallets need ETH for gas (except for EIP-3009 x402 payments) and the relevant tokens for the operation.",
+  "parent": "ethereum",
+  "tags": ["wallet", "private-key", "signing", "mnemonic", "kms", "hardware-wallet", "account", "signer"],
+  "aliases": [
+    "ethereum wallet",
+    "wallet setup",
+    "private key",
+    "create wallet",
+    "signer",
+    "key management",
+    "mnemonic",
+    "seed phrase",
+    "account"
+  ],
+  "triggers": [
+    "set up a wallet",
+    "create an ethereum wallet",
+    "how do i sign transactions",
+    "manage private keys",
+    "generate a wallet",
+    "configure signer for deployment"
+  ],
+  "body": "# Wallets and Key Management\n\n## Creating a Wallet\n\n### ethers.js v6\n\n```javascript\nimport { Wallet, JsonRpcProvider } from \"ethers\";\n\n// From private key\nconst wallet = new Wallet(process.env.PRIVATE_KEY, provider);\n\n// Generate random wallet\nconst randomWallet = Wallet.createRandom();\nconsole.log(randomWallet.address, randomWallet.privateKey);\n\n// From mnemonic\nconst mnemonicWallet = Wallet.fromPhrase(\"word1 word2 ...\");\n```\n\n### viem\n\n```typescript\nimport { createWalletClient, http } from \"viem\";\nimport { privateKeyToAccount } from \"viem/accounts\";\nimport { base } from \"viem/chains\";\n\nconst account = privateKeyToAccount(process.env.PRIVATE_KEY as `0x${string}`);\nconst client = createWalletClient({\n  account,\n  chain: base,\n  transport: http(),\n});\n```\n\n## Key Storage\n\n| Method | Security | Use Case |\n|--------|----------|----------|\n| Environment variable | Medium | Development, CI/CD |\n| `.env` file (gitignored) | Medium | Local development |\n| AWS/GCP KMS | High | Production servers |\n| Hardware wallet (Ledger) | High | High-value operations |\n| MPC wallet (Fireblocks) | High | Institutional, multi-sig |\n\n**Never** commit private keys to version control. Use `.env` files with `.gitignore`, secret managers, or KMS.\n\n## Signing Transactions\n\n```javascript\n// ethers.js\nconst tx = await wallet.sendTransaction({\n  to: recipient,\n  value: ethers.parseEther(\"0.1\"),\n});\nawait tx.wait();\n\n// viem\nconst hash = await client.sendTransaction({\n  to: recipient,\n  value: parseEther(\"0.1\"),\n});\n```\n\n## Funding\n\nWallets need:\n- **ETH** for gas (transaction fees) — except for EIP-3009 [[ethereum/x402]] payments (see [[ethereum/gas#eip-1559]] for fee details)\n- **Tokens** for the specific operation (USDC for [[ethereum/x402/client]], ERC-20s for transfers)\n\nFor testnets, use faucets:\n- Base Sepolia: `https://www.coinbase.com/faucets/base-ethereum-goerli-faucet`\n- Sepolia: `https://sepoliafaucet.com`\n",
+  "sections": [
+    {
+      "id": "create-wallet",
+      "title": "Creating wallets",
+      "body": "Use `new Wallet(privateKey, provider)` in ethers.js or `privateKeyToAccount(key)` + `createWalletClient()` in viem. Generate random wallets with `Wallet.createRandom()`. Derive from mnemonic with `Wallet.fromPhrase()`.",
+      "tags": ["create", "generate", "ethers", "viem", "mnemonic"]
+    },
+    {
+      "id": "key-storage",
+      "title": "Key storage options",
+      "body": "Environment variables for dev. AWS/GCP KMS for production. Hardware wallets for high-value. MPC wallets for institutional. Never commit keys to source. Always use `.gitignore` for `.env` files.",
+      "tags": ["security", "kms", "hardware", "mpc", "env"]
+    },
+    {
+      "id": "signing",
+      "title": "Transaction signing",
+      "body": "Wallets sign transactions locally, then submit to the network. `wallet.sendTransaction()` (ethers) or `client.sendTransaction()` (viem) handle signing and submission. For [[ethereum/x402]], the SDK signs EIP-3009 authorizations (see [[ethereum/x402#payment-schemes]]), not raw transactions.",
+      "tags": ["signing", "sendTransaction", "eip-3009"]
+    },
+    {
+      "id": "funding",
+      "title": "Funding requirements",
+      "body": "ETH for gas on all operations except EIP-3009 [[ethereum/x402]] payments (facilitator pays gas — see [[ethereum/x402#facilitator]]). USDC for x402 payments. Relevant tokens for transfers. Use testnet faucets for development. See [[ethereum/gas]] for current fee estimates.",
+      "tags": ["funding", "eth", "usdc", "faucet", "testnet"]
+    }
+  ],
+  "links": [
+    { "uri": "ethereum/contract-deploy#env-vars", "context": "Wallet config for contract deployment" },
+    { "uri": "ethereum/x402/client#fetch-wrapper", "context": "Wallet setup for x402 client payments" },
+    { "uri": "ethereum/x402/server", "context": "Receiving wallet for x402 server" },
+    { "uri": "ethereum/gas", "context": "How much ETH you need for gas" }
+  ],
+  "related": [
+    { "uri": "ethereum/contract-deploy", "relation": "see-also", "note": "Deployment requires a funded deployer wallet" },
+    { "uri": "ethereum/x402/client", "relation": "see-also", "note": "x402 client needs a wallet with token balance for payments" },
+    { "uri": "ethereum/gas", "relation": "see-also", "note": "Gas determines how much ETH the wallet needs" }
+  ],
+  "content_type": "guide",
+  "more": {
+    "ethers": "https://docs.ethers.org/v6/api/wallet/",
+    "viem": "https://viem.sh/docs/accounts/privateKey"
+  },
+  "frontmatter": {
+    "created": "2026-04-10",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "3 min",
+    "prerequisites": [],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

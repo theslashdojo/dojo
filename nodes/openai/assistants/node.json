@@ -1,0 +1,143 @@
+{
+  "name": "assistants",
+  "version": "1.0.0",
+  "uri": "openai/assistants",
+  "type": "skill",
+  "context": "Build persistent AI assistants with threads, messages, and tool use via the Assistants API",
+  "info": "The Assistants API provides a stateful, multi-turn conversation framework with persistent threads, automatic context management, and built-in tools. Unlike raw chat completions (see [[openai/chat]]), assistants maintain conversation history server-side, support file uploads, and can use tools like Code Interpreter (execute Python in a sandbox), File Search (RAG over uploaded documents), and custom function calling (see [[openai/function-calling]]). The workflow is: create an assistant with instructions and tools, create a thread, add messages, create a run, and poll for completion. Assistants can be reused across threads and sessions.",
+  "parent": "openai",
+  "tags": ["assistants", "threads", "messages", "runs", "tools", "code-interpreter", "retrieval"],
+  "aliases": [
+    "openai assistants",
+    "assistants api",
+    "ai assistant",
+    "build assistant",
+    "openai threads",
+    "persistent assistant",
+    "assistant with tools",
+    "code interpreter assistant",
+    "file search assistant"
+  ],
+  "triggers": [
+    "build an ai assistant",
+    "create an openai assistant",
+    "use the assistants api",
+    "create a persistent chatbot",
+    "use code interpreter",
+    "assistant with file search",
+    "manage conversation threads"
+  ],
+  "body": "# Assistants\n\nThe Assistants API builds persistent AI assistants that manage conversation state, use tools, and process files. Unlike direct [[openai/chat]] completions, assistants handle multi-turn context automatically.\n\n## Create an Assistant\n\n```javascript\nimport OpenAI from \"openai\";\n\nconst client = new OpenAI(); // reads OPENAI_API_KEY from env\n\nconst assistant = await client.beta.assistants.create({\n  name: \"Data Analyst\",\n  model: \"gpt-4o\",\n  instructions: \"You are a data analyst. Analyze data, create visualizations, and explain insights clearly.\",\n  tools: [\n    { type: \"code_interpreter\" },\n    { type: \"file_search\" },\n  ],\n});\n\nconsole.log(`Assistant ID: ${assistant.id}`);\n```\n\n## Threads and Messages\n\nThreads hold conversation history. Messages are added to threads, then a run executes the assistant against the thread:\n\n```javascript\n// Create a thread\nconst thread = await client.beta.threads.create();\n\n// Add a user message\nawait client.beta.threads.messages.create(thread.id, {\n  role: \"user\",\n  content: \"Analyze the sales data and identify the top 3 trends.\",\n});\n\n// Create a run\nconst run = await client.beta.threads.runs.create(thread.id, {\n  assistant_id: assistant.id,\n});\n\nconsole.log(`Thread: ${thread.id}, Run: ${run.id}`);\n```\n\n## Runs\n\nRuns execute the assistant against a thread. Poll for completion or use streaming:\n\n```javascript\n// Poll for completion\nlet runStatus = await client.beta.threads.runs.retrieve(thread.id, run.id);\n\nwhile (runStatus.status !== \"completed\") {\n  await new Promise(resolve => setTimeout(resolve, 1000));\n  runStatus = await client.beta.threads.runs.retrieve(thread.id, run.id);\n\n  if (runStatus.status === \"requires_action\") {\n    // Handle tool calls — see [[openai/function-calling]]\n    const toolCalls = runStatus.required_action.submit_tool_outputs.tool_calls;\n    // ... process tool calls and submit outputs\n  }\n\n  if (runStatus.status === \"failed\") {\n    throw new Error(`Run failed: ${runStatus.last_error?.message}`);\n  }\n}\n\n// Get the assistant's response\nconst messages = await client.beta.threads.messages.list(thread.id);\nconst response = messages.data[0].content[0].text.value;\nconsole.log(response);\n```\n\n### Streaming Runs\n\n```javascript\nconst stream = client.beta.threads.runs.stream(thread.id, {\n  assistant_id: assistant.id,\n});\n\nfor await (const event of stream) {\n  if (event.event === \"thread.message.delta\") {\n    const content = event.data.delta.content?.[0]?.text?.value || \"\";\n    process.stdout.write(content);\n  }\n}\n```\n\n## Tools\n\nAssistants support three tool types:\n\n### Code Interpreter\n\nExecutes Python code in a sandboxed environment. Can process files, perform calculations, create charts, and run data analysis:\n\n```javascript\ntools: [{ type: \"code_interpreter\" }]\n```\n\n### File Search\n\nSearch over uploaded documents using RAG. Supports PDF, TXT, MD, DOCX, and more:\n\n```javascript\n// Create a vector store and upload files\nconst vectorStore = await client.beta.vectorStores.create({ name: \"Knowledge Base\" });\nawait client.beta.vectorStores.files.create(vectorStore.id, { file_id: uploadedFile.id });\n\n// Attach to assistant\ntools: [{ type: \"file_search\" }],\ntool_resources: { file_search: { vector_store_ids: [vectorStore.id] } }\n```\n\n### Function Calling\n\nDefine custom tools the assistant can invoke. See [[openai/function-calling]] for the full pattern:\n\n```javascript\ntools: [{\n  type: \"function\",\n  function: {\n    name: \"get_weather\",\n    description: \"Get current weather for a location\",\n    parameters: {\n      type: \"object\",\n      properties: {\n        location: { type: \"string\", description: \"City name\" },\n      },\n      required: [\"location\"],\n    },\n  },\n}]\n```\n\n## Lifecycle\n\n| Resource | Persistence | Scope |\n|----------|-------------|-------|\n| Assistant | Permanent until deleted | Organization-wide |\n| Thread | Permanent until deleted | Per conversation |\n| Message | Permanent within thread | Per thread |\n| Run | One-time execution | Per thread |\n| Vector Store | Permanent until deleted | Shareable across assistants |\n",
+  "sections": [
+    {
+      "id": "create",
+      "title": "Create an assistant",
+      "body": "Call `client.beta.assistants.create()` with name, model (see [[openai/models]]), instructions (system prompt), and tools array. The assistant ID is reusable across threads. Update with `client.beta.assistants.update()`. List all with `client.beta.assistants.list()`. Delete with `client.beta.assistants.del()`.",
+      "tags": ["create", "configure", "instructions", "model", "update", "delete"]
+    },
+    {
+      "id": "threads-messages",
+      "title": "Threads and messages",
+      "body": "Create threads with `client.beta.threads.create()`. Add messages with `client.beta.threads.messages.create(threadId, { role, content })`. Threads persist server-side and manage context window automatically. Messages support text, images, and file attachments. List messages with `client.beta.threads.messages.list(threadId)` to read the conversation history.",
+      "tags": ["threads", "messages", "context", "history", "state", "attachments"]
+    },
+    {
+      "id": "runs",
+      "title": "Runs",
+      "body": "Create a run with `client.beta.threads.runs.create(threadId, { assistant_id })` to execute the assistant against the thread. Poll `runs.retrieve()` until status is `completed`, `failed`, or `requires_action`. For tool calls, status becomes `requires_action` — process the calls and submit outputs with `runs.submitToolOutputs()`. Use `runs.stream()` for real-time streaming. See [[openai/function-calling]] for handling tool calls.",
+      "tags": ["runs", "execute", "poll", "status", "streaming", "tool-outputs"]
+    },
+    {
+      "id": "tools",
+      "title": "Built-in tools",
+      "body": "Code Interpreter: sandboxed Python execution for data analysis, calculations, and chart generation. File Search: RAG over uploaded documents via vector stores — supports PDF, TXT, MD, DOCX, and more. Function Calling: define custom JSON Schema tools the assistant can invoke (see [[openai/function-calling]]). Multiple tools can be enabled simultaneously.",
+      "tags": ["code-interpreter", "file-search", "function-calling", "rag", "python", "vector-store"]
+    },
+    {
+      "id": "file-search",
+      "title": "File search setup",
+      "body": "Create a vector store, upload files to it, and attach the vector store to the assistant via `tool_resources.file_search.vector_store_ids`. The platform automatically chunks, embeds (see [[openai/embeddings]]), and indexes documents. Supports PDF, TXT, MD, DOCX, CSV, JSON, and more. Maximum 10,000 files per vector store.",
+      "tags": ["file-search", "vector-store", "upload", "documents", "rag", "indexing"]
+    }
+  ],
+  "links": [
+    { "uri": "openai", "context": "OpenAI ecosystem overview and authentication" },
+    { "uri": "openai/chat", "context": "Direct chat completions without persistent state" },
+    { "uri": "openai/function-calling", "context": "Define custom tools for assistant function calling" },
+    { "uri": "openai/embeddings", "context": "How file search indexes documents using embeddings" },
+    { "uri": "openai/models", "context": "Model selection for assistant configuration" },
+    { "uri": "openai#authentication", "context": "API key setup for assistant operations" },
+    { "uri": "openai#rate-limits", "context": "Rate limits for assistant and run operations" }
+  ],
+  "related": [
+    { "uri": "openai/chat", "relation": "see-also", "note": "Use chat completions directly for stateless, single-turn interactions" },
+    { "uri": "openai/function-calling", "relation": "see-also", "note": "Function calling enables assistants to invoke custom tools and external APIs" },
+    { "uri": "openai/embeddings", "relation": "see-also", "note": "File search uses embeddings internally for document retrieval" }
+  ],
+  "scripts": [
+    {
+      "id": "create-assistant",
+      "name": "Create Assistant",
+      "description": "Create a persistent AI assistant with threads, messages, and tool use",
+      "lang": "javascript",
+      "runtime": "node>=18",
+      "entry": "./scripts/create-assistant.js",
+      "env": {
+        "OPENAI_API_KEY": { "required": true, "secret": true, "description": "OpenAI API key for authentication" }
+      },
+      "packages": ["openai"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "description": "Human-readable name for the assistant" },
+        "model": { "type": "string", "description": "Model ID to use (e.g. gpt-4o)", "default": "gpt-4o" },
+        "instructions": { "type": "string", "description": "System instructions defining the assistant's behavior and persona" },
+        "tools": {
+          "type": "array",
+          "description": "Tools the assistant can use: code_interpreter, file_search, or function definitions",
+          "items": {
+            "type": "object",
+            "properties": {
+              "type": { "type": "string", "enum": ["code_interpreter", "file_search", "function"] }
+            }
+          }
+        }
+      },
+      "required": ["name", "model", "instructions"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "assistantId": { "type": "string", "description": "Unique identifier for the created assistant" },
+        "threadId": { "type": "string", "description": "Unique identifier for the conversation thread" },
+        "runId": { "type": "string", "description": "Unique identifier for the execution run" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "openai", "reason": "Requires an OpenAI API key and client configuration" }
+  ],
+  "more": {
+    "docs": "https://platform.openai.com/docs/api-reference/assistants",
+    "guide": "https://platform.openai.com/docs/assistants/overview",
+    "repo": "https://github.com/openai/openai-node"
+  },
+  "frontmatter": {
+    "created": "2026-04-10",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "6 min",
+    "prerequisites": ["openai"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

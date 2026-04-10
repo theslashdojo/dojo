@@ -1,0 +1,99 @@
+{
+  "name": "verify",
+  "version": "1.0.0",
+  "uri": "ethereum/contract-deploy/verify",
+  "type": "sub",
+  "context": "Verify deployed contract source code on Etherscan, Basescan, or Blockscout block explorers",
+  "info": "Source verification publishes your Solidity source and compiler settings to a block explorer so anyone can read the contract, confirm it matches the deployed bytecode, and interact via the explorer UI. Verification requires the exact compiler version, optimization settings, and constructor arguments used during deployment. Both Hardhat and Foundry support automatic verification with `--verify`. Manual verification is available via the Etherscan API or web interface. Verified contracts show a green checkmark and enable the Read/Write Contract tabs on the explorer.",
+  "parent": "ethereum/contract-deploy",
+  "tags": ["verify", "etherscan", "basescan", "blockscout", "source-code", "explorer"],
+  "aliases": [
+    "verify contract",
+    "etherscan verify",
+    "verify on etherscan",
+    "source verification",
+    "contract verification",
+    "basescan verify"
+  ],
+  "triggers": [
+    "verify my contract",
+    "verify contract on etherscan",
+    "verify on basescan",
+    "how do i verify a contract",
+    "source verify deployed contract"
+  ],
+  "body": "# Contract Verification\n\nVerification proves that the deployed bytecode matches the published source. It enables the Read/Write Contract tabs on block explorers. This step should follow every production deployment via [[ethereum/contract-deploy]].\n\n## Hardhat\n\n```bash\nnpx hardhat verify --network base CONTRACT_ADDRESS \"constructor_arg_1\" \"constructor_arg_2\"\n```\n\nOr use `--verify` flag during Ignition deployment (see [[ethereum/contract-deploy/hardhat#deploy-command]]).\n\n## Foundry\n\n```bash\nforge verify-contract CONTRACT_ADDRESS src/MyContract.sol:MyContract --chain base --etherscan-api-key $ETHERSCAN_API_KEY\n```\n\nOr use `--verify` flag during `forge script` (see [[ethereum/contract-deploy/foundry#forge-script]]).\n\n## Requirements\n\n- Exact Solidity compiler version\n- Same optimization settings (runs count, via-ir)\n- ABI-encoded constructor arguments\n- Etherscan API key for the target explorer\n\n## Explorer API Keys\n\n| Explorer | Chains | API Key Source |\n|----------|--------|----------------|\n| Etherscan | Ethereum mainnet, Sepolia | etherscan.io/apis |\n| Basescan | Base, Base Sepolia | basescan.org/apis |\n| Arbiscan | Arbitrum | arbiscan.io/apis |\n| Blockscout | Various L2s | Self-hosted, no key needed |\n\n## Troubleshooting\n\nCommon failures: wrong compiler version, different optimization settings, missing constructor args, library linking mismatch. Check `artifacts/` or `out/` for the exact build settings used during deployment.\n",
+  "sections": [
+    {
+      "id": "hardhat-verify",
+      "title": "Verify with Hardhat",
+      "body": "`npx hardhat verify --network <name> <address> <args>`. Requires `@nomicfoundation/hardhat-verify` plugin and `etherscan.apiKey` in config (see [[ethereum/contract-deploy/hardhat#setup]]). Supports custom explorer URLs for L2s and Blockscout.",
+      "tags": ["hardhat", "verify", "plugin"]
+    },
+    {
+      "id": "foundry-verify",
+      "title": "Verify with Foundry",
+      "body": "`forge verify-contract <address> <contract> --chain <chain> --etherscan-api-key <key>`. Add `--constructor-args $(cast abi-encode \"constructor(type)\" value)` for contracts with constructor arguments.",
+      "tags": ["foundry", "forge", "verify", "cast"]
+    },
+    {
+      "id": "troubleshooting",
+      "title": "Troubleshooting verification",
+      "body": "Verification fails when compiler version, optimization runs, or constructor args don't match the deployment. Check build artifacts for exact settings. For proxy contracts (see [[ethereum/contract-deploy#deployment-patterns]]), verify both the implementation and proxy separately.",
+      "tags": ["troubleshooting", "compiler", "optimization", "proxy"]
+    }
+  ],
+  "links": [
+    { "uri": "ethereum/contract-deploy", "context": "Parent deployment workflow" },
+    { "uri": "ethereum/contract-deploy/hardhat#deploy-command", "context": "Hardhat deploy with --verify" },
+    { "uri": "ethereum/contract-deploy/foundry#forge-script", "context": "Foundry deploy with --verify" }
+  ],
+  "related": [
+    { "uri": "ethereum/contract-deploy", "relation": "prerequisite", "note": "A contract must be deployed before it can be verified" }
+  ],
+  "scripts": [
+    {
+      "id": "verify-contract",
+      "name": "Verify Contract",
+      "description": "Verify a deployed contract on a block explorer",
+      "lang": "bash",
+      "runtime": "bash",
+      "entry": "./scripts/verify.sh",
+      "env": {
+        "CONTRACT_ADDRESS": { "required": true, "secret": false, "description": "Deployed contract address" },
+        "ETHERSCAN_API_KEY": { "required": true, "secret": true, "description": "Block explorer API key" },
+        "CHAIN": { "required": true, "secret": false, "description": "Target chain name" }
+      },
+      "packages": []
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "contractAddress": { "type": "string" },
+        "chain": { "type": "string" },
+        "constructorArgs": { "type": "array" },
+        "toolchain": { "type": "string", "enum": ["hardhat", "foundry"] }
+      },
+      "required": ["contractAddress", "chain"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "verified": { "type": "boolean" },
+        "explorerUrl": { "type": "string", "description": "Link to verified contract on explorer" }
+      }
+    }
+  },
+  "more": {
+    "etherscan": "https://docs.etherscan.io/v/basescan/api-endpoints/contracts",
+    "hardhat": "https://hardhat.org/hardhat-runner/plugins/nomicfoundation-hardhat-verify",
+    "foundry": "https://book.getfoundry.sh/reference/forge/forge-verify-contract"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

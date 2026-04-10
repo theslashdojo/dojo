@@ -1,0 +1,92 @@
+{
+  "name": "iam",
+  "version": "1.0.0",
+  "uri": "aws/iam",
+  "type": "context",
+  "context": "AWS Identity and Access Management — users, roles, policies, and least-privilege access",
+  "info": "IAM (Identity and Access Management) controls who can do what in your AWS account. Users represent people or applications. Roles provide temporary credentials for services (like [[aws/lambda]] execution roles or [[aws/ec2]] instance profiles) and cross-account access. Policies are JSON documents that define permissions using actions, resources, and conditions. Follow the principle of least privilege: grant only the permissions required for the task. IAM is a global service — it is not region-scoped. All AWS services depend on IAM for authentication and authorization.",
+  "parent": "aws",
+  "tags": ["iam", "identity", "access", "roles", "policies", "permissions", "least-privilege"],
+  "aliases": [
+    "iam",
+    "aws iam",
+    "identity and access management",
+    "aws permissions",
+    "aws roles",
+    "aws policies",
+    "access control",
+    "aws security"
+  ],
+  "triggers": [
+    "set up iam users",
+    "create an iam role",
+    "write an iam policy",
+    "manage aws permissions",
+    "configure least privilege access",
+    "grant access to an aws service",
+    "set up cross-account access"
+  ],
+  "body": "# AWS IAM\n\nIAM governs authentication (who are you?) and authorization (what can you do?) across all AWS services. Every API call to AWS is evaluated against IAM policies. IAM is global — users, roles, and policies are not scoped to a region.\n\n## Users and Groups\n\nIAM users represent individual people or applications. Groups are collections of users that share the same permissions:\n\n- **Users** — have long-lived credentials (access key + secret key). Use for human access and CI/CD pipelines. Minimize the number of users with programmatic access keys.\n- **Groups** — attach policies to groups, then add users. Easier to manage than per-user policies. Example groups: `Developers`, `Admins`, `ReadOnly`.\n- **Root account** — has unrestricted access. Never use for daily tasks. Enable MFA immediately.\n\n## Roles\n\nRoles provide temporary credentials via `sts:AssumeRole`. No long-lived keys. Preferred over users for service-to-service access:\n\n- **Lambda execution role** — what a [[aws/lambda]] function can access (S3 buckets, DynamoDB tables, etc.)\n- **EC2 instance profile** — what an [[aws/ec2]] instance can access without hardcoded credentials\n- **Cross-account role** — allow principals in another AWS account to assume the role\n- **Service-linked role** — automatically created by AWS services for their own use\n\n### Trust Policy\n\nEvery role has a trust policy that defines who can assume it:\n\n```json\n{\n  \"Version\": \"2012-10-17\",\n  \"Statement\": [{\n    \"Effect\": \"Allow\",\n    \"Principal\": { \"Service\": \"lambda.amazonaws.com\" },\n    \"Action\": \"sts:AssumeRole\"\n  }]\n}\n```\n\n## Policies\n\nPolicies are JSON documents that define permissions:\n\n```json\n{\n  \"Version\": \"2012-10-17\",\n  \"Statement\": [{\n    \"Effect\": \"Allow\",\n    \"Action\": [\"s3:GetObject\", \"s3:PutObject\"],\n    \"Resource\": \"arn:aws:s3:::my-bucket/*\"\n  }]\n}\n```\n\nPolicy types:\n- **AWS managed** — pre-built by AWS (e.g., `AmazonS3ReadOnlyAccess`)\n- **Customer managed** — custom policies you create and maintain\n- **Inline** — embedded directly in a user, group, or role (avoid for maintainability)\n\n## Best Practices\n\n- **Least privilege** — grant only the permissions needed for the task\n- **Use roles, not users** — especially for services like [[aws/lambda]] and [[aws/ec2]]\n- **Enable MFA** — require multi-factor authentication for console access\n- **Rotate credentials** — rotate access keys regularly, use temporary credentials where possible\n- **Audit with CloudTrail** — log all API calls to detect unauthorized access\n- **Use conditions** — restrict by IP, time, MFA, or other context in policy conditions\n- **Tag resources** — use resource tags with IAM conditions for attribute-based access control\n",
+  "content_type": "guide",
+  "sections": [
+    {
+      "id": "users-groups",
+      "title": "Users and groups",
+      "body": "IAM users have long-lived credentials (access key ID + secret key). Group users by function (Developers, Admins, ReadOnly) and attach policies to groups. Minimize programmatic access keys. Never use the root account for daily operations — enable MFA on root immediately. Use [[aws/cloudformation]] to manage IAM users and groups as code.",
+      "tags": ["users", "groups", "access-key", "root", "mfa"]
+    },
+    {
+      "id": "roles",
+      "title": "IAM roles",
+      "body": "Roles provide temporary credentials via `sts:AssumeRole`. Use for [[aws/lambda]] execution roles, [[aws/ec2]] instance profiles, and cross-account access. Each role has a trust policy (who can assume it) and permission policies (what they can do). Prefer roles over long-lived user credentials for all service-to-service communication.",
+      "tags": ["roles", "assume-role", "trust-policy", "execution-role", "instance-profile", "cross-account"]
+    },
+    {
+      "id": "policies",
+      "title": "IAM policies",
+      "body": "Policies are JSON documents with Effect (Allow/Deny), Action (API calls), Resource (ARNs), and optional Condition. Use AWS managed policies for common patterns. Create customer managed policies for custom needs. Scope resources to specific ARNs — avoid `Resource: \"*\"`. Use [[aws/s3#bucket-policies]] for bucket-level access and IAM policies for user/role-level access.",
+      "tags": ["policies", "json", "effect", "action", "resource", "condition", "arn"]
+    },
+    {
+      "id": "best-practices",
+      "title": "Security best practices",
+      "body": "Least privilege: start with no permissions, add only what is needed. Use roles for services, not hardcoded keys. Enable MFA on all human accounts. Rotate access keys every 90 days. Audit with CloudTrail. Use policy conditions (IP, MFA, time) to narrow access. Tag resources and use ABAC (attribute-based access control) for scalable permissions.",
+      "tags": ["least-privilege", "mfa", "rotate-keys", "cloudtrail", "audit", "abac", "security"]
+    }
+  ],
+  "links": [
+    { "uri": "aws/lambda", "context": "Lambda functions require IAM execution roles" },
+    { "uri": "aws/ec2", "context": "EC2 instances use IAM instance profiles for service access" },
+    { "uri": "aws/s3", "context": "S3 access is controlled by both bucket policies and IAM policies" },
+    { "uri": "aws/cloudformation", "context": "Manage IAM resources as infrastructure-as-code" },
+    { "uri": "aws/rds", "context": "RDS access requires IAM authentication or database credentials" },
+    { "uri": "aws/s3#bucket-policies", "context": "Combine bucket policies with IAM for fine-grained S3 access" },
+    { "uri": "aws/lambda#create-deploy", "context": "Attach execution roles when creating Lambda functions" },
+    { "uri": "aws/ec2#launch", "context": "Assign instance profiles when launching EC2 instances" }
+  ],
+  "related": [
+    { "uri": "aws/lambda", "relation": "see-also", "note": "Every Lambda function needs an IAM execution role" },
+    { "uri": "aws/ec2", "relation": "see-also", "note": "EC2 instance profiles use IAM roles for credential-free service access" },
+    { "uri": "aws/s3", "relation": "see-also", "note": "S3 bucket policies work alongside IAM policies for access control" }
+  ],
+  "more": {
+    "docs": "https://docs.aws.amazon.com/iam/",
+    "best-practices": "https://docs.aws.amazon.com/IAM/latest/UserGuide/best-practices.html",
+    "policy-reference": "https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies.html"
+  },
+  "frontmatter": {
+    "created": "2026-04-10",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "developers, AI agents, security engineers",
+    "estimated_reading_time": "5 min",
+    "prerequisites": [],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

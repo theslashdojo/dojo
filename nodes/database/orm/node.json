@@ -1,0 +1,100 @@
+{
+  "name": "orm",
+  "version": "1.0.0",
+  "uri": "database/orm",
+  "type": "context",
+  "context": "ORM patterns and tools — Prisma, Drizzle, Sequelize, TypeORM, SQLAlchemy",
+  "info": "Object-Relational Mappers (ORMs) bridge application code and databases by mapping objects/classes to database tables. This guide covers the two primary patterns — Active Record (model instances handle persistence) and Data Mapper (separate repository classes) — and the most widely used tools: Prisma (schema-first, TypeScript), Drizzle (SQL-like, TypeScript), Sequelize (Active Record, Node.js), TypeORM (decorator-based, TypeScript), and SQLAlchemy (Python, both Core and ORM layers). It includes when to use an ORM vs raw SQL, performance considerations, connection pooling, and N+1 query prevention.",
+  "parent": "database",
+  "tags": ["orm", "prisma", "drizzle", "sequelize", "typeorm", "sqlalchemy", "active-record", "data-mapper"],
+  "aliases": [
+    "orm",
+    "object relational mapper",
+    "database orm",
+    "prisma orm",
+    "drizzle orm",
+    "sequelize",
+    "typeorm",
+    "sqlalchemy",
+    "data access layer"
+  ],
+  "triggers": [
+    "set up an orm",
+    "use prisma with my database",
+    "set up drizzle orm",
+    "which orm should i use",
+    "active record vs data mapper",
+    "configure database orm",
+    "connect my app to the database"
+  ],
+  "body": "# ORM Patterns and Tools\n\nORMs map application objects to database rows, letting you work with code-level abstractions instead of raw SQL. They handle connection management, query building, result mapping, and often include [[database/migrations]] tooling. Understanding the underlying [[database/sql]] remains essential for debugging ORM-generated queries and writing optimized operations.\n\n## Patterns\n\n### Active Record\n\nThe model class itself handles persistence. Instances know how to save, update, and delete themselves:\n\n```javascript\n// Sequelize (Active Record)\nconst user = await User.create({ name: 'Alice', email: 'alice@example.com' });\nuser.name = 'Alicia';\nawait user.save();\nawait user.destroy();\n```\n\n**Pros:** Simple, intuitive, less boilerplate. **Cons:** Tight coupling between domain logic and persistence, harder to test in isolation.\n\n### Data Mapper\n\nSeparate repository or mapper classes handle persistence. Domain objects are plain objects:\n\n```typescript\n// TypeORM (Data Mapper)\nconst userRepo = dataSource.getRepository(User);\nconst user = userRepo.create({ name: 'Alice', email: 'alice@example.com' });\nawait userRepo.save(user);\nawait userRepo.remove(user);\n```\n\n**Pros:** Clean separation of concerns, easier to test, domain objects stay pure. **Cons:** More boilerplate, more abstractions to learn.\n\n## Prisma\n\nSchema-first ORM with auto-generated, type-safe client. Declarative schema in `schema.prisma` drives migrations and code generation.\n\n```prisma\n// prisma/schema.prisma\ndatasource db {\n  provider = \"postgresql\"\n  url      = env(\"DATABASE_URL\")\n}\n\ngenerator client {\n  provider = \"prisma-client-js\"\n}\n\nmodel User {\n  id        Int      @id @default(autoincrement())\n  name      String\n  email     String   @unique\n  posts     Post[]\n  createdAt DateTime @default(now())\n}\n\nmodel Post {\n  id       Int    @id @default(autoincrement())\n  title    String\n  author   User   @relation(fields: [authorId], references: [id])\n  authorId Int\n}\n```\n\n```typescript\nimport { PrismaClient } from '@prisma/client';\nconst prisma = new PrismaClient();\n\n// Create with relation\nconst user = await prisma.user.create({\n  data: {\n    name: 'Alice',\n    email: 'alice@example.com',\n    posts: { create: { title: 'First Post' } },\n  },\n  include: { posts: true },\n});\n\n// Query with filtering and pagination\nconst users = await prisma.user.findMany({\n  where: { email: { contains: '@example.com' } },\n  orderBy: { createdAt: 'desc' },\n  take: 20,\n  skip: 0,\n});\n```\n\nSee [[database/migrations#tools-comparison]] for Prisma Migrate details.\n\n## Drizzle\n\nLightweight TypeScript ORM with SQL-like query API. Schema defined in TypeScript, compiles to SQL.\n\n```typescript\nimport { pgTable, serial, text, timestamp } from 'drizzle-orm/pg-core';\nimport { drizzle } from 'drizzle-orm/node-postgres';\nimport { eq } from 'drizzle-orm';\nimport { Pool } from 'pg';\n\nconst users = pgTable('users', {\n  id: serial('id').primaryKey(),\n  name: text('name').notNull(),\n  email: text('email').notNull().unique(),\n  createdAt: timestamp('created_at').defaultNow(),\n});\n\nconst pool = new Pool({ connectionString: process.env.DATABASE_URL });\nconst db = drizzle(pool);\n\n// Insert\nawait db.insert(users).values({ name: 'Alice', email: 'alice@example.com' });\n\n// Select with filter\nconst result = await db.select().from(users).where(eq(users.email, 'alice@example.com'));\n```\n\n## Python ORMs\n\n### SQLAlchemy\n\n```python\nfrom sqlalchemy import create_engine, Column, Integer, String, DateTime\nfrom sqlalchemy.orm import declarative_base, Session\nfrom datetime import datetime\n\nBase = declarative_base()\n\nclass User(Base):\n    __tablename__ = 'users'\n    id = Column(Integer, primary_key=True)\n    name = Column(String, nullable=False)\n    email = Column(String, nullable=False, unique=True)\n    created_at = Column(DateTime, default=datetime.utcnow)\n\nengine = create_engine(\"postgresql://user:pass@localhost/mydb\")\nBase.metadata.create_all(engine)\n\nwith Session(engine) as session:\n    user = User(name='Alice', email='alice@example.com')\n    session.add(user)\n    session.commit()\n\n    users = session.query(User).filter(User.email.contains('@example.com')).all()\n```\n\n## When to Use an ORM\n\n| Scenario | Recommendation |\n|----------|----------------|\n| Standard CRUD applications | ORM — reduces boilerplate, prevents SQL injection |\n| Complex reporting queries | Raw SQL or query builder — ORMs struggle with complex joins and CTEs |\n| High-performance bulk operations | Raw SQL — ORMs add overhead per-row |\n| Rapid prototyping | ORM — faster iteration on schema and queries |\n| Multi-database support | ORM — abstracts dialect differences |\n| Simple scripts or one-off queries | Raw SQL or query builder (Knex) |\n\nWhen the ORM generates inefficient queries, use [[database/indexing#explain-analyze]] to diagnose and consider dropping to raw SQL for that specific query.\n",
+  "content_type": "guide",
+  "sections": [
+    {
+      "id": "patterns",
+      "title": "ORM patterns",
+      "body": "Active Record (Sequelize, Django ORM, Ruby on Rails) — model instances handle their own persistence via save(), create(), destroy(). Data Mapper (TypeORM in Data Mapper mode, SQLAlchemy, Prisma) — separate repository/client classes handle persistence, keeping domain objects pure. Active Record is simpler for CRUD-heavy apps. Data Mapper scales better for complex domain logic and testability.",
+      "tags": ["active-record", "data-mapper", "pattern", "repository"]
+    },
+    {
+      "id": "prisma",
+      "title": "Prisma",
+      "body": "Schema-first: define models in `schema.prisma`, run `prisma generate` for type-safe client, `prisma migrate dev` for migrations (see [[database/migrations#tools-comparison]]). Auto-completes queries and relations. Handles connection pooling internally. Supports PostgreSQL, MySQL, SQLite, SQL Server, MongoDB, and CockroachDB. Use Prisma Accelerate for edge/serverless connection pooling (see [[database#connection-pooling]]).",
+      "tags": ["prisma", "schema-first", "type-safe", "generate", "migrate"]
+    },
+    {
+      "id": "drizzle",
+      "title": "Drizzle",
+      "body": "TypeScript-native ORM with SQL-like syntax. Schema defined as TypeScript objects using `pgTable`, `mysqlTable`, or `sqliteTable`. Queries look like SQL: `db.select().from(users).where(eq(users.id, 1))`. Lightweight runtime, no code generation step. Drizzle Kit provides push (apply schema changes directly) and generate (create migration files). Best for teams that want type safety without leaving the SQL mental model.",
+      "tags": ["drizzle", "typescript", "sql-like", "lightweight", "drizzle-kit"]
+    },
+    {
+      "id": "python-orms",
+      "title": "Python ORMs",
+      "body": "**SQLAlchemy** — two layers: Core (SQL expression language) and ORM (model mapping). Most flexible Python ORM. Supports Unit of Work pattern. Use with Alembic for migrations. **Django ORM** — tightly integrated with Django framework, Active Record pattern, built-in migrations. **Peewee** — lightweight, simple Active Record ORM for smaller projects. SQLAlchemy is the standard choice for non-Django Python applications.",
+      "tags": ["sqlalchemy", "django-orm", "peewee", "python", "alembic"]
+    },
+    {
+      "id": "when-to-use",
+      "title": "When to use an ORM",
+      "body": "Use an ORM for standard CRUD, rapid prototyping, and when type safety matters. Drop to raw SQL or a query builder for complex reporting queries, bulk operations, and performance-critical paths. Most applications use both — ORM for 90% of queries, raw SQL for the remaining 10%. Always check ORM-generated SQL with [[database/indexing#explain-analyze]] when queries are slow. Avoid N+1 queries by using eager loading (Prisma `include`, Sequelize `include`, SQLAlchemy `joinedload`).",
+      "tags": ["when-to-use", "raw-sql", "n-plus-one", "eager-loading", "performance"]
+    }
+  ],
+  "links": [
+    { "uri": "database", "context": "Database ecosystem overview and connection pooling" },
+    { "uri": "database/sql", "context": "Raw SQL for when the ORM is insufficient" },
+    { "uri": "database/migrations", "context": "Schema migrations — most ORMs include migration tools" },
+    { "uri": "database/migrations#tools-comparison", "context": "Comparison of Prisma Migrate, Knex, Flyway, and other migration runners" },
+    { "uri": "database/indexing", "context": "Index queries generated by the ORM" },
+    { "uri": "database/indexing#explain-analyze", "context": "Diagnose slow ORM-generated queries with EXPLAIN" },
+    { "uri": "database#connection-pooling", "context": "Connection pool configuration for ORMs" }
+  ],
+  "related": [
+    { "uri": "database/sql", "relation": "see-also", "note": "Understanding SQL is essential for debugging and optimizing ORM queries" },
+    { "uri": "database/migrations", "relation": "see-also", "note": "ORMs often include migration tooling or integrate with migration frameworks" },
+    { "uri": "database/indexing", "relation": "see-also", "note": "Slow ORM queries are usually missing an index, not an ORM problem" }
+  ],
+  "more": {
+    "prisma": "https://www.prisma.io/docs",
+    "drizzle": "https://orm.drizzle.team/docs/overview",
+    "sequelize": "https://sequelize.org/docs/v6/",
+    "typeorm": "https://typeorm.io/",
+    "sqlalchemy": "https://docs.sqlalchemy.org/"
+  },
+  "frontmatter": {
+    "created": "2026-04-10",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "7 min",
+    "prerequisites": ["database/sql"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

@@ -1,0 +1,90 @@
+{
+  "name": "indexing",
+  "version": "1.0.0",
+  "uri": "database/indexing",
+  "type": "context",
+  "context": "Index strategies — B-tree, hash, GIN, GiST, partial indexes, covering indexes, and EXPLAIN analysis",
+  "info": "Database indexes are data structures that speed up data retrieval at the cost of additional storage and write overhead. Choosing the right index type and columns is the single most impactful performance optimization for most applications. This guide covers B-tree (default, range queries), hash (equality only), GIN (full-text search, JSONB, arrays), GiST (geometric, range types), partial indexes (filtered subset), and covering indexes (index-only scans). It includes practical EXPLAIN ANALYZE usage for diagnosing slow queries, common anti-patterns that prevent index usage, and guidelines for when to add or remove indexes.",
+  "parent": "database",
+  "tags": ["indexing", "btree", "hash", "gin", "gist", "explain", "performance", "partial-index"],
+  "aliases": [
+    "database indexes",
+    "indexing",
+    "index strategy",
+    "create index",
+    "database performance",
+    "query optimization",
+    "explain analyze",
+    "index types"
+  ],
+  "triggers": [
+    "create a database index",
+    "optimize a slow query",
+    "which index type should i use",
+    "explain analyze my query",
+    "add an index to my table",
+    "why is my query slow",
+    "database performance tuning"
+  ],
+  "body": "# Indexing Strategies\n\nIndexes are the primary tool for making [[database/sql]] queries fast. Without an index, the database performs a sequential scan — reading every row in the table. With the right index, the same query can use an index scan that reads only the relevant rows. The trade-off: indexes consume storage and slow down writes (INSERT, UPDATE, DELETE) because the index must be updated alongside the table data.\n\n## Index Types\n\n### B-tree (Default)\n\nThe default index type in PostgreSQL and MySQL. Supports equality (`=`), range (`<`, `>`, `<=`, `>=`, `BETWEEN`), sorting (`ORDER BY`), and prefix matching (`LIKE 'abc%'`).\n\n```sql\n-- B-tree index on a single column\nCREATE INDEX idx_users_email ON users (email);\n\n-- Composite B-tree index (column order matters)\nCREATE INDEX idx_orders_user_date ON orders (user_id, created_at DESC);\n\n-- Unique index (also enforces uniqueness)\nCREATE UNIQUE INDEX idx_users_email_unique ON users (email);\n```\n\n### Hash\n\nOptimized for equality comparisons only. Smaller than B-tree for equality-only workloads but cannot support range queries or sorting.\n\n```sql\n-- Hash index (PostgreSQL)\nCREATE INDEX idx_sessions_token ON sessions USING hash (token);\n```\n\n### GIN (Generalized Inverted Index)\n\nDesigned for composite values: arrays, JSONB, full-text search (`tsvector`). Supports containment (`@>`), existence (`?`), and full-text matching (`@@`).\n\n```sql\n-- GIN index on JSONB column\nCREATE INDEX idx_products_metadata ON products USING gin (metadata);\n\n-- GIN index for full-text search\nCREATE INDEX idx_articles_search ON articles USING gin (to_tsvector('english', title || ' ' || body));\n\n-- GIN index on array column\nCREATE INDEX idx_posts_tags ON posts USING gin (tags);\n```\n\n### GiST (Generalized Search Tree)\n\nSupports geometric data, range types, and nearest-neighbor searches. Used with PostGIS for spatial queries.\n\n```sql\n-- GiST index on a range column\nCREATE INDEX idx_reservations_during ON reservations USING gist (during);\n\n-- GiST index for PostGIS geometry\nCREATE INDEX idx_locations_geom ON locations USING gist (geom);\n```\n\n## Partial Indexes\n\nIndex only a subset of rows, reducing storage and improving write performance:\n\n```sql\n-- Only index active users (skip inactive/banned)\nCREATE INDEX idx_users_email_active ON users (email)\nWHERE status = 'active';\n\n-- Only index non-null values\nCREATE INDEX idx_orders_shipped ON orders (shipped_at)\nWHERE shipped_at IS NOT NULL;\n```\n\n## Covering Indexes (Index-Only Scans)\n\nInclude extra columns in the index so the query can be answered entirely from the index without touching the table:\n\n```sql\n-- PostgreSQL INCLUDE clause\nCREATE INDEX idx_orders_user_covering ON orders (user_id)\nINCLUDE (total, created_at);\n\n-- Now this query uses an index-only scan:\n-- SELECT total, created_at FROM orders WHERE user_id = 42;\n```\n\n## EXPLAIN ANALYZE\n\nThe most important tool for understanding query performance. Shows the query plan, estimated costs, and actual execution times:\n\n```sql\nEXPLAIN ANALYZE\nSELECT u.name, COUNT(o.id) AS order_count\nFROM users u\nJOIN orders o ON o.user_id = u.id\nWHERE u.status = 'active'\nGROUP BY u.name\nORDER BY order_count DESC\nLIMIT 10;\n```\n\nKey things to look for:\n\n| Plan Node | Meaning | Action |\n|-----------|---------|--------|\n| Seq Scan | Full table scan | Add an index on the filtered/joined column |\n| Index Scan | B-tree lookup + table fetch | Good — index is being used |\n| Index Only Scan | Answered entirely from index | Best — no table access needed |\n| Bitmap Index Scan | Index scan for many rows | Normal for queries returning many rows |\n| Nested Loop | Join using nested iteration | Fine for small result sets, slow for large |\n| Hash Join | Hash-based join | Good for large joins without indexes |\n| Sort | Explicit sort step | Consider adding an index with matching ORDER BY |\n\n```\n-- Example output (abbreviated)\nLimit  (cost=150.32..150.35 rows=10) (actual time=2.105..2.108 rows=10)\n  -> Sort  (cost=150.32..153.48 rows=1265) (actual time=2.103..2.105 rows=10)\n        -> HashAggregate  (cost=120.50..132.15 rows=1265) (actual time=1.876..1.982 rows=845)\n              -> Hash Join  (cost=30.25..108.12 rows=2475) (actual time=0.412..1.523 rows=2475)\n                    -> Seq Scan on orders o  (cost=0.00..64.75 rows=3475) (actual time=0.008..0.523 rows=3475)\n                    -> Hash  (cost=25.00..25.00 rows=420) (actual time=0.384..0.384 rows=420)\n                          -> Index Scan using idx_users_status on users u  (cost=0.28..25.00 rows=420)\n                                Filter: (status = 'active')\n```\n\n## When to Index\n\n- Columns in WHERE clauses used frequently\n- Columns in JOIN conditions (foreign keys)\n- Columns in ORDER BY that appear in high-traffic queries\n- Columns with high selectivity (many distinct values relative to table size)\n- Foreign key columns (PostgreSQL does not auto-index these, unlike MySQL)\n\n## Anti-Patterns\n\n- **Over-indexing** — every additional index slows writes. Only index columns used in frequent queries.\n- **Indexing low-cardinality columns** — a boolean column with only true/false rarely benefits from an index (use a partial index instead).\n- **Wrong column order in composite indexes** — put the equality columns first, range columns last: `(status, created_at)` not `(created_at, status)`.\n- **Functions on indexed columns** — `WHERE LOWER(email) = 'alice@example.com'` cannot use a plain index on `email`. Create a functional index: `CREATE INDEX idx_users_email_lower ON users (LOWER(email))`.\n- **Implicit casts** — `WHERE id = '42'` (string vs integer) may prevent index usage.\n- **Not analyzing** — run `ANALYZE` after bulk loads so the query planner has accurate statistics.\n",
+  "content_type": "guide",
+  "sections": [
+    {
+      "id": "index-types",
+      "title": "Index types",
+      "body": "**B-tree** (default): equality, range, sorting, prefix LIKE. **Hash**: equality only, smaller footprint. **GIN**: arrays, JSONB, full-text search with tsvector. **GiST**: geometric data, range types, nearest-neighbor. Choose B-tree for most columns, GIN for JSONB/array/full-text, GiST for spatial/range, hash only when storage matters and queries are equality-only.",
+      "tags": ["btree", "hash", "gin", "gist", "type-selection"]
+    },
+    {
+      "id": "when-to-index",
+      "title": "When to index",
+      "body": "Index columns in frequent WHERE clauses, JOIN conditions (especially foreign keys), and ORDER BY clauses. Prioritize high-selectivity columns. In PostgreSQL, manually add indexes on foreign keys — they are not auto-created. Use partial indexes for filtered subsets. Use covering indexes (INCLUDE) for index-only scans. Remove unused indexes identified by `pg_stat_user_indexes` where `idx_scan = 0`.",
+      "tags": ["when", "foreign-key", "selectivity", "partial", "covering", "unused"]
+    },
+    {
+      "id": "explain-analyze",
+      "title": "EXPLAIN ANALYZE",
+      "body": "Prefix any query with `EXPLAIN ANALYZE` to see the actual execution plan. Look for Seq Scan nodes on large tables — they indicate missing indexes. Compare `estimated rows` to `actual rows` — large discrepancies mean statistics are stale (run `ANALYZE tablename`). Use `EXPLAIN (ANALYZE, BUFFERS, FORMAT TEXT)` for buffer hit/miss information. In production, use `EXPLAIN (ANALYZE, BUFFERS)` carefully as it actually executes the query — wrap destructive queries in a transaction and ROLLBACK.",
+      "tags": ["explain", "analyze", "query-plan", "seq-scan", "buffers", "statistics"]
+    },
+    {
+      "id": "anti-patterns",
+      "title": "Indexing anti-patterns",
+      "body": "Over-indexing slows writes without benefiting reads. Indexing low-cardinality columns (boolean, enum with few values) wastes space — use partial indexes instead. Wrong composite column order defeats range scans. Functions on indexed columns (LOWER, CAST) bypass the index — use functional indexes. Implicit type casts prevent index usage. Not running ANALYZE after bulk loads gives the planner stale statistics. See [[database/sql#transactions]] for wrapping EXPLAIN in transactions on production.",
+      "tags": ["anti-pattern", "over-indexing", "cardinality", "functional-index", "cast", "analyze"]
+    }
+  ],
+  "links": [
+    { "uri": "database", "context": "Database ecosystem overview" },
+    { "uri": "database/sql", "context": "SQL queries that indexes accelerate" },
+    { "uri": "database/sql#joins", "context": "JOIN performance depends on indexed join columns" },
+    { "uri": "database/orm", "context": "ORMs generate queries — index the columns they filter on" },
+    { "uri": "database/migrations", "context": "Add indexes via migrations for version-controlled schema changes" },
+    { "uri": "database/sql#transactions", "context": "Wrap EXPLAIN ANALYZE in a transaction on production to avoid side effects" }
+  ],
+  "related": [
+    { "uri": "database/sql", "relation": "see-also", "note": "Understanding query structure is prerequisite to choosing the right index" },
+    { "uri": "database/orm", "relation": "see-also", "note": "ORM-generated queries often need index tuning for production performance" },
+    { "uri": "database/migrations", "relation": "see-also", "note": "Create indexes through migrations to keep schema changes versioned" }
+  ],
+  "more": {
+    "docs": "https://www.postgresql.org/docs/current/indexes.html",
+    "explain": "https://www.postgresql.org/docs/current/using-explain.html",
+    "use-the-index-luke": "https://use-the-index-luke.com/"
+  },
+  "frontmatter": {
+    "created": "2026-04-10",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "7 min",
+    "prerequisites": ["database/sql"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

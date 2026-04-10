@@ -1,0 +1,88 @@
+{
+  "name": "notion",
+  "version": "1.0.0",
+  "uri": "notion",
+  "type": "ecosystem",
+  "context": "Notion workspace automation — pages, databases, blocks, and integrations via the Notion API",
+  "info": "The Notion ecosystem covers programmatic interaction with Notion workspaces through the official REST API. Agents can create and update pages, query and manage databases with complex filters and sorts, manipulate block-level content, and build both internal integrations and public OAuth apps. The primary SDK is @notionhq/client for JavaScript/TypeScript. All API calls require an integration token obtained from the Notion integrations dashboard. This tree is organized around the jobs an agent actually performs: managing pages, querying databases, composing rich block content, and setting up integrations.",
+  "parent": null,
+  "tags": ["notion", "workspace", "pages", "databases", "blocks", "api", "productivity", "knowledge-base"],
+  "aliases": [
+    "notion",
+    "notion api",
+    "notion workspace",
+    "notion automation",
+    "notion integration",
+    "notion development",
+    "notion sdk",
+    "notion bot"
+  ],
+  "triggers": [
+    "work with notion",
+    "create a notion page",
+    "query a notion database",
+    "build a notion integration",
+    "automate notion",
+    "manage notion workspace",
+    "notion api integration",
+    "read from notion"
+  ],
+  "body": "# Notion Ecosystem\n\nNotion is an all-in-one workspace for notes, documents, databases, and project management. Through the Notion API, agents can programmatically create and update pages, query databases with rich filters, manipulate block-level content, and build integrations that connect Notion to external systems.\n\n## Agent Jobs\n\nThe primary tasks an agent performs in this ecosystem:\n\n- **Create/update pages** \u2014 build new pages under a parent, set properties, append content blocks. See [[notion/pages]].\n- **Query databases** \u2014 filter and sort database entries, paginate through large result sets, create new databases. See [[notion/databases]].\n- **Manipulate blocks** \u2014 append, update, and delete block-level content including paragraphs, headings, lists, toggles, callouts, and code blocks. See [[notion/blocks]].\n- **Build integrations** \u2014 create internal integrations for private use or public OAuth apps for distribution. See [[notion/integrations]].\n\n## API Overview\n\nThe Notion API is a REST API that uses JSON request and response bodies. All endpoints are under `https://api.notion.com/v1/`. Authentication uses Bearer tokens issued per integration. The API versioned via the `Notion-Version` header (current: `2022-06-28`).\n\n| Endpoint Group | Base Path | Purpose |\n|---------------|-----------|----------|\n| Pages | `/v1/pages` | Create, retrieve, update pages |\n| Databases | `/v1/databases` | Create, query, retrieve databases |\n| Blocks | `/v1/blocks` | Retrieve, update, delete, append children |\n| Users | `/v1/users` | List workspace members |\n| Search | `/v1/search` | Search across pages and databases |\n| Comments | `/v1/comments` | Create and list comments |\n\n## Authentication\n\nInternal integrations use a fixed token starting with `ntn_` (formerly `secret_`). Public integrations use OAuth 2.0 to obtain tokens on behalf of users. All requests must include:\n\n```\nAuthorization: Bearer <NOTION_TOKEN>\nNotion-Version: 2022-06-28\nContent-Type: application/json\n```\n\n## Rate Limits\n\nThe Notion API enforces rate limits per integration:\n\n| Tier | Requests per second | Burst |\n|------|-------------------|-------|\n| Standard | 3 req/s | 10 |\n| Enterprise | Higher limits | Contact sales |\n\nWhen rate-limited, the API returns HTTP 429 with a `Retry-After` header. Implement exponential backoff with jitter. Batch operations where possible to stay within limits.\n\n## Libraries\n\n- **@notionhq/client** \u2014 official JavaScript/TypeScript SDK\n- **notion-sdk-py** \u2014 community Python SDK\n- **go-notion** \u2014 community Go client\n",
+  "sections": [
+    {
+      "id": "api-overview",
+      "title": "API overview",
+      "body": "The Notion REST API lives at `https://api.notion.com/v1/`. All requests require the `Notion-Version` header (current: `2022-06-28`) and a Bearer token. Core endpoint groups: Pages (`/v1/pages`), Databases (`/v1/databases`), Blocks (`/v1/blocks`), Users (`/v1/users`), Search (`/v1/search`), and Comments (`/v1/comments`). Responses are JSON. Pagination uses cursor-based `start_cursor` and `page_size` parameters. See [[notion/databases#pagination]] for query pagination patterns.",
+      "tags": ["api", "rest", "endpoints", "version", "json"]
+    },
+    {
+      "id": "authentication",
+      "title": "Authentication",
+      "body": "Internal integrations use a fixed Bearer token (`ntn_...`) from the integrations dashboard. Public integrations use OAuth 2.0: redirect users to Notion's authorization URL, exchange the code for an access token, then use it for API calls. All requests must include `Authorization: Bearer <token>`, `Notion-Version: 2022-06-28`, and `Content-Type: application/json`. See [[notion/integrations#internal-setup]] for internal setup and [[notion/integrations#oauth-flow]] for OAuth configuration.",
+      "tags": ["auth", "token", "oauth", "bearer", "internal", "security"]
+    },
+    {
+      "id": "rate-limits",
+      "title": "Rate limits",
+      "body": "Standard integrations are limited to 3 requests per second with a burst of 10. Enterprise workspaces may have higher limits. When rate-limited, the API returns HTTP 429 with a `Retry-After` header. Implement exponential backoff with jitter. Batch block appends and database queries where possible. Cache responses when data freshness permits. See [[notion/databases#pagination]] for efficient pagination to minimize request count.",
+      "tags": ["rate-limit", "429", "throttle", "backoff", "burst"]
+    }
+  ],
+  "links": [
+    { "uri": "notion/pages", "context": "Create, read, update, and archive Notion pages" },
+    { "uri": "notion/databases", "context": "Create, query, and manage Notion databases" },
+    { "uri": "notion/blocks", "context": "Block types and content manipulation" },
+    { "uri": "notion/integrations", "context": "Build internal integrations and public OAuth apps" },
+    { "uri": "notion/pages#create", "context": "Create new pages with properties and content" },
+    { "uri": "notion/pages#properties", "context": "Page property types and value formats" },
+    { "uri": "notion/databases#query-filter", "context": "Database query filter syntax and operators" },
+    { "uri": "notion/databases#pagination", "context": "Cursor-based pagination for large result sets" },
+    { "uri": "notion/blocks#block-types", "context": "Supported block types: paragraphs, headings, lists, toggles, code" },
+    { "uri": "notion/blocks#rich-text", "context": "Rich text object format and annotations" },
+    { "uri": "notion/integrations#internal-setup", "context": "Set up an internal integration with a fixed token" },
+    { "uri": "notion/integrations#oauth-flow", "context": "OAuth 2.0 flow for public Notion integrations" }
+  ],
+  "related": [
+    { "uri": "notion/pages", "relation": "see-also", "note": "Pages are the primary unit of content in Notion workspaces" },
+    { "uri": "notion/databases", "relation": "see-also", "note": "Databases are the primary structured data store in Notion" }
+  ],
+  "more": {
+    "docs": "https://developers.notion.com",
+    "repo": "https://github.com/makenotion/notion-sdk-js"
+  },
+  "frontmatter": {
+    "created": "2026-04-10",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "developers, AI agents, integrators",
+    "estimated_reading_time": "5 min",
+    "prerequisites": [],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

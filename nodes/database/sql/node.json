@@ -1,0 +1,102 @@
+{
+  "name": "sql",
+  "version": "1.0.0",
+  "uri": "database/sql",
+  "type": "standard",
+  "context": "SQL language standard — SELECT, INSERT, UPDATE, DELETE, JOINs, aggregations, CTEs, and window functions",
+  "info": "SQL (Structured Query Language) is the standard language for interacting with relational databases. This node covers the full breadth of SQL used in application development: CRUD operations (SELECT, INSERT, UPDATE, DELETE), JOIN types for combining tables, aggregate functions (COUNT, SUM, AVG, MIN, MAX) with GROUP BY, Common Table Expressions (CTEs) for readable complex queries, window functions for ranking and running totals, and transaction control for data integrity. Examples target PostgreSQL syntax but note dialect differences for MySQL and SQLite where relevant.",
+  "parent": "database",
+  "tags": ["sql", "select", "insert", "update", "delete", "join", "cte", "window-functions", "aggregation"],
+  "aliases": [
+    "sql",
+    "sql queries",
+    "structured query language",
+    "sql language",
+    "write sql",
+    "sql syntax",
+    "database queries",
+    "query language"
+  ],
+  "triggers": [
+    "write a sql query",
+    "how do i join tables",
+    "sql select with where",
+    "use a cte in sql",
+    "window function example",
+    "aggregate data with group by",
+    "sql insert update delete",
+    "write a complex sql query"
+  ],
+  "body": "# SQL Language\n\nSQL is the standard language for querying and manipulating relational databases. Every [[database]] engine supports SQL with minor dialect variations. This reference covers the operations agents use most: CRUD, JOINs, aggregations, CTEs, window functions, and transactions.\n\n## CRUD Operations\n\n### SELECT\n\n```sql\n-- Basic select with filtering and ordering\nSELECT id, name, email, created_at\nFROM users\nWHERE status = 'active'\n  AND created_at > '2025-01-01'\nORDER BY created_at DESC\nLIMIT 50 OFFSET 0;\n\n-- Select with alias and expression\nSELECT\n  u.name,\n  COUNT(o.id) AS order_count,\n  SUM(o.total) AS lifetime_value\nFROM users u\nJOIN orders o ON o.user_id = u.id\nGROUP BY u.name\nHAVING SUM(o.total) > 1000;\n```\n\n### INSERT\n\n```sql\n-- Single row\nINSERT INTO users (name, email, status)\nVALUES ('Alice', 'alice@example.com', 'active')\nRETURNING id, created_at;\n\n-- Multiple rows\nINSERT INTO tags (name, slug)\nVALUES\n  ('JavaScript', 'javascript'),\n  ('TypeScript', 'typescript'),\n  ('Python', 'python');\n\n-- Insert from select\nINSERT INTO user_archive (id, name, email)\nSELECT id, name, email FROM users WHERE status = 'deleted';\n```\n\n### UPDATE\n\n```sql\n-- Update with condition\nUPDATE users\nSET status = 'inactive', updated_at = NOW()\nWHERE last_login < NOW() - INTERVAL '1 year'\nRETURNING id, name;\n\n-- Update with join (PostgreSQL)\nUPDATE orders o\nSET discount = 0.10\nFROM users u\nWHERE o.user_id = u.id AND u.tier = 'premium';\n```\n\n### DELETE\n\n```sql\n-- Delete with condition\nDELETE FROM sessions\nWHERE expires_at < NOW();\n\n-- Delete with subquery\nDELETE FROM orders\nWHERE user_id IN (\n  SELECT id FROM users WHERE status = 'banned'\n);\n```\n\n## JOINs\n\n```sql\n-- INNER JOIN — only matching rows\nSELECT u.name, o.total\nFROM users u\nINNER JOIN orders o ON o.user_id = u.id;\n\n-- LEFT JOIN — all left rows, matching right rows or NULL\nSELECT u.name, o.total\nFROM users u\nLEFT JOIN orders o ON o.user_id = u.id;\n\n-- RIGHT JOIN — all right rows, matching left rows or NULL\nSELECT u.name, o.total\nFROM users u\nRIGHT JOIN orders o ON o.user_id = u.id;\n\n-- FULL OUTER JOIN — all rows from both sides\nSELECT u.name, o.total\nFROM users u\nFULL OUTER JOIN orders o ON o.user_id = u.id;\n\n-- CROSS JOIN — cartesian product\nSELECT colors.name, sizes.name\nFROM colors CROSS JOIN sizes;\n\n-- Self JOIN\nSELECT e.name AS employee, m.name AS manager\nFROM employees e\nLEFT JOIN employees m ON e.manager_id = m.id;\n```\n\n## Aggregations\n\n```sql\n-- Group by with aggregate functions\nSELECT\n  category,\n  COUNT(*) AS product_count,\n  AVG(price) AS avg_price,\n  MIN(price) AS min_price,\n  MAX(price) AS max_price,\n  SUM(quantity) AS total_stock\nFROM products\nGROUP BY category\nHAVING COUNT(*) > 5\nORDER BY avg_price DESC;\n\n-- Group by with ROLLUP (subtotals)\nSELECT\n  COALESCE(region, 'ALL REGIONS') AS region,\n  COALESCE(category, 'ALL CATEGORIES') AS category,\n  SUM(revenue) AS total_revenue\nFROM sales\nGROUP BY ROLLUP(region, category);\n```\n\n## Common Table Expressions (CTEs)\n\n```sql\n-- Basic CTE for readability\nWITH active_users AS (\n  SELECT id, name, email\n  FROM users\n  WHERE status = 'active'\n),\nrecent_orders AS (\n  SELECT user_id, COUNT(*) AS order_count, SUM(total) AS total_spent\n  FROM orders\n  WHERE created_at > NOW() - INTERVAL '30 days'\n  GROUP BY user_id\n)\nSELECT\n  au.name,\n  au.email,\n  ro.order_count,\n  ro.total_spent\nFROM active_users au\nJOIN recent_orders ro ON ro.user_id = au.id\nORDER BY ro.total_spent DESC;\n\n-- Recursive CTE — tree traversal\nWITH RECURSIVE category_tree AS (\n  SELECT id, name, parent_id, 0 AS depth\n  FROM categories\n  WHERE parent_id IS NULL\n  UNION ALL\n  SELECT c.id, c.name, c.parent_id, ct.depth + 1\n  FROM categories c\n  JOIN category_tree ct ON c.parent_id = ct.id\n)\nSELECT * FROM category_tree ORDER BY depth, name;\n```\n\n## Window Functions\n\n```sql\n-- ROW_NUMBER, RANK, DENSE_RANK\nSELECT\n  name,\n  department,\n  salary,\n  ROW_NUMBER() OVER (PARTITION BY department ORDER BY salary DESC) AS row_num,\n  RANK() OVER (PARTITION BY department ORDER BY salary DESC) AS rank,\n  DENSE_RANK() OVER (PARTITION BY department ORDER BY salary DESC) AS dense_rank\nFROM employees;\n\n-- Running total and moving average\nSELECT\n  date,\n  revenue,\n  SUM(revenue) OVER (ORDER BY date) AS running_total,\n  AVG(revenue) OVER (ORDER BY date ROWS BETWEEN 6 PRECEDING AND CURRENT ROW) AS moving_avg_7d\nFROM daily_sales;\n\n-- LAG and LEAD\nSELECT\n  date,\n  revenue,\n  LAG(revenue, 1) OVER (ORDER BY date) AS prev_day,\n  revenue - LAG(revenue, 1) OVER (ORDER BY date) AS day_over_day\nFROM daily_sales;\n```\n\n## Transactions\n\n```sql\n-- Basic transaction with ACID guarantees\nBEGIN;\n\nUPDATE accounts SET balance = balance - 100 WHERE id = 1;\nUPDATE accounts SET balance = balance + 100 WHERE id = 2;\n\n-- Verify both updates succeeded\nSELECT id, balance FROM accounts WHERE id IN (1, 2);\n\nCOMMIT;\n\n-- Rollback on error\nBEGIN;\nUPDATE inventory SET quantity = quantity - 1 WHERE product_id = 42;\n-- If something goes wrong:\nROLLBACK;\n```\n\nSee [[database#acid-properties]] for details on transaction isolation levels. For indexing queries to run faster, see [[database/indexing]]. For managing schema changes over time, see [[database/migrations]].\n",
+  "sections": [
+    {
+      "id": "crud",
+      "title": "CRUD operations",
+      "body": "SELECT retrieves data with optional WHERE, ORDER BY, LIMIT, and OFFSET. INSERT adds rows individually or in bulk, with optional RETURNING (PostgreSQL). UPDATE modifies existing rows, supports joins for multi-table updates. DELETE removes rows matching a condition. Always use WHERE with UPDATE and DELETE to avoid full-table modifications. Use RETURNING to get affected row data without a separate SELECT.",
+      "tags": ["select", "insert", "update", "delete", "crud", "returning"]
+    },
+    {
+      "id": "joins",
+      "title": "JOIN types",
+      "body": "INNER JOIN returns only matching rows from both tables. LEFT JOIN returns all left rows with NULLs for non-matching right rows. RIGHT JOIN is the inverse. FULL OUTER JOIN returns all rows from both sides. CROSS JOIN produces a cartesian product. Self JOINs connect a table to itself (e.g., employees to managers). Choose the join type based on whether you need unmatched rows. See [[database/indexing]] for ensuring joins use indexes efficiently.",
+      "tags": ["join", "inner", "left", "right", "full", "cross", "self-join"]
+    },
+    {
+      "id": "aggregations",
+      "title": "Aggregate functions",
+      "body": "COUNT, SUM, AVG, MIN, MAX operate on groups defined by GROUP BY. HAVING filters groups after aggregation (WHERE filters rows before). Use ROLLUP for subtotals and CUBE for cross-tabulation. DISTINCT inside aggregates counts unique values: `COUNT(DISTINCT category)`. FILTER clause (PostgreSQL) applies conditions per-aggregate: `COUNT(*) FILTER (WHERE status = 'active')`.",
+      "tags": ["count", "sum", "avg", "min", "max", "group-by", "having", "rollup"]
+    },
+    {
+      "id": "ctes",
+      "title": "Common Table Expressions",
+      "body": "CTEs (WITH clauses) name subqueries for readability and reuse within a statement. Non-recursive CTEs simplify complex joins and multi-step transformations. Recursive CTEs traverse hierarchical data (trees, graphs) using UNION ALL with a base case and recursive step. CTEs can be chained: `WITH a AS (...), b AS (SELECT ... FROM a) SELECT ... FROM b`. In PostgreSQL, CTEs are optimization fences by default — use `WITH ... AS MATERIALIZED` or `NOT MATERIALIZED` to control.",
+      "tags": ["cte", "with", "recursive", "hierarchy", "tree", "readability"]
+    },
+    {
+      "id": "window-functions",
+      "title": "Window functions",
+      "body": "Window functions compute values across a set of rows related to the current row without collapsing them. ROW_NUMBER assigns sequential numbers. RANK and DENSE_RANK handle ties differently. SUM/AVG/COUNT as window functions produce running totals and moving averages. LAG and LEAD access previous and next rows. FIRST_VALUE and LAST_VALUE access boundary rows. Frame clauses (ROWS BETWEEN, RANGE BETWEEN) control the window size. PARTITION BY groups the window; ORDER BY defines ordering within each partition.",
+      "tags": ["window", "row-number", "rank", "lag", "lead", "partition", "running-total"]
+    },
+    {
+      "id": "transactions",
+      "title": "Transactions and isolation",
+      "body": "Transactions group operations into atomic units: BEGIN starts, COMMIT persists, ROLLBACK aborts. Isolation levels control visibility of concurrent changes: READ UNCOMMITTED (dirty reads), READ COMMITTED (PostgreSQL default), REPEATABLE READ (MySQL InnoDB default), SERIALIZABLE (strictest). Use `SET TRANSACTION ISOLATION LEVEL` to change. Savepoints (`SAVEPOINT sp1; ROLLBACK TO sp1`) enable partial rollbacks within a transaction. See [[database#acid-properties]] for theoretical background.",
+      "tags": ["transaction", "begin", "commit", "rollback", "isolation", "savepoint", "serializable"]
+    }
+  ],
+  "links": [
+    { "uri": "database", "context": "Database ecosystem overview and engine comparison" },
+    { "uri": "database/indexing", "context": "Index queries for better performance" },
+    { "uri": "database/migrations", "context": "Manage schema changes that affect query structure" },
+    { "uri": "database/orm", "context": "ORMs generate SQL — understanding raw SQL helps debug ORM output" },
+    { "uri": "database#acid-properties", "context": "ACID transaction guarantees" },
+    { "uri": "database/indexing#explain-analyze", "context": "Use EXPLAIN ANALYZE to understand query execution plans" }
+  ],
+  "related": [
+    { "uri": "database/indexing", "relation": "see-also", "note": "Indexes determine whether queries scan full tables or use efficient lookups" },
+    { "uri": "database/orm", "relation": "see-also", "note": "ORMs abstract SQL but understanding raw SQL is essential for debugging" },
+    { "uri": "database/migrations", "relation": "see-also", "note": "Schema changes via migrations alter the tables SQL queries target" }
+  ],
+  "more": {
+    "docs": "https://www.postgresql.org/docs/current/sql.html",
+    "tutorial": "https://www.sqltutorial.org/",
+    "spec": "https://en.wikipedia.org/wiki/SQL:2023"
+  },
+  "frontmatter": {
+    "created": "2026-04-10",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "8 min",
+    "prerequisites": [],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

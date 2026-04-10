@@ -1,0 +1,93 @@
+{
+  "name": "extensions",
+  "version": "1.0.0",
+  "uri": "postgres/extensions",
+  "type": "context",
+  "content_type": "reference",
+  "context": "PostgreSQL extensions: pgvector for embeddings, PostGIS for geospatial, pg_trgm for fuzzy search",
+  "info": "PostgreSQL's extension system allows adding functionality without modifying the core database. pgvector adds vector similarity search for AI embeddings — store OpenAI, Cohere, or local model embeddings and query by cosine, L2, or inner product distance. PostGIS adds geospatial types and functions for location-based queries — points, polygons, distance calculations, and spatial indexing. pg_trgm enables trigram-based fuzzy text matching and similarity search. Other essential extensions include hstore for key-value storage, uuid-ossp for UUID generation, and built-in full-text search with tsvector and tsquery. Install extensions with `CREATE EXTENSION IF NOT EXISTS extension_name;`.",
+  "parent": "postgres",
+  "tags": ["extensions", "pgvector", "postgis", "pg-trgm", "hstore", "uuid-ossp", "full-text-search"],
+  "aliases": [
+    "postgres extensions",
+    "postgresql extensions",
+    "pgvector",
+    "postgis",
+    "pg_trgm",
+    "postgres plugins",
+    "vector search postgres",
+    "geospatial postgres",
+    "fuzzy search postgres"
+  ],
+  "triggers": [
+    "install a postgres extension",
+    "use pgvector for embeddings",
+    "store vectors in postgres",
+    "geospatial queries with postgis",
+    "fuzzy text search in postgres",
+    "enable full-text search",
+    "create extension"
+  ],
+  "body": "# PostgreSQL Extensions\n\nPostgreSQL's extension system is one of its greatest strengths. Extensions add data types, functions, operators, and index types without modifying the core database. Install any extension with `CREATE EXTENSION IF NOT EXISTS extension_name;`.\n\n## pgvector\n\npgvector adds vector similarity search to PostgreSQL — essential for AI/ML applications that store and query embeddings.\n\n```sql\n-- Install pgvector\nCREATE EXTENSION IF NOT EXISTS vector;\n\n-- Create a table with a vector column (1536 dimensions for OpenAI ada-002)\nCREATE TABLE documents (\n  id SERIAL PRIMARY KEY,\n  content TEXT NOT NULL,\n  embedding vector(1536)\n);\n\n-- Insert an embedding\nINSERT INTO documents (content, embedding)\nVALUES ('PostgreSQL is great', '[0.1, 0.2, 0.3, ...]'::vector);\n\n-- Cosine similarity search (find nearest neighbors)\nSELECT id, content, 1 - (embedding <=> $1::vector) AS similarity\nFROM documents\nORDER BY embedding <=> $1::vector\nLIMIT 10;\n\n-- Create an HNSW index for fast approximate nearest neighbor search\nCREATE INDEX ON documents USING hnsw (embedding vector_cosine_ops)\nWITH (m = 16, ef_construction = 64);\n\n-- Create an IVFFlat index (alternative, faster build, slightly less accurate)\nCREATE INDEX ON documents USING ivfflat (embedding vector_cosine_ops)\nWITH (lists = 100);\n```\n\nDistance operators: `<=>` cosine distance, `<->` L2 (Euclidean) distance, `<#>` negative inner product.\n\n## PostGIS\n\nPostGIS adds geospatial types and functions for location-based applications.\n\n```sql\n-- Install PostGIS\nCREATE EXTENSION IF NOT EXISTS postgis;\n\n-- Create a table with a geography column\nCREATE TABLE locations (\n  id SERIAL PRIMARY KEY,\n  name TEXT NOT NULL,\n  coords geography(POINT, 4326)\n);\n\n-- Insert a point (longitude, latitude)\nINSERT INTO locations (name, coords)\nVALUES ('Eiffel Tower', ST_SetSRID(ST_MakePoint(2.2945, 48.8584), 4326));\n\n-- Find locations within 5km of a point\nSELECT name, ST_Distance(coords, ST_SetSRID(ST_MakePoint($1, $2), 4326)) AS distance_m\nFROM locations\nWHERE ST_DWithin(coords, ST_SetSRID(ST_MakePoint($1, $2), 4326), 5000)\nORDER BY distance_m;\n\n-- Create a spatial index\nCREATE INDEX ON locations USING GIST (coords);\n```\n\n## pg_trgm\n\npg_trgm provides trigram-based similarity matching for fuzzy text search.\n\n```sql\n-- Install pg_trgm\nCREATE EXTENSION IF NOT EXISTS pg_trgm;\n\n-- Fuzzy search with similarity threshold\nSELECT name, similarity(name, 'postgre') AS sim\nFROM products\nWHERE similarity(name, 'postgre') > 0.3\nORDER BY sim DESC;\n\n-- Use the % operator for similarity\nSELECT * FROM products WHERE name % 'postgre';\n\n-- GIN index for fast trigram searches\nCREATE INDEX ON products USING GIN (name gin_trgm_ops);\n```\n\n## Full-Text Search\n\nPostgreSQL has built-in full-text search without any extension:\n\n```sql\n-- Add tsvector column and index\nALTER TABLE articles ADD COLUMN search_vector tsvector;\nUPDATE articles SET search_vector = to_tsvector('english', title || ' ' || body);\nCREATE INDEX ON articles USING GIN (search_vector);\n\n-- Search with ranking\nSELECT title, ts_rank(search_vector, query) AS rank\nFROM articles, to_tsquery('english', 'postgres & replication') AS query\nWHERE search_vector @@ query\nORDER BY rank DESC;\n```\n\n## Installing Extensions\n\n```sql\n-- List available extensions\nSELECT * FROM pg_available_extensions ORDER BY name;\n\n-- List installed extensions\n\\dx\n-- or\nSELECT * FROM pg_extension;\n\n-- Install\nCREATE EXTENSION IF NOT EXISTS extension_name;\n\n-- Upgrade\nALTER EXTENSION extension_name UPDATE;\n\n-- Remove\nDROP EXTENSION extension_name;\n```\n\n| Extension | Purpose | Index Type |\n|-----------|---------|------------|\n| pgvector | Vector similarity search | HNSW, IVFFlat |\n| PostGIS | Geospatial data and queries | GiST |\n| pg_trgm | Trigram fuzzy matching | GIN, GiST |\n| hstore | Key-value pairs in a column | GIN, GiST |\n| uuid-ossp | UUID generation functions | B-tree |\n| citext | Case-insensitive text type | B-tree |\n",
+  "sections": [
+    {
+      "id": "pgvector",
+      "title": "pgvector",
+      "body": "pgvector adds the `vector` data type and distance operators for similarity search. Use `<=>` for cosine distance, `<->` for L2, `<#>` for negative inner product. Create HNSW indexes for fast approximate nearest neighbor search. Typical use: store OpenAI embeddings (1536 dimensions) and query by similarity. See [[postgres/performance#index-strategies]] for index tuning.",
+      "tags": ["pgvector", "vector", "embeddings", "similarity", "hnsw", "ivfflat", "cosine"]
+    },
+    {
+      "id": "postgis",
+      "title": "PostGIS",
+      "body": "PostGIS adds `geometry` and `geography` types for spatial data. Use `geography(POINT, 4326)` for lat/lon points. `ST_Distance()` computes distance in meters. `ST_DWithin()` filters by radius. `ST_Contains()`, `ST_Intersects()` for polygon operations. Always create a GiST index on spatial columns for performance.",
+      "tags": ["postgis", "geospatial", "geography", "gist", "spatial", "st-distance", "st-dwithin"]
+    },
+    {
+      "id": "pg-trgm",
+      "title": "pg_trgm",
+      "body": "pg_trgm splits text into trigrams (three-character sequences) for fuzzy matching. The `similarity()` function returns a 0-1 score. The `%` operator filters by a configurable threshold (default 0.3). Create a GIN index with `gin_trgm_ops` for fast fuzzy searches. Useful for search-as-you-type and typo tolerance.",
+      "tags": ["pg-trgm", "trigram", "fuzzy", "similarity", "gin"]
+    },
+    {
+      "id": "full-text-search",
+      "title": "Full-text search",
+      "body": "Built-in full-text search uses `tsvector` (document) and `tsquery` (search expression). The `@@` operator matches documents. `ts_rank()` scores relevance. Use `to_tsvector('english', text)` for language-aware stemming. Create a GIN index on the tsvector column for performance. Supports boolean operators: `&` (AND), `|` (OR), `!` (NOT), `<->` (phrase). See [[postgres/queries]] for integrating full-text search into queries.",
+      "tags": ["full-text-search", "tsvector", "tsquery", "gin", "stemming", "ranking"]
+    },
+    {
+      "id": "installing",
+      "title": "Installing extensions",
+      "body": "Install with `CREATE EXTENSION IF NOT EXISTS name;`. List available extensions with `pg_available_extensions` catalog. List installed with `\\dx` in psql. Some extensions require the shared library to be present on the server (configured in `shared_preload_libraries` for pg_stat_statements, for example). Cloud-managed databases may restrict available extensions — check your provider's documentation.",
+      "tags": ["install", "create-extension", "shared-preload-libraries", "cloud"]
+    }
+  ],
+  "links": [
+    { "uri": "postgres/queries", "context": "Write queries that use extension types and operators" },
+    { "uri": "postgres/performance#index-strategies", "context": "Index types for extension data (HNSW, GiST, GIN)" },
+    { "uri": "postgres/performance#explain-analyze", "context": "Verify extension indexes are used in query plans" }
+  ],
+  "related": [
+    { "uri": "openai/embeddings", "relation": "see-also", "note": "pgvector stores OpenAI embeddings for vector similarity search" }
+  ],
+  "more": {
+    "pgvector": "https://github.com/pgvector/pgvector",
+    "postgis": "https://postgis.net/docs",
+    "pg_trgm": "https://www.postgresql.org/docs/current/pgtrgm.html",
+    "fts": "https://www.postgresql.org/docs/current/textsearch.html"
+  },
+  "frontmatter": {
+    "created": "2026-04-10",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "6 min",
+    "prerequisites": [],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

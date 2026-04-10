@@ -1,0 +1,135 @@
+{
+  "name": "databases",
+  "version": "1.0.0",
+  "uri": "notion/databases",
+  "type": "skill",
+  "context": "Create, query, and manage Notion databases with filters and sorts",
+  "info": "This skill covers creating Notion databases, querying them with compound filters and multi-key sorts, managing database property schemas, and paginating through large result sets. Notion databases are collections of pages where each page has typed properties defined by the database schema. The query endpoint supports rich filtering (equals, contains, starts_with, before, after, and/or/not compound filters) and multi-column sorting. Results are cursor-paginated with configurable page sizes up to 100. Use @notionhq/client to interact with the Databases endpoints.",
+  "parent": "notion",
+  "tags": ["databases", "query", "filter", "sort", "schema", "properties"],
+  "aliases": [
+    "notion databases",
+    "notion database",
+    "query notion database",
+    "notion db",
+    "notion table",
+    "filter notion database",
+    "notion database api",
+    "notion database query"
+  ],
+  "triggers": [
+    "query a notion database",
+    "filter notion database",
+    "create a notion database",
+    "search notion database",
+    "sort notion database entries",
+    "get data from notion database",
+    "list notion database items",
+    "paginate notion results"
+  ],
+  "body": "# Notion Databases\n\nDatabases are structured collections of pages in Notion. Each database defines a property schema, and every page (row) in the database has values for those properties. The Databases API supports creating databases, querying with compound filters and sorts, retrieving schema information, and updating database properties.\n\n## Create\n\nCreate a database with POST to `/v1/databases` specifying a `parent` (page ID), `title`, and `properties` schema.\n\n```javascript\nconst { Client } = require('@notionhq/client');\nconst notion = new Client({ auth: process.env.NOTION_TOKEN });\n\nconst database = await notion.databases.create({\n  parent: { page_id: parentPageId },\n  title: [{ text: { content: 'Project Tracker' } }],\n  properties: {\n    Name: { title: {} },\n    Status: {\n      select: {\n        options: [\n          { name: 'Not Started', color: 'gray' },\n          { name: 'In Progress', color: 'blue' },\n          { name: 'Done', color: 'green' }\n        ]\n      }\n    },\n    Priority: { number: { format: 'number' } },\n    'Due Date': { date: {} }\n  }\n});\n```\n\n## Query with Filters\n\nQuery a database with POST to `/v1/databases/{id}/query`. Filters support compound logic with `and`, `or`, and nested conditions.\n\n```javascript\nconst results = await notion.databases.query({\n  database_id: databaseId,\n  filter: {\n    and: [\n      {\n        property: 'Status',\n        select: { equals: 'In Progress' }\n      },\n      {\n        property: 'Priority',\n        number: { greater_than: 3 }\n      }\n    ]\n  },\n  sorts: [\n    { property: 'Priority', direction: 'descending' },\n    { property: 'Due Date', direction: 'ascending' }\n  ],\n  page_size: 50\n});\n```\n\n## Sort\n\nSorts are an ordered array of sort objects. Each specifies a `property` name and `direction` (`ascending` or `descending`). You can also sort by `timestamp` (`created_time` or `last_edited_time`). Multiple sorts are applied in order.\n\n## Property Types\n\nDatabase schema properties define what data each page can hold:\n\n| Type | Filter Operators | Description |\n|------|-----------------|-------------|\n| Title | equals, contains, starts_with, is_empty | Page name |\n| Rich text | equals, contains, starts_with, is_empty | Free-form text |\n| Number | equals, greater_than, less_than, is_empty | Numeric values |\n| Select | equals, does_not_equal, is_empty | Single dropdown |\n| Multi-select | contains, does_not_contain, is_empty | Multiple tags |\n| Date | equals, before, after, on_or_before, on_or_after, is_empty | Date or date range |\n| Checkbox | equals | Boolean true/false |\n| URL | equals, contains, is_empty | Web links |\n| Relation | contains, does_not_contain, is_empty | Cross-database references |\n| Formula | Depends on result type | Computed values |\n| Rollup | Depends on rollup type | Aggregated relation data |\n\n## Pagination\n\nQuery results are paginated. The response includes `has_more` (boolean) and `next_cursor` (string). Pass `start_cursor` in subsequent requests to fetch the next page. Maximum `page_size` is 100.\n\n```javascript\nlet allResults = [];\nlet cursor = undefined;\n\ndo {\n  const response = await notion.databases.query({\n    database_id: databaseId,\n    start_cursor: cursor,\n    page_size: 100\n  });\n  allResults.push(...response.results);\n  cursor = response.has_more ? response.next_cursor : undefined;\n} while (cursor);\n```\n",
+  "sections": [
+    {
+      "id": "create",
+      "title": "Create databases",
+      "body": "POST to `/v1/databases` with `parent` (page_id), `title`, and `properties` schema. Each property key is the column name and the value defines the type and options. Supported types: title, rich_text, number, select, multi_select, date, checkbox, url, email, phone_number, relation, rollup, formula, people, files, created_time, last_edited_time. The response includes the new `database_id`. See [[notion/pages#create]] for adding rows to the database.",
+      "tags": ["create", "schema", "properties", "columns"]
+    },
+    {
+      "id": "query-filter",
+      "title": "Query and filter",
+      "body": "POST to `/v1/databases/{id}/query` with optional `filter`, `sorts`, `start_cursor`, and `page_size`. Filters are compound: use `and`/`or` arrays to combine conditions, or `property`-level conditions for single filters. Each condition specifies the property name, type, and operator (equals, contains, greater_than, before, etc.). Filters cannot reference formula or rollup intermediate values directly \u2014 filter on the result type instead. See [[notion/pages#properties]] for property value formats.",
+      "tags": ["query", "filter", "and", "or", "compound", "operators"]
+    },
+    {
+      "id": "sort",
+      "title": "Sorting results",
+      "body": "Sorts are an ordered array applied sequentially. Each sort object has `property` (column name) and `direction` (`ascending` or `descending`). Alternatively, sort by `timestamp` with value `created_time` or `last_edited_time`. Place the primary sort first. Sorting is server-side and applied before pagination.",
+      "tags": ["sort", "ascending", "descending", "timestamp", "order"]
+    },
+    {
+      "id": "property-types",
+      "title": "Property types",
+      "body": "Title (required, one per database), rich_text, number (with format: number, percent, dollar, etc.), select (single option), multi_select (multiple options), date (start and optional end), checkbox, url, email, phone_number, relation (links to another database), rollup (aggregate over relation), formula (computed from other properties), people (workspace members), files (uploaded or external), created_time, created_by, last_edited_time, last_edited_by. See [[notion/pages#properties]] for setting values on pages.",
+      "tags": ["properties", "types", "select", "relation", "rollup", "formula", "schema"]
+    },
+    {
+      "id": "pagination",
+      "title": "Pagination",
+      "body": "Responses include `results` (array of pages), `has_more` (boolean), and `next_cursor` (string or null). Pass `next_cursor` as `start_cursor` in subsequent queries. Maximum `page_size` is 100, default is 100. Loop until `has_more` is false. Be mindful of [[notion#rate-limits]] when paginating large datasets \u2014 add delays between requests if needed.",
+      "tags": ["pagination", "cursor", "page-size", "has-more", "next-cursor"]
+    }
+  ],
+  "links": [
+    { "uri": "notion/pages", "context": "Pages are the rows in a Notion database" },
+    { "uri": "notion/pages#create", "context": "Create pages (rows) in a database" },
+    { "uri": "notion/pages#properties", "context": "Property value formats for page creation and updates" },
+    { "uri": "notion/blocks", "context": "Block content within database page bodies" },
+    { "uri": "notion/integrations", "context": "Set up an integration to obtain NOTION_TOKEN" },
+    { "uri": "notion#authentication", "context": "Authentication requirements for API calls" },
+    { "uri": "notion#rate-limits", "context": "Rate limits for pagination-heavy workflows" },
+    { "uri": "notion/blocks#rich-text", "context": "Rich text format used in text property values" }
+  ],
+  "related": [
+    { "uri": "notion/pages", "relation": "see-also", "note": "Database rows are pages with properties matching the schema" },
+    { "uri": "notion/blocks", "relation": "see-also", "note": "Database pages contain block content in their body" },
+    { "uri": "notion/integrations", "relation": "prerequisite", "note": "An integration token is required and the database must be shared with the integration" }
+  ],
+  "scripts": [
+    {
+      "id": "query-database",
+      "name": "Query Database",
+      "description": "Query a Notion database with filters, sorts, and pagination",
+      "lang": "javascript",
+      "runtime": "node>=18",
+      "entry": "./scripts/query-database.js",
+      "env": {
+        "NOTION_TOKEN": { "required": true, "secret": true, "description": "Notion integration token (ntn_...)" }
+      },
+      "packages": ["@notionhq/client"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "databaseId": { "type": "string", "description": "Target database ID" },
+        "filter": { "type": "object", "description": "Compound filter object with and/or/property conditions" },
+        "sorts": { "type": "array", "description": "Array of sort objects with property and direction" },
+        "pageSize": { "type": "integer", "minimum": 1, "maximum": 100, "default": 100, "description": "Number of results per page" }
+      },
+      "required": ["databaseId"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "results": { "type": "array", "description": "Array of page objects matching the query" },
+        "hasMore": { "type": "boolean", "description": "Whether more results are available" },
+        "nextCursor": { "type": "string", "description": "Cursor for fetching the next page of results" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "notion/integrations", "reason": "A Notion integration token is required and the database must be shared with the integration" }
+  ],
+  "more": {
+    "docs": "https://developers.notion.com/reference/database",
+    "query": "https://developers.notion.com/reference/post-database-query",
+    "filter": "https://developers.notion.com/reference/post-database-query-filter"
+  },
+  "frontmatter": {
+    "created": "2026-04-10",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "6 min",
+    "prerequisites": ["notion/integrations"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

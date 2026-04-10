@@ -1,0 +1,89 @@
+{
+  "name": "database",
+  "version": "1.0.0",
+  "uri": "database",
+  "type": "ecosystem",
+  "context": "Database fundamentals — SQL, migrations, ORM patterns, indexing strategies, and backup/restore",
+  "info": "The database ecosystem covers relational and non-relational database systems, query languages, schema design, migration workflows, ORM tooling, indexing strategies, and backup/restore procedures. This tree is organized around the jobs an agent actually performs: writing SQL queries, running schema migrations, choosing and creating indexes, configuring ORMs for application code, and backing up or restoring data. PostgreSQL is the primary relational database. Key toolchains include Knex, Prisma, Drizzle, and native database CLI utilities like pg_dump and mysqldump. Concepts apply across MySQL, SQLite, and cloud-managed databases like RDS, Cloud SQL, and PlanetScale.",
+  "parent": null,
+  "tags": ["database", "sql", "nosql", "migrations", "orm", "indexing", "backup", "schema", "queries"],
+  "aliases": [
+    "database",
+    "db",
+    "databases",
+    "database development",
+    "database management",
+    "sql database",
+    "relational database",
+    "data storage",
+    "data layer"
+  ],
+  "triggers": [
+    "work with a database",
+    "write a sql query",
+    "run a database migration",
+    "set up an orm",
+    "create a database index",
+    "backup a database",
+    "restore a database",
+    "design a database schema"
+  ],
+  "body": "# Database Ecosystem\n\nDatabases are the persistence layer for applications and agents. This ecosystem covers relational databases (PostgreSQL, MySQL, SQLite), NoSQL systems (MongoDB, Redis, DynamoDB), and the tooling agents use to interact with them: raw SQL, ORMs, migration frameworks, indexing strategies, and backup/restore workflows.\n\n## Agent Jobs\n\nThe primary tasks an agent performs in this ecosystem:\n\n- **Write SQL queries** — SELECT, INSERT, UPDATE, DELETE with JOINs, CTEs, window functions, and aggregations. See [[database/sql]].\n- **Run migrations** — create, apply, and roll back schema changes with version control. See [[database/migrations]].\n- **Configure ORMs** — set up Prisma, Drizzle, Sequelize, TypeORM, or SQLAlchemy for type-safe database access. See [[database/orm]].\n- **Choose indexes** — analyze query patterns and create B-tree, hash, GIN, or GiST indexes to optimize performance. See [[database/indexing]].\n- **Backup and restore** — create logical dumps, physical backups, and configure point-in-time recovery. See [[database/backup]].\n\n## Database Engines\n\nAll skills in this tree target multiple database engines where applicable:\n\n| Engine | Type | Common Use |\n|--------|------|------------|\n| PostgreSQL | Relational | Full-featured RDBMS, JSON support, extensions |\n| MySQL | Relational | Web applications, WordPress, legacy systems |\n| SQLite | Relational | Embedded, local-first, edge applications |\n| MongoDB | Document | Flexible schemas, rapid prototyping |\n| Redis | Key-Value | Caching, sessions, pub/sub, queues |\n| DynamoDB | Key-Value/Document | Serverless, AWS-native, auto-scaling |\n\n## Libraries\n\n- **Prisma** — type-safe ORM with schema-first design and auto-generated client\n- **Drizzle** — lightweight TypeScript ORM with SQL-like syntax\n- **Knex** — SQL query builder and migration runner for Node.js\n- **Sequelize** — feature-rich ORM for Node.js with Active Record pattern\n- **TypeORM** — decorator-based ORM for TypeScript with Data Mapper and Active Record\n- **SQLAlchemy** — Python SQL toolkit and ORM with Core and ORM layers\n",
+  "sections": [
+    {
+      "id": "relational-vs-nosql",
+      "title": "Relational vs NoSQL",
+      "body": "Relational databases (PostgreSQL, MySQL, SQLite) enforce schemas, support ACID transactions, and use SQL. NoSQL databases (MongoDB, Redis, DynamoDB) offer flexible schemas, horizontal scaling, and specialized data models (document, key-value, graph). Choose relational when data integrity and complex queries matter. Choose NoSQL when schema flexibility, high write throughput, or specific access patterns dominate. Many applications use both — a relational database for core data and Redis for caching or queues.",
+      "tags": ["relational", "nosql", "sql", "mongodb", "redis", "schema", "acid"]
+    },
+    {
+      "id": "acid-properties",
+      "title": "ACID properties",
+      "body": "ACID guarantees transactional integrity: **Atomicity** (all-or-nothing), **Consistency** (valid state transitions), **Isolation** (concurrent transactions don't interfere), **Durability** (committed data survives crashes). PostgreSQL and MySQL provide full ACID compliance. SQLite provides ACID within a single writer. NoSQL databases offer varying levels — MongoDB has multi-document ACID since v4.0, DynamoDB has single-item ACID with optional transactions. See [[database/sql#transactions]] for practical transaction usage.",
+      "tags": ["acid", "atomicity", "consistency", "isolation", "durability", "transactions"]
+    },
+    {
+      "id": "connection-pooling",
+      "title": "Connection pooling",
+      "body": "Database connections are expensive to create. Connection pools maintain a set of reusable connections. PostgreSQL uses `pg_bouncer` or built-in pooling in libraries like `pg` (Node.js). Prisma, Drizzle, and Knex all manage pools internally. Key settings: `min` (minimum idle connections), `max` (maximum total connections), `idleTimeoutMillis` (close idle connections after N ms). For serverless environments, use external poolers (PgBouncer, Prisma Accelerate, Neon pooler) to avoid connection exhaustion. See [[database/orm#patterns]] for ORM-specific pool configuration.",
+      "tags": ["connection-pool", "pgbouncer", "serverless", "pooling", "max-connections"]
+    }
+  ],
+  "links": [
+    { "uri": "database/sql", "context": "SQL language — queries, joins, CTEs, window functions" },
+    { "uri": "database/migrations", "context": "Schema migrations with version control" },
+    { "uri": "database/orm", "context": "ORM patterns and tools — Prisma, Drizzle, Sequelize" },
+    { "uri": "database/indexing", "context": "Index strategies and EXPLAIN analysis" },
+    { "uri": "database/backup", "context": "Backup, restore, and disaster recovery" },
+    { "uri": "database/sql#transactions", "context": "ACID transaction usage and isolation levels" },
+    { "uri": "database/sql#joins", "context": "JOIN types — INNER, LEFT, RIGHT, FULL, CROSS" },
+    { "uri": "database/migrations#rollback", "context": "Rolling back failed migrations safely" },
+    { "uri": "database/orm#patterns", "context": "Active Record vs Data Mapper patterns" },
+    { "uri": "database/indexing#explain-analyze", "context": "Using EXPLAIN ANALYZE to diagnose slow queries" },
+    { "uri": "database/backup#pitr", "context": "Point-in-time recovery with WAL archiving" },
+    { "uri": "database/indexing#index-types", "context": "B-tree, hash, GIN, and GiST index types" }
+  ],
+  "related": [
+    { "uri": "database/sql", "relation": "see-also", "note": "SQL is the foundational query language for relational databases" },
+    { "uri": "database/migrations", "relation": "see-also", "note": "Migrations are the primary schema evolution workflow" }
+  ],
+  "more": {
+    "docs": "https://www.postgresql.org/docs",
+    "wiki": "https://en.wikipedia.org/wiki/Database"
+  },
+  "frontmatter": {
+    "created": "2026-04-10",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "developers, AI agents, integrators",
+    "estimated_reading_time": "5 min",
+    "prerequisites": [],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

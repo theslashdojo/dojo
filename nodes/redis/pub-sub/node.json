@@ -1,0 +1,121 @@
+{
+  "name": "pub-sub",
+  "version": "1.0.0",
+  "uri": "redis/pub-sub",
+  "type": "skill",
+  "context": "Publish and subscribe to Redis channels for real-time messaging",
+  "info": "This skill covers Redis pub/sub: publishing messages to named channels, subscribing to channels for real-time delivery, pattern-based subscriptions for wildcard matching, and reliability considerations. Redis pub/sub is fire-and-forget \u2014 messages are delivered to all currently connected subscribers but are not persisted. For durable messaging with replay, use [[redis/streams]] instead. The ioredis client requires a dedicated connection for subscriptions (a subscriber connection cannot issue other commands). Pub/sub works across cluster nodes and is commonly used for cache invalidation, real-time notifications, and inter-service communication.",
+  "parent": "redis",
+  "tags": ["pub-sub", "publish", "subscribe", "channels", "messaging", "real-time"],
+  "aliases": [
+    "redis pub/sub",
+    "redis publish subscribe",
+    "redis messaging",
+    "redis channels",
+    "redis pubsub",
+    "redis real-time",
+    "redis notifications",
+    "publish to redis",
+    "subscribe to redis"
+  ],
+  "triggers": [
+    "publish a message to redis",
+    "subscribe to a redis channel",
+    "set up redis pub/sub",
+    "real-time messaging with redis",
+    "listen for redis events",
+    "broadcast messages via redis"
+  ],
+  "body": "# Redis Pub/Sub\n\nRedis pub/sub enables real-time messaging between publishers and subscribers through named channels. Publishers send messages to channels. Subscribers listen on channels and receive messages instantly. This is the foundation for cache invalidation (see [[redis/caching#invalidation]]), real-time notifications, and inter-service communication. Connect using the configuration in [[redis#connection]].\n\n## Publish and Subscribe\n\n```javascript\nimport Redis from \"ioredis\";\n\n// Subscriber needs a dedicated connection\nconst sub = new Redis(process.env.REDIS_URL);\nconst pub = new Redis(process.env.REDIS_URL);\n\n// Subscribe to a channel\nawait sub.subscribe(\"notifications\", \"alerts\");\n\nsub.on(\"message\", (channel, message) => {\n  console.log(`[${channel}] ${message}`);\n});\n\n// Publish to a channel (returns number of subscribers who received it)\nconst subscriberCount = await pub.publish(\"notifications\", JSON.stringify({\n  type: \"order\",\n  orderId: \"ORD-1234\",\n  status: \"shipped\",\n}));\nconsole.log(`Delivered to ${subscriberCount} subscribers`);\n```\n\n## Pattern Matching\n\nSubscribe to channels matching a glob pattern:\n\n```javascript\n// Subscribe to all channels starting with \"user:\"\nawait sub.psubscribe(\"user:*\");\n\n// Subscribe to all event channels\nawait sub.psubscribe(\"events.*\");\n\nsub.on(\"pmessage\", (pattern, channel, message) => {\n  console.log(`Pattern: ${pattern}, Channel: ${channel}, Message: ${message}`);\n});\n\n// Publish to specific channels \u2014 pattern subscribers receive them\nawait pub.publish(\"user:1001:login\", \"session-started\");\nawait pub.publish(\"user:1002:logout\", \"session-ended\");\nawait pub.publish(\"events.order.created\", JSON.stringify({ id: \"ORD-5678\" }));\n```\n\nSupported glob patterns:\n- `*` \u2014 matches any sequence of characters\n- `?` \u2014 matches exactly one character\n- `[abc]` \u2014 matches one of the enclosed characters\n\n## Reliability Considerations\n\nRedis pub/sub is **fire-and-forget**:\n\n- Messages are delivered only to **currently connected** subscribers\n- If a subscriber disconnects and reconnects, it **misses all messages** sent during the gap\n- There is **no message persistence** or replay capability\n- There is **no acknowledgment** \u2014 the publisher does not know if subscribers processed the message\n\nFor durable, replayable messaging with consumer groups and acknowledgment, use [[redis/streams]] instead.\n\n| Feature | Pub/Sub | Streams |\n|---------|---------|----------|\n| Persistence | No | Yes (append-only log) |\n| Replay | No | Yes (read from any ID) |\n| Consumer groups | No | Yes |\n| Acknowledgment | No | Yes (XACK) |\n| Ordering | Delivery order | Stream ID order |\n| Best for | Real-time broadcast | Durable event processing |\n\n## Use Cases\n\n- **Cache invalidation** \u2014 broadcast invalidation events across application instances. See [[redis/caching#invalidation]].\n- **Real-time notifications** \u2014 push updates to connected clients (WebSocket bridges).\n- **Inter-service communication** \u2014 lightweight event bus between microservices.\n- **Configuration updates** \u2014 propagate config changes across a fleet of workers.\n- **Chat and presence** \u2014 channel-based messaging for chat applications.\n\n## Connection Management\n\n```javascript\n// ioredis requires a dedicated connection for subscriptions\n// A subscriber connection CANNOT issue non-pub/sub commands\nconst sub = new Redis(process.env.REDIS_URL);  // dedicated subscriber\nconst pub = new Redis(process.env.REDIS_URL);  // for publishing + general commands\n\n// Unsubscribe from specific channels\nawait sub.unsubscribe(\"notifications\");\n\n// Unsubscribe from all channels\nawait sub.unsubscribe();\n\n// Check active channels and subscriber counts\nconst channels = await pub.pubsub(\"CHANNELS\", \"*\");\nconst count = await pub.pubsub(\"NUMSUB\", \"notifications\");\n```\n",
+  "sections": [
+    {
+      "id": "publish-subscribe",
+      "title": "Publish and subscribe",
+      "body": "Use `SUBSCRIBE channel` to listen and `PUBLISH channel message` to send. `PUBLISH` returns the number of subscribers who received the message. In ioredis, the subscriber connection fires `message` events with channel and message arguments. A subscriber connection is dedicated and cannot issue non-pub/sub commands. See [[redis#connection]] for connection setup.",
+      "tags": ["publish", "subscribe", "channel", "message", "ioredis"]
+    },
+    {
+      "id": "pattern-matching",
+      "title": "Pattern-based subscriptions",
+      "body": "Use `PSUBSCRIBE pattern` to match channels with glob patterns: `*` (any characters), `?` (one character), `[abc]` (character class). Pattern subscribers receive messages on the `pmessage` event with pattern, channel, and message. Useful for namespaced channels like `user:*:events` or `service.*`.",
+      "tags": ["psubscribe", "pattern", "glob", "wildcard", "pmessage"]
+    },
+    {
+      "id": "reliability",
+      "title": "Reliability and limitations",
+      "body": "Pub/sub is fire-and-forget: no persistence, no replay, no acknowledgment. Messages are lost if no subscriber is connected. For durable messaging, use [[redis/streams]] which provides append-only logs, consumer groups, and XACK acknowledgment. Pub/sub is ideal for real-time broadcast where occasional message loss is acceptable.",
+      "tags": ["reliability", "fire-and-forget", "limitations", "durability", "at-most-once"]
+    },
+    {
+      "id": "use-cases",
+      "title": "Use cases",
+      "body": "Cache invalidation across instances (see [[redis/caching#invalidation]]). Real-time notifications via WebSocket bridges. Inter-service event bus in microservice architectures. Configuration propagation across worker fleets. Chat and presence systems with channel-per-room design.",
+      "tags": ["use-cases", "cache-invalidation", "notifications", "microservices", "chat"]
+    }
+  ],
+  "links": [
+    { "uri": "redis", "context": "Redis ecosystem overview and connection setup" },
+    { "uri": "redis/caching#invalidation", "context": "Event-driven cache invalidation using pub/sub" },
+    { "uri": "redis/streams", "context": "Durable alternative to pub/sub with replay and consumer groups" },
+    { "uri": "redis/clustering", "context": "Pub/sub behavior across cluster nodes" },
+    { "uri": "redis#connection", "context": "Redis connection configuration and URL format" }
+  ],
+  "related": [
+    { "uri": "redis/streams", "relation": "see-also", "note": "Streams provide durable messaging when pub/sub fire-and-forget is insufficient" },
+    { "uri": "redis/caching", "relation": "see-also", "note": "Pub/sub is the primary mechanism for distributed cache invalidation" }
+  ],
+  "scripts": [
+    {
+      "id": "pub-sub",
+      "name": "Pub/Sub Operations",
+      "description": "Publish and subscribe to Redis channels for real-time messaging",
+      "lang": "javascript",
+      "runtime": "node>=18",
+      "entry": "./scripts/pub-sub.js",
+      "env": {
+        "REDIS_URL": { "required": true, "secret": false, "description": "Redis connection URL (e.g. redis://localhost:6379)" }
+      },
+      "packages": ["ioredis"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "channel": { "type": "string", "description": "Channel name to publish or subscribe to" },
+        "message": { "type": "string", "description": "Message payload to publish (serialized)" },
+        "pattern": { "type": "string", "description": "Glob pattern for pattern-based subscription" }
+      },
+      "required": ["channel"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "subscribers": { "type": "integer", "description": "Number of subscribers who received the published message" },
+        "delivered": { "type": "boolean", "description": "Whether the message was delivered to at least one subscriber" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "redis", "reason": "Requires a running Redis instance and connection configuration" }
+  ],
+  "more": {
+    "docs": "https://redis.io/docs/latest/develop/interact/pubsub/",
+    "commands": "https://redis.io/docs/latest/commands/?group=pubsub"
+  },
+  "frontmatter": {
+    "created": "2026-04-10",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "4 min",
+    "prerequisites": ["redis"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

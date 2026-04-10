@@ -1,0 +1,136 @@
+{
+  "name": "deploy",
+  "version": "1.0.0",
+  "uri": "vercel/deploy",
+  "type": "skill",
+  "context": "Deploy projects to Vercel — git push, CLI deploy, preview deployments, and production promotions",
+  "info": "This skill covers the full deployment lifecycle on Vercel. Deployments can be triggered by pushing to a connected Git repository (automatic), running `vercel` or `vercel --prod` from the CLI, or calling the Vercel REST API. Every deployment is immutable and gets a unique URL. Preview deployments are created for non-production branches and pull requests; production deployments serve traffic on the project's production domain. Use `vercel promote` to promote a preview deployment to production without rebuilding. Force deploys bypass the build cache. Configure build settings, output directory, and framework detection in `vercel.json` or project settings.",
+  "parent": "vercel",
+  "tags": ["deploy", "deployment", "preview", "production", "cli", "git-push"],
+  "aliases": [
+    "vercel deploy",
+    "deploy to vercel",
+    "vercel deployment",
+    "preview deployment",
+    "production deployment",
+    "vercel push",
+    "ship to vercel",
+    "vercel promote"
+  ],
+  "triggers": [
+    "deploy to vercel",
+    "deploy my project",
+    "create a preview deployment",
+    "promote to production",
+    "deploy using vercel cli",
+    "trigger a vercel build",
+    "force deploy to vercel"
+  ],
+  "body": "# Project Deployment\n\nDeploying to Vercel creates an immutable build artifact served from a global CDN. Each deployment receives a unique URL (`https://<project>-<hash>-<org>.vercel.app`). Preview deployments are created for branches; production deployments serve the primary domain.\n\n## Deployment Methods\n\n### Git Push\n\nThe simplest method. Push to a connected repository and Vercel builds automatically:\n\n```bash\ngit push origin feature-branch   # creates preview deployment\ngit push origin main             # creates production deployment\n```\n\n### CLI Deploy\n\n```bash\n# Preview deployment (default)\nvercel\n\n# Production deployment\nvercel --prod\n\n# Force deploy (skip cache)\nvercel --force\n\n# Deploy specific directory\nvercel ./dist --prod\n```\n\n### API Deploy\n\n```bash\ncurl -X POST \"https://api.vercel.com/v13/deployments\" \\\n  -H \"Authorization: Bearer $VERCEL_TOKEN\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"name\": \"my-project\", \"gitSource\": {\"type\": \"github\", \"ref\": \"main\", \"repoId\": \"12345\"}}'\n```\n\n## Environment Variables\n\n| Variable | Purpose |\n|----------|----------|\n| `VERCEL_TOKEN` | Authentication token for CLI and API |\n| `VERCEL_ORG_ID` | Organization/team scope |\n| `VERCEL_PROJECT_ID` | Target project identifier |\n\n## Build Settings\n\nConfigure in `vercel.json` or project dashboard:\n\n```json\n{\n  \"buildCommand\": \"npm run build\",\n  \"outputDirectory\": \"dist\",\n  \"installCommand\": \"npm install\",\n  \"framework\": \"nextjs\"\n}\n```\n\n## Production Promote\n\nPromote any deployment to production without rebuilding:\n\n```bash\nvercel promote <deployment-url>\n```\n\nThis instantly routes production traffic to the specified deployment. Useful for rollbacks — promote a previous known-good deployment.\n\n## Deployment States\n\n| State | Meaning |\n|-------|----------|\n| `QUEUED` | Waiting for build capacity |\n| `BUILDING` | Build in progress |\n| `READY` | Successfully deployed, serving traffic |\n| `ERROR` | Build or deployment failed |\n| `CANCELED` | Deployment was canceled |\n",
+  "sections": [
+    {
+      "id": "git-deploy",
+      "title": "Git-based deployment",
+      "body": "Connect a GitHub, GitLab, or Bitbucket repository to enable automatic deployments on push. Pushing to the production branch (default: `main`) triggers a production deployment. All other branches create preview deployments. Pull requests get deploy previews with status checks and bot comments containing the preview URL. Configure ignored build steps to skip unnecessary builds.",
+      "tags": ["git", "github", "gitlab", "automatic", "push"]
+    },
+    {
+      "id": "cli-deploy",
+      "title": "CLI deployment",
+      "body": "Run `vercel` for preview or `vercel --prod` for production. Use `--force` to bypass build cache. Use `--env KEY=VALUE` to override environment variables for a single deployment. The CLI reads `VERCEL_TOKEN`, `VERCEL_ORG_ID`, and `VERCEL_PROJECT_ID` from the environment for non-interactive (CI) usage. See [[vercel/env-vars]] for variable management.",
+      "tags": ["cli", "vercel-cli", "force", "ci-cd"]
+    },
+    {
+      "id": "preview",
+      "title": "Preview deployments",
+      "body": "Every non-production deployment is a preview. Preview deployments use environment variables scoped to `preview` (see [[vercel/env-vars#scopes]]). They get unique URLs and are accessible to team members. Preview URLs follow the pattern `https://<project>-<hash>-<org>.vercel.app`. Use preview deployments for staging, QA, and pull request reviews.",
+      "tags": ["preview", "staging", "pull-request", "qa"]
+    },
+    {
+      "id": "production-promote",
+      "title": "Production promotion",
+      "body": "Use `vercel promote <url>` to route production traffic to any existing deployment without rebuilding. This is instant and enables zero-downtime rollbacks. The promoted deployment inherits production [[vercel/env-vars]]. View promotion history in the project dashboard. Use `vercel rollback` as a shortcut to promote the previous production deployment.",
+      "tags": ["promote", "rollback", "production", "zero-downtime"]
+    },
+    {
+      "id": "build-settings",
+      "title": "Build settings",
+      "body": "Configure `buildCommand`, `outputDirectory`, `installCommand`, and `framework` in `vercel.json` or the project dashboard. Vercel auto-detects frameworks (Next.js, Nuxt, SvelteKit, etc.) and applies optimal defaults. Override Node.js version with the `engines.node` field in `package.json`. Use `vercel.json` rewrites and redirects for routing configuration.",
+      "tags": ["build", "vercel-json", "framework", "config", "node-version"]
+    }
+  ],
+  "links": [
+    { "uri": "vercel/env-vars", "context": "Environment variables for deployment configuration" },
+    { "uri": "vercel/env-vars#scopes", "context": "Preview vs production environment variable scoping" },
+    { "uri": "vercel/serverless", "context": "Serverless functions deployed alongside the project" },
+    { "uri": "vercel/edge", "context": "Edge middleware deployed with the project" },
+    { "uri": "vercel/domains", "context": "Custom domains for production deployments" },
+    { "uri": "vercel/domains#ssl", "context": "Automatic SSL for custom production domains" },
+    { "uri": "vercel/serverless#create", "context": "Creating API routes included in the deployment" },
+    { "uri": "vercel/edge#middleware", "context": "Edge middleware executed before route handlers" }
+  ],
+  "related": [
+    { "uri": "vercel/env-vars", "relation": "prerequisite", "note": "Environment variables must be configured before deploying" },
+    { "uri": "vercel/domains", "relation": "see-also", "note": "Production deployments serve traffic on configured domains" },
+    { "uri": "vercel/serverless", "relation": "see-also", "note": "Serverless functions are deployed as part of the project" }
+  ],
+  "scripts": [
+    {
+      "id": "deploy-project",
+      "name": "Deploy Project",
+      "description": "Deploy a project to Vercel via the CLI, supporting preview and production targets",
+      "lang": "bash",
+      "runtime": "node>=18",
+      "entry": "./scripts/deploy.sh",
+      "env": {
+        "VERCEL_TOKEN": { "required": true, "secret": true, "description": "Vercel authentication token" },
+        "VERCEL_ORG_ID": { "required": true, "secret": false, "description": "Vercel organization or team ID" },
+        "VERCEL_PROJECT_ID": { "required": true, "secret": false, "description": "Vercel project ID" }
+      },
+      "packages": ["vercel"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "source": { "type": "string", "description": "Path to the project directory or Git ref to deploy" },
+        "production": { "type": "boolean", "default": false, "description": "Whether to create a production deployment" },
+        "force": { "type": "boolean", "default": false, "description": "Force deploy, bypassing build cache" }
+      },
+      "required": ["source"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "url": { "type": "string", "description": "Unique deployment URL" },
+        "deploymentId": { "type": "string", "description": "Deployment identifier" },
+        "state": { "type": "string", "enum": ["QUEUED", "BUILDING", "READY", "ERROR", "CANCELED"], "description": "Current deployment state" },
+        "inspectUrl": { "type": "string", "description": "Dashboard URL to inspect the deployment" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "vercel/env-vars", "reason": "Environment variables must be configured before deployment" }
+  ],
+  "more": {
+    "docs": "https://vercel.com/docs/deployments/overview",
+    "cli": "https://vercel.com/docs/cli/deploy",
+    "api": "https://vercel.com/docs/rest-api/endpoints/deployments"
+  },
+  "frontmatter": {
+    "created": "2026-04-10",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "5 min",
+    "prerequisites": ["vercel/env-vars"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

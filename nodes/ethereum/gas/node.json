@@ -1,0 +1,84 @@
+{
+  "name": "gas",
+  "version": "1.0.0",
+  "uri": "ethereum/gas",
+  "type": "context",
+  "context": "Gas estimation, fee markets, and cost optimization across Ethereum and L2 chains",
+  "info": "Gas is the unit of computational work on Ethereum. Every transaction requires gas, and the total fee is gas_used × gas_price. Since EIP-1559, Ethereum uses a base fee (burned) plus an optional priority fee (tip to validators). L2s like Base and Arbitrum add an L1 data fee on top of L2 execution gas. This guide covers gas estimation via eth_estimateGas, fee calculation with maxFeePerGas and maxPriorityFeePerGas, L2-specific costs, and strategies for minimizing deployment and transaction costs.",
+  "parent": "ethereum",
+  "tags": ["gas", "fees", "eip-1559", "base-fee", "priority-fee", "l2", "estimation", "cost", "optimization"],
+  "aliases": [
+    "gas fees",
+    "ethereum gas",
+    "gas estimation",
+    "transaction fees",
+    "eip-1559 fees",
+    "gas cost",
+    "how much gas",
+    "gas price"
+  ],
+  "triggers": [
+    "how much gas will this cost",
+    "estimate gas for transaction",
+    "what are current gas fees",
+    "optimize gas usage",
+    "gas fees on base vs ethereum",
+    "eip-1559 fee calculation"
+  ],
+  "body": "# Gas and Fees\n\n## EIP-1559 Fee Model\n\nSince the London upgrade, Ethereum uses a dual-fee model:\n\n- **Base fee** — algorithmically determined per block, burned. Adjusts up/down based on block fullness.\n- **Priority fee (tip)** — optional tip to the validator/sequencer for faster inclusion.\n\nTotal fee = `gas_used × (base_fee + priority_fee)`\n\nSet `maxFeePerGas` (ceiling you'll pay) and `maxPriorityFeePerGas` (tip). The actual charge is the minimum of `maxFeePerGas` and `base_fee + maxPriorityFeePerGas`.\n\n## Gas Estimation\n\n```javascript\n// ethers.js v6\nconst gasEstimate = await provider.estimateGas({\n  to: contractAddress,\n  data: encodedCalldata,\n});\n\n// Get current fee data\nconst feeData = await provider.getFeeData();\n// feeData.gasPrice, feeData.maxFeePerGas, feeData.maxPriorityFeePerGas\n```\n\n```bash\n# cast (Foundry)\ncast estimate $CONTRACT_ADDRESS \"functionName(uint256)\" 42 --rpc-url $RPC_URL\ncast gas-price --rpc-url $RPC_URL\n```\n\n## L2 Gas Costs\n\nL2s are dramatically cheaper than mainnet:\n\n| Operation | Mainnet | Base | Arbitrum |\n|-----------|---------|------|----------|\n| ETH transfer | ~$0.50 | ~$0.001 | ~$0.002 |\n| Contract deploy | ~$5-50 | ~$0.01-0.10 | ~$0.02-0.20 |\n| ERC-20 transfer | ~$2 | ~$0.002 | ~$0.005 |\n\nL2 transactions also pay an L1 data fee for calldata posted to Ethereum. This is usually small but can spike during L1 congestion. See [[ethereum#chains]] for chain identifiers.\n\n## Optimization Strategies\n\n- Use L2s for deployment and frequent transactions\n- Batch operations where possible\n- Use `CREATE2` for deterministic deploys (same bytecode = same gas)\n- Minimize contract bytecode size (use Solidity optimizer, remove dead code)\n- For [[ethereum/x402]] payments, use EIP-3009 — the facilitator pays gas, not the payer (see [[ethereum/x402#payment-schemes]])\n\n## Common Gas Values\n\n| Operation | Gas Units |\n|-----------|----------|\n| ETH transfer | 21,000 |\n| ERC-20 transfer | ~65,000 |\n| ERC-20 approve | ~46,000 |\n| Contract deployment | 100,000 - 5,000,000+ |\n| Uniswap swap | ~150,000 |\n",
+  "sections": [
+    {
+      "id": "eip-1559",
+      "title": "EIP-1559 fee model",
+      "body": "Base fee is burned and adjusts per block. Priority fee is a tip for inclusion. Set `maxFeePerGas` as your ceiling and `maxPriorityFeePerGas` as your tip. Actual charge = min(maxFeePerGas, baseFee + priorityFee) × gasUsed.",
+      "tags": ["eip-1559", "base-fee", "priority-fee", "maxFeePerGas"]
+    },
+    {
+      "id": "estimation",
+      "title": "Gas estimation",
+      "body": "Use `eth_estimateGas` RPC call, `provider.estimateGas()` in ethers.js, or `cast estimate` in Foundry (see [[ethereum/contract-deploy/foundry#forge-create]]). Always add a buffer (10-20%) to estimates for safety. For deployment, estimate with the full bytecode + constructor args (see [[ethereum/contract-deploy#gas]]).",
+      "tags": ["estimate", "eth-estimateGas", "ethers", "cast"]
+    },
+    {
+      "id": "l2-costs",
+      "title": "L2 gas costs",
+      "body": "L2s are 10-100x cheaper than mainnet. Base, Arbitrum, and Optimism charge L2 execution gas plus an L1 data availability fee. The L1 fee depends on calldata size and L1 base fee. Use L2s for cost-sensitive operations like frequent [[ethereum/contract-deploy]] interactions and [[ethereum/x402]] payments.",
+      "tags": ["l2", "base", "arbitrum", "optimism", "data-availability", "cost"]
+    },
+    {
+      "id": "optimization",
+      "title": "Gas optimization",
+      "body": "Deploy on L2s (see [[ethereum/contract-deploy#deployment-patterns]]). Batch operations. Minimize bytecode with Solidity optimizer. Use EIP-3009 for gasless token transfers (see [[ethereum/x402#payment-schemes]]). Pack storage variables. Avoid dynamic arrays when fixed-size works. Use events instead of storage for data that only needs to be read offchain.",
+      "tags": ["optimization", "cost", "bytecode", "storage", "events"]
+    }
+  ],
+  "links": [
+    { "uri": "ethereum/contract-deploy#gas", "context": "Gas considerations for contract deployment" },
+    { "uri": "ethereum/x402#payment-schemes", "context": "EIP-3009 shifts gas costs to the facilitator" },
+    { "uri": "ethereum#chains", "context": "Chain selection for cost optimization" }
+  ],
+  "related": [
+    { "uri": "ethereum/contract-deploy", "relation": "see-also", "note": "Deployment gas is the most expensive common operation" },
+    { "uri": "ethereum/x402", "relation": "see-also", "note": "x402 with EIP-3009 makes payments gasless for the payer" }
+  ],
+  "content_type": "guide",
+  "more": {
+    "docs": "https://ethereum.org/developers/docs/gas",
+    "eip1559": "https://eips.ethereum.org/EIPS/eip-1559"
+  },
+  "frontmatter": {
+    "created": "2026-04-10",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "4 min",
+    "prerequisites": [],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

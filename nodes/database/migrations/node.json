@@ -1,0 +1,124 @@
+{
+  "name": "migrations",
+  "version": "1.0.0",
+  "uri": "database/migrations",
+  "type": "skill",
+  "context": "Create and run database schema migrations safely with version control",
+  "info": "Database migrations are versioned scripts that evolve a database schema over time. Each migration has an up function (apply the change) and a down function (revert it). Migration runners track which migrations have been applied in a dedicated table, ensuring changes are applied once and in order. This skill covers creating migrations, running them forward and backward, handling rollbacks, and comparing tools like Knex, Prisma Migrate, Flyway, and golang-migrate. Migrations are essential for team workflows, CI/CD pipelines, and production deployments where schema changes must be reproducible and auditable.",
+  "parent": "database",
+  "tags": ["migrations", "schema", "versioning", "knex", "prisma", "flyway"],
+  "aliases": [
+    "database migrations",
+    "schema migrations",
+    "db migrations",
+    "migration runner",
+    "schema versioning",
+    "migrate database",
+    "database schema changes",
+    "migration files"
+  ],
+  "triggers": [
+    "create a database migration",
+    "run database migrations",
+    "roll back a migration",
+    "set up migration tooling",
+    "how do i version my database schema",
+    "migrate my database schema"
+  ],
+  "body": "# Database Migrations\n\nMigrations are versioned, reversible scripts that change a database schema. Each migration captures a single schema change — adding a table, altering a column, creating an index — and can be applied (up) or reverted (down). A migration runner tracks applied migrations in a metadata table and ensures idempotent, ordered execution. See [[database/sql]] for the underlying DDL statements migrations generate.\n\n## Creating a Migration\n\n### Knex\n\n```bash\nnpx knex migrate:make create_users_table\n```\n\n```javascript\n// migrations/20260410120000_create_users_table.js\nexports.up = function(knex) {\n  return knex.schema.createTable('users', (table) => {\n    table.increments('id').primary();\n    table.string('name').notNullable();\n    table.string('email').notNullable().unique();\n    table.enum('status', ['active', 'inactive', 'banned']).defaultTo('active');\n    table.timestamps(true, true); // created_at, updated_at\n  });\n};\n\nexports.down = function(knex) {\n  return knex.schema.dropTable('users');\n};\n```\n\n### Prisma Migrate\n\n```bash\n# Edit schema.prisma, then:\nnpx prisma migrate dev --name create_users_table\n```\n\n```prisma\n// prisma/schema.prisma\nmodel User {\n  id        Int      @id @default(autoincrement())\n  name      String\n  email     String   @unique\n  status    Status   @default(ACTIVE)\n  createdAt DateTime @default(now())\n  updatedAt DateTime @updatedAt\n}\n\nenum Status {\n  ACTIVE\n  INACTIVE\n  BANNED\n}\n```\n\nPrisma generates SQL migration files automatically from schema diffs. See [[database/orm#prisma]] for full Prisma ORM setup.\n\n### Flyway (SQL-based)\n\n```sql\n-- V1__create_users_table.sql\nCREATE TABLE users (\n  id SERIAL PRIMARY KEY,\n  name VARCHAR(255) NOT NULL,\n  email VARCHAR(255) NOT NULL UNIQUE,\n  status VARCHAR(20) NOT NULL DEFAULT 'active',\n  created_at TIMESTAMP NOT NULL DEFAULT NOW(),\n  updated_at TIMESTAMP NOT NULL DEFAULT NOW()\n);\n\n-- V1__create_users_table_undo.sql (Flyway Teams)\nDROP TABLE IF EXISTS users;\n```\n\n## Running Migrations\n\n```bash\n# Knex — apply all pending\nnpx knex migrate:latest\n\n# Knex — rollback last batch\nnpx knex migrate:rollback\n\n# Prisma — apply in development\nnpx prisma migrate dev\n\n# Prisma — apply in production\nnpx prisma migrate deploy\n\n# Flyway\nflyway migrate\nflyway undo  # Flyway Teams only\n```\n\n## Up and Down\n\nEvery migration should have both an `up` (apply) and `down` (revert) function. The `down` must precisely undo the `up`:\n\n| Up | Down |\n|----|------|\n| CREATE TABLE | DROP TABLE |\n| ADD COLUMN | DROP COLUMN |\n| CREATE INDEX | DROP INDEX |\n| ALTER COLUMN type | ALTER COLUMN to original type |\n| INSERT seed data | DELETE seed data |\n\n**Warning:** Some changes are destructive and cannot be fully reverted — dropping a column loses data permanently. Always back up before running destructive migrations in production. See [[database/backup]] for backup strategies.\n\n## Rollback Strategies\n\n1. **Revert last batch** — `knex migrate:rollback` or `prisma migrate reset` (dev only)\n2. **Revert to specific version** — `knex migrate:rollback --to 20260410120000`\n3. **Forward-fix** — create a new migration that undoes the problematic change (safest for production)\n4. **Point-in-time recovery** — restore database to pre-migration state from backup (see [[database/backup#pitr]])\n\n## Best Practices\n\n- One change per migration — makes rollback granular\n- Never edit a migration after it has been applied to shared environments\n- Test migrations against a copy of production data before deploying\n- Use transactions in migrations where the database supports transactional DDL (PostgreSQL does, MySQL does not for most DDL)\n- Add [[database/indexing]] changes as separate migrations from table creation\n- Name migrations descriptively: `create_users_table`, `add_email_index_to_users`\n",
+  "sections": [
+    {
+      "id": "create-migration",
+      "title": "Creating migrations",
+      "body": "Use the migration tool's CLI to scaffold a new migration file with a timestamp prefix. Knex: `npx knex migrate:make name`. Prisma: edit `schema.prisma` then `npx prisma migrate dev --name name`. Flyway: create `V{number}__{name}.sql` in the migrations directory. The timestamp or version number ensures ordering. Write both up and down logic immediately — down functions are hard to write after the fact.",
+      "tags": ["create", "scaffold", "timestamp", "version"]
+    },
+    {
+      "id": "up-down",
+      "title": "Up and down functions",
+      "body": "The `up` function applies the schema change. The `down` function reverts it exactly. CREATE TABLE pairs with DROP TABLE. ADD COLUMN pairs with DROP COLUMN. ALTER COLUMN type pairs with ALTER back to original type. Destructive downs (DROP COLUMN, DROP TABLE) lose data permanently — warn or prevent in production. Some tools (Prisma) generate down migrations automatically from schema diffs.",
+      "tags": ["up", "down", "revert", "destructive", "idempotent"]
+    },
+    {
+      "id": "rollback",
+      "title": "Rollback strategies",
+      "body": "Rollback options from least to most drastic: (1) forward-fix with a new corrective migration, (2) revert last batch with the migration runner, (3) revert to a specific version, (4) restore from backup with point-in-time recovery (see [[database/backup#pitr]]). In production, forward-fixes are safest because they don't require running untested down migrations. Always test rollbacks in staging before production.",
+      "tags": ["rollback", "revert", "forward-fix", "production", "staging"]
+    },
+    {
+      "id": "tools-comparison",
+      "title": "Migration tools comparison",
+      "body": "**Knex** — JavaScript, programmatic up/down, batch tracking, good for Node.js apps. **Prisma Migrate** — declarative schema-first, auto-generates SQL, tight ORM integration (see [[database/orm#prisma]]). **Flyway** — SQL-based, JVM ecosystem, version-prefixed files, enterprise features. **golang-migrate** — Go CLI and library, SQL files, supports many databases. **Alembic** — Python, works with SQLAlchemy (see [[database/orm#python-orms]]), auto-generates from model diffs. Choose based on your application's language and ORM.",
+      "tags": ["knex", "prisma", "flyway", "golang-migrate", "alembic", "comparison"]
+    }
+  ],
+  "links": [
+    { "uri": "database", "context": "Database ecosystem overview" },
+    { "uri": "database/sql", "context": "DDL statements that migrations generate (CREATE TABLE, ALTER, etc.)" },
+    { "uri": "database/orm", "context": "ORMs often include built-in migration tools" },
+    { "uri": "database/orm#prisma", "context": "Prisma Migrate for schema-first migration workflows" },
+    { "uri": "database/backup", "context": "Backup before running destructive migrations" },
+    { "uri": "database/backup#pitr", "context": "Point-in-time recovery as a rollback strategy" },
+    { "uri": "database/indexing", "context": "Add indexes as separate migrations for clarity" }
+  ],
+  "related": [
+    { "uri": "database/backup", "relation": "see-also", "note": "Always back up before running production migrations" },
+    { "uri": "database/orm", "relation": "see-also", "note": "Most ORMs include migration tooling or integrate with migration runners" },
+    { "uri": "database/sql", "relation": "see-also", "note": "Understanding DDL is essential for writing correct migrations" }
+  ],
+  "scripts": [
+    {
+      "id": "run-migration",
+      "name": "Run Migration",
+      "description": "Run database schema migrations forward or backward using Knex",
+      "lang": "javascript",
+      "runtime": "node>=18",
+      "entry": "./scripts/run-migration.js",
+      "env": {
+        "DATABASE_URL": { "required": true, "secret": true, "description": "PostgreSQL connection string" }
+      },
+      "packages": ["knex", "pg"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "direction": { "type": "string", "enum": ["up", "down"], "default": "up", "description": "Migration direction — up to apply, down to revert" },
+        "version": { "type": "string", "description": "Target version to migrate to (optional, defaults to latest)" },
+        "migrationDir": { "type": "string", "default": "./migrations", "description": "Directory containing migration files" }
+      },
+      "required": ["direction"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "appliedMigrations": { "type": "array", "items": { "type": "string" }, "description": "List of migration filenames that were applied or reverted" },
+        "currentVersion": { "type": "string", "description": "Current schema version after running" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "database/sql", "reason": "Migrations generate DDL statements — understanding SQL helps write correct migrations" }
+  ],
+  "more": {
+    "knex": "https://knexjs.org/guide/migrations.html",
+    "prisma": "https://www.prisma.io/docs/orm/prisma-migrate",
+    "flyway": "https://documentation.red-gate.com/flyway"
+  },
+  "frontmatter": {
+    "created": "2026-04-10",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "6 min",
+    "prerequisites": ["database/sql"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

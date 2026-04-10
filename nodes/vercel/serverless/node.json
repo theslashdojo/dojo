@@ -1,0 +1,131 @@
+{
+  "name": "serverless",
+  "version": "1.0.0",
+  "uri": "vercel/serverless",
+  "type": "skill",
+  "context": "Create Vercel Serverless Functions — API routes, handlers, and runtimes (Node.js, Python, Go, Ruby)",
+  "info": "Vercel Serverless Functions run backend code on-demand without managing servers. Functions are defined as files in the `api/` directory (standalone) or as Next.js API routes in `pages/api/` or `app/api/`. Each function receives an HTTP request and returns a response. Supported runtimes include Node.js (default), Python, Go, and Ruby. Functions scale to zero when idle and auto-scale under load. Cold starts vary by runtime and bundle size. Environment variables are available at runtime via `process.env` (Node.js) or `os.environ` (Python). Functions have a default timeout of 10 seconds (Hobby) or 60 seconds (Pro/Enterprise). See [[vercel/env-vars]] for environment configuration.",
+  "parent": "vercel",
+  "tags": ["serverless", "functions", "api-routes", "node", "python", "go", "handlers"],
+  "aliases": [
+    "vercel functions",
+    "serverless functions",
+    "vercel api routes",
+    "api endpoint",
+    "vercel lambda",
+    "vercel backend",
+    "api handler",
+    "vercel api"
+  ],
+  "triggers": [
+    "create a serverless function",
+    "add an api route on vercel",
+    "build a vercel api endpoint",
+    "write a vercel function in python",
+    "create backend api on vercel",
+    "handle api requests on vercel",
+    "set up vercel api routes"
+  ],
+  "body": "# Serverless Functions\n\nVercel Serverless Functions execute backend code on-demand. Each function handles HTTP requests and scales automatically. Functions deploy alongside your frontend — no separate infrastructure required.\n\n## Creating Functions\n\n### Standalone (api/ directory)\n\nPlace files in the `api/` directory at the project root:\n\n```javascript\n// api/hello.js\nexport default function handler(req, res) {\n  res.status(200).json({ message: \"Hello from Vercel\" });\n}\n```\n\nThis creates an endpoint at `/api/hello`.\n\n### Next.js App Router\n\n```typescript\n// app/api/users/route.ts\nimport { NextResponse } from \"next/server\";\n\nexport async function GET() {\n  const users = await fetchUsers();\n  return NextResponse.json(users);\n}\n\nexport async function POST(request: Request) {\n  const body = await request.json();\n  const user = await createUser(body);\n  return NextResponse.json(user, { status: 201 });\n}\n```\n\n### Python\n\n```python\n# api/data.py\nfrom http.server import BaseHTTPRequestHandler\nimport json\n\nclass handler(BaseHTTPRequestHandler):\n    def do_GET(self):\n        self.send_response(200)\n        self.send_header(\"Content-Type\", \"application/json\")\n        self.end_headers()\n        self.wfile.write(json.dumps({\"status\": \"ok\"}).encode())\n```\n\n### Go\n\n```go\n// api/ping.go\npackage handler\n\nimport (\n  \"fmt\"\n  \"net/http\"\n)\n\nfunc Handler(w http.ResponseWriter, r *http.Request) {\n  fmt.Fprintf(w, \"pong\")\n}\n```\n\n## Runtimes\n\n| Runtime | File Extension | Default Version |\n|---------|---------------|------------------|\n| Node.js | `.js`, `.ts` | 18.x |\n| Python | `.py` | 3.9 |\n| Go | `.go` | 1.21 |\n| Ruby | `.rb` | 3.2 |\n\n## Request / Response\n\nNode.js functions receive `(req, res)` objects compatible with Express. The `req` object includes `query`, `body`, `headers`, `method`, and `cookies`. Next.js App Router uses the Web standard `Request`/`Response` API.\n\n## Timeouts and Limits\n\n| Plan | Max Duration | Max Body Size |\n|------|-------------|----------------|\n| Hobby | 10 seconds | 4.5 MB |\n| Pro | 60 seconds | 4.5 MB |\n| Enterprise | 900 seconds | 4.5 MB |\n\n## Cold Starts\n\nFunctions scale to zero when idle. The first request after idle incurs a cold start (100ms-2s depending on runtime and bundle size). Minimize cold starts by keeping bundles small, avoiding heavy dependencies at import time, and using the Node.js runtime (fastest cold starts). For latency-critical paths, consider [[vercel/edge]] functions instead.\n",
+  "sections": [
+    {
+      "id": "create",
+      "title": "Creating functions",
+      "body": "Place files in `api/` for standalone functions or use Next.js API routes (`pages/api/` or `app/api/`). Each file becomes an HTTP endpoint. The file path maps to the URL path: `api/users/[id].js` handles `/api/users/:id`. Export a default handler function (Node.js) or a `handler` class (Python).",
+      "tags": ["create", "api-directory", "routes", "handler"]
+    },
+    {
+      "id": "runtimes",
+      "title": "Supported runtimes",
+      "body": "Node.js (`.js`, `.ts`) is the default and fastest runtime. Python (`.py`), Go (`.go`), and Ruby (`.rb`) are also supported. Specify the runtime version in `vercel.json` with the `functions` config. TypeScript is compiled automatically — no build step required for `.ts` files in the `api/` directory.",
+      "tags": ["runtime", "node", "python", "go", "ruby", "typescript"]
+    },
+    {
+      "id": "request-response",
+      "title": "Request and response handling",
+      "body": "Node.js functions use Express-compatible `(req, res)` objects. Access query parameters via `req.query`, parsed body via `req.body`, and headers via `req.headers`. Next.js App Router uses Web standard `Request` and `NextResponse`. Set CORS headers manually or use the `vercel.json` headers config. See [[vercel/env-vars]] for accessing secrets at runtime.",
+      "tags": ["request", "response", "cors", "query", "body", "headers"]
+    },
+    {
+      "id": "env-vars",
+      "title": "Environment variables in functions",
+      "body": "Access environment variables via `process.env` (Node.js), `os.environ` (Python), or `os.Getenv()` (Go). Variables are injected at runtime based on the deployment scope (development, preview, production). Configure via [[vercel/env-vars]]. Encrypted secrets are decrypted automatically at runtime.",
+      "tags": ["env", "secrets", "process-env", "runtime-config"]
+    },
+    {
+      "id": "cold-starts",
+      "title": "Cold starts and performance",
+      "body": "Functions scale to zero after inactivity. Cold start latency ranges from 100ms (small Node.js) to 2s+ (large Python bundles). Reduce cold starts by minimizing dependencies, using tree-shaking, and lazy-loading heavy modules. For sub-50ms latency requirements, use [[vercel/edge]] functions which run on V8 isolates with near-zero cold starts.",
+      "tags": ["cold-start", "performance", "latency", "scale-to-zero", "optimization"]
+    }
+  ],
+  "links": [
+    { "uri": "vercel/deploy", "context": "Serverless functions deploy with the project" },
+    { "uri": "vercel/env-vars", "context": "Environment variable configuration for functions" },
+    { "uri": "vercel/env-vars#scopes", "context": "Scoped variables for preview vs production functions" },
+    { "uri": "vercel/edge", "context": "Edge functions for lower-latency compute" },
+    { "uri": "vercel/edge#limitations", "context": "Edge runtime limitations compared to serverless" },
+    { "uri": "vercel/deploy#build-settings", "context": "Build configuration affecting function bundling" }
+  ],
+  "related": [
+    { "uri": "vercel/edge", "relation": "see-also", "note": "Edge functions offer lower latency but a more restricted runtime" },
+    { "uri": "vercel/env-vars", "relation": "prerequisite", "note": "Environment variables provide secrets and configuration to functions" },
+    { "uri": "vercel/deploy", "relation": "see-also", "note": "Functions are deployed as part of the project deployment" }
+  ],
+  "scripts": [
+    {
+      "id": "create-function",
+      "name": "Create Serverless Function",
+      "description": "Scaffold and deploy a Vercel serverless function with the specified runtime",
+      "lang": "javascript",
+      "runtime": "node>=18",
+      "entry": "./scripts/create-function.js",
+      "env": {
+        "VERCEL_TOKEN": { "required": true, "secret": true, "description": "Vercel authentication token" }
+      },
+      "packages": ["vercel"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "path": { "type": "string", "description": "File path for the function (e.g. api/hello.js)" },
+        "runtime": { "type": "string", "enum": ["nodejs", "python", "go", "ruby"], "description": "Function runtime" },
+        "handler": { "type": "string", "description": "Handler function or class name" }
+      },
+      "required": ["path", "runtime"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "functionUrl": { "type": "string", "description": "URL endpoint for the deployed function" },
+        "runtime": { "type": "string", "description": "Resolved runtime version" },
+        "region": { "type": "string", "description": "Deployment region for the function" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "vercel/env-vars", "reason": "Functions require environment variables for secrets and configuration" }
+  ],
+  "more": {
+    "docs": "https://vercel.com/docs/functions/serverless-functions",
+    "runtimes": "https://vercel.com/docs/functions/serverless-functions/runtimes",
+    "quickstart": "https://vercel.com/docs/functions/serverless-functions/quickstart"
+  },
+  "frontmatter": {
+    "created": "2026-04-10",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "5 min",
+    "prerequisites": ["vercel/env-vars"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

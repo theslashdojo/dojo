@@ -1,0 +1,138 @@
+{
+  "name": "actions",
+  "version": "1.0.0",
+  "uri": "github/actions",
+  "type": "skill",
+  "context": "Configure and trigger GitHub Actions CI/CD workflows",
+  "info": "This skill covers GitHub Actions: defining YAML workflows in `.github/workflows/`, configuring triggers (push, pull_request, schedule, workflow_dispatch), managing secrets, using matrix strategies for multi-environment testing, and storing build artifacts. Agents use this skill to set up CI pipelines, trigger workflow runs programmatically via the API, monitor run status, and download artifacts. Actions integrate tightly with [[github/pull-requests]] for required status checks and [[github/repos#branch-protection]] for merge gating. See [[github/auth]] for authentication.",
+  "parent": "github",
+  "tags": ["actions", "ci-cd", "workflows", "automation", "yaml"],
+  "aliases": [
+    "github actions",
+    "actions",
+    "ci/cd",
+    "github ci",
+    "github workflows",
+    "workflow automation",
+    "github pipeline",
+    "continuous integration"
+  ],
+  "triggers": [
+    "set up github actions",
+    "create a ci pipeline",
+    "trigger a workflow",
+    "configure ci/cd",
+    "run github actions",
+    "add a build workflow",
+    "set up automated testing"
+  ],
+  "body": "# GitHub Actions\n\nGitHub Actions is the built-in CI/CD platform. Workflows are defined in YAML files under `.github/workflows/` and run on GitHub-hosted or self-hosted runners. Actions can build, test, deploy, and automate any software workflow.\n\n## Workflow Syntax\n\n```yaml\n# .github/workflows/ci.yml\nname: CI\n\non:\n  push:\n    branches: [main]\n  pull_request:\n    branches: [main]\n\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n      - uses: actions/setup-node@v4\n        with:\n          node-version: 20\n      - run: npm ci\n      - run: npm test\n\n  lint:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n      - uses: actions/setup-node@v4\n        with:\n          node-version: 20\n      - run: npm ci\n      - run: npm run lint\n```\n\n## Triggering Workflows via API\n\n```javascript\nimport { Octokit } from \"@octokit/rest\";\n\nconst octokit = new Octokit({ auth: process.env.GITHUB_TOKEN });\n\n// Trigger a workflow_dispatch event\nawait octokit.actions.createWorkflowDispatch({\n  owner: \"my-org\",\n  repo: \"my-project\",\n  workflow_id: \"deploy.yml\",\n  ref: \"main\",\n  inputs: {\n    environment: \"production\",\n    version: \"1.2.3\",\n  },\n});\n\n// List workflow runs\nconst { data: runs } = await octokit.actions.listWorkflowRuns({\n  owner: \"my-org\",\n  repo: \"my-project\",\n  workflow_id: \"ci.yml\",\n  status: \"completed\",\n  per_page: 5,\n});\n\n// Get a specific run\nconst { data: run } = await octokit.actions.getWorkflowRun({\n  owner: \"my-org\",\n  repo: \"my-project\",\n  run_id: 12345,\n});\nconsole.log(run.status, run.conclusion, run.html_url);\n```\n\n## Secrets Management\n\nStore sensitive values as repository or organization secrets:\n\n```javascript\nimport sodium from \"libsodium-wrappers\";\n\n// Encrypt and set a secret\nawait sodium.ready;\nconst { data: key } = await octokit.actions.getRepoPublicKey({\n  owner: \"my-org\",\n  repo: \"my-project\",\n});\n\nconst encrypted = sodium.crypto_box_seal(\n  Buffer.from(\"secret-value\"),\n  Buffer.from(key.key, \"base64\")\n);\n\nawait octokit.actions.createOrUpdateRepoSecret({\n  owner: \"my-org\",\n  repo: \"my-project\",\n  secret_name: \"API_KEY\",\n  encrypted_value: Buffer.from(encrypted).toString(\"base64\"),\n  key_id: key.key_id,\n});\n```\n\nAccess secrets in workflows via `${{ secrets.API_KEY }}`.\n\n## Matrix Strategy\n\n```yaml\njobs:\n  test:\n    runs-on: ubuntu-latest\n    strategy:\n      matrix:\n        node-version: [18, 20, 22]\n        os: [ubuntu-latest, macos-latest]\n    steps:\n      - uses: actions/checkout@v4\n      - uses: actions/setup-node@v4\n        with:\n          node-version: ${{ matrix.node-version }}\n      - run: npm ci && npm test\n```\n\n## Artifacts\n\n```yaml\n# Upload build artifacts\n- uses: actions/upload-artifact@v4\n  with:\n    name: build-output\n    path: dist/\n\n# Download in another job\n- uses: actions/download-artifact@v4\n  with:\n    name: build-output\n```\n\n## Environment Variables\n\n| Variable | Purpose |\n|----------|----------|\n| `GITHUB_TOKEN` | Auto-provided in workflows, or PAT for API calls |\n",
+  "sections": [
+    {
+      "id": "workflow-syntax",
+      "title": "Workflow YAML syntax",
+      "body": "Workflows live in `.github/workflows/*.yml`. Define `name`, `on` (triggers), and `jobs`. Each job specifies `runs-on` (runner), `steps` (actions and commands), and optionally `needs` (job dependencies). Steps use `uses:` for marketplace actions or `run:` for shell commands. See [[github/repos]] for repository setup.",
+      "tags": ["yaml", "syntax", "workflow", "jobs", "steps", "runners"]
+    },
+    {
+      "id": "triggers",
+      "title": "Workflow triggers",
+      "body": "Common triggers: `push` (branch pushes), `pull_request` (PR events, integrates with [[github/pull-requests]]), `schedule` (cron), `workflow_dispatch` (manual/API trigger), `issues` (reacts to [[github/issues]] events), `release` (release events). Filter branches and paths with `branches:` and `paths:`. Use `workflow_dispatch` with `inputs:` for parameterized runs.",
+      "tags": ["triggers", "push", "pull-request", "schedule", "cron", "workflow-dispatch"]
+    },
+    {
+      "id": "secrets",
+      "title": "Secrets management",
+      "body": "Store secrets at repo or org level. Access in workflows via `${{ secrets.NAME }}`. Set via API with `octokit.actions.createOrUpdateRepoSecret()` — requires encrypting with the repo's public key (libsodium). Secrets are masked in logs. Environment secrets scope access to specific deployment environments. See [[github/auth]] for token management.",
+      "tags": ["secrets", "encryption", "environment", "sensitive-data"]
+    },
+    {
+      "id": "matrix",
+      "title": "Matrix strategy",
+      "body": "Define `strategy.matrix` to run a job across multiple configurations (Node versions, OSes, environments). GitHub creates a job instance for each combination. Use `fail-fast: false` to continue other matrix jobs when one fails. Use `include:` and `exclude:` for fine-grained control over combinations.",
+      "tags": ["matrix", "multi-version", "cross-platform", "fail-fast"]
+    },
+    {
+      "id": "artifacts",
+      "title": "Build artifacts",
+      "body": "Upload artifacts with `actions/upload-artifact@v4` and download with `actions/download-artifact@v4`. Artifacts persist for 90 days by default. Use artifacts to pass build outputs between jobs or preserve test reports. Download via API with `octokit.actions.downloadArtifact()`.",
+      "tags": ["artifacts", "upload", "download", "build-output", "test-reports"]
+    }
+  ],
+  "links": [
+    { "uri": "github/auth", "context": "Authentication for Actions API access" },
+    { "uri": "github/repos", "context": "Workflows are defined per-repository" },
+    { "uri": "github/pull-requests", "context": "CI checks run on pull requests" },
+    { "uri": "github/webhooks", "context": "Webhooks complement Actions for external triggers" },
+    { "uri": "github/issues", "context": "Actions can be triggered by issue events" },
+    { "uri": "github/auth#personal-access-tokens", "context": "PAT for triggering workflows via API" },
+    { "uri": "github/repos#branch-protection", "context": "Require Actions checks to pass before merge" },
+    { "uri": "github/pull-requests#checks-status", "context": "View CI check results on PRs" },
+    { "uri": "github/webhooks#events", "context": "Webhook events that can trigger Actions" },
+    { "uri": "github/actions#secrets", "context": "Manage sensitive values for workflow runs" }
+  ],
+  "related": [
+    { "uri": "github/auth", "relation": "prerequisite", "note": "A valid token is required for Actions API operations" },
+    { "uri": "github/pull-requests", "relation": "see-also", "note": "Actions checks are required status checks on protected branches" },
+    { "uri": "github/repos", "relation": "see-also", "note": "Workflows live in the .github/workflows/ directory of a repository" },
+    { "uri": "github/webhooks", "relation": "see-also", "note": "Webhooks provide alternative event-driven automation" }
+  ],
+  "scripts": [
+    {
+      "id": "trigger-workflow",
+      "name": "Trigger Workflow",
+      "description": "Trigger a GitHub Actions workflow dispatch event via the REST API",
+      "lang": "javascript",
+      "runtime": "node>=18",
+      "entry": "./scripts/trigger-workflow.js",
+      "env": {
+        "GITHUB_TOKEN": { "required": true, "secret": true, "description": "GitHub personal access token or installation token" }
+      },
+      "packages": ["@octokit/rest"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "owner": { "type": "string", "description": "Repository owner (user or org)" },
+        "repo": { "type": "string", "description": "Repository name" },
+        "workflowId": { "type": "string", "description": "Workflow file name or ID (e.g. deploy.yml)" },
+        "ref": { "type": "string", "description": "Git ref to run the workflow on (branch, tag, SHA)" },
+        "inputs": { "type": "object", "description": "Workflow dispatch input parameters" }
+      },
+      "required": ["owner", "repo", "workflowId", "ref"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "runId": { "type": "integer", "description": "Workflow run ID" },
+        "runUrl": { "type": "string", "description": "HTML URL of the workflow run" },
+        "status": { "type": "string", "enum": ["queued", "in_progress", "completed"], "description": "Current run status" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "github/auth", "reason": "A valid GitHub token is required for Actions API calls" }
+  ],
+  "more": {
+    "docs": "https://docs.github.com/en/actions",
+    "octokit": "https://octokit.github.io/rest.js/v20/#actions",
+    "marketplace": "https://github.com/marketplace?type=actions"
+  },
+  "frontmatter": {
+    "created": "2026-04-10",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "6 min",
+    "prerequisites": ["github/auth"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

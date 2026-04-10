@@ -1,0 +1,130 @@
+{
+  "name": "messages",
+  "version": "1.0.0",
+  "uri": "slack/messages",
+  "type": "skill",
+  "context": "Send, update, delete, and schedule Slack messages in channels and DMs",
+  "info": "This skill covers all message operations in Slack: posting new messages with chat.postMessage, updating existing messages with chat.update, deleting messages with chat.delete, and scheduling future messages with chat.scheduleMessage. Messages can include plain text, rich Block Kit layouts (see [[slack/block-kit]]), attachments, and thread replies. The @slack/web-api package provides the programmatic interface. All methods require a bot token with the chat:write scope.",
+  "parent": "slack",
+  "tags": ["messages", "send", "update", "delete", "schedule", "threads", "channels"],
+  "aliases": [
+    "slack messages",
+    "send slack message",
+    "post to slack",
+    "slack chat",
+    "slack dm",
+    "message channel",
+    "update slack message",
+    "delete slack message",
+    "schedule slack message"
+  ],
+  "triggers": [
+    "send a message to slack",
+    "post to a slack channel",
+    "update a slack message",
+    "delete a slack message",
+    "schedule a slack message",
+    "reply in a slack thread",
+    "send a slack dm"
+  ],
+  "body": "# Slack Messages\n\nSend, update, delete, and schedule messages in Slack channels and DMs using the Web API. All message operations require a bot token (`xoxb-`) with the `chat:write` scope. See [[slack]] for authentication setup.\n\n## Send a Message\n\n```javascript\nimport { WebClient } from \"@slack/web-api\";\n\nconst slack = new WebClient(process.env.SLACK_BOT_TOKEN);\n\nconst result = await slack.chat.postMessage({\n  channel: \"C0123456789\",\n  text: \"Hello from the agent!\",\n  blocks: [\n    {\n      type: \"section\",\n      text: {\n        type: \"mrkdwn\",\n        text: \"*Hello from the agent!*\\nThis message uses Block Kit.\"\n      }\n    }\n  ]\n});\n\nconsole.log(result.ts); // Message timestamp (unique ID)\n```\n\nThe `text` field is the fallback for notifications and accessibility. Always include it even when using `blocks`. See [[slack/block-kit]] for building rich layouts.\n\n## Update a Message\n\n```javascript\nawait slack.chat.update({\n  channel: \"C0123456789\",\n  ts: \"1234567890.123456\",  // Original message timestamp\n  text: \"Updated message text\",\n  blocks: [\n    {\n      type: \"section\",\n      text: { type: \"mrkdwn\", text: \"*Updated content*\" }\n    }\n  ]\n});\n```\n\nUse the `ts` (timestamp) returned from `chat.postMessage` to identify the message to update.\n\n## Delete a Message\n\n```javascript\nawait slack.chat.delete({\n  channel: \"C0123456789\",\n  ts: \"1234567890.123456\"\n});\n```\n\nBots can only delete messages they posted. Users can delete their own messages with a user token.\n\n## Threads\n\nReply in a thread by setting `thread_ts` to the parent message timestamp:\n\n```javascript\nawait slack.chat.postMessage({\n  channel: \"C0123456789\",\n  thread_ts: \"1234567890.123456\",  // Parent message ts\n  text: \"This is a threaded reply\"\n});\n```\n\nSet `reply_broadcast: true` to also post the reply to the channel (\"Also send to channel\" checkbox).\n\n## Formatting\n\nSlack uses `mrkdwn` (not standard Markdown) for text formatting:\n\n| Syntax | Result |\n|--------|--------|\n| `*bold*` | **bold** |\n| `_italic_` | _italic_ |\n| `~strike~` | ~~strike~~ |\n| `` `code` `` | `code` |\n| ` ```code block``` ` | code block |\n| `<@U0123456>` | @mention user |\n| `<#C0123456>` | #mention channel |\n| `<!here>` | @here |\n| `<!channel>` | @channel |\n\n## Scheduling\n\n```javascript\nawait slack.chat.scheduleMessage({\n  channel: \"C0123456789\",\n  text: \"This message will arrive in the future\",\n  post_at: Math.floor(Date.now() / 1000) + 3600  // Unix timestamp, 1 hour from now\n});\n```\n\nScheduled messages can be listed with `chat.scheduledMessages.list` and cancelled before delivery.\n",
+  "sections": [
+    {
+      "id": "send",
+      "title": "Send messages",
+      "body": "Use `chat.postMessage` to send messages to channels or DMs. Requires `channel` (ID, not name) and `text`. Optionally include `blocks` for rich layouts (see [[slack/block-kit]]). The response includes `ts` (timestamp) used as the message ID for updates, deletes, and threading.",
+      "tags": ["send", "postMessage", "channel", "text", "blocks"]
+    },
+    {
+      "id": "update-delete",
+      "title": "Update and delete messages",
+      "body": "Use `chat.update` with the original `ts` and `channel` to modify a message. Use `chat.delete` to remove it. Bots can only modify their own messages. Store the `ts` from the send response to reference later. Useful for updating status messages or removing ephemeral content.",
+      "tags": ["update", "delete", "ts", "modify"]
+    },
+    {
+      "id": "threads",
+      "title": "Thread replies",
+      "body": "Set `thread_ts` to the parent message `ts` to reply in a thread. Use `reply_broadcast: true` to also surface the reply in the channel. Threads keep conversations organized — [[slack/bots]] often reply in threads to avoid channel noise.",
+      "tags": ["threads", "thread_ts", "reply", "broadcast"]
+    },
+    {
+      "id": "formatting",
+      "title": "Message formatting",
+      "body": "Slack uses `mrkdwn` syntax: `*bold*`, `_italic_`, `~strike~`, backtick for code. Mention users with `<@U0123456>`, channels with `<#C0123456>`, and broadcast with `<!here>` or `<!channel>`. Links: `<https://url.com|display text>`. For rich layouts beyond text, use [[slack/block-kit]].",
+      "tags": ["mrkdwn", "formatting", "mentions", "links"]
+    },
+    {
+      "id": "scheduling",
+      "title": "Message scheduling",
+      "body": "Use `chat.scheduleMessage` with a `post_at` Unix timestamp to schedule delivery. List pending scheduled messages with `chat.scheduledMessages.list`. Cancel before delivery with `chat.deleteScheduledMessage` using the `scheduled_message_id` from the schedule response.",
+      "tags": ["schedule", "post_at", "future", "cron"]
+    }
+  ],
+  "links": [
+    { "uri": "slack", "context": "Slack ecosystem overview and authentication setup" },
+    { "uri": "slack/block-kit", "context": "Build rich message layouts with Block Kit" },
+    { "uri": "slack/bots", "context": "Bots that send messages in response to events and commands" },
+    { "uri": "slack/events", "context": "Receive events when messages are posted" }
+  ],
+  "related": [
+    { "uri": "slack/block-kit", "relation": "see-also", "note": "Use Block Kit to compose rich interactive messages beyond plain text" },
+    { "uri": "slack/bots", "relation": "see-also", "note": "Bots combine messaging with event handling and interactions" },
+    { "uri": "slack/webhooks", "relation": "see-also", "note": "Webhooks are a simpler alternative for one-way message posting" }
+  ],
+  "scripts": [
+    {
+      "id": "send-message",
+      "name": "Send Slack Message",
+      "description": "Send a message to a Slack channel or DM using the Web API",
+      "lang": "javascript",
+      "runtime": "node>=18",
+      "entry": "./scripts/send-message.js",
+      "env": {
+        "SLACK_BOT_TOKEN": { "required": true, "secret": true, "description": "Bot token (xoxb-) with chat:write scope" }
+      },
+      "packages": ["@slack/web-api"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "channel": { "type": "string", "description": "Channel ID (e.g., C0123456789) or user ID for DMs" },
+        "text": { "type": "string", "description": "Message text (fallback for notifications)" },
+        "blocks": { "type": "array", "description": "Block Kit blocks for rich message layout" },
+        "threadTs": { "type": "string", "description": "Parent message timestamp for thread replies" }
+      },
+      "required": ["channel", "text"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "ts": { "type": "string", "description": "Message timestamp (unique identifier)" },
+        "channel": { "type": "string", "description": "Channel where message was posted" },
+        "ok": { "type": "boolean", "description": "Whether the operation succeeded" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "slack", "reason": "Requires a Slack app with bot token and chat:write scope" }
+  ],
+  "more": {
+    "docs": "https://api.slack.com/messaging/sending",
+    "api-ref": "https://api.slack.com/methods/chat.postMessage"
+  },
+  "frontmatter": {
+    "created": "2026-04-10",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "4 min",
+    "prerequisites": ["slack"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

@@ -1,0 +1,132 @@
+{
+  "name": "caching",
+  "version": "1.0.0",
+  "uri": "redis/caching",
+  "type": "skill",
+  "context": "Implement key-value caching with TTL, eviction policies, and cache patterns (aside, through, ahead)",
+  "info": "This skill covers Redis caching operations: setting and getting key-value pairs, configuring TTL (time-to-live) for automatic expiry, choosing eviction policies (LRU, LFU, volatile-ttl, noeviction), and implementing cache patterns including cache-aside (lazy loading), cache-through (write-through), and cache-ahead (write-behind). The ioredis client provides pipelining for batch operations and Lua scripting for atomic cache updates. Proper cache invalidation strategies prevent stale data while maintaining high hit rates.",
+  "parent": "redis",
+  "tags": ["caching", "ttl", "eviction", "cache-aside", "cache-through", "key-value", "expiry"],
+  "aliases": [
+    "redis cache",
+    "redis caching",
+    "cache with redis",
+    "key-value cache",
+    "ttl cache",
+    "cache expiry",
+    "cache-aside pattern",
+    "write-through cache",
+    "redis get set"
+  ],
+  "triggers": [
+    "cache data in redis",
+    "set a redis key with ttl",
+    "implement cache-aside pattern",
+    "configure redis eviction policy",
+    "check cache hit or miss",
+    "invalidate redis cache",
+    "set up redis caching layer"
+  ],
+  "body": "# Redis Caching\n\nRedis excels as a caching layer, delivering sub-millisecond reads for frequently accessed data. This skill covers the full caching lifecycle: storing values, setting expiry, handling cache misses, and choosing the right pattern for your workload. Connect to Redis using the configuration described in [[redis#connection]].\n\n## Get and Set\n\n```javascript\nimport Redis from \"ioredis\";\n\nconst redis = new Redis(process.env.REDIS_URL);\n\n// Simple set and get\nawait redis.set(\"user:1001\", JSON.stringify({ name: \"Alice\", role: \"admin\" }));\nconst user = JSON.parse(await redis.get(\"user:1001\"));\n\n// Set with TTL (seconds)\nawait redis.set(\"session:abc\", \"token-data\", \"EX\", 3600); // expires in 1 hour\n\n// Set with TTL (milliseconds)\nawait redis.set(\"rate:ip:10.0.0.1\", \"15\", \"PX\", 60000); // expires in 60s\n\n// Set only if key does not exist (distributed lock primitive)\nconst acquired = await redis.set(\"lock:resource\", \"owner-id\", \"EX\", 30, \"NX\");\n```\n\n## TTL and Expiry\n\n```javascript\n// Check remaining TTL\nconst ttl = await redis.ttl(\"session:abc\"); // seconds, -1 = no expiry, -2 = key missing\nconst pttl = await redis.pttl(\"session:abc\"); // milliseconds\n\n// Set expiry on existing key\nawait redis.expire(\"user:1001\", 600); // expire in 10 minutes\nawait redis.pexpire(\"user:1001\", 600000); // same, in ms\n\n// Remove expiry (make persistent)\nawait redis.persist(\"user:1001\");\n\n// Set expiry at absolute timestamp\nawait redis.expireat(\"user:1001\", Math.floor(Date.now() / 1000) + 3600);\n```\n\n## Eviction Policies\n\nWhen Redis reaches `maxmemory`, the eviction policy determines which keys are removed:\n\n| Policy | Behavior | Best For |\n|--------|----------|----------|\n| `allkeys-lru` | Evict least recently used keys | General-purpose cache |\n| `allkeys-lfu` | Evict least frequently used keys | Skewed access patterns |\n| `volatile-lru` | Evict LRU keys with TTL set | Mixed persistent + cache keys |\n| `volatile-ttl` | Evict keys with shortest TTL | Time-sensitive data |\n| `noeviction` | Return error on write when full | Data must not be lost |\n\n```bash\n# Configure via redis.conf or at runtime\nredis-cli CONFIG SET maxmemory 256mb\nredis-cli CONFIG SET maxmemory-policy allkeys-lru\n```\n\n## Cache Patterns\n\n### Cache-Aside (Lazy Loading)\n\nThe application checks cache first, loads from the source on miss, and populates cache:\n\n```javascript\nasync function getUser(userId) {\n  const cacheKey = `user:${userId}`;\n  const cached = await redis.get(cacheKey);\n  if (cached) return JSON.parse(cached); // cache hit\n\n  const user = await db.query(\"SELECT * FROM users WHERE id = ?\", [userId]);\n  await redis.set(cacheKey, JSON.stringify(user), \"EX\", 300); // cache for 5 min\n  return user;\n}\n```\n\n### Cache-Through (Write-Through)\n\nWrites go to both the cache and the source simultaneously:\n\n```javascript\nasync function updateUser(userId, data) {\n  await db.query(\"UPDATE users SET ? WHERE id = ?\", [data, userId]);\n  await redis.set(`user:${userId}`, JSON.stringify(data), \"EX\", 300);\n}\n```\n\n### Cache-Ahead (Write-Behind)\n\nWrites go to cache immediately, then asynchronously flush to the source:\n\n```javascript\nasync function updateUserAsync(userId, data) {\n  await redis.set(`user:${userId}`, JSON.stringify(data), \"EX\", 300);\n  await redis.lpush(\"write-behind:queue\", JSON.stringify({ userId, data }));\n  // Background worker processes the queue and writes to DB\n}\n```\n\n## Cache Invalidation\n\nInvalidation strategies to prevent stale data:\n\n- **TTL-based** \u2014 keys expire automatically. Simple, eventual consistency.\n- **Event-driven** \u2014 invalidate on write events via [[redis/pub-sub]]. Immediate consistency.\n- **Tag-based** \u2014 group related keys with a tag, invalidate all at once using pattern delete.\n- **Version-based** \u2014 include a version in the key, increment version to invalidate.\n\n```javascript\n// Tag-based invalidation: delete all keys matching a pattern\nconst keys = await redis.keys(\"user:1001:*\");\nif (keys.length > 0) await redis.del(...keys);\n\n// Event-driven invalidation via pub/sub\nawait redis.publish(\"cache:invalidate\", JSON.stringify({ pattern: \"user:1001:*\" }));\n```\n",
+  "sections": [
+    {
+      "id": "get-set",
+      "title": "Get and set operations",
+      "body": "Use `SET key value` and `GET key` for basic caching. `SET` supports flags: `EX` (seconds TTL), `PX` (milliseconds TTL), `NX` (only if not exists), `XX` (only if exists). Use `MGET` and `MSET` for batch operations. Serialize complex objects with `JSON.stringify`/`JSON.parse`. See [[redis#data-model]] for supported value types.",
+      "tags": ["get", "set", "mget", "mset", "basic", "operations"]
+    },
+    {
+      "id": "ttl-expiry",
+      "title": "TTL and expiry",
+      "body": "Set TTL at write time with `SET key value EX seconds` or after with `EXPIRE key seconds`. Check remaining TTL with `TTL key` (seconds) or `PTTL key` (milliseconds). Returns -1 if no expiry, -2 if key missing. Remove expiry with `PERSIST key`. Set absolute expiry with `EXPIREAT key timestamp`.",
+      "tags": ["ttl", "expire", "pttl", "persist", "expireat", "timeout"]
+    },
+    {
+      "id": "eviction-policies",
+      "title": "Eviction policies",
+      "body": "Configure `maxmemory` and `maxmemory-policy` in redis.conf or at runtime. `allkeys-lru` is the best default for caching workloads. `allkeys-lfu` handles skewed access patterns better. `volatile-lru` and `volatile-ttl` only evict keys with TTL set, preserving persistent keys. `noeviction` returns errors when memory is full. See [[redis/clustering#cluster-mode]] for per-node memory configuration in cluster setups.",
+      "tags": ["eviction", "lru", "lfu", "maxmemory", "volatile", "noeviction"]
+    },
+    {
+      "id": "patterns",
+      "title": "Cache patterns",
+      "body": "Cache-aside (lazy loading): check cache first, load from source on miss, populate cache. Cache-through (write-through): write to cache and source simultaneously, ensures consistency. Cache-ahead (write-behind): write to cache immediately, flush to source asynchronously via a queue, higher throughput but eventual consistency. Choose based on read/write ratio and consistency requirements.",
+      "tags": ["cache-aside", "cache-through", "cache-ahead", "write-through", "write-behind", "lazy-loading"]
+    },
+    {
+      "id": "invalidation",
+      "title": "Cache invalidation",
+      "body": "TTL-based invalidation is simplest: keys expire automatically. Event-driven invalidation uses [[redis/pub-sub]] to notify cache holders of changes. Tag-based invalidation groups related keys for bulk deletion. Version-based invalidation increments a version counter in the key name. Avoid using `KEYS` in production (blocks the server); use `SCAN` for pattern matching instead.",
+      "tags": ["invalidation", "stale", "consistency", "ttl", "event-driven", "tags", "scan"]
+    }
+  ],
+  "links": [
+    { "uri": "redis", "context": "Redis ecosystem overview and connection setup" },
+    { "uri": "redis/pub-sub", "context": "Event-driven cache invalidation via pub/sub channels" },
+    { "uri": "redis/data-structures", "context": "Advanced data types beyond simple key-value caching" },
+    { "uri": "redis/clustering#cluster-mode", "context": "Per-node memory and eviction in cluster setups" },
+    { "uri": "redis#connection", "context": "Redis connection configuration and URL format" },
+    { "uri": "redis#data-model", "context": "Supported value types for cached data" }
+  ],
+  "related": [
+    { "uri": "redis/pub-sub", "relation": "see-also", "note": "Pub/sub enables real-time cache invalidation across services" },
+    { "uri": "redis/data-structures", "relation": "see-also", "note": "Hashes and sorted sets provide structured caching beyond simple strings" },
+    { "uri": "redis/clustering", "relation": "see-also", "note": "Clustering distributes cache across multiple nodes for higher capacity" }
+  ],
+  "scripts": [
+    {
+      "id": "cache-operations",
+      "name": "Cache Operations",
+      "description": "Perform Redis cache operations: get, set, delete, and TTL management",
+      "lang": "javascript",
+      "runtime": "node>=18",
+      "entry": "./scripts/cache-operations.js",
+      "env": {
+        "REDIS_URL": { "required": true, "secret": false, "description": "Redis connection URL (e.g. redis://localhost:6379)" }
+      },
+      "packages": ["ioredis"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "key": { "type": "string", "description": "Cache key" },
+        "value": { "type": "string", "description": "Value to cache (serialized)" },
+        "ttl": { "type": "integer", "description": "Time-to-live in seconds" },
+        "operation": { "type": "string", "enum": ["get", "set", "del", "expire", "ttl", "exists"], "description": "Cache operation to perform" }
+      },
+      "required": ["key", "operation"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "value": { "type": "string", "description": "Retrieved value (null if miss)" },
+        "hit": { "type": "boolean", "description": "Whether the key was found in cache" },
+        "ttlRemaining": { "type": "integer", "description": "Remaining TTL in seconds (-1 = no expiry, -2 = key missing)" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "redis", "reason": "Requires a running Redis instance and connection configuration" }
+  ],
+  "more": {
+    "docs": "https://redis.io/docs/latest/develop/use/client-side-caching/",
+    "commands": "https://redis.io/docs/latest/commands/?group=string"
+  },
+  "frontmatter": {
+    "created": "2026-04-10",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "5 min",
+    "prerequisites": ["redis"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

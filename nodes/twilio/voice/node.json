@@ -1,0 +1,136 @@
+{
+  "name": "voice",
+  "version": "1.0.0",
+  "uri": "twilio/voice",
+  "type": "skill",
+  "context": "Make and receive programmable voice calls with Twilio and TwiML",
+  "info": "This skill covers making outbound voice calls, receiving inbound calls via webhooks, controlling call flow with TwiML, recording calls, and building conference bridges. The primary interface is `client.calls.create()` in the Twilio Node.js helper library. Outbound calls connect a Twilio phone number to a destination and execute TwiML instructions (inline or from a URL). Inbound calls trigger a webhook where your server responds with TwiML to say text, play audio, gather DTMF input, record, or transfer. Status callbacks track call lifecycle events.",
+  "parent": "twilio",
+  "tags": ["voice", "calls", "twiml", "ivr", "programmable", "conference"],
+  "aliases": [
+    "voice call",
+    "make call",
+    "phone call",
+    "programmable voice",
+    "twilio voice",
+    "outbound call",
+    "ivr",
+    "interactive voice response",
+    "call api"
+  ],
+  "triggers": [
+    "make a phone call",
+    "place an outbound call",
+    "build an ivr system",
+    "record a phone call",
+    "set up a conference call",
+    "handle incoming calls",
+    "text to speech phone call"
+  ],
+  "body": "# Programmable Voice\n\nMake and receive voice calls through Twilio's Programmable Voice API. Calls are controlled with TwiML (see [[twilio/twiml]]) which provides verbs for speaking text, playing audio, gathering input, recording, and routing.\n\n## Making an Outbound Call\n\n```javascript\nconst twilio = require(\"twilio\");\n\nconst client = twilio(\n  process.env.TWILIO_ACCOUNT_SID,\n  process.env.TWILIO_AUTH_TOKEN\n);\n\nconst call = await client.calls.create({\n  to: \"+15551234567\",\n  from: process.env.TWILIO_PHONE_NUMBER,\n  twiml: \"<Response><Say>Hello! This is an automated call from your agent.</Say></Response>\",\n});\n\nconsole.log(call.sid); // CA...\nconsole.log(call.status); // \"queued\"\n```\n\nAlternatively, provide a `url` that returns TwiML dynamically:\n\n```javascript\nconst call = await client.calls.create({\n  to: \"+15551234567\",\n  from: process.env.TWILIO_PHONE_NUMBER,\n  url: \"https://example.com/voice/outbound\",\n  statusCallback: \"https://example.com/voice/status\",\n});\n```\n\n## Receiving Inbound Calls\n\nConfigure a webhook URL on your Twilio phone number (Phone Numbers > Active Numbers > Voice). When a call comes in, Twilio requests TwiML from your endpoint:\n\n```javascript\nconst express = require(\"express\");\nconst { VoiceResponse } = require(\"twilio\").twiml;\n\nconst app = express();\napp.use(express.urlencoded({ extended: false }));\n\napp.post(\"/voice/inbound\", (req, res) => {\n  const twiml = new VoiceResponse();\n  twiml.say({ voice: \"alice\" }, \"Welcome! Press 1 for sales, 2 for support.\");\n  const gather = twiml.gather({\n    numDigits: 1,\n    action: \"/voice/menu\",\n  });\n  res.type(\"text/xml\").send(twiml.toString());\n});\n```\n\n## Recording Calls\n\nRecord an entire call or a segment using the `<Record>` TwiML verb (see [[twilio/twiml#voice-verbs]]):\n\n```javascript\napp.post(\"/voice/record\", (req, res) => {\n  const twiml = new VoiceResponse();\n  twiml.say(\"Please leave a message after the beep.\");\n  twiml.record({\n    maxLength: 60,\n    action: \"/voice/recording-complete\",\n    transcribe: true,\n  });\n  res.type(\"text/xml\").send(twiml.toString());\n});\n```\n\n## Conference Calls\n\nConnect multiple parties into a conference room:\n\n```javascript\napp.post(\"/voice/conference\", (req, res) => {\n  const twiml = new VoiceResponse();\n  const dial = twiml.dial();\n  dial.conference({\n    startConferenceOnEnter: true,\n    endConferenceOnExit: false,\n  }, \"MyConferenceRoom\");\n  res.type(\"text/xml\").send(twiml.toString());\n});\n```\n\n## Status Callbacks\n\nTrack call lifecycle by setting `statusCallback` on call creation. Twilio POSTs updates for: `initiated`, `ringing`, `answered`, `completed` (or `busy`, `no-answer`, `canceled`, `failed`). The callback includes `CallSid`, `CallStatus`, `CallDuration`, and `Direction`.\n",
+  "sections": [
+    {
+      "id": "outbound-call",
+      "title": "Outbound calls",
+      "body": "Use `client.calls.create({ to, from, twiml })` for inline TwiML or `{ to, from, url }` for dynamic TwiML from a server. The `to` and `from` must be E.164 format. The response includes `callSid`, `status` (initially `queued`), and `direction`. See [[twilio#phone-numbers]] for number requirements.",
+      "tags": ["outbound", "create", "call", "twiml", "url"]
+    },
+    {
+      "id": "twiml-response",
+      "title": "TwiML response",
+      "body": "Incoming call webhooks must return TwiML XML. Use the `VoiceResponse` class from the Twilio helper library to build TwiML programmatically. Key verbs: `<Say>` for text-to-speech, `<Play>` for audio, `<Gather>` for DTMF input, `<Record>` for recording, `<Dial>` for transferring or conferencing. See [[twilio/twiml#voice-verbs]] for the full verb reference.",
+      "tags": ["twiml", "response", "inbound", "webhook", "VoiceResponse"]
+    },
+    {
+      "id": "recording",
+      "title": "Call recording",
+      "body": "Record calls with the `<Record>` verb or by setting `record: true` on `client.calls.create()`. Recordings are stored in your Twilio account and accessible via the Recordings API. Enable `transcribe: true` for automatic speech-to-text transcription. Recordings can be downloaded as WAV or MP3.",
+      "tags": ["recording", "transcribe", "voicemail", "record-verb"]
+    },
+    {
+      "id": "conference",
+      "title": "Conference calls",
+      "body": "Use `<Dial><Conference>room-name</Conference></Dial>` to connect callers into a shared room. Options include `startConferenceOnEnter`, `endConferenceOnExit`, `muted`, `beep`, and `maxParticipants`. Moderator controls are available via the Conference Participant API. See [[twilio/twiml#voice-verbs]] for conference TwiML.",
+      "tags": ["conference", "multi-party", "bridge", "moderator"]
+    },
+    {
+      "id": "status-callbacks",
+      "title": "Status callbacks",
+      "body": "Set `statusCallback` on call creation to receive lifecycle events. Twilio POSTs `CallSid`, `CallStatus`, `CallDuration`, `Timestamp`, and `Direction`. Statuses progress: `initiated` > `ringing` > `answered` > `completed`. Error states include `busy`, `no-answer`, `canceled`, and `failed` with `ErrorCode`.",
+      "tags": ["status", "callback", "lifecycle", "tracking"]
+    }
+  ],
+  "scripts": [
+    {
+      "id": "make-call",
+      "name": "Make Call",
+      "description": "Place an outbound voice call using the Twilio Programmable Voice API",
+      "lang": "javascript",
+      "runtime": "node>=18",
+      "entry": "./scripts/make-call.js",
+      "env": {
+        "TWILIO_ACCOUNT_SID": { "required": true, "secret": true, "description": "Twilio Account SID (starts with AC)" },
+        "TWILIO_AUTH_TOKEN": { "required": true, "secret": true, "description": "Twilio Auth Token" },
+        "TWILIO_PHONE_NUMBER": { "required": true, "secret": false, "description": "Twilio phone number to call from (E.164 format)" }
+      },
+      "packages": ["twilio"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "to": { "type": "string", "description": "Destination phone number in E.164 format" },
+        "from": { "type": "string", "description": "Twilio phone number to call from (E.164 format)" },
+        "twiml": { "type": "string", "description": "Inline TwiML XML to execute when the call connects" },
+        "url": { "type": "string", "description": "URL that returns TwiML for dynamic call control" },
+        "statusCallback": { "type": "string", "description": "URL to receive call status updates" }
+      },
+      "required": ["to"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "callSid": { "type": "string", "description": "Unique identifier for the call (starts with CA)" },
+        "status": { "type": "string", "description": "Call status (queued, ringing, answered, completed, failed)" },
+        "duration": { "type": "string", "description": "Call duration in seconds (available after completion)" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "twilio", "reason": "Requires Twilio account credentials and a phone number" },
+    { "uri": "twilio/twiml", "reason": "TwiML controls the call flow for both outbound and inbound calls" }
+  ],
+  "links": [
+    { "uri": "twilio/twiml#voice-verbs", "context": "TwiML verbs for controlling voice call flow" },
+    { "uri": "twilio/twiml#gather-input", "context": "Gather DTMF input during a call for IVR menus" },
+    { "uri": "twilio/twiml#say-play", "context": "Say text or play audio during a call" },
+    { "uri": "twilio#phone-numbers", "context": "Voice-capable phone numbers for placing calls" },
+    { "uri": "twilio/sms", "context": "SMS as an alternative to voice for notifications" }
+  ],
+  "related": [
+    { "uri": "twilio/twiml", "relation": "prerequisite", "note": "TwiML is required to control voice call behavior" },
+    { "uri": "twilio/sms", "relation": "see-also", "note": "SMS is a lower-cost alternative for notifications" },
+    { "uri": "twilio/verify", "relation": "see-also", "note": "Verify can deliver OTP codes via voice call" }
+  ],
+  "more": {
+    "docs": "https://www.twilio.com/docs/voice",
+    "api-ref": "https://www.twilio.com/docs/voice/api/call-resource",
+    "quickstart": "https://www.twilio.com/docs/voice/quickstart/node"
+  },
+  "frontmatter": {
+    "created": "2026-04-10",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "5 min",
+    "prerequisites": ["twilio", "twilio/twiml"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

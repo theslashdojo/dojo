@@ -1,0 +1,88 @@
+{
+  "name": "networking",
+  "version": "1.0.0",
+  "uri": "docker/networking",
+  "type": "context",
+  "content_type": "guide",
+  "context": "Container networking — bridge, host, overlay, DNS resolution, port mapping",
+  "info": "Docker networking connects containers to each other and the outside world. The bridge driver creates an isolated network on the host — containers communicate by name via built-in DNS. The host driver removes network isolation, giving the container direct access to the host network stack. The overlay driver spans multiple Docker hosts for swarm or multi-host communication. Port mapping (`-p host:container`) exposes container ports to the host. Docker's embedded DNS server resolves container and service names within user-defined networks. Network isolation prevents unrelated containers from communicating. This guide covers network types, port mapping, DNS resolution, and isolation patterns.",
+  "parent": "docker",
+  "tags": ["networking", "bridge", "host", "overlay", "dns", "ports", "expose"],
+  "aliases": [
+    "docker networking",
+    "container networking",
+    "docker network",
+    "bridge network",
+    "port mapping",
+    "container dns",
+    "docker ports",
+    "expose ports"
+  ],
+  "triggers": [
+    "configure docker networking",
+    "connect containers together",
+    "expose container port",
+    "docker dns resolution",
+    "create docker network",
+    "containers can't communicate",
+    "map ports in docker"
+  ],
+  "body": "# Container Networking\n\nDocker networking controls how containers communicate with each other and the outside world. Every container connects to one or more networks. Docker provides several built-in network drivers for different use cases.\n\n## Network Types\n\n| Driver | Isolation | Use Case |\n|--------|-----------|----------|\n| `bridge` | Container-level | Default. Isolated network on the host. Containers communicate by name via DNS. |\n| `host` | None | Container shares the host network stack. Best for performance-critical workloads. |\n| `overlay` | Cross-host | Spans multiple Docker hosts. Used in Docker Swarm for multi-node services. |\n| `macvlan` | Physical network | Assigns a MAC address. Container appears as a physical device on the LAN. |\n| `none` | Complete | No networking. For fully isolated containers. |\n\n### Bridge Networks\n\nBridge is the default and most common driver. Docker creates a default `bridge` network, but user-defined bridge networks are recommended because they provide:\n\n- **Automatic DNS resolution** — containers reach each other by name\n- **Better isolation** — only containers on the same network communicate\n- **Hot-connect** — attach/detach running containers without restart\n\n```bash\n# Create a user-defined bridge network\ndocker network create app-network\n\n# Run containers on the network\ndocker run -d --name web --network app-network nginx\ndocker run -d --name api --network app-network myapi:latest\n\n# 'web' can reach 'api' by name: http://api:3000\n```\n\nIn [[docker/compose]], networks are created automatically. All services in a Compose file share a default network and can reach each other by service name.\n\n### Host Network\n\n```bash\n# Container shares host network — no port mapping needed\ndocker run -d --network host nginx\n# nginx is available on host port 80 directly\n```\n\nHost networking eliminates the NAT overhead of bridge networks. Use for latency-sensitive applications. Not available on Docker Desktop for Mac/Windows (only Linux).\n\n## Port Mapping\n\nPort mapping exposes container ports to the host:\n\n```bash\n# Map host port 8080 to container port 80\ndocker run -d -p 8080:80 nginx\n\n# Map to all interfaces\ndocker run -d -p 0.0.0.0:8080:80 nginx\n\n# Map to localhost only\ndocker run -d -p 127.0.0.1:8080:80 nginx\n\n# Random host port\ndocker run -d -p 80 nginx\n# Check assigned port: docker port <container>\n\n# UDP port\ndocker run -d -p 53:53/udp dns-server\n```\n\nIn Dockerfiles, `EXPOSE` documents which ports the container listens on (see [[docker/build#dockerfile-syntax]]). In Compose files, use the `ports:` key (see [[docker/compose#services]]).\n\n## DNS Resolution\n\nDocker runs an embedded DNS server at `127.0.0.11` for user-defined networks:\n\n- **Container name** resolves to the container's IP on the network\n- **Service name** in [[docker/compose]] resolves to the service's container(s)\n- **Network aliases** provide additional DNS names for a container\n\n```bash\n# Add a network alias\ndocker run -d --name mydb --network app-network --network-alias database postgres:16\n# Reachable as both 'mydb' and 'database'\n```\n\nThe default `bridge` network does not support DNS resolution — containers must use IP addresses or `--link` (deprecated). Always use user-defined networks.\n\n## Network Isolation\n\nContainers on different networks cannot communicate:\n\n```bash\n# Create isolated networks\ndocker network create frontend\ndocker network create backend\n\n# Web server on frontend only\ndocker run -d --name web --network frontend nginx\n\n# API on both networks (bridge between frontend and backend)\ndocker run -d --name api --network frontend myapi\ndocker network connect backend api\n\n# Database on backend only — unreachable from web\ndocker run -d --name db --network backend postgres:16\n```\n\nThis pattern isolates the database from direct frontend access. The API container bridges the two networks. In [[docker/compose#volumes-networks]], declare separate networks for each tier.\n\n## Inspecting Networks\n\n```bash\ndocker network ls                    # list all networks\ndocker network inspect app-network   # show containers, config, subnets\ndocker network prune                 # remove unused networks\n```\n",
+  "sections": [
+    {
+      "id": "network-types",
+      "title": "Network types",
+      "body": "Bridge is the default — creates an isolated network on the host with DNS resolution. Host removes isolation for direct host network access (Linux only). Overlay spans multiple Docker hosts for swarm services. Macvlan assigns real MAC addresses for LAN visibility. None disables all networking. Always prefer user-defined bridge networks over the default bridge — they provide automatic DNS, better isolation, and hot-connect capability.",
+      "tags": ["bridge", "host", "overlay", "macvlan", "none", "driver"]
+    },
+    {
+      "id": "port-mapping",
+      "title": "Port mapping",
+      "body": "Map container ports to the host with `-p host:container`. Bind to specific interfaces with `127.0.0.1:host:container`. Use `-p container` for random host port assignment. Support TCP (default) and UDP (`/udp`). The `EXPOSE` Dockerfile instruction documents ports (see [[docker/build#dockerfile-syntax]]). Compose uses `ports:` for mapping (see [[docker/compose#services]]).",
+      "tags": ["ports", "expose", "publish", "host-port", "container-port", "tcp", "udp"]
+    },
+    {
+      "id": "dns-resolution",
+      "title": "DNS resolution",
+      "body": "Docker's embedded DNS server (127.0.0.11) resolves container names and network aliases to IP addresses on user-defined networks. In [[docker/compose]], services are reachable by service name. Add aliases with `--network-alias`. The default bridge network does not support DNS — always use user-defined networks. DNS enables service discovery without hardcoding IPs.",
+      "tags": ["dns", "resolution", "service-discovery", "alias", "embedded-dns"]
+    },
+    {
+      "id": "network-isolation",
+      "title": "Network isolation",
+      "body": "Containers on different networks cannot communicate. Use separate networks for frontend, backend, and database tiers. Connect containers to multiple networks to bridge tiers (e.g., API on both frontend and backend). In [[docker/compose#volumes-networks]], declare separate networks and assign services to enforce isolation boundaries.",
+      "tags": ["isolation", "security", "tiers", "frontend", "backend", "multi-network"]
+    }
+  ],
+  "links": [
+    { "uri": "docker/compose", "context": "Compose auto-creates networks for service communication" },
+    { "uri": "docker/compose#services", "context": "Service port and network configuration in Compose" },
+    { "uri": "docker/compose#volumes-networks", "context": "Network declarations in Compose files" },
+    { "uri": "docker/build#dockerfile-syntax", "context": "EXPOSE instruction in Dockerfiles" },
+    { "uri": "docker/volumes", "context": "Volumes often paired with network config for data services" }
+  ],
+  "related": [
+    { "uri": "docker/compose", "relation": "see-also", "note": "Compose manages networks declaratively for multi-container apps" },
+    { "uri": "docker/volumes", "relation": "see-also", "note": "Networking and volumes together define how services communicate and persist data" }
+  ],
+  "more": {
+    "docs": "https://docs.docker.com/network/",
+    "bridge": "https://docs.docker.com/network/drivers/bridge/",
+    "overlay": "https://docs.docker.com/network/drivers/overlay/"
+  },
+  "frontmatter": {
+    "created": "2026-04-10",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "developers, AI agents, DevOps engineers",
+    "estimated_reading_time": "4 min",
+    "prerequisites": [],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

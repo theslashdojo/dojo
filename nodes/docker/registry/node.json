@@ -1,0 +1,125 @@
+{
+  "name": "registry",
+  "version": "1.0.0",
+  "uri": "docker/registry",
+  "type": "skill",
+  "context": "Push, pull, and manage container images in Docker registries (Docker Hub, GHCR, ECR)",
+  "info": "Docker registries store and distribute container images. Docker Hub is the default public registry. GitHub Container Registry (GHCR) hosts images alongside source code. AWS ECR provides private registries with IAM integration. This skill covers authenticating with registries via `docker login`, tagging images with the full registry path, pushing and pulling images, managing image tags and digests, and configuring private registries. Multi-platform images can be pushed using `docker buildx` with manifest lists. Image signing and vulnerability scanning add security layers before deployment.",
+  "parent": "docker",
+  "tags": ["registry", "docker-hub", "ghcr", "ecr", "push", "pull", "tag"],
+  "aliases": [
+    "docker registry",
+    "container registry",
+    "docker hub",
+    "push image",
+    "pull image",
+    "ghcr",
+    "ecr",
+    "image registry",
+    "docker push"
+  ],
+  "triggers": [
+    "push docker image to registry",
+    "pull image from registry",
+    "log in to docker hub",
+    "push to ghcr",
+    "push to ecr",
+    "tag and push image",
+    "set up private registry"
+  ],
+  "body": "# Docker Registry\n\nA Docker registry stores and distributes container images. After building an image (see [[docker/build]]), push it to a registry so it can be pulled by other machines, CI/CD pipelines, or orchestrators.\n\n## Login\n\nAuthenticate before pushing to any registry:\n\n```bash\n# Docker Hub\ndocker login -u $DOCKER_USERNAME -p $DOCKER_PASSWORD\n\n# GitHub Container Registry (GHCR)\necho $GITHUB_TOKEN | docker login ghcr.io -u $GITHUB_USERNAME --password-stdin\n\n# AWS ECR\naws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com\n```\n\nAlways use `--password-stdin` in scripts to avoid exposing credentials in process lists.\n\n## Push and Pull\n\nImages must be tagged with the full registry path before pushing:\n\n```bash\n# Tag for Docker Hub\ndocker tag myapp:latest myusername/myapp:v1.0.0\ndocker push myusername/myapp:v1.0.0\n\n# Tag for GHCR\ndocker tag myapp:latest ghcr.io/myorg/myapp:v1.0.0\ndocker push ghcr.io/myorg/myapp:v1.0.0\n\n# Tag for ECR\ndocker tag myapp:latest $AWS_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/myapp:v1.0.0\ndocker push $AWS_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/myapp:v1.0.0\n\n# Pull an image\ndocker pull nginx:alpine\ndocker pull ghcr.io/myorg/myapp:v1.0.0\n```\n\n## Tagging Strategies\n\nConsistent tagging enables reliable deployments:\n\n| Tag Pattern | Use Case |\n|-------------|----------|\n| `v1.0.0` | Semantic versioned releases |\n| `latest` | Most recent build (mutable, use with caution) |\n| `sha-abc1234` | Git commit SHA for traceability |\n| `main`, `develop` | Branch-based tags for CI/CD |\n| `20260410` | Date-based tags for nightly builds |\n\nAlways push both a version tag and `latest` for release builds. Use immutable tags (semver, SHA) for production.\n\n## Private Registries\n\n| Registry | URL Pattern | Auth Method |\n|----------|-------------|-------------|\n| Docker Hub | `docker.io/username/image` | Username + password/token |\n| GHCR | `ghcr.io/org/image` | GitHub PAT or GITHUB_TOKEN |\n| AWS ECR | `account.dkr.ecr.region.amazonaws.com/image` | AWS CLI + IAM |\n| GCP Artifact Registry | `region-docker.pkg.dev/project/repo/image` | `gcloud auth configure-docker` |\n| Self-hosted | `registry.example.com/image` | Username + password, TLS certs |\n\nFor CI/CD, store registry credentials as secrets (GitHub Actions secrets, AWS Secrets Manager). Never hardcode credentials in Dockerfiles or Compose files.\n\n## Image Digests\n\nEvery pushed image has an immutable SHA256 digest:\n\n```bash\n# Get digest after push\ndocker inspect --format='{{index .RepoDigests 0}}' myapp:v1.0.0\n\n# Pull by digest (immutable)\ndocker pull myregistry/myapp@sha256:abc123...\n```\n\nUse digests in production for guaranteed reproducibility. Tags are mutable and can be overwritten.\n",
+  "sections": [
+    {
+      "id": "login",
+      "title": "Registry authentication",
+      "body": "Use `docker login` with `--password-stdin` for secure authentication. Docker Hub uses username/password or access tokens. GHCR uses GitHub PATs or the `GITHUB_TOKEN` in CI. AWS ECR uses `aws ecr get-login-password` piped to `docker login`. Store credentials securely — never in Dockerfiles, Compose files, or source control.",
+      "tags": ["login", "auth", "credentials", "token", "password-stdin"]
+    },
+    {
+      "id": "push-pull",
+      "title": "Pushing and pulling images",
+      "body": "Tag images with the full registry path before pushing: `docker tag local:tag registry/repo:tag`. Push with `docker push`. Pull with `docker pull`. Images are pulled automatically by [[docker/compose]] when using `image:` in service definitions. For [[docker/build]], use `docker buildx build --push` to build and push in one step.",
+      "tags": ["push", "pull", "tag", "docker-push", "docker-pull"]
+    },
+    {
+      "id": "tagging",
+      "title": "Tagging strategies",
+      "body": "Use semantic versioning (`v1.0.0`) for releases. Git commit SHAs (`sha-abc1234`) for traceability. Branch names (`main`, `develop`) for CI/CD. Date stamps for nightly builds. Always push both a versioned tag and `latest` for releases. Prefer immutable tags (semver, digest) in production — `latest` is mutable and unreliable for reproducibility.",
+      "tags": ["tagging", "semver", "sha", "latest", "immutable", "versioning"]
+    },
+    {
+      "id": "private-registries",
+      "title": "Private registries",
+      "body": "Docker Hub, GHCR, AWS ECR, GCP Artifact Registry, and self-hosted registries all support private images. Configure authentication per registry. In CI/CD, use platform-native secrets (GitHub Actions secrets, AWS IAM roles). Self-hosted registries require TLS certificates and may need a credentials store. See [[docker/compose]] for using private images in Compose files.",
+      "tags": ["private", "docker-hub", "ghcr", "ecr", "gcr", "self-hosted", "tls"]
+    }
+  ],
+  "links": [
+    { "uri": "docker/build", "context": "Build images before pushing to registries" },
+    { "uri": "docker/compose", "context": "Compose pulls images from registries for services" },
+    { "uri": "docker/build#best-practices", "context": "Tagging best practices for registry pushes" },
+    { "uri": "docker/compose#services", "context": "Service image references in Compose files" }
+  ],
+  "related": [
+    { "uri": "docker/build", "relation": "prerequisite", "note": "Images must be built before they can be pushed to a registry" },
+    { "uri": "docker/compose", "relation": "see-also", "note": "Compose services pull images from registries" }
+  ],
+  "scripts": [
+    {
+      "id": "push-image",
+      "name": "Push Image",
+      "description": "Tag and push a Docker image to a container registry",
+      "lang": "bash",
+      "runtime": "docker>=20",
+      "entry": "./scripts/push-image.sh",
+      "env": {
+        "DOCKER_REGISTRY": { "required": true, "secret": false, "description": "Registry URL (e.g. ghcr.io/myorg, docker.io/myuser)" },
+        "DOCKER_USERNAME": { "required": true, "secret": false, "description": "Registry username" },
+        "DOCKER_PASSWORD": { "required": true, "secret": true, "description": "Registry password or access token" }
+      },
+      "packages": ["docker"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "image": { "type": "string", "description": "Local image name to push" },
+        "tag": { "type": "string", "description": "Tag for the pushed image (e.g. v1.0.0, latest)" },
+        "registry": { "type": "string", "description": "Registry URL (e.g. ghcr.io/myorg, docker.io/myuser)" }
+      },
+      "required": ["image", "tag", "registry"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "digest": { "type": "string", "description": "SHA256 digest of the pushed image" },
+        "repository": { "type": "string", "description": "Full repository path (registry/repo:tag)" },
+        "pushed": { "type": "boolean", "description": "Whether the push succeeded" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "docker/build", "reason": "Images must be built before pushing to a registry" }
+  ],
+  "more": {
+    "docs": "https://docs.docker.com/docker-hub/",
+    "ghcr": "https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-container-registry",
+    "ecr": "https://docs.aws.amazon.com/AmazonECR/latest/userguide/"
+  },
+  "frontmatter": {
+    "created": "2026-04-10",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "developers, AI agents, DevOps engineers",
+    "estimated_reading_time": "4 min",
+    "prerequisites": ["docker/build"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

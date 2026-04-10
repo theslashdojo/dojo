@@ -1,0 +1,143 @@
+{
+  "name": "contract-deploy",
+  "version": "1.0.0",
+  "uri": "ethereum/contract-deploy",
+  "type": "skill",
+  "context": "Compile, deploy, and verify Solidity smart contracts on EVM chains using Hardhat or Foundry",
+  "info": "This skill covers the full contract deployment lifecycle: writing Solidity, compiling with solc, deploying to any EVM chain via Hardhat or Foundry, and verifying source code on Etherscan or Blockscout. It handles constructor arguments, deterministic deploys via CREATE2, proxy patterns, and multi-chain deployment scripts. Use the sub-skills for toolchain-specific workflows: [[ethereum/contract-deploy/hardhat]] for Hardhat ignition, [[ethereum/contract-deploy/foundry]] for forge scripts, and [[ethereum/contract-deploy/verify]] for post-deploy source verification.",
+  "parent": "ethereum",
+  "tags": ["deploy", "solidity", "smart-contract", "hardhat", "foundry", "etherscan", "create2", "proxy", "evm"],
+  "aliases": [
+    "deploy contract",
+    "deploy smart contract",
+    "contract deployment",
+    "solidity deploy",
+    "deploy to ethereum",
+    "deploy to base",
+    "ship a contract",
+    "put contract onchain"
+  ],
+  "triggers": [
+    "deploy a smart contract",
+    "deploy my contract to mainnet",
+    "deploy to base",
+    "deploy solidity contract",
+    "how do i deploy a contract",
+    "compile and deploy",
+    "push contract onchain"
+  ],
+  "body": "# Contract Deployment\n\nDeploying a Solidity contract involves compiling source to EVM bytecode and submitting a deployment transaction to a target chain. The transaction's `data` field contains the bytecode plus ABI-encoded constructor arguments. On success, the chain returns a contract address.\n\n## Workflow\n\n1. **Write** — author Solidity source in `contracts/` or `src/`\n2. **Compile** — `npx hardhat compile` or `forge build`\n3. **Test** — `npx hardhat test` or `forge test`\n4. **Configure** — set RPC URL, deployer private key, chain ID, constructor args\n5. **Deploy** — run deployment script targeting the chain\n6. **Verify** — submit source to Etherscan/Blockscout for public verification\n\n## Environment Variables\n\n| Variable | Purpose |\n|----------|----------|\n| `PRIVATE_KEY` | Deployer wallet private key |\n| `RPC_URL` | Chain RPC endpoint |\n| `ETHERSCAN_API_KEY` | Block explorer API key for verification |\n| `CHAIN_ID` | Target chain identifier |\n\n## Deployment Patterns\n\n- **Standard deploy** — `new Contract(args)` via CREATE opcode. Address depends on deployer nonce.\n- **CREATE2** — deterministic address from salt + init code hash. Use when the address must be known before deployment.\n- **Proxy patterns** — deploy implementation + proxy (UUPS or Transparent). Allows upgrades without changing the address.\n- **Multi-chain** — same deployment script targeting multiple RPCs. Use CREATE2 for same address across chains.\n\n## Gas Considerations\n\nDeployment gas depends on bytecode size and constructor execution. Estimate with `eth_estimateGas` before deploying. L2s like Base and Arbitrum have lower deployment costs. See [[ethereum/gas]] for fee estimation.\n\n## Post-Deploy\n\nAfter deployment, verify the contract source via [[ethereum/contract-deploy/verify]]. Record the contract address, deployment tx hash, and constructor args for downstream use.\n",
+  "sections": [
+    {
+      "id": "workflow",
+      "title": "Deployment workflow",
+      "body": "Write Solidity, compile, test, configure environment (RPC, private key, chain), run deploy script, verify source. This sequence applies regardless of toolchain.",
+      "tags": ["workflow", "compile", "test", "deploy", "verify"]
+    },
+    {
+      "id": "env-vars",
+      "title": "Environment variables",
+      "body": "`PRIVATE_KEY` for the deployer wallet, `RPC_URL` for the target chain endpoint, `ETHERSCAN_API_KEY` for verification, `CHAIN_ID` for the target network. Never commit private keys to source control.",
+      "tags": ["env", "private-key", "rpc", "etherscan"]
+    },
+    {
+      "id": "deployment-patterns",
+      "title": "Deployment patterns",
+      "body": "Standard CREATE deploy uses the deployer's nonce for address derivation. CREATE2 produces deterministic addresses from a salt and init code hash. Proxy patterns (UUPS, Transparent) separate logic from storage for upgradeability. Multi-chain deploys reuse the same script across RPCs, optionally using CREATE2 for address consistency.",
+      "tags": ["create2", "proxy", "uups", "transparent", "multi-chain", "deterministic"]
+    },
+    {
+      "id": "gas",
+      "title": "Gas considerations",
+      "body": "Deployment gas scales with bytecode size and constructor complexity. Use `eth_estimateGas` before submitting. L2s are 10-100x cheaper than mainnet for deployment. See [[ethereum/gas]] for detailed fee estimation.",
+      "tags": ["gas", "cost", "l2", "estimate"]
+    }
+  ],
+  "links": [
+    { "uri": "ethereum/contract-deploy/hardhat", "context": "Deploy using Hardhat and Ignition" },
+    { "uri": "ethereum/contract-deploy/foundry", "context": "Deploy using Foundry forge scripts" },
+    { "uri": "ethereum/contract-deploy/verify", "context": "Verify contract source on block explorers" },
+    { "uri": "ethereum/gas", "context": "Gas estimation for deployment transactions" },
+    { "uri": "ethereum/wallets", "context": "Wallet setup for signing deployment transactions" },
+    { "uri": "ethereum/x402/server", "context": "Deploy a contract that accepts x402 payments" },
+    { "uri": "ethereum/gas#estimation", "context": "Estimate deployment gas before submitting" },
+    { "uri": "ethereum/gas#l2-costs", "context": "L2 cost comparison for cheaper deployments" },
+    { "uri": "ethereum/wallets#key-storage", "context": "Secure key storage for deployer wallets" },
+    { "uri": "ethereum/contract-deploy/hardhat#ignition-module", "context": "Hardhat Ignition module format for declarative deploys" },
+    { "uri": "ethereum/contract-deploy/foundry#forge-script", "context": "Foundry forge script deployment approach" },
+    { "uri": "ethereum/contract-deploy/verify#troubleshooting", "context": "Troubleshooting verification failures" }
+  ],
+  "related": [
+    { "uri": "ethereum/gas", "relation": "see-also", "note": "Gas estimation is critical for deployment cost planning" },
+    { "uri": "ethereum/wallets", "relation": "prerequisite", "note": "A funded wallet is required before deploying" },
+    { "uri": "ethereum/contract-deploy/verify", "relation": "see-also", "note": "Verification should follow every production deployment" }
+  ],
+  "sub": [
+    "ethereum/contract-deploy/hardhat",
+    "ethereum/contract-deploy/foundry",
+    "ethereum/contract-deploy/verify"
+  ],
+  "scripts": [
+    {
+      "id": "deploy-contract",
+      "name": "Deploy Contract",
+      "description": "Compile and deploy a Solidity contract to a target EVM chain",
+      "lang": "bash",
+      "runtime": "node>=18",
+      "entry": "./scripts/deploy.sh",
+      "env": {
+        "PRIVATE_KEY": { "required": true, "secret": true, "description": "Deployer wallet private key" },
+        "RPC_URL": { "required": true, "secret": false, "description": "Target chain RPC endpoint" },
+        "CONTRACT_NAME": { "required": true, "secret": false, "description": "Name of the contract to deploy" },
+        "CONSTRUCTOR_ARGS": { "required": false, "secret": false, "description": "ABI-encoded constructor arguments" }
+      },
+      "packages": ["hardhat", "ethers@6"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "contractName": { "type": "string", "description": "Solidity contract name" },
+        "chain": { "type": "string", "description": "Target chain (e.g. base, ethereum, arbitrum)" },
+        "rpcUrl": { "type": "string", "description": "RPC endpoint URL" },
+        "constructorArgs": { "type": "array", "description": "Constructor arguments" },
+        "toolchain": { "type": "string", "enum": ["hardhat", "foundry"], "description": "Development toolchain" },
+        "verify": { "type": "boolean", "default": true, "description": "Verify source after deploy" }
+      },
+      "required": ["contractName", "chain", "rpcUrl"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "contractAddress": { "type": "string", "description": "Deployed contract address" },
+        "transactionHash": { "type": "string", "description": "Deployment transaction hash" },
+        "blockNumber": { "type": "integer", "description": "Block number of deployment" },
+        "verified": { "type": "boolean", "description": "Whether source verification succeeded" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "ethereum/wallets", "reason": "A funded wallet is required for signing deployment transactions" }
+  ],
+  "more": {
+    "docs": "https://ethereum.org/developers/docs/smart-contracts/deploying",
+    "hardhat": "https://hardhat.org/hardhat-runner/docs/guides/deploying",
+    "foundry": "https://book.getfoundry.sh/forge/deploying"
+  },
+  "frontmatter": {
+    "created": "2026-04-10",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "5 min",
+    "prerequisites": ["ethereum/wallets"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

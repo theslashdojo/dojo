@@ -1,0 +1,92 @@
+{
+  "name": "stripe",
+  "version": "1.0.0",
+  "uri": "stripe",
+  "type": "ecosystem",
+  "context": "Stripe payments platform — charges, subscriptions, checkout, webhooks, and Connect marketplace",
+  "info": "The Stripe ecosystem covers online payment processing, recurring billing, hosted checkout pages, webhook event handling, and multi-party marketplace payments via Connect. Stripe provides a unified API for accepting credit cards, bank transfers, and dozens of local payment methods worldwide. The platform handles PCI compliance, fraud detection, and regulatory requirements. This tree is organized around the jobs an agent actually performs: creating payment intents, setting up subscriptions, building checkout flows, handling webhook events, and managing Connect accounts. The stripe-node SDK is the primary server-side library. All operations support test mode with `sk_test_` keys.",
+  "parent": null,
+  "tags": ["stripe", "payments", "subscriptions", "checkout", "webhooks", "billing", "connect", "api"],
+  "aliases": [
+    "stripe",
+    "stripe payments",
+    "stripe api",
+    "stripe billing",
+    "stripe connect",
+    "payment processing",
+    "online payments",
+    "credit card payments",
+    "stripe platform"
+  ],
+  "triggers": [
+    "accept payments with stripe",
+    "set up stripe payments",
+    "create a subscription with stripe",
+    "build a checkout page",
+    "handle stripe webhooks",
+    "marketplace payments with stripe connect",
+    "process credit card payments",
+    "integrate stripe"
+  ],
+  "body": "# Stripe Ecosystem\n\nStripe is a payments platform where agents create payment intents, manage subscriptions, build checkout flows, handle webhook events, and orchestrate marketplace payments. The Stripe API provides a unified interface for accepting payments across cards, bank transfers, wallets, and local payment methods in 195+ countries.\n\n## Agent Jobs\n\nThe primary tasks an agent performs in this ecosystem:\n\n- **Create payment intents** — build server-side payment flows, confirm charges, and handle 3D Secure authentication. See [[stripe/payments]].\n- **Set up subscriptions** — create recurring billing with prices, trial periods, and automatic invoicing. See [[stripe/subscriptions]].\n- **Build checkout flows** — generate hosted checkout sessions for one-time and recurring payments. See [[stripe/checkout]].\n- **Handle webhooks** — receive and verify Stripe events for payment confirmations, subscription changes, and disputes. See [[stripe/webhooks]].\n- **Manage Connect accounts** — onboard sellers, split payments, and handle payouts in marketplace scenarios. See [[stripe/connect]].\n\n## API Overview\n\nAll Stripe API requests use `https://api.stripe.com` as the base URL. Authentication is via Bearer token using your secret key. The API is RESTful with consistent resource patterns:\n\n| Operation | Pattern | Example |\n|-----------|---------|----------|\n| Create | `POST /v1/{resource}` | `POST /v1/payment_intents` |\n| Retrieve | `GET /v1/{resource}/{id}` | `GET /v1/payment_intents/pi_xxx` |\n| Update | `POST /v1/{resource}/{id}` | `POST /v1/payment_intents/pi_xxx` |\n| List | `GET /v1/{resource}` | `GET /v1/payment_intents?limit=10` |\n| Delete | `DELETE /v1/{resource}/{id}` | `DELETE /v1/customers/cus_xxx` |\n\n## Authentication\n\nStripe uses API keys for authentication:\n\n- **Secret key** (`sk_test_...` / `sk_live_...`) — server-side only, full API access\n- **Publishable key** (`pk_test_...` / `pk_live_...`) — client-side, limited to tokenization\n- **Restricted keys** — scoped permissions for specific resources\n\n```javascript\nimport Stripe from 'stripe';\nconst stripe = new Stripe(process.env.STRIPE_SECRET_KEY);\n```\n\n## Test Mode\n\nAll skills in this tree work with test mode keys (`sk_test_`). Use Stripe's test card numbers:\n\n| Card | Number | Behavior |\n|------|--------|----------|\n| Visa (success) | `4242424242424242` | Always succeeds |\n| Visa (decline) | `4000000000000002` | Always declines |\n| 3D Secure | `4000002500003155` | Requires authentication |\n| Insufficient funds | `4000000000009995` | Insufficient funds decline |\n\n## Libraries\n\n- **stripe-node** — official Node.js/TypeScript SDK\n- **stripe-python** — official Python SDK\n- **stripe-ruby** — official Ruby SDK\n- **stripe-go** — official Go SDK\n- **Stripe CLI** — local webhook testing, event forwarding, log tailing\n",
+  "sections": [
+    {
+      "id": "api-overview",
+      "title": "API overview",
+      "body": "The Stripe API at `https://api.stripe.com` follows RESTful conventions. All resources support create, retrieve, update, list, and (where applicable) delete. Responses use JSON. Pagination uses cursor-based `starting_after` and `ending_before` parameters. Idempotency keys prevent duplicate operations. See [[stripe/payments]] for payment-specific endpoints and [[stripe/subscriptions]] for billing endpoints.",
+      "tags": ["api", "rest", "endpoints", "pagination", "idempotency"]
+    },
+    {
+      "id": "authentication",
+      "title": "Authentication",
+      "body": "Use secret keys (`sk_test_` / `sk_live_`) for server-side API calls. Publishable keys (`pk_test_` / `pk_live_`) are safe for client-side tokenization. Restricted keys allow scoped permissions per resource. Pass the key via `Authorization: Bearer sk_test_...` header or initialize the SDK with `new Stripe(secretKey)`. Never expose secret keys in client-side code or version control.",
+      "tags": ["authentication", "api-keys", "secret-key", "publishable-key", "restricted-keys"]
+    },
+    {
+      "id": "test-mode",
+      "title": "Test mode",
+      "body": "Test mode uses `sk_test_` keys and does not process real charges. Use test card numbers like `4242424242424242` for successful payments and `4000000000000002` for declines. The Stripe CLI (`stripe listen --forward-to localhost:3000/webhook`) forwards test webhook events locally. All [[stripe/payments]], [[stripe/subscriptions]], and [[stripe/checkout]] operations work identically in test mode.",
+      "tags": ["test-mode", "testing", "test-cards", "stripe-cli", "sandbox"]
+    }
+  ],
+  "links": [
+    { "uri": "stripe/payments", "context": "Create and confirm payment intents, handle card payments" },
+    { "uri": "stripe/subscriptions", "context": "Recurring billing with subscriptions, prices, and invoices" },
+    { "uri": "stripe/checkout", "context": "Hosted checkout sessions for one-time and recurring payments" },
+    { "uri": "stripe/webhooks", "context": "Handle Stripe webhook events and verify signatures" },
+    { "uri": "stripe/connect", "context": "Marketplace payments, platform accounts, and payouts" },
+    { "uri": "stripe/payments#create-intent", "context": "Create a PaymentIntent with amount, currency, and payment method" },
+    { "uri": "stripe/payments#3d-secure", "context": "Handle 3D Secure authentication for SCA compliance" },
+    { "uri": "stripe/subscriptions#prices-products", "context": "Configure products and prices for recurring billing" },
+    { "uri": "stripe/subscriptions#trials", "context": "Set up free trial periods on subscriptions" },
+    { "uri": "stripe/checkout#create-session", "context": "Generate a hosted checkout session URL" },
+    { "uri": "stripe/webhooks#signature-verification", "context": "Verify webhook signatures to prevent spoofing" },
+    { "uri": "stripe/connect#account-types", "context": "Standard, Express, and Custom Connect account types" }
+  ],
+  "related": [
+    { "uri": "stripe/payments", "relation": "see-also", "note": "Payment intents are the core primitive for accepting payments" },
+    { "uri": "stripe/webhooks", "relation": "see-also", "note": "Webhooks are essential for asynchronous payment confirmation" },
+    { "uri": "stripe/checkout", "relation": "see-also", "note": "Checkout is the fastest way to start accepting payments" }
+  ],
+  "more": {
+    "docs": "https://docs.stripe.com",
+    "repo": "https://github.com/stripe/stripe-node",
+    "api": "https://api.stripe.com"
+  },
+  "frontmatter": {
+    "created": "2026-04-10",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "developers, AI agents, integrators",
+    "estimated_reading_time": "5 min",
+    "prerequisites": [],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://github.com/stripe/stripe-node",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

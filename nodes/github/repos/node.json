@@ -1,0 +1,130 @@
+{
+  "name": "repos",
+  "version": "1.0.0",
+  "uri": "github/repos",
+  "type": "skill",
+  "context": "Create, clone, configure, and manage GitHub repositories via the API",
+  "info": "This skill covers the full repository lifecycle on GitHub: creating new repos (public or private, user or org-owned), cloning and forking existing repos, configuring settings like default branches and merge options, and managing branch protection rules. All operations use the GitHub REST API via @octokit/rest. Agents use this skill to bootstrap new projects, fork upstream repos for contribution, and enforce branch policies. See [[github/auth]] for authentication setup and [[github/webhooks]] for event-driven repo automation.",
+  "parent": "github",
+  "tags": ["repos", "repository", "create-repo", "clone", "fork"],
+  "aliases": [
+    "github repos",
+    "github repository",
+    "create repository",
+    "manage repos",
+    "repo management",
+    "github repo api",
+    "fork repo",
+    "clone repo"
+  ],
+  "triggers": [
+    "create a github repository",
+    "create a new repo",
+    "fork a repository",
+    "clone a github repo",
+    "configure branch protection",
+    "manage repo settings",
+    "set up a github project"
+  ],
+  "body": "# Repository Management\n\nRepositories are the fundamental unit on GitHub. Every codebase, issue tracker, wiki, and Actions pipeline lives inside a repository. The GitHub API provides full CRUD access to repos, including creation, configuration, forking, and deletion.\n\n## Creating a Repository\n\n```javascript\nimport { Octokit } from \"@octokit/rest\";\n\nconst octokit = new Octokit({ auth: process.env.GITHUB_TOKEN });\n\n// Create a user-owned repo\nconst { data: repo } = await octokit.repos.createForAuthenticatedUser({\n  name: \"my-project\",\n  description: \"A new project\",\n  private: false,\n  auto_init: true,\n});\nconsole.log(repo.html_url, repo.clone_url);\n\n// Create an org-owned repo\nconst { data: orgRepo } = await octokit.repos.createInOrg({\n  org: \"my-org\",\n  name: \"shared-lib\",\n  description: \"Shared library\",\n  private: true,\n});\n```\n\n## Cloning and Forking\n\n```bash\n# Clone via HTTPS\ngit clone https://github.com/owner/repo.git\n\n# Clone via SSH\ngit clone git@github.com:owner/repo.git\n```\n\n```javascript\n// Fork a repository\nconst { data: fork } = await octokit.repos.createFork({\n  owner: \"upstream-owner\",\n  repo: \"upstream-repo\",\n});\n```\n\n## Repository Settings\n\n```javascript\n// Update repo settings\nawait octokit.repos.update({\n  owner: \"my-org\",\n  repo: \"my-project\",\n  default_branch: \"main\",\n  has_issues: true,\n  has_wiki: false,\n  allow_squash_merge: true,\n  allow_merge_commit: false,\n  allow_rebase_merge: true,\n  delete_branch_on_merge: true,\n});\n```\n\n## Branch Protection\n\n```javascript\n// Set branch protection rules\nawait octokit.repos.updateBranchProtection({\n  owner: \"my-org\",\n  repo: \"my-project\",\n  branch: \"main\",\n  required_status_checks: {\n    strict: true,\n    contexts: [\"ci/test\", \"ci/lint\"],\n  },\n  enforce_admins: true,\n  required_pull_request_reviews: {\n    required_approving_review_count: 1,\n  },\n  restrictions: null,\n});\n```\n\n## Environment Variables\n\n| Variable | Purpose |\n|----------|----------|\n| `GITHUB_TOKEN` | Personal access token or installation token |\n| `GITHUB_ORG` | Target organization (optional) |\n",
+  "sections": [
+    {
+      "id": "create",
+      "title": "Creating repositories",
+      "body": "Use `octokit.repos.createForAuthenticatedUser()` for personal repos and `octokit.repos.createInOrg()` for organization repos. Set `auto_init: true` to create with a default README. Set `private: true` for private repos. The response includes `html_url`, `clone_url`, and `default_branch`. See [[github/auth]] for token setup.",
+      "tags": ["create", "new-repo", "org", "user", "auto-init"]
+    },
+    {
+      "id": "clone-fork",
+      "title": "Cloning and forking",
+      "body": "Clone via HTTPS (`https://github.com/owner/repo.git`) or SSH (`git@github.com:owner/repo.git`). Fork with `octokit.repos.createFork()`. Forks are the standard contribution model — fork, branch, commit, then open a [[github/pull-requests]] back to the upstream repo.",
+      "tags": ["clone", "fork", "https", "ssh", "contribution"]
+    },
+    {
+      "id": "settings",
+      "title": "Repository settings",
+      "body": "Configure with `octokit.repos.update()`. Key settings: `default_branch`, `has_issues`, `has_wiki`, `allow_squash_merge`, `allow_merge_commit`, `allow_rebase_merge`, `delete_branch_on_merge`. These control how [[github/pull-requests]] are merged and what features are enabled.",
+      "tags": ["settings", "configuration", "merge-options", "default-branch"]
+    },
+    {
+      "id": "branch-protection",
+      "title": "Branch protection rules",
+      "body": "Protect branches with `octokit.repos.updateBranchProtection()`. Require status checks from [[github/actions]] workflows, enforce pull request reviews, restrict who can push, and require signed commits. Branch protection ensures code quality by gating merges on passing CI and peer review.",
+      "tags": ["branch-protection", "status-checks", "required-reviews", "signed-commits"]
+    }
+  ],
+  "links": [
+    { "uri": "github/auth", "context": "Authentication setup for API access" },
+    { "uri": "github/pull-requests", "context": "Open PRs against repos after forking" },
+    { "uri": "github/actions", "context": "CI/CD workflows run inside repositories" },
+    { "uri": "github/webhooks", "context": "React to repository events" },
+    { "uri": "github/issues", "context": "Issue tracking within repositories" },
+    { "uri": "github/auth#personal-access-tokens", "context": "PAT setup for repo API access" },
+    { "uri": "github/pull-requests#create", "context": "Open a PR after pushing to a fork or branch" },
+    { "uri": "github/actions#workflow-syntax", "context": "Define CI workflows that run on repo events" },
+    { "uri": "github/webhooks#setup", "context": "Add webhooks to a repository for event notifications" },
+    { "uri": "github/repos#branch-protection", "context": "Protect branches with required checks and reviews" }
+  ],
+  "related": [
+    { "uri": "github/auth", "relation": "prerequisite", "note": "A valid token is required for all repository API operations" },
+    { "uri": "github/pull-requests", "relation": "see-also", "note": "Pull requests are how changes flow into protected branches" },
+    { "uri": "github/actions", "relation": "see-also", "note": "Actions workflows are defined per-repository" }
+  ],
+  "scripts": [
+    {
+      "id": "create-repo",
+      "name": "Create Repository",
+      "description": "Create a new GitHub repository via the REST API",
+      "lang": "javascript",
+      "runtime": "node>=18",
+      "entry": "./scripts/create-repo.js",
+      "env": {
+        "GITHUB_TOKEN": { "required": true, "secret": true, "description": "GitHub personal access token or installation token" }
+      },
+      "packages": ["@octokit/rest"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "description": "Repository name" },
+        "description": { "type": "string", "description": "Repository description" },
+        "private": { "type": "boolean", "default": false, "description": "Whether the repo is private" },
+        "org": { "type": "string", "description": "Organization name (omit for user-owned repo)" }
+      },
+      "required": ["name"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "repoUrl": { "type": "string", "description": "HTML URL of the created repository" },
+        "cloneUrl": { "type": "string", "description": "HTTPS clone URL" },
+        "defaultBranch": { "type": "string", "description": "Default branch name (usually main)" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "github/auth", "reason": "A valid GitHub token is required for repository API calls" }
+  ],
+  "more": {
+    "docs": "https://docs.github.com/en/rest/repos",
+    "octokit": "https://octokit.github.io/rest.js/v20/#repos",
+    "api": "https://api.github.com"
+  },
+  "frontmatter": {
+    "created": "2026-04-10",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "4 min",
+    "prerequisites": ["github/auth"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

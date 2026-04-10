@@ -1,0 +1,93 @@
+{
+  "name": "blocks",
+  "version": "1.0.0",
+  "uri": "notion/blocks",
+  "type": "context",
+  "content_type": "reference",
+  "context": "Notion block types — paragraphs, headings, lists, toggles, callouts, code, embeds",
+  "info": "Blocks are the atomic content units in Notion. Every piece of content inside a page is a block: paragraphs, headings (h1/h2/h3), bulleted lists, numbered lists, to-do items, toggles, callouts, code blocks, quotes, dividers, tables, images, bookmarks, embeds, and more. Blocks can be nested — toggles contain child blocks, list items can have sub-items, and columns organize blocks side by side. The Blocks API supports retrieving, updating, deleting, and appending children. All text content uses the rich text object format with annotations for bold, italic, strikethrough, code, color, and links.",
+  "parent": "notion",
+  "tags": ["blocks", "paragraph", "heading", "list", "toggle", "callout", "code", "embed"],
+  "aliases": [
+    "notion blocks",
+    "notion block types",
+    "notion content blocks",
+    "block api",
+    "notion paragraph",
+    "notion heading",
+    "notion toggle",
+    "notion callout",
+    "notion code block",
+    "rich text"
+  ],
+  "triggers": [
+    "what block types does notion support",
+    "add content to a notion page",
+    "append blocks to notion page",
+    "notion rich text format",
+    "create a toggle block",
+    "add a code block to notion",
+    "nest blocks in notion",
+    "notion block structure"
+  ],
+  "body": "# Notion Blocks\n\nBlocks are the building blocks of all Notion content. Every element inside a page \u2014 from a simple paragraph to a complex toggle with nested content \u2014 is a block. The Blocks API allows agents to retrieve, update, delete, and append blocks to pages.\n\n## Block Types\n\nNotion supports a wide range of block types:\n\n| Block Type | API Type Key | Supports Children |\n|-----------|-------------|-------------------|\n| Paragraph | `paragraph` | Yes |\n| Heading 1 | `heading_1` | Yes (toggleable) |\n| Heading 2 | `heading_2` | Yes (toggleable) |\n| Heading 3 | `heading_3` | Yes (toggleable) |\n| Bulleted list | `bulleted_list_item` | Yes (sub-items) |\n| Numbered list | `numbered_list_item` | Yes (sub-items) |\n| To-do | `to_do` | Yes (sub-items) |\n| Toggle | `toggle` | Yes (required) |\n| Callout | `callout` | Yes |\n| Quote | `quote` | Yes |\n| Code | `code` | No |\n| Divider | `divider` | No |\n| Table | `table` | Yes (table_row) |\n| Image | `image` | No |\n| Bookmark | `bookmark` | No |\n| Embed | `embed` | No |\n| Equation | `equation` | No |\n| Column list | `column_list` | Yes (column) |\n\n## Nesting\n\nBlocks that support children can contain other blocks, creating nested structures. Toggles are the most common parent block \u2014 their content is hidden until expanded. List items nest to create sub-lists. Headings can optionally be toggleable. Maximum nesting depth varies by block type.\n\n```javascript\nconst { Client } = require('@notionhq/client');\nconst notion = new Client({ auth: process.env.NOTION_TOKEN });\n\n// Toggle with nested content\nawait notion.blocks.children.append({\n  block_id: pageId,\n  children: [\n    {\n      type: 'toggle',\n      toggle: {\n        rich_text: [{ text: { content: 'Click to expand' } }],\n        children: [\n          {\n            type: 'paragraph',\n            paragraph: {\n              rich_text: [{ text: { content: 'Hidden content revealed!' } }]\n            }\n          }\n        ]\n      }\n    }\n  ]\n});\n```\n\n## Append Children\n\nAppend blocks to a page or parent block with `PATCH /v1/blocks/{block_id}/children` or `notion.blocks.children.append()`. Blocks are added at the end of the existing content. To insert at a specific position, use the `after` parameter with a block ID.\n\n```javascript\n// Append multiple block types\nawait notion.blocks.children.append({\n  block_id: pageId,\n  children: [\n    {\n      type: 'heading_2',\n      heading_2: {\n        rich_text: [{ text: { content: 'Section Title' } }]\n      }\n    },\n    {\n      type: 'paragraph',\n      paragraph: {\n        rich_text: [\n          { text: { content: 'Regular text ' } },\n          { text: { content: 'bold text' }, annotations: { bold: true } },\n          { text: { content: ' and ' } },\n          { text: { content: 'code' }, annotations: { code: true } }\n        ]\n      }\n    },\n    {\n      type: 'code',\n      code: {\n        rich_text: [{ text: { content: 'console.log(\"hello\");' } }],\n        language: 'javascript'\n      }\n    },\n    {\n      type: 'callout',\n      callout: {\n        icon: { type: 'emoji', emoji: '\u26a0\ufe0f' },\n        rich_text: [{ text: { content: 'Important note here.' } }]\n      }\n    }\n  ]\n});\n```\n\n## Rich Text\n\nAll text content in blocks uses the rich text object format. Each rich text element has:\n\n- **text.content** \u2014 the plain text string\n- **text.link** \u2014 optional URL link (null if none)\n- **annotations** \u2014 formatting: `bold`, `italic`, `strikethrough`, `underline`, `code` (booleans), and `color` (string)\n- **type** \u2014 `text`, `mention`, or `equation`\n\nMentions can reference pages (`{ page: { id } }`), databases (`{ database: { id } }`), users (`{ user: { id } }`), or dates (`{ date: { start, end } }`).\n\n```javascript\n// Rich text with multiple annotations\nconst richText = [\n  { text: { content: 'Normal ' } },\n  { text: { content: 'bold' }, annotations: { bold: true } },\n  { text: { content: ', ' } },\n  { text: { content: 'italic' }, annotations: { italic: true } },\n  { text: { content: ', ' } },\n  {\n    text: { content: 'linked text', link: { url: 'https://notion.so' } },\n    annotations: { underline: true, color: 'blue' }\n  }\n];\n```\n",
+  "sections": [
+    {
+      "id": "block-types",
+      "title": "Block types",
+      "body": "Notion supports paragraph, heading_1/2/3, bulleted_list_item, numbered_list_item, to_do, toggle, callout, quote, code (with language), divider, table/table_row, image (external or file), bookmark, embed, equation, column_list/column, and more. Each type has a specific object shape in the API. Code blocks accept a `language` field. Callouts accept an `icon` (emoji or external URL). Images accept `external: { url }` or `file: { url }`. See [[notion/pages#content-blocks]] for using blocks in page creation.",
+      "tags": ["types", "paragraph", "heading", "list", "toggle", "callout", "code", "image", "table"]
+    },
+    {
+      "id": "nesting",
+      "title": "Nesting blocks",
+      "body": "Blocks that support `has_children` can contain child blocks. Toggles are the primary nesting mechanism \u2014 their children are hidden until the toggle is expanded. List items nest to create indented sub-lists. Headings can be toggled to show/hide their children. Column lists contain column blocks, which in turn contain content blocks. Use `notion.blocks.children.list()` to retrieve children and `notion.blocks.children.append()` to add them. See [[notion/pages#content-blocks]] for initial block structure.",
+      "tags": ["nesting", "children", "toggle", "sub-items", "columns", "depth"]
+    },
+    {
+      "id": "append-children",
+      "title": "Append children",
+      "body": "Use `PATCH /v1/blocks/{block_id}/children` or `notion.blocks.children.append({ block_id, children })` to add blocks. The `block_id` can be a page ID (append to page) or a block ID (append to that block's children). Use the `after` parameter with a sibling block ID to insert at a specific position. Retrieve existing children with `GET /v1/blocks/{block_id}/children` or `notion.blocks.children.list()`. Update a single block with `PATCH /v1/blocks/{block_id}`. Delete with `DELETE /v1/blocks/{block_id}`. Be mindful of [[notion#rate-limits]] when performing bulk block operations.",
+      "tags": ["append", "insert", "update", "delete", "children", "position"]
+    },
+    {
+      "id": "rich-text",
+      "title": "Rich text format",
+      "body": "Rich text is an array of objects, each with `type` (text, mention, equation), content, optional `link`, and `annotations` (bold, italic, strikethrough, underline, code, color). Colors: default, gray, brown, orange, yellow, green, blue, purple, pink, red, plus background variants (gray_background, etc.). Mentions reference pages, databases, users, or dates inline. Equations use KaTeX syntax. Maximum 2000 characters per rich text element. See [[notion/pages#properties]] for rich text in page properties.",
+      "tags": ["rich-text", "annotations", "bold", "italic", "code", "color", "mention", "link"]
+    }
+  ],
+  "links": [
+    { "uri": "notion/pages", "context": "Pages contain blocks as their content" },
+    { "uri": "notion/pages#create", "context": "Create pages with initial block content" },
+    { "uri": "notion/pages#content-blocks", "context": "Using blocks during page creation" },
+    { "uri": "notion/databases", "context": "Database pages also contain block content" },
+    { "uri": "notion/integrations", "context": "Integration setup for Blocks API access" },
+    { "uri": "notion#rate-limits", "context": "Rate limits for bulk block operations" },
+    { "uri": "notion#api-overview", "context": "Blocks endpoint at /v1/blocks" }
+  ],
+  "related": [
+    { "uri": "notion/pages", "relation": "see-also", "note": "Blocks compose the content body of every Notion page" },
+    { "uri": "notion/databases", "relation": "see-also", "note": "Database pages contain blocks in addition to properties" }
+  ],
+  "more": {
+    "docs": "https://developers.notion.com/reference/block",
+    "append": "https://developers.notion.com/reference/patch-block-children",
+    "types": "https://developers.notion.com/reference/block#block-type-objects"
+  },
+  "frontmatter": {
+    "created": "2026-04-10",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "7 min",
+    "prerequisites": [],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

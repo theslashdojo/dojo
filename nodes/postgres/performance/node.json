@@ -1,0 +1,96 @@
+{
+  "name": "performance",
+  "version": "1.0.0",
+  "uri": "postgres/performance",
+  "type": "context",
+  "content_type": "guide",
+  "context": "PostgreSQL performance tuning: EXPLAIN ANALYZE, indexes, connection pooling, vacuum, configuration",
+  "info": "PostgreSQL performance tuning covers query analysis with EXPLAIN ANALYZE, index strategy selection (B-tree, GIN, GiST, BRIN, partial, covering), connection pooling with PgBouncer, VACUUM and autovacuum configuration for dead tuple cleanup, and server configuration tuning (shared_buffers, work_mem, effective_cache_size, maintenance_work_mem). Performance issues typically stem from missing indexes, sequential scans on large tables, excessive connections, bloated tables needing VACUUM, or misconfigured memory settings. Always start with EXPLAIN ANALYZE to identify the bottleneck before making changes.",
+  "parent": "postgres",
+  "tags": ["performance", "explain", "indexes", "vacuum", "connection-pooling", "pgbouncer", "tuning"],
+  "aliases": [
+    "postgres performance",
+    "postgresql performance",
+    "query optimization",
+    "database tuning",
+    "postgres indexes",
+    "explain analyze",
+    "pgbouncer",
+    "connection pooling",
+    "vacuum postgres",
+    "slow query"
+  ],
+  "triggers": [
+    "optimize postgres query",
+    "query is slow",
+    "explain analyze",
+    "add an index",
+    "set up connection pooling",
+    "tune postgres configuration",
+    "vacuum the database",
+    "postgres is slow"
+  ],
+  "body": "# PostgreSQL Performance Tuning\n\nPerformance tuning starts with measurement. Always use EXPLAIN ANALYZE to understand what the query planner is doing before making changes. The most common fixes are adding indexes, tuning connection pooling, running VACUUM, and adjusting memory configuration.\n\n## EXPLAIN ANALYZE\n\nEXPLAIN ANALYZE runs the query and shows the actual execution plan with timing:\n\n```sql\nEXPLAIN (ANALYZE, BUFFERS, FORMAT TEXT)\nSELECT u.name, COUNT(o.id) AS order_count\nFROM users u\nJOIN orders o ON o.user_id = u.id\nWHERE u.created_at > '2025-01-01'\nGROUP BY u.name\nORDER BY order_count DESC\nLIMIT 10;\n```\n\nKey things to look for in the output:\n\n| Indicator | Problem | Solution |\n|-----------|---------|----------|\n| Seq Scan on large table | Missing index | Add index on filter/join columns |\n| Nested Loop with high row count | Inefficient join | Check join columns are indexed |\n| Sort with high cost | No index for ORDER BY | Add index matching sort order |\n| Rows Removed by Filter (high) | Index not selective enough | Use partial index or composite index |\n| Buffers: shared read (high) | Data not in cache | Increase shared_buffers or effective_cache_size |\n\n```sql\n-- Compare estimated vs actual rows\nEXPLAIN ANALYZE SELECT * FROM users WHERE status = 'active';\n-- If estimated rows differ wildly from actual, run ANALYZE:\nANALYZE users;\n```\n\n## Index Strategies\n\nChoose the right index type for the workload:\n\n```sql\n-- B-tree (default): equality and range queries\nCREATE INDEX idx_users_email ON users (email);\nCREATE INDEX idx_orders_created ON orders (created_at DESC);\n\n-- Composite index: multi-column lookups\nCREATE INDEX idx_orders_user_status ON orders (user_id, status);\n\n-- Partial index: only index relevant rows\nCREATE INDEX idx_orders_active ON orders (created_at)\nWHERE status = 'active';\n\n-- Covering index: include extra columns to enable index-only scans\nCREATE INDEX idx_users_email_name ON users (email) INCLUDE (name);\n\n-- GIN index: full-text search, arrays, JSONB\nCREATE INDEX idx_articles_search ON articles USING GIN (search_vector);\nCREATE INDEX idx_data_jsonb ON data USING GIN (metadata jsonb_path_ops);\n\n-- GiST index: geospatial (PostGIS), range types\nCREATE INDEX idx_locations_coords ON locations USING GIST (coords);\n\n-- BRIN index: large append-only tables with natural ordering\nCREATE INDEX idx_logs_created ON logs USING BRIN (created_at);\n```\n\n| Index Type | Best For | Size |\n|------------|----------|------|\n| B-tree | Equality, range, sorting | Medium |\n| GIN | Full-text, arrays, JSONB, trigrams | Large |\n| GiST | Geospatial, range types, nearest-neighbor | Medium |\n| HNSW | Vector similarity (pgvector) | Large |\n| BRIN | Append-only tables, time-series | Tiny |\n\n## Connection Pooling\n\nPostgreSQL creates a process per connection. Too many connections waste memory and cause contention. Use PgBouncer as a connection pooler:\n\n```ini\n# pgbouncer.ini\n[databases]\nmydb = host=localhost port=5432 dbname=mydb\n\n[pgbouncer]\nlisten_port = 6432\nlisten_addr = 0.0.0.0\nauth_type = md5\nauth_file = /etc/pgbouncer/userlist.txt\npool_mode = transaction\nmax_client_conn = 1000\ndefault_pool_size = 20\nmin_pool_size = 5\nreserve_pool_size = 5\n```\n\nPool modes:\n- **transaction** (recommended) — connection returned to pool after each transaction\n- **session** — connection held for the entire client session\n- **statement** — connection returned after each statement (no multi-statement transactions)\n\nApplication-side pool sizing:\n```javascript\n// pg Pool configuration\nconst pool = new pg.Pool({\n  connectionString: process.env.DATABASE_URL,\n  max: 20,            // max connections in pool\n  idleTimeoutMillis: 30000,\n  connectionTimeoutMillis: 2000,\n});\n```\n\n## VACUUM and Autovacuum\n\nPostgreSQL uses MVCC — updates and deletes create dead tuples. VACUUM reclaims space:\n\n```sql\n-- Manual vacuum\nVACUUM (VERBOSE) tablename;\n\n-- Full vacuum (rewrites table, requires exclusive lock)\nVACUUM FULL tablename;\n\n-- Analyze updates statistics for the query planner\nANALYZE tablename;\n\n-- Combined\nVACUUM ANALYZE tablename;\n\n-- Check dead tuples\nSELECT schemaname, relname, n_dead_tup, n_live_tup,\n       ROUND(n_dead_tup::numeric / NULLIF(n_live_tup, 0) * 100, 2) AS dead_pct\nFROM pg_stat_user_tables\nORDER BY n_dead_tup DESC;\n```\n\nAutovacuum configuration in `postgresql.conf`:\n```\nautovacuum = on\nautovacuum_vacuum_threshold = 50\nautovacuum_analyze_threshold = 50\nautovacuum_vacuum_scale_factor = 0.1\nautovacuum_analyze_scale_factor = 0.05\nautovacuum_max_workers = 3\n```\n\n## Configuration Tuning\n\nKey `postgresql.conf` settings (adjust for your server's RAM):\n\n| Setting | Guideline | Purpose |\n|---------|-----------|----------|\n| shared_buffers | 25% of RAM | PostgreSQL shared memory cache |\n| effective_cache_size | 50-75% of RAM | Planner's estimate of OS cache |\n| work_mem | 4-64 MB | Per-operation sort/hash memory |\n| maintenance_work_mem | 256 MB - 1 GB | VACUUM, CREATE INDEX memory |\n| wal_buffers | 64 MB | WAL write buffer |\n| max_connections | 100-300 | Use PgBouncer to multiplex |\n| random_page_cost | 1.1 (SSD) / 4.0 (HDD) | Planner cost for random I/O |\n\n```sql\n-- Check current settings\nSHOW shared_buffers;\nSHOW work_mem;\n\n-- Change at session level\nSET work_mem = '64MB';\n\n-- Change permanently (requires restart for some)\nALTER SYSTEM SET shared_buffers = '4GB';\nSELECT pg_reload_conf();  -- for settings that don't require restart\n```\n",
+  "sections": [
+    {
+      "id": "explain-analyze",
+      "title": "EXPLAIN ANALYZE",
+      "body": "Use `EXPLAIN (ANALYZE, BUFFERS, FORMAT TEXT)` to see actual execution plans with timing and buffer usage. Look for Seq Scans on large tables (add index), high row estimates vs actual (run ANALYZE), and Nested Loops with many iterations (check join indexes). Always measure before optimizing. See [[postgres/queries]] for the queries to analyze.",
+      "tags": ["explain", "analyze", "query-plan", "seq-scan", "buffers"]
+    },
+    {
+      "id": "index-strategies",
+      "title": "Index strategies",
+      "body": "B-tree for equality/range (default). GIN for full-text, arrays, JSONB, trigrams (see [[postgres/extensions#pg-trgm]]). GiST for geospatial and range types (see [[postgres/extensions#postgis]]). HNSW/IVFFlat for vectors (see [[postgres/extensions#pgvector]]). BRIN for time-series. Use partial indexes to index only relevant rows. Use covering indexes (`INCLUDE`) for index-only scans. Composite indexes should order columns by selectivity.",
+      "tags": ["index", "btree", "gin", "gist", "brin", "hnsw", "partial", "covering", "composite"]
+    },
+    {
+      "id": "connection-pooling",
+      "title": "Connection pooling",
+      "body": "PgBouncer is the standard PostgreSQL connection pooler. Use `transaction` mode for most applications. Set `default_pool_size` to match your database's `max_connections` divided by the number of application instances. Application-side pool (pg Pool) manages local connections; PgBouncer manages server-side. For [[postgres/queries#transactions]], transaction pool mode works correctly; session mode is needed for session-level settings like prepared statements.",
+      "tags": ["pgbouncer", "pool", "connections", "transaction-mode", "session-mode"]
+    },
+    {
+      "id": "vacuum-autovacuum",
+      "title": "VACUUM and autovacuum",
+      "body": "VACUUM reclaims dead tuples from MVCC. Autovacuum runs automatically based on thresholds. Monitor `n_dead_tup` in `pg_stat_user_tables`. VACUUM FULL rewrites the table (exclusive lock, use sparingly). For high-update tables, lower `autovacuum_vacuum_scale_factor` to trigger more frequent vacuuming. Run `ANALYZE` after bulk loads to update planner statistics.",
+      "tags": ["vacuum", "autovacuum", "dead-tuples", "mvcc", "bloat", "analyze"]
+    },
+    {
+      "id": "config-tuning",
+      "title": "Configuration tuning",
+      "body": "Set `shared_buffers` to 25% of RAM, `effective_cache_size` to 50-75% of RAM. Increase `work_mem` for complex sorts and hashes (but it's per-operation, not per-connection). Set `random_page_cost = 1.1` for SSDs. Use `ALTER SYSTEM SET` for persistent changes. Some settings require restart (shared_buffers), others just reload (`SELECT pg_reload_conf()`). Use [[postgres/replication]] WAL settings for replication workloads.",
+      "tags": ["config", "shared-buffers", "work-mem", "effective-cache-size", "postgresql-conf"]
+    }
+  ],
+  "links": [
+    { "uri": "postgres/queries", "context": "Queries to analyze and optimize" },
+    { "uri": "postgres/extensions#pgvector", "context": "HNSW and IVFFlat index tuning for vectors" },
+    { "uri": "postgres/extensions#postgis", "context": "GiST index tuning for geospatial" },
+    { "uri": "postgres/extensions#pg-trgm", "context": "GIN index tuning for trigram search" },
+    { "uri": "postgres/replication", "context": "WAL configuration affects replication performance" }
+  ],
+  "related": [
+    { "uri": "database/indexing", "relation": "see-also", "note": "General indexing strategies applicable to PostgreSQL" }
+  ],
+  "more": {
+    "docs": "https://www.postgresql.org/docs/current/performance-tips.html",
+    "pgbouncer": "https://www.pgbouncer.org",
+    "tuning": "https://pgtune.leopard.in.ua"
+  },
+  "frontmatter": {
+    "created": "2026-04-10",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "developers, AI agents, database administrators",
+    "estimated_reading_time": "7 min",
+    "prerequisites": [],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

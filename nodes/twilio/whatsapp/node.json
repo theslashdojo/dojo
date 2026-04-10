@@ -1,0 +1,127 @@
+{
+  "name": "whatsapp",
+  "version": "1.0.0",
+  "uri": "twilio/whatsapp",
+  "type": "skill",
+  "context": "Send WhatsApp messages using the Twilio WhatsApp Business API",
+  "info": "This skill covers sending WhatsApp messages through the Twilio WhatsApp Business API, including free-form session messages, pre-approved template messages, media messages, and sandbox testing. WhatsApp messages use the same Messaging API as SMS but with the `whatsapp:` prefix on phone numbers. Template messages are required for initiating conversations outside the 24-hour session window. The Twilio Sandbox for WhatsApp enables development and testing without a registered WhatsApp Business number.",
+  "parent": "twilio",
+  "tags": ["whatsapp", "messaging", "business", "templates", "media"],
+  "aliases": [
+    "whatsapp api",
+    "send whatsapp",
+    "twilio whatsapp",
+    "whatsapp business api",
+    "whatsapp messaging",
+    "whatsapp bot",
+    "whatsapp integration"
+  ],
+  "triggers": [
+    "send a whatsapp message",
+    "integrate whatsapp",
+    "whatsapp business api setup",
+    "send whatsapp template",
+    "whatsapp media message",
+    "whatsapp sandbox testing"
+  ],
+  "body": "# WhatsApp Messaging\n\nSend and receive WhatsApp messages through the Twilio WhatsApp Business API. WhatsApp uses the same Messaging API as SMS (see [[twilio/sms]]) with `whatsapp:` prefixed phone numbers.\n\n## Setup\n\nTo use WhatsApp in production, you need a registered WhatsApp Business Profile linked to your Twilio account. For development, use the Twilio Sandbox for WhatsApp — join by sending a code word to the sandbox number from your WhatsApp app.\n\n1. Go to Twilio Console > Messaging > Try it out > Send a WhatsApp message\n2. Send the join code from your WhatsApp to the sandbox number\n3. Use the sandbox number as your `from` in API calls\n\n## Sending a Message\n\n```javascript\nconst twilio = require(\"twilio\");\n\nconst client = twilio(\n  process.env.TWILIO_ACCOUNT_SID,\n  process.env.TWILIO_AUTH_TOKEN\n);\n\nconst message = await client.messages.create({\n  to: \"whatsapp:+15551234567\",\n  from: \"whatsapp:+14155238886\", // Sandbox or registered number\n  body: \"Hello from Twilio WhatsApp!\",\n});\n\nconsole.log(message.sid); // SM...\n```\n\n## Template Messages\n\nWhatsApp requires pre-approved templates for messages sent outside the 24-hour session window (i.e., when you are initiating a conversation). Templates are registered through the WhatsApp Business Manager and approved by Meta.\n\n```javascript\nconst message = await client.messages.create({\n  to: \"whatsapp:+15551234567\",\n  from: \"whatsapp:+14155238886\",\n  body: \"Your order #12345 has been shipped and will arrive by April 12.\",\n  // This matches an approved template pattern\n});\n```\n\nSession messages (replies within 24 hours of the user's last message) can contain any content without template approval.\n\n## Media Messages\n\nSend images, documents, audio, and video via WhatsApp:\n\n```javascript\nconst message = await client.messages.create({\n  to: \"whatsapp:+15551234567\",\n  from: \"whatsapp:+14155238886\",\n  body: \"Here is your receipt\",\n  mediaUrl: [\"https://example.com/receipt.pdf\"],\n});\n```\n\nSupported media types: JPEG, PNG, PDF, MP3, MP4, OGG. Maximum file size is 16 MB for most types.\n\n## Sandbox\n\nThe Twilio Sandbox allows testing without a production WhatsApp Business Profile. Sandbox limitations:\n\n- Only pre-joined numbers can receive messages\n- Limited to the sandbox phone number (`+14155238886`)\n- Cannot use custom templates\n- Intended for development only\n\nFor production, register a WhatsApp Business Profile through Twilio Console > Messaging > Senders > WhatsApp Senders.\n",
+  "sections": [
+    {
+      "id": "setup",
+      "title": "WhatsApp setup",
+      "body": "Production requires a WhatsApp Business Profile registered via Twilio Console > Messaging > Senders > WhatsApp Senders. For development, use the Twilio Sandbox: send the join code from your WhatsApp to the sandbox number. The sandbox number is `+14155238886`. See [[twilio#authentication]] for credential setup.",
+      "tags": ["setup", "sandbox", "business-profile", "registration"]
+    },
+    {
+      "id": "send-message",
+      "title": "Sending messages",
+      "body": "Use `client.messages.create()` with `whatsapp:` prefixed numbers. The `to` and `from` fields must include the `whatsapp:` prefix (e.g., `whatsapp:+15551234567`). The API is identical to SMS (see [[twilio/sms#send]]) — same `client.messages.create()` method, same response structure with `messageSid` and `status`.",
+      "tags": ["send", "create", "whatsapp-prefix", "messages-api"]
+    },
+    {
+      "id": "templates",
+      "title": "Message templates",
+      "body": "Templates are required for business-initiated conversations (outside the 24-hour session window). Register templates in WhatsApp Business Manager, get Meta approval, then send messages matching the template pattern. Session messages (within 24 hours of user's last inbound message) can be free-form. Templates support variables for personalization.",
+      "tags": ["templates", "approval", "session-window", "business-initiated"]
+    },
+    {
+      "id": "media",
+      "title": "Media messages",
+      "body": "Include `mediaUrl` to send images, documents, audio, or video. Supported formats: JPEG, PNG (images), PDF (documents), MP3, OGG (audio), MP4 (video). Max 16 MB for most types. Twilio fetches the media URL and delivers it via WhatsApp. For receiving media, inbound webhooks include `MediaUrl` and `MediaContentType` fields (similar to [[twilio/sms#mms-media]]).",
+      "tags": ["media", "images", "documents", "audio", "video", "mediaUrl"]
+    },
+    {
+      "id": "sandbox",
+      "title": "Sandbox testing",
+      "body": "The Twilio WhatsApp Sandbox enables development without a production Business Profile. Join by texting the code word to `+14155238886`. Only pre-joined numbers can receive sandbox messages. Custom templates are not available in sandbox mode. Transition to production by registering a WhatsApp Business Profile through the Twilio Console.",
+      "tags": ["sandbox", "testing", "development", "join"]
+    }
+  ],
+  "scripts": [
+    {
+      "id": "send-whatsapp",
+      "name": "Send WhatsApp",
+      "description": "Send a WhatsApp message using the Twilio WhatsApp Business API",
+      "lang": "javascript",
+      "runtime": "node>=18",
+      "entry": "./scripts/send-whatsapp.js",
+      "env": {
+        "TWILIO_ACCOUNT_SID": { "required": true, "secret": true, "description": "Twilio Account SID (starts with AC)" },
+        "TWILIO_AUTH_TOKEN": { "required": true, "secret": true, "description": "Twilio Auth Token" }
+      },
+      "packages": ["twilio"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "to": { "type": "string", "description": "Destination WhatsApp number with whatsapp: prefix (e.g. whatsapp:+15551234567)" },
+        "body": { "type": "string", "description": "Text content of the WhatsApp message" },
+        "mediaUrl": { "type": "array", "items": { "type": "string" }, "description": "Array of media URLs to attach (images, documents, audio, video)" },
+        "template": { "type": "string", "description": "Pre-approved template name for business-initiated messages" }
+      },
+      "required": ["to", "body"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "messageSid": { "type": "string", "description": "Unique identifier for the message (starts with SM)" },
+        "status": { "type": "string", "description": "Message status (queued, sent, delivered, read, failed)" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "twilio", "reason": "Requires Twilio account credentials" }
+  ],
+  "links": [
+    { "uri": "twilio/sms", "context": "SMS uses the same Messaging API with different number format" },
+    { "uri": "twilio/twiml#messaging-verbs", "context": "TwiML for replying to inbound WhatsApp messages" },
+    { "uri": "twilio#authentication", "context": "Account SID and Auth Token for API authentication" }
+  ],
+  "related": [
+    { "uri": "twilio/sms", "relation": "see-also", "note": "SMS is the fallback channel when WhatsApp is unavailable" },
+    { "uri": "twilio/verify", "relation": "see-also", "note": "Verify can deliver OTP codes via WhatsApp channel" },
+    { "uri": "twilio/twiml", "relation": "see-also", "note": "TwiML messaging verbs apply to WhatsApp webhook responses" }
+  ],
+  "more": {
+    "docs": "https://www.twilio.com/docs/whatsapp",
+    "api-ref": "https://www.twilio.com/docs/whatsapp/api",
+    "quickstart": "https://www.twilio.com/docs/whatsapp/quickstart/node"
+  },
+  "frontmatter": {
+    "created": "2026-04-10",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "4 min",
+    "prerequisites": ["twilio"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

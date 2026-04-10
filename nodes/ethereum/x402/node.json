@@ -1,0 +1,95 @@
+{
+  "name": "x402",
+  "version": "1.0.0",
+  "uri": "ethereum/x402",
+  "type": "standard",
+  "context": "x402 — HTTP-native stablecoin payment protocol using the 402 Payment Required status code",
+  "info": "x402 is an open payment protocol created by Coinbase that embeds stablecoin payments directly into HTTP. When a server requires payment, it responds with HTTP 402 and a PAYMENT-REQUIRED header containing price, token, wallet, and chain. The client signs a payment (EIP-3009 for USDC/EURC, Permit2 for other ERC-20s), attaches it as a PAYMENT-SIGNATURE header, and retries. A facilitator verifies and settles the payment onchain. The entire flow completes in about two seconds with no accounts, API keys, or credit cards. x402 runs on Base, Ethereum, Arbitrum, Polygon, and Solana. SDKs are available for TypeScript, Python, and Go.",
+  "parent": "ethereum",
+  "tags": ["x402", "payment", "http-402", "stablecoin", "usdc", "eip-3009", "permit2", "coinbase", "facilitator", "http"],
+  "aliases": [
+    "x402",
+    "x402 protocol",
+    "http 402",
+    "402 payment required",
+    "x402 payment",
+    "coinbase x402",
+    "http payment protocol",
+    "internet-native payments",
+    "stablecoin payment protocol"
+  ],
+  "triggers": [
+    "accept payments with x402",
+    "use x402 protocol",
+    "http 402 payment",
+    "add payment to my api",
+    "charge for api requests",
+    "accept stablecoin payments",
+    "x402 integration",
+    "monetize my api with crypto"
+  ],
+  "body": "# x402 Protocol\n\nx402 turns the long-dormant HTTP 402 Payment Required status code into a real payment protocol. Any HTTP server can require payment for a resource, and any client — human or AI agent — can pay automatically using stablecoins. Implement the server side with [[ethereum/x402/server]] and the client side with [[ethereum/x402/client]]. Both require a [[ethereum/wallets]].\n\n## Protocol Flow\n\n```\nClient                    Server                  Facilitator         Blockchain\n  │                         │                         │                   │\n  │── GET /resource ───────>│                         │                   │\n  │<── 402 + PAYMENT-REQUIRED                         │                   │\n  │                         │                         │                   │\n  │── GET /resource ───────>│                         │                   │\n  │   + PAYMENT-SIGNATURE   │── verify ──────────────>│                   │\n  │                         │<── verification ok ─────│                   │\n  │                         │── settle ──────────────>│                   │\n  │                         │                         │── submit tx ─────>│\n  │                         │                         │<── confirmed ─────│\n  │                         │<── settlement ok ───────│                   │\n  │<── 200 + resource ─────│                         │                   │\n  │   + PAYMENT-RESPONSE    │                         │                   │\n```\n\n## HTTP Headers\n\n| Header | Direction | Content |\n|--------|-----------|----------|\n| `PAYMENT-REQUIRED` | Server → Client | Base64-encoded `PaymentRequired` object: price, token, recipient, chain, facilitator URL |\n| `PAYMENT-SIGNATURE` | Client → Server | Base64-encoded `PaymentPayload`: signed authorization for the payment |\n| `PAYMENT-RESPONSE` | Server → Client | Settlement receipt with transaction hash |\n\n## Payment Schemes\n\n- **exact** — fixed-amount transfer. Client pays the exact price specified.\n- **EIP-3009** — gasless USDC/EURC transfers via `transferWithAuthorization`. The facilitator submits the transaction, not the client.\n- **Permit2** — Uniswap's universal approval standard. Enables payment with any ERC-20 token.\n\n## Supported Chains\n\n| Chain | CAIP-2 ID | Tokens |\n|-------|-----------|--------|\n| Base | eip155:8453 | USDC, EURC, any ERC-20 via Permit2 |\n| Ethereum | eip155:1 | USDC, EURC |\n| Arbitrum | eip155:42161 | USDC |\n| Polygon | eip155:137 | USDC |\n| Solana | solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp | USDC |\n\n## SDKs\n\n**TypeScript:**\n```bash\nnpm install @x402/core @x402/evm @x402/express @x402/fetch\n```\n\n**Python:**\n```bash\npip install x402\n```\n\n**Go:**\n```bash\ngo get github.com/coinbase/x402/go\n```\n\n## Facilitator\n\nThe facilitator is the trusted intermediary that verifies payment signatures and submits transactions onchain. Coinbase CDP provides a hosted facilitator at `https://x402.org/facilitator` with a free tier of 1,000 transactions/month. The facilitator cannot move funds beyond what the client authorized.\n\n## Cost\n\nThe x402 protocol itself charges zero fees. The only costs are blockchain gas fees (fractions of a cent on L2s — see [[ethereum/gas#l2-costs]]) and the optional facilitator fee ($0.001/tx after free tier).\n",
+  "sections": [
+    {
+      "id": "protocol-flow",
+      "title": "Protocol flow",
+      "body": "1. Client requests resource without payment. 2. Server responds HTTP 402 with `PAYMENT-REQUIRED` header containing price, token, chain, recipient, and facilitator URL. 3. Client selects a payment requirement, constructs a `PaymentPayload` (signed EIP-3009 or Permit2 authorization), and retries with `PAYMENT-SIGNATURE` header. 4. Server sends the payload to the facilitator's `/verify` endpoint. 5. If valid, server performs work and calls facilitator's `/settle` endpoint. 6. Facilitator submits the payment transaction onchain and returns a receipt. 7. Server returns 200 with the resource and a `PAYMENT-RESPONSE` header.",
+      "tags": ["flow", "402", "headers", "verify", "settle"]
+    },
+    {
+      "id": "payment-schemes",
+      "title": "Payment schemes",
+      "body": "The `exact` scheme transfers a fixed amount. EIP-3009 (`transferWithAuthorization`) enables gasless USDC/EURC transfers where the facilitator pays gas. Permit2 extends payment to any ERC-20 token using Uniswap's universal approval mechanism. The scheme is specified in the `PAYMENT-REQUIRED` header.",
+      "tags": ["eip-3009", "permit2", "exact", "scheme", "gasless"]
+    },
+    {
+      "id": "facilitator",
+      "title": "Facilitator role",
+      "body": "The facilitator verifies payment signatures, submits transactions onchain, and returns settlement receipts. It is trust-minimizing: it can only execute the exact transfer the client signed. Coinbase CDP hosts a facilitator with 1,000 free tx/month. Self-hosted facilitators are possible for higher volume or custom requirements.",
+      "tags": ["facilitator", "verify", "settle", "trust", "cdp"]
+    },
+    {
+      "id": "chains-and-tokens",
+      "title": "Chains and tokens",
+      "body": "x402 supports Base (eip155:8453), Ethereum (eip155:1), Arbitrum (eip155:42161), Polygon (eip155:137), and Solana (see [[ethereum#chains]] for CAIP-2 identifiers). USDC is available on all chains. EURC on Base and Ethereum. Any ERC-20 is supported via Permit2 on EVM chains.",
+      "tags": ["chains", "tokens", "usdc", "eurc", "base", "permit2"]
+    },
+    {
+      "id": "sdks",
+      "title": "SDK packages",
+      "body": "TypeScript: `@x402/core` (types and helpers), `@x402/evm` (EVM signing), `@x402/express` (Express middleware — see [[ethereum/x402/server]]), `@x402/hono` (Hono middleware), `@x402/next` (Next.js middleware), `@x402/fetch` (fetch wrapper — see [[ethereum/x402/client]]), `@x402/axios` (axios interceptor). Python: `x402`. Go: `github.com/coinbase/x402/go`.",
+      "tags": ["sdk", "typescript", "python", "go", "npm", "pip"]
+    }
+  ],
+  "links": [
+    { "uri": "ethereum/x402/server", "context": "Accept x402 payments as an API server" },
+    { "uri": "ethereum/x402/client", "context": "Send x402 payments as a client or agent" },
+    { "uri": "ethereum#chains", "context": "Supported EVM chains and CAIP-2 identifiers" },
+    { "uri": "ethereum/wallets", "context": "Wallet setup for signing x402 payments" }
+  ],
+  "related": [
+    { "uri": "ethereum/contract-deploy", "relation": "see-also", "note": "Deploy contracts that integrate with x402 payment flows" },
+    { "uri": "ethereum/gas", "relation": "see-also", "note": "x402 on L2s has minimal gas costs; EIP-3009 shifts gas to the facilitator" }
+  ],
+  "more": {
+    "docs": "https://docs.cdp.coinbase.com/x402/welcome",
+    "spec": "https://www.x402.org/",
+    "repo": "https://github.com/coinbase/x402"
+  },
+  "frontmatter": {
+    "created": "2026-04-10",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "developers, AI agents, API providers",
+    "estimated_reading_time": "6 min",
+    "prerequisites": ["ethereum/wallets"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://github.com/coinbase/x402",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

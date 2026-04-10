@@ -1,0 +1,125 @@
+{
+  "name": "streams",
+  "version": "1.0.0",
+  "uri": "redis/streams",
+  "type": "skill",
+  "context": "Process event streams with Redis Streams: XADD, XREAD, consumer groups, acknowledgment",
+  "info": "This skill covers Redis Streams: an append-only log data structure for durable event processing. Streams support adding entries with XADD, reading with XREAD (blocking or non-blocking), consumer groups for parallel processing with load balancing, acknowledgment with XACK for at-least-once delivery, and trimming with XTRIM or MAXLEN for bounded growth. Unlike [[redis/pub-sub]], streams persist messages, allow replay from any point, and guarantee ordered delivery. Consumer groups distribute work across multiple consumers, with pending entry tracking and automatic reassignment of failed consumers via XCLAIM.",
+  "parent": "redis",
+  "tags": ["streams", "xadd", "xread", "consumer-groups", "event-sourcing", "log"],
+  "aliases": [
+    "redis streams",
+    "redis stream",
+    "redis event stream",
+    "redis xadd",
+    "redis xread",
+    "redis consumer group",
+    "redis event log",
+    "redis message queue",
+    "stream processing redis"
+  ],
+  "triggers": [
+    "add events to a redis stream",
+    "read from a redis stream",
+    "set up redis consumer groups",
+    "process event streams with redis",
+    "acknowledge stream messages",
+    "use redis as a message queue"
+  ],
+  "body": "# Redis Streams\n\nRedis Streams is an append-only log structure for durable event processing. Unlike [[redis/pub-sub]], streams persist messages, support replay from any point, and provide consumer groups for distributed processing with acknowledgment. Connect using the configuration in [[redis#connection]].\n\n## Add and Read\n\n```javascript\nimport Redis from \"ioredis\";\n\nconst redis = new Redis(process.env.REDIS_URL);\n\n// Add an entry to a stream (auto-generated ID with *)\nconst messageId = await redis.xadd(\"orders\", \"*\",\n  \"orderId\", \"ORD-1234\",\n  \"product\", \"widget\",\n  \"quantity\", \"3\",\n  \"status\", \"created\"\n);\nconsole.log(`Added with ID: ${messageId}`); // e.g. 1681234567890-0\n\n// Read entries from a stream (from the beginning)\nconst entries = await redis.xrange(\"orders\", \"-\", \"+\");\nfor (const [id, fields] of entries) {\n  console.log(`${id}:`, fields); // fields is [key1, val1, key2, val2, ...]\n}\n\n// Read new entries (blocking, waits up to 5 seconds)\nconst newEntries = await redis.xread(\"BLOCK\", 5000, \"STREAMS\", \"orders\", \"$\");\n\n// Read from a specific ID forward\nconst fromId = await redis.xread(\"COUNT\", 10, \"STREAMS\", \"orders\", \"1681234567890-0\");\n```\n\n## Consumer Groups\n\nConsumer groups distribute stream entries across multiple consumers for parallel processing:\n\n```javascript\n// Create a consumer group (start from beginning with 0, or latest with $)\nawait redis.xgroup(\"CREATE\", \"orders\", \"order-processors\", \"0\", \"MKSTREAM\");\n\n// Read as a consumer within a group\n// Each consumer gets unique entries \u2014 no duplicates across consumers\nconst entries = await redis.xreadgroup(\n  \"GROUP\", \"order-processors\", \"worker-1\",\n  \"COUNT\", 10,\n  \"BLOCK\", 5000,\n  \"STREAMS\", \"orders\", \">\"\n);\n\n// Process entries\nif (entries) {\n  for (const [stream, messages] of entries) {\n    for (const [id, fields] of messages) {\n      // Process the message...\n      console.log(`Processing ${id}:`, fields);\n\n      // Acknowledge successful processing\n      await redis.xack(\"orders\", \"order-processors\", id);\n    }\n  }\n}\n```\n\n### Consumer Group Lifecycle\n\n```\nProducer \u2500\u2500 XADD \u2500\u2500> Stream \u2500\u2500 XREADGROUP \u2500\u2500> Consumer A \u2500\u2500 XACK \u2500\u2500> Done\n                          \u251c\u2500\u2500 XREADGROUP \u2500\u2500> Consumer B \u2500\u2500 XACK \u2500\u2500> Done\n                          \u2514\u2500\u2500 XREADGROUP \u2500\u2500> Consumer C \u2500\u2500 XACK \u2500\u2500> Done\n```\n\nEach entry is delivered to exactly one consumer in the group. If a consumer fails without acknowledging, the entry remains in the **pending entries list (PEL)** and can be claimed by another consumer.\n\n## Acknowledgment\n\n```javascript\n// Acknowledge processed entries\nawait redis.xack(\"orders\", \"order-processors\", messageId);\n\n// Check pending entries (not yet acknowledged)\nconst pending = await redis.xpending(\"orders\", \"order-processors\");\n// Returns: [totalPending, smallestId, largestId, [[consumer, count], ...]]\n\n// Get detailed pending entries for a consumer\nconst pendingDetail = await redis.xpending(\n  \"orders\", \"order-processors\", \"-\", \"+\", 10, \"worker-1\"\n);\n\n// Claim entries from a failed consumer (idle > 60 seconds)\nconst claimed = await redis.xclaim(\n  \"orders\", \"order-processors\", \"worker-2\",\n  60000, // min idle time in ms\n  pendingMessageId\n);\n```\n\n## Trimming\n\nControl stream size to prevent unbounded growth:\n\n```javascript\n// Trim to approximately 1000 entries (efficient, uses ~ for approximate)\nawait redis.xtrim(\"orders\", \"MAXLEN\", \"~\", 1000);\n\n// Trim to exact count\nawait redis.xtrim(\"orders\", \"MAXLEN\", 1000);\n\n// Add with automatic trim\nawait redis.xadd(\"orders\", \"MAXLEN\", \"~\", 1000, \"*\",\n  \"orderId\", \"ORD-5678\",\n  \"status\", \"created\"\n);\n\n// Trim entries older than a specific ID\nawait redis.xtrim(\"orders\", \"MINID\", \"~\", \"1681234567890-0\");\n\n// Check stream length\nconst length = await redis.xlen(\"orders\");\n```\n",
+  "sections": [
+    {
+      "id": "add-read",
+      "title": "Adding and reading entries",
+      "body": "Use `XADD stream * field value ...` to append entries with auto-generated IDs. Read ranges with `XRANGE stream - +` (oldest to newest) or `XREVRANGE` (newest to oldest). Block for new entries with `XREAD BLOCK ms STREAMS stream $`. The `$` means \"only new entries\"; use `0` to read from the beginning. See [[redis#data-model]] for how streams fit into the Redis type system.",
+      "tags": ["xadd", "xread", "xrange", "xrevrange", "block", "append"]
+    },
+    {
+      "id": "consumer-groups",
+      "title": "Consumer groups",
+      "body": "Create with `XGROUP CREATE stream group startId`. Read with `XREADGROUP GROUP group consumer STREAMS stream >` where `>` means undelivered entries. Each entry goes to exactly one consumer. Use multiple consumers for parallel processing. The pending entries list (PEL) tracks unacknowledged entries. Monitor with `XPENDING` and reassign with `XCLAIM`. See [[redis/clustering]] for consumer group behavior across cluster nodes.",
+      "tags": ["consumer-group", "xreadgroup", "xgroup", "parallel", "load-balancing", "pel"]
+    },
+    {
+      "id": "acknowledgment",
+      "title": "Acknowledgment and recovery",
+      "body": "Acknowledge with `XACK stream group id` after successful processing. Unacknowledged entries remain in the PEL. Inspect pending entries with `XPENDING stream group`. Claim stuck entries from failed consumers with `XCLAIM stream group newConsumer minIdleTime id`. This provides at-least-once delivery semantics. Unlike [[redis/pub-sub]], no message is lost when a consumer is offline.",
+      "tags": ["xack", "xpending", "xclaim", "at-least-once", "recovery", "pending"]
+    },
+    {
+      "id": "trimming",
+      "title": "Trimming and retention",
+      "body": "Use `XTRIM stream MAXLEN ~ count` for approximate trimming (efficient) or exact `MAXLEN count`. Trim by ID with `MINID ~ id` to remove entries older than a timestamp. Combine trimming with XADD using `XADD stream MAXLEN ~ count * field value` for automatic retention. Monitor stream length with `XLEN stream`.",
+      "tags": ["xtrim", "maxlen", "minid", "retention", "growth", "cleanup"]
+    }
+  ],
+  "links": [
+    { "uri": "redis", "context": "Redis ecosystem overview and connection setup" },
+    { "uri": "redis/pub-sub", "context": "Fire-and-forget alternative for real-time broadcast" },
+    { "uri": "redis/caching", "context": "Cache operations that may produce events for stream processing" },
+    { "uri": "redis/clustering", "context": "Stream and consumer group behavior in cluster mode" },
+    { "uri": "redis#connection", "context": "Redis connection configuration and URL format" },
+    { "uri": "redis#data-model", "context": "How streams fit into the Redis type system" }
+  ],
+  "related": [
+    { "uri": "redis/pub-sub", "relation": "see-also", "note": "Pub/sub is lighter-weight but fire-and-forget; streams provide durability" },
+    { "uri": "redis/caching", "relation": "see-also", "note": "Stream events can trigger cache invalidation or warm-up" },
+    { "uri": "redis/clustering", "relation": "see-also", "note": "Streams are sharded by key in cluster mode" }
+  ],
+  "scripts": [
+    {
+      "id": "stream-operations",
+      "name": "Stream Operations",
+      "description": "Redis Streams operations: XADD, XREAD, XREADGROUP, XACK, and trimming",
+      "lang": "javascript",
+      "runtime": "node>=18",
+      "entry": "./scripts/stream-operations.js",
+      "env": {
+        "REDIS_URL": { "required": true, "secret": false, "description": "Redis connection URL (e.g. redis://localhost:6379)" }
+      },
+      "packages": ["ioredis"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "stream": { "type": "string", "description": "Stream name" },
+        "message": { "type": "object", "description": "Key-value pairs to add as a stream entry" },
+        "group": { "type": "string", "description": "Consumer group name" },
+        "consumer": { "type": "string", "description": "Consumer name within a group" }
+      },
+      "required": ["stream"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "messageId": { "type": "string", "description": "ID of the added stream entry (e.g. 1681234567890-0)" },
+        "entries": { "type": "array", "description": "Array of stream entries read", "items": { "type": "object" } },
+        "pending": { "type": "integer", "description": "Number of pending (unacknowledged) entries" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "redis", "reason": "Requires a running Redis instance and connection configuration" }
+  ],
+  "more": {
+    "docs": "https://redis.io/docs/latest/develop/data-types/streams/",
+    "commands": "https://redis.io/docs/latest/commands/?group=stream"
+  },
+  "frontmatter": {
+    "created": "2026-04-10",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "5 min",
+    "prerequisites": ["redis"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

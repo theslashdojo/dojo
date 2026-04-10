@@ -1,0 +1,146 @@
+{
+  "name": "embeddings",
+  "version": "1.0.0",
+  "uri": "openai/embeddings",
+  "type": "skill",
+  "context": "Generate vector embeddings for text using the OpenAI Embeddings API",
+  "info": "The Embeddings API converts text into dense vector representations that capture semantic meaning. These vectors enable similarity search, clustering, classification, and retrieval-augmented generation (RAG). OpenAI offers two embedding models: text-embedding-3-small (fast, cost-effective, 1536 dimensions default) and text-embedding-3-large (higher accuracy, 3072 dimensions default). Both support configurable dimensions via the `dimensions` parameter for storage optimization. The endpoint is `POST /v1/embeddings`. Vectors are typically stored in a vector database like pgvector, Pinecone, or Weaviate for efficient nearest-neighbor retrieval.",
+  "parent": "openai",
+  "tags": ["embeddings", "vectors", "text-embedding", "similarity", "search", "rag"],
+  "aliases": [
+    "openai embeddings",
+    "text embeddings",
+    "vector embeddings",
+    "embedding api",
+    "text-embedding-3",
+    "create embedding",
+    "semantic search embeddings",
+    "rag embeddings"
+  ],
+  "triggers": [
+    "create embeddings with openai",
+    "generate vector embeddings",
+    "embed text for search",
+    "use openai embeddings api",
+    "build a rag pipeline",
+    "semantic similarity search",
+    "convert text to vectors"
+  ],
+  "body": "# Embeddings\n\nThe Embeddings API converts text into numerical vector representations. These vectors capture semantic meaning — similar texts produce similar vectors, enabling search, clustering, and retrieval-augmented generation (RAG).\n\n## Create Embeddings\n\n```javascript\nimport OpenAI from \"openai\";\n\nconst client = new OpenAI(); // reads OPENAI_API_KEY from env\n\nconst response = await client.embeddings.create({\n  model: \"text-embedding-3-small\",\n  input: \"OpenAI provides powerful AI models.\",\n});\n\nconst embedding = response.data[0].embedding; // float array, e.g. 1536 dimensions\nconsole.log(`Dimensions: ${embedding.length}`);\nconsole.log(`Tokens used: ${response.usage.total_tokens}`);\n```\n\n## Models\n\n| Model | Dimensions (default) | Max Input | Relative Cost |\n|-------|---------------------|-----------|---------------|\n| text-embedding-3-small | 1536 | 8,191 tokens | $ |\n| text-embedding-3-large | 3072 | 8,191 tokens | $$$ |\n\nBoth models support the `dimensions` parameter to reduce output size while preserving quality:\n\n```javascript\nconst response = await client.embeddings.create({\n  model: \"text-embedding-3-large\",\n  input: \"Reduce dimensions for storage efficiency.\",\n  dimensions: 256, // truncate from 3072 to 256\n});\n```\n\nSee [[openai/models]] for detailed pricing and performance comparison.\n\n## Dimensions\n\nLower dimensions reduce storage costs and search latency with minimal quality loss:\n\n| Dimensions | Storage per vector | Best For |\n|------------|-------------------|----------|\n| 256 | 1 KB | Large-scale search, cost-sensitive |\n| 512 | 2 KB | Balanced cost/quality |\n| 1536 | 6 KB | Default for text-embedding-3-small |\n| 3072 | 12 KB | Maximum quality (text-embedding-3-large) |\n\n## Use Cases\n\n- **Semantic search** — embed documents and queries, find nearest neighbors by cosine similarity\n- **RAG (Retrieval-Augmented Generation)** — embed a knowledge base, retrieve relevant chunks, feed them to [[openai/chat]] as context\n- **Classification** — embed labeled examples, classify new inputs by nearest cluster\n- **Clustering** — group similar documents without predefined labels\n- **Anomaly detection** — flag inputs far from known clusters\n\n## Batch Embedding\n\nEmbed multiple texts in a single API call:\n\n```javascript\nconst response = await client.embeddings.create({\n  model: \"text-embedding-3-small\",\n  input: [\n    \"First document to embed.\",\n    \"Second document to embed.\",\n    \"Third document to embed.\",\n  ],\n});\n\n// response.data is an array of { embedding, index }\nconst vectors = response.data.map(d => d.embedding);\n```\n\nBatch requests are more efficient and reduce API round trips. Maximum batch size is limited by the total token count (8,191 tokens per input text).\n\n## Vector Storage\n\nStore embeddings in a vector database for efficient retrieval:\n\n- **pgvector** — PostgreSQL extension for vector similarity search\n- **Pinecone** — managed vector database\n- **Weaviate** — open-source vector search engine\n- **Chroma** — lightweight embedding database\n- **Qdrant** — high-performance vector similarity engine\n\nCosine similarity is the standard distance metric for OpenAI embeddings.\n",
+  "sections": [
+    {
+      "id": "create",
+      "title": "Create embeddings",
+      "body": "Call `client.embeddings.create()` with a model and input text (string or array of strings). Returns `data[0].embedding` as a float array. The `usage` field reports token consumption. Batch multiple inputs in a single call for efficiency.",
+      "tags": ["create", "api", "input", "response", "batch"]
+    },
+    {
+      "id": "models",
+      "title": "Embedding models",
+      "body": "text-embedding-3-small (1536 dims, cost-effective) and text-embedding-3-large (3072 dims, higher accuracy). Both accept up to 8,191 input tokens. Choose small for high-volume applications, large for maximum retrieval quality. See [[openai/models]] for pricing details.",
+      "tags": ["models", "text-embedding-3-small", "text-embedding-3-large", "comparison"]
+    },
+    {
+      "id": "dimensions",
+      "title": "Configurable dimensions",
+      "body": "Pass the `dimensions` parameter to reduce output vector size. The model truncates its native dimensions (1536 or 3072) to the specified size using Matryoshka Representation Learning. Lower dimensions reduce storage and improve search speed with minimal quality degradation.",
+      "tags": ["dimensions", "matryoshka", "truncation", "storage", "optimization"]
+    },
+    {
+      "id": "use-cases",
+      "title": "Use cases",
+      "body": "Semantic search: embed documents and queries, find nearest neighbors. RAG: retrieve relevant context for [[openai/chat]] completions. Classification: embed labeled examples, classify by nearest cluster. Clustering: group similar documents. Anomaly detection: flag outliers from known distributions.",
+      "tags": ["search", "rag", "classification", "clustering", "anomaly"]
+    },
+    {
+      "id": "batch",
+      "title": "Batch embedding",
+      "body": "Pass an array of strings to `input` to embed multiple texts in one API call. Response `data` contains objects with `embedding` and `index` fields. Batch requests reduce latency and API call overhead. Total tokens across all inputs must stay within rate limits.",
+      "tags": ["batch", "array", "efficiency", "throughput"]
+    }
+  ],
+  "links": [
+    { "uri": "openai", "context": "OpenAI ecosystem overview and authentication" },
+    { "uri": "openai/chat", "context": "Use retrieved embeddings as context for chat completions (RAG)" },
+    { "uri": "openai/models", "context": "Embedding model pricing and capability comparison" },
+    { "uri": "openai#authentication", "context": "API key setup for embedding requests" },
+    { "uri": "openai#rate-limits", "context": "Rate limits for embedding API calls" }
+  ],
+  "related": [
+    { "uri": "openai/chat", "relation": "see-also", "note": "RAG pipelines combine embeddings retrieval with chat completions for grounded generation" },
+    { "uri": "openai/models", "relation": "see-also", "note": "Model selection guide covers embedding model pricing and dimensions" },
+    { "uri": "postgres", "relation": "see-also", "note": "pgvector extension enables vector similarity search in PostgreSQL for embedding storage" }
+  ],
+  "scripts": [
+    {
+      "id": "create-embedding",
+      "name": "Create Embedding",
+      "description": "Generate vector embeddings for text using the OpenAI Embeddings API",
+      "lang": "javascript",
+      "runtime": "node>=18",
+      "entry": "./scripts/create-embedding.js",
+      "env": {
+        "OPENAI_API_KEY": { "required": true, "secret": true, "description": "OpenAI API key for authentication" }
+      },
+      "packages": ["openai"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "input": {
+          "oneOf": [
+            { "type": "string", "description": "Single text to embed" },
+            { "type": "array", "items": { "type": "string" }, "description": "Array of texts to embed" }
+          ],
+          "description": "Text or array of texts to convert to embeddings"
+        },
+        "model": { "type": "string", "description": "Embedding model ID", "default": "text-embedding-3-small", "enum": ["text-embedding-3-small", "text-embedding-3-large"] },
+        "dimensions": { "type": "integer", "description": "Output vector dimensions (truncates from model default)" }
+      },
+      "required": ["input", "model"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "embedding": {
+          "type": "array",
+          "items": { "type": "number" },
+          "description": "Dense vector representation of the input text"
+        },
+        "usage": {
+          "type": "object",
+          "description": "Token usage statistics",
+          "properties": {
+            "promptTokens": { "type": "integer" },
+            "totalTokens": { "type": "integer" }
+          }
+        }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "openai", "reason": "Requires an OpenAI API key and client configuration" }
+  ],
+  "more": {
+    "docs": "https://platform.openai.com/docs/api-reference/embeddings",
+    "guide": "https://platform.openai.com/docs/guides/embeddings",
+    "repo": "https://github.com/openai/openai-node"
+  },
+  "frontmatter": {
+    "created": "2026-04-10",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "4 min",
+    "prerequisites": ["openai"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

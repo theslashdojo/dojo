@@ -1,0 +1,130 @@
+{
+  "name": "payments",
+  "version": "1.0.0",
+  "uri": "stripe/payments",
+  "type": "skill",
+  "context": "Create and confirm payment intents, handle card payments, and manage payment methods",
+  "info": "Payment intents are the core object for collecting payments in Stripe. A PaymentIntent tracks the lifecycle of a payment from creation through confirmation and capture. This skill covers creating payment intents with amount and currency, attaching payment methods (cards, bank transfers, wallets), confirming payments server-side or client-side, handling 3D Secure authentication for SCA compliance, and managing error states like declines and insufficient funds. The stripe-node SDK provides a clean interface for all payment operations.",
+  "parent": "stripe",
+  "tags": ["payments", "payment-intents", "charges", "cards", "payment-methods", "confirm"],
+  "aliases": [
+    "stripe payments",
+    "payment intents",
+    "charge a card",
+    "accept payment",
+    "stripe charge",
+    "card payment",
+    "collect payment",
+    "payment method"
+  ],
+  "triggers": [
+    "create a payment intent",
+    "charge a credit card with stripe",
+    "accept a card payment",
+    "confirm a payment",
+    "handle 3d secure",
+    "manage payment methods",
+    "process a stripe payment"
+  ],
+  "body": "# Stripe Payments\n\nPayment intents are the core primitive for accepting payments in Stripe. A PaymentIntent tracks a payment from creation through confirmation to settlement. You will need a `STRIPE_SECRET_KEY` from your [[stripe]] dashboard.\n\n## Create a Payment Intent\n\n```javascript\nimport Stripe from 'stripe';\nconst stripe = new Stripe(process.env.STRIPE_SECRET_KEY);\n\nconst paymentIntent = await stripe.paymentIntents.create({\n  amount: 2000,           // $20.00 in cents\n  currency: 'usd',\n  payment_method: 'pm_card_visa',\n  customer: 'cus_xxx',\n  metadata: { orderId: 'order_123' },\n});\n\nconsole.log(paymentIntent.id);            // pi_xxx\nconsole.log(paymentIntent.client_secret); // for client-side confirmation\n```\n\n## Confirm a Payment\n\nServer-side confirmation:\n\n```javascript\nconst confirmed = await stripe.paymentIntents.confirm('pi_xxx', {\n  payment_method: 'pm_card_visa',\n});\n// confirmed.status === 'succeeded'\n```\n\nClient-side confirmation uses the `client_secret` with Stripe.js or Stripe Elements — the server creates the intent, the client confirms it.\n\n## Payment Methods\n\nStripe supports dozens of payment methods beyond cards:\n\n| Method | Type | Use Case |\n|--------|------|----------|\n| Cards | `card` | Global, most common |\n| Bank debits | `us_bank_account` | ACH, lower fees |\n| Wallets | `apple_pay`, `google_pay` | Mobile, one-tap |\n| SEPA | `sepa_debit` | European bank transfers |\n| Link | `link` | Stripe's one-click checkout |\n\n```javascript\n// Attach a payment method to a customer\nawait stripe.paymentMethods.attach('pm_xxx', {\n  customer: 'cus_xxx',\n});\n\n// Set as default\nawait stripe.customers.update('cus_xxx', {\n  invoice_settings: { default_payment_method: 'pm_xxx' },\n});\n```\n\n## 3D Secure / SCA\n\nWhen a payment requires authentication (status `requires_action`), redirect the customer to complete 3D Secure:\n\n```javascript\nif (paymentIntent.status === 'requires_action') {\n  // Client-side: use stripe.handleCardAction(clientSecret)\n  // The customer completes 3DS in a modal or redirect\n  // Webhook [[stripe/webhooks]] notifies when complete\n}\n```\n\nSee [[stripe/webhooks#event-types]] for `payment_intent.succeeded` and `payment_intent.payment_failed` events.\n\n## Error Handling\n\n```javascript\ntry {\n  const intent = await stripe.paymentIntents.create({ ... });\n} catch (err) {\n  if (err.type === 'StripeCardError') {\n    // Card declined — err.code: 'card_declined', 'insufficient_funds', etc.\n    console.log(err.message);\n  } else if (err.type === 'StripeInvalidRequestError') {\n    // Invalid parameters\n  }\n}\n```\n\n## Environment Variables\n\n| Variable | Purpose |\n|----------|----------|\n| `STRIPE_SECRET_KEY` | Server-side API key (`sk_test_...` or `sk_live_...`) |\n",
+  "sections": [
+    {
+      "id": "create-intent",
+      "title": "Create payment intent",
+      "body": "Call `stripe.paymentIntents.create()` with `amount` (in smallest currency unit, e.g., cents), `currency` (ISO 4217), and optionally `payment_method`, `customer`, and `metadata`. The response includes `id`, `status`, and `client_secret`. Use `client_secret` for client-side confirmation with Stripe.js. See [[stripe/checkout#create-session]] for a hosted alternative.",
+      "tags": ["create", "payment-intent", "amount", "currency", "client-secret"]
+    },
+    {
+      "id": "confirm",
+      "title": "Confirm payment",
+      "body": "Confirm server-side with `stripe.paymentIntents.confirm(id, { payment_method })`. Status transitions: `requires_payment_method` -> `requires_confirmation` -> `requires_action` (if 3DS) -> `succeeded`. Listen for `payment_intent.succeeded` via [[stripe/webhooks]] for reliable confirmation.",
+      "tags": ["confirm", "status", "lifecycle", "server-side"]
+    },
+    {
+      "id": "payment-methods",
+      "title": "Payment methods",
+      "body": "Attach methods with `stripe.paymentMethods.attach(pmId, { customer })`. List with `stripe.paymentMethods.list({ customer, type: 'card' })`. Set default via `stripe.customers.update(id, { invoice_settings: { default_payment_method } })`. Supports cards, bank accounts, wallets, SEPA, and local methods. For recurring use, attach to a customer and reuse for [[stripe/subscriptions]].",
+      "tags": ["payment-methods", "cards", "attach", "default", "wallets"]
+    },
+    {
+      "id": "3d-secure",
+      "title": "3D Secure authentication",
+      "body": "When `status === 'requires_action'`, the payment needs 3D Secure authentication (SCA). Client-side: call `stripe.handleCardAction(clientSecret)` to show the 3DS modal. Server-side: check `paymentIntent.next_action` for redirect URL. After authentication, the intent moves to `succeeded` or `requires_payment_method` (if auth fails). Handle both outcomes via [[stripe/webhooks]].",
+      "tags": ["3d-secure", "sca", "authentication", "requires-action", "handleCardAction"]
+    },
+    {
+      "id": "error-handling",
+      "title": "Error handling",
+      "body": "Stripe errors include `StripeCardError` (decline, insufficient funds), `StripeInvalidRequestError` (bad params), `StripeAuthenticationError` (bad key), and `StripeRateLimitError`. Card errors have a `code` field: `card_declined`, `insufficient_funds`, `expired_card`, `incorrect_cvc`. Always wrap API calls in try/catch. Use idempotency keys for safe retries.",
+      "tags": ["errors", "card-declined", "insufficient-funds", "idempotency", "retry"]
+    }
+  ],
+  "links": [
+    { "uri": "stripe", "context": "Stripe ecosystem overview, API keys, and test mode" },
+    { "uri": "stripe/checkout", "context": "Use hosted checkout as a higher-level alternative" },
+    { "uri": "stripe/subscriptions", "context": "Reuse payment methods for recurring billing" },
+    { "uri": "stripe/webhooks", "context": "Listen for payment_intent.succeeded events" },
+    { "uri": "stripe/webhooks#event-types", "context": "Payment event types for async confirmation" }
+  ],
+  "related": [
+    { "uri": "stripe/checkout", "relation": "see-also", "note": "Checkout provides a hosted UI — faster to integrate than custom payment forms" },
+    { "uri": "stripe/webhooks", "relation": "see-also", "note": "Always use webhooks for reliable payment confirmation, not just API responses" },
+    { "uri": "stripe/subscriptions", "relation": "see-also", "note": "For recurring payments, use subscriptions instead of individual payment intents" }
+  ],
+  "scripts": [
+    {
+      "id": "create-payment",
+      "name": "Create Payment Intent",
+      "description": "Create and confirm a Stripe PaymentIntent with amount, currency, and payment method",
+      "lang": "javascript",
+      "runtime": "node>=18",
+      "entry": "./scripts/create-payment.js",
+      "env": {
+        "STRIPE_SECRET_KEY": { "required": true, "secret": true, "description": "Stripe secret API key (sk_test_... or sk_live_...)" }
+      },
+      "packages": ["stripe"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "amount": { "type": "integer", "description": "Payment amount in smallest currency unit (e.g., cents)" },
+        "currency": { "type": "string", "description": "ISO 4217 currency code (e.g., usd, eur, gbp)", "default": "usd" },
+        "paymentMethod": { "type": "string", "description": "Payment method ID (pm_xxx) or test token (pm_card_visa)" },
+        "customer": { "type": "string", "description": "Customer ID (cus_xxx) to associate the payment with" }
+      },
+      "required": ["amount", "currency"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "paymentIntentId": { "type": "string", "description": "PaymentIntent ID (pi_xxx)" },
+        "status": { "type": "string", "description": "Payment status: requires_payment_method, requires_confirmation, requires_action, succeeded, canceled" },
+        "clientSecret": { "type": "string", "description": "Client secret for client-side confirmation with Stripe.js" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "stripe", "reason": "Requires a Stripe account and API key" }
+  ],
+  "more": {
+    "docs": "https://docs.stripe.com/payments/payment-intents",
+    "api": "https://docs.stripe.com/api/payment_intents"
+  },
+  "frontmatter": {
+    "created": "2026-04-10",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "4 min",
+    "prerequisites": ["stripe"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

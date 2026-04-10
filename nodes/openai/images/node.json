@@ -1,0 +1,125 @@
+{
+  "name": "images",
+  "version": "1.0.0",
+  "uri": "openai/images",
+  "type": "skill",
+  "context": "Generate and edit images using DALL-E via the OpenAI Images API",
+  "info": "The Images API generates, edits, and creates variations of images using DALL-E models. DALL-E 3 generates high-quality images from text prompts with automatic prompt revision for better results. DALL-E 2 supports editing (inpainting with masks) and variations. Images can be returned as URLs (valid for 1 hour) or base64-encoded data. Supported sizes include 1024x1024, 1024x1792, and 1792x1024 for DALL-E 3. Quality can be set to standard or hd. The endpoint is `POST /v1/images/generations` for generation and `POST /v1/images/edits` for editing.",
+  "parent": "openai",
+  "tags": ["images", "dall-e", "generation", "edit", "variation"],
+  "aliases": [
+    "openai images",
+    "dall-e",
+    "dall-e 3",
+    "image generation",
+    "ai image generation",
+    "generate images",
+    "openai image api",
+    "create image with ai",
+    "dall-e api"
+  ],
+  "triggers": [
+    "generate an image with dall-e",
+    "create an image with openai",
+    "use the openai images api",
+    "generate art with ai",
+    "edit an image with dall-e",
+    "create image variations",
+    "dall-e image generation"
+  ],
+  "body": "# Images\n\nThe Images API generates and edits images using DALL-E models. DALL-E 3 creates high-quality images from text prompts with automatic prompt revision. DALL-E 2 supports editing and variations.\n\n## Generate Images\n\n```javascript\nimport OpenAI from \"openai\";\n\nconst client = new OpenAI(); // reads OPENAI_API_KEY from env\n\nconst response = await client.images.generate({\n  model: \"dall-e-3\",\n  prompt: \"A serene Japanese garden with a koi pond at sunset, watercolor style\",\n  size: \"1024x1024\",\n  quality: \"hd\",\n  n: 1,\n});\n\nconst imageUrl = response.data[0].url;\nconst revisedPrompt = response.data[0].revised_prompt;\nconsole.log(`Image: ${imageUrl}`);\nconsole.log(`Revised prompt: ${revisedPrompt}`);\n```\n\nDALL-E 3 automatically revises your prompt for better results. The `revised_prompt` field shows what was actually sent to the model.\n\n## Edit Images\n\nEdit existing images with inpainting (DALL-E 2 only):\n\n```javascript\nimport fs from \"fs\";\n\nconst response = await client.images.edit({\n  model: \"dall-e-2\",\n  image: fs.createReadStream(\"original.png\"),\n  mask: fs.createReadStream(\"mask.png\"), // transparent areas will be filled\n  prompt: \"A golden retriever sitting on the grass\",\n  size: \"1024x1024\",\n  n: 1,\n});\n\nconst editedUrl = response.data[0].url;\n```\n\nThe mask image must be the same size as the original. Transparent areas in the mask indicate where the model should generate new content.\n\n## Sizes and Quality\n\n### DALL-E 3\n\n| Size | Aspect Ratio | Use Case |\n|------|-------------|----------|\n| 1024x1024 | Square | Default, avatars, icons |\n| 1024x1792 | Portrait | Mobile wallpapers, posters |\n| 1792x1024 | Landscape | Headers, banners, scenes |\n\nQuality options:\n- **standard** — faster, lower cost\n- **hd** — more detailed, higher fidelity\n\n### DALL-E 2\n\n| Size | Notes |\n|------|-------|\n| 256x256 | Fastest, lowest cost |\n| 512x512 | Medium |\n| 1024x1024 | Highest quality for DALL-E 2 |\n\n## Prompt Tips\n\n- Be specific about style, medium, lighting, and composition\n- Include artistic references: \"watercolor\", \"photorealistic\", \"oil painting\", \"digital art\"\n- Describe the scene in detail: subject, action, setting, mood\n- DALL-E 3 revises prompts automatically — check `revised_prompt` to see the expansion\n- For consistent styles across multiple images, include the same style descriptor in every prompt\n- Avoid prohibited content: the API rejects prompts violating OpenAI's content policy\n\n## Response Format\n\nImages can be returned as:\n- **url** — temporary URL valid for ~1 hour (default)\n- **b64_json** — base64-encoded PNG data\n\n```javascript\nconst response = await client.images.generate({\n  model: \"dall-e-3\",\n  prompt: \"A minimalist logo of a mountain\",\n  response_format: \"b64_json\",\n});\n\nconst base64 = response.data[0].b64_json;\n// Save or process the base64 image data\n```\n",
+  "sections": [
+    {
+      "id": "generate",
+      "title": "Generate images",
+      "body": "Call `client.images.generate()` with model, prompt, size, quality, and n (number of images). DALL-E 3 supports n=1 only. The response contains `data[0].url` or `data[0].b64_json` depending on `response_format`. DALL-E 3 also returns `revised_prompt` showing the expanded prompt used for generation.",
+      "tags": ["generate", "create", "prompt", "dall-e-3", "url", "base64"]
+    },
+    {
+      "id": "edit",
+      "title": "Edit images",
+      "body": "Call `client.images.edit()` with an image, mask (transparent areas to fill), prompt, and size. DALL-E 2 only. Both image and mask must be PNG files of the same dimensions. The mask's transparent regions indicate where new content should be generated. Useful for inpainting, object removal, and compositing.",
+      "tags": ["edit", "inpainting", "mask", "dall-e-2", "png"]
+    },
+    {
+      "id": "sizes-quality",
+      "title": "Sizes and quality",
+      "body": "DALL-E 3: 1024x1024 (square), 1024x1792 (portrait), 1792x1024 (landscape). Quality: standard or hd. DALL-E 2: 256x256, 512x512, 1024x1024. Choose size based on aspect ratio needs and quality based on fidelity requirements and budget.",
+      "tags": ["sizes", "quality", "resolution", "hd", "standard", "aspect-ratio"]
+    },
+    {
+      "id": "prompt-tips",
+      "title": "Prompt tips",
+      "body": "Be specific about style, medium, lighting, and composition. Include artistic references (watercolor, photorealistic, oil painting). Describe subject, action, setting, and mood in detail. DALL-E 3 revises prompts automatically — check `revised_prompt` to see expansions. For consistency, reuse style descriptors across prompts.",
+      "tags": ["prompts", "tips", "style", "composition", "consistency"]
+    }
+  ],
+  "links": [
+    { "uri": "openai", "context": "OpenAI ecosystem overview and authentication" },
+    { "uri": "openai/models", "context": "DALL-E model capabilities and pricing" },
+    { "uri": "openai/chat#vision", "context": "Analyze generated images with GPT-4o vision" },
+    { "uri": "openai#authentication", "context": "API key setup for image generation requests" },
+    { "uri": "openai#rate-limits", "context": "Rate limits for image generation API calls" }
+  ],
+  "related": [
+    { "uri": "openai/chat", "relation": "see-also", "note": "Combine image generation with chat completions for multimodal workflows" },
+    { "uri": "openai/models", "relation": "see-also", "note": "DALL-E model comparison and pricing details" }
+  ],
+  "scripts": [
+    {
+      "id": "generate-image",
+      "name": "Generate Image",
+      "description": "Generate images using DALL-E via the OpenAI Images API",
+      "lang": "javascript",
+      "runtime": "node>=18",
+      "entry": "./scripts/generate-image.js",
+      "env": {
+        "OPENAI_API_KEY": { "required": true, "secret": true, "description": "OpenAI API key for authentication" }
+      },
+      "packages": ["openai"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "prompt": { "type": "string", "description": "Text description of the desired image" },
+        "model": { "type": "string", "description": "DALL-E model to use", "default": "dall-e-3", "enum": ["dall-e-3", "dall-e-2"] },
+        "size": { "type": "string", "description": "Image dimensions", "default": "1024x1024", "enum": ["256x256", "512x512", "1024x1024", "1024x1792", "1792x1024"] },
+        "quality": { "type": "string", "description": "Image quality level (DALL-E 3 only)", "default": "standard", "enum": ["standard", "hd"] },
+        "n": { "type": "integer", "description": "Number of images to generate (DALL-E 3: 1 only, DALL-E 2: 1-10)", "default": 1 }
+      },
+      "required": ["prompt"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "url": { "type": "string", "description": "Temporary URL of the generated image (valid ~1 hour)" },
+        "revisedPrompt": { "type": "string", "description": "The prompt as revised by DALL-E 3 (DALL-E 3 only)" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "openai", "reason": "Requires an OpenAI API key and client configuration" }
+  ],
+  "more": {
+    "docs": "https://platform.openai.com/docs/api-reference/images",
+    "guide": "https://platform.openai.com/docs/guides/images",
+    "repo": "https://github.com/openai/openai-node"
+  },
+  "frontmatter": {
+    "created": "2026-04-10",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "developers, AI agents, designers",
+    "estimated_reading_time": "4 min",
+    "prerequisites": ["openai"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

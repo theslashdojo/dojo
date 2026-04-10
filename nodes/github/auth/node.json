@@ -1,0 +1,95 @@
+{
+  "name": "auth",
+  "version": "1.0.0",
+  "uri": "github/auth",
+  "type": "context",
+  "content_type": "guide",
+  "context": "Authentication methods for the GitHub API: PATs, GitHub Apps, OAuth",
+  "info": "Authentication is required for all GitHub API interactions. This guide covers the four primary methods: Personal Access Tokens (classic and fine-grained) for simple user-scoped access, GitHub Apps for machine-to-machine automation with fine-grained permissions, OAuth Apps for third-party user authorization, and fine-grained tokens for repository-scoped access. Each method has different rate limits, permission models, and use cases. Agents typically use PATs for prototyping and GitHub Apps for production. All skills in this ecosystem — [[github/repos]], [[github/issues]], [[github/pull-requests]], [[github/actions]], [[github/webhooks]] — require one of these authentication methods.",
+  "parent": "github",
+  "tags": ["auth", "authentication", "pat", "github-apps", "oauth", "tokens"],
+  "aliases": [
+    "github authentication",
+    "github auth",
+    "github token",
+    "personal access token",
+    "github app auth",
+    "oauth github",
+    "github api auth",
+    "GITHUB_TOKEN"
+  ],
+  "triggers": [
+    "authenticate with github",
+    "set up github token",
+    "create a personal access token",
+    "configure github app authentication",
+    "github oauth flow",
+    "how to authenticate github api",
+    "generate a github token"
+  ],
+  "body": "# GitHub Authentication\n\nAll GitHub API requests require authentication. The method you choose determines your rate limits, permission scope, and how credentials are managed.\n\n## Personal Access Tokens (Classic)\n\nThe simplest authentication method. Generate from GitHub Settings > Developer settings > Personal access tokens.\n\n```javascript\nimport { Octokit } from \"@octokit/rest\";\n\nconst octokit = new Octokit({\n  auth: process.env.GITHUB_TOKEN,\n});\n\n// All subsequent API calls are authenticated\nconst { data: user } = await octokit.users.getAuthenticated();\nconsole.log(user.login);\n```\n\nClassic PATs use broad scopes: `repo`, `workflow`, `admin:org`, `admin:repo_hook`.\n\n## Fine-Grained Tokens\n\nNewer token type with repository-level and permission-level granularity.\n\n```javascript\n// Fine-grained tokens work identically in code\nconst octokit = new Octokit({\n  auth: process.env.GITHUB_TOKEN, // fine-grained token\n});\n```\n\nKey advantages:\n- **Repository scoping** — limit access to specific repositories\n- **Permission granularity** — select individual permissions (e.g., Issues: read, Pull Requests: write)\n- **Expiration** — mandatory expiration dates\n- **Organization approval** — orgs can require approval for fine-grained tokens\n\n## GitHub Apps\n\nMachine-to-machine authentication for production automation. GitHub Apps act as their own identity, not as a user.\n\n```javascript\nimport { createAppAuth } from \"@octokit/auth-app\";\nimport { Octokit } from \"@octokit/rest\";\n\n// Authenticate as the GitHub App\nconst appOctokit = new Octokit({\n  authStrategy: createAppAuth,\n  auth: {\n    appId: process.env.GITHUB_APP_ID,\n    privateKey: process.env.GITHUB_APP_PRIVATE_KEY,\n    installationId: process.env.GITHUB_APP_INSTALLATION_ID,\n  },\n});\n\n// API calls are made as the app installation\nconst { data: repos } = await appOctokit.apps.listReposAccessibleToInstallation();\n```\n\nGitHub App setup:\n1. Create App in GitHub Settings > Developer settings > GitHub Apps\n2. Set permissions (e.g., Issues: read/write, Pull Requests: read/write)\n3. Generate a private key\n4. Install on target repos/orgs\n5. Use installation ID + private key for authentication\n\n## OAuth Flow\n\nFor third-party applications that need to act on behalf of a user.\n\n```javascript\n// Step 1: Redirect user to GitHub authorization\nconst authUrl = `https://github.com/login/oauth/authorize?client_id=${CLIENT_ID}&scope=repo,user&redirect_uri=${CALLBACK_URL}`;\n\n// Step 2: Exchange code for token (after user authorizes)\nconst response = await fetch(\"https://github.com/login/oauth/access_token\", {\n  method: \"POST\",\n  headers: { \"Accept\": \"application/json\" },\n  body: JSON.stringify({\n    client_id: process.env.GITHUB_CLIENT_ID,\n    client_secret: process.env.GITHUB_CLIENT_SECRET,\n    code: authorizationCode,\n  }),\n});\nconst { access_token } = await response.json();\n\n// Step 3: Use token for API calls\nconst octokit = new Octokit({ auth: access_token });\n```\n\n## Comparison\n\n| Method | Use Case | Rate Limit | Scope |\n|--------|----------|------------|-------|\n| Classic PAT | Prototyping, personal scripts | 5,000/hr | Broad scopes |\n| Fine-grained PAT | Scoped automation | 5,000/hr | Per-repo, per-permission |\n| GitHub App | Production bots, CI/CD | 5,000/hr per install | Installation permissions |\n| OAuth | Third-party apps | 5,000/hr | User-authorized scopes |\n\n## Security Best Practices\n\n- **Never commit tokens** to version control\n- **Use environment variables** or secret managers\n- **Set expiration** on all tokens\n- **Use minimum scopes** required for your use case\n- **Rotate tokens** regularly\n- **Use fine-grained tokens** over classic PATs when possible\n- **Use GitHub Apps** for production automation over PATs\n",
+  "sections": [
+    {
+      "id": "personal-access-tokens",
+      "title": "Personal Access Tokens",
+      "body": "Classic PATs provide broad scope-based access (`repo`, `workflow`, `admin:org`). Generate from GitHub Settings > Developer settings > Personal access tokens > Tokens (classic). Set as `GITHUB_TOKEN` environment variable. Used by all skills: [[github/repos]], [[github/issues]], [[github/pull-requests]], [[github/actions]], [[github/webhooks]].",
+      "tags": ["pat", "classic-token", "scopes", "GITHUB_TOKEN"]
+    },
+    {
+      "id": "github-apps",
+      "title": "GitHub Apps",
+      "body": "GitHub Apps authenticate as installations with fine-grained permissions. Use `@octokit/auth-app` with `appId`, `privateKey`, and `installationId`. Apps have their own identity and don't consume a user seat. Preferred for production bots, CI/CD integrations, and organizational automation. Rate limit: 5,000 requests/hour per installation.",
+      "tags": ["github-apps", "installation", "private-key", "machine-to-machine", "production"]
+    },
+    {
+      "id": "oauth-flow",
+      "title": "OAuth flow",
+      "body": "OAuth Apps redirect users to GitHub for authorization, exchange an authorization code for an access token, then make API calls on behalf of the user. Requires `client_id` and `client_secret`. Use for third-party web applications that need user-authorized access to GitHub resources.",
+      "tags": ["oauth", "authorization", "client-id", "client-secret", "web-app"]
+    },
+    {
+      "id": "fine-grained-tokens",
+      "title": "Fine-grained tokens",
+      "body": "Fine-grained PATs provide repository-level and permission-level access control. Select specific repositories and individual permissions (e.g., Contents: read, Issues: write). Require expiration dates. Organizations can require approval for fine-grained tokens. Preferred over classic PATs for scoped automation.",
+      "tags": ["fine-grained", "repository-scoped", "granular-permissions", "expiration"]
+    }
+  ],
+  "links": [
+    { "uri": "github/repos", "context": "Repository operations require authentication" },
+    { "uri": "github/issues", "context": "Issue operations require authentication" },
+    { "uri": "github/pull-requests", "context": "PR operations require authentication" },
+    { "uri": "github/actions", "context": "Actions API and secrets require authentication" },
+    { "uri": "github/webhooks", "context": "Webhook management requires authentication" },
+    { "uri": "github/repos#create", "context": "Token needs repo scope to create repositories" },
+    { "uri": "github/issues#create", "context": "Token needs issues permission to create issues" },
+    { "uri": "github/pull-requests#create", "context": "Token needs pull request permission to open PRs" },
+    { "uri": "github/actions#secrets", "context": "Token needs admin scope to manage Actions secrets" },
+    { "uri": "github/webhooks#setup", "context": "Token needs admin:repo_hook scope to manage webhooks" }
+  ],
+  "related": [
+    { "uri": "github/repos", "relation": "see-also", "note": "All repo operations depend on proper authentication" },
+    { "uri": "github/actions", "relation": "see-also", "note": "Actions workflows get an automatic GITHUB_TOKEN with limited permissions" },
+    { "uri": "github/webhooks", "relation": "see-also", "note": "Webhook secrets are a separate credential from API auth tokens" }
+  ],
+  "more": {
+    "docs": "https://docs.github.com/en/authentication",
+    "pat": "https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens",
+    "apps": "https://docs.github.com/en/apps/creating-github-apps",
+    "oauth": "https://docs.github.com/en/apps/oauth-apps"
+  },
+  "frontmatter": {
+    "created": "2026-04-10",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "5 min",
+    "prerequisites": [],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

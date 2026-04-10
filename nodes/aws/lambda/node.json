@@ -1,0 +1,133 @@
+{
+  "name": "lambda",
+  "version": "1.0.0",
+  "uri": "aws/lambda",
+  "type": "skill",
+  "context": "Create, deploy, and invoke AWS Lambda serverless functions",
+  "info": "AWS Lambda runs code without provisioning or managing servers. You upload a function handler, configure triggers (API Gateway, S3 events, SQS, schedules), and Lambda executes your code in response to events. Lambda scales automatically from zero to thousands of concurrent executions. Supported runtimes include Node.js, Python, Java, Go, .NET, and custom runtimes via containers. The AWS SDK v3 `@aws-sdk/client-lambda` package provides Invoke, CreateFunction, UpdateFunctionCode, and other commands. Lambda integrates with [[aws/s3]] for event-driven file processing, [[aws/iam]] for execution roles, and [[aws/cloudformation]] for deployment.",
+  "parent": "aws",
+  "tags": ["lambda", "serverless", "functions", "invoke", "deploy"],
+  "aliases": [
+    "lambda",
+    "aws lambda",
+    "lambda function",
+    "serverless function",
+    "lambda deployment",
+    "aws serverless",
+    "cloud function",
+    "faas"
+  ],
+  "triggers": [
+    "create a lambda function",
+    "deploy a lambda",
+    "invoke a lambda function",
+    "run serverless code",
+    "set up a lambda trigger",
+    "deploy serverless function to aws",
+    "how do i use lambda"
+  ],
+  "body": "# AWS Lambda\n\nLambda is AWS's serverless compute service. Write a function handler, upload your code, and Lambda runs it in response to events — no servers to manage. You pay only for the compute time consumed, billed in 1ms increments.\n\n## Create and Deploy\n\n```javascript\nimport { LambdaClient, CreateFunctionCommand } from \"@aws-sdk/client-lambda\";\nimport { readFileSync } from \"fs\";\n\nconst lambda = new LambdaClient({ region: process.env.AWS_REGION });\n\nawait lambda.send(new CreateFunctionCommand({\n  FunctionName: \"my-function\",\n  Runtime: \"nodejs20.x\",\n  Role: \"arn:aws:iam::123456789012:role/lambda-execution-role\",\n  Handler: \"index.handler\",\n  Code: { ZipFile: readFileSync(\"./function.zip\") },\n  Timeout: 30,\n  MemorySize: 256,\n}));\n```\n\nThe execution role must have the permissions your function needs. Create it via [[aws/iam#roles]] with a trust policy allowing `lambda.amazonaws.com`.\n\n## Invoke\n\n```javascript\nimport { InvokeCommand } from \"@aws-sdk/client-lambda\";\n\nconst response = await lambda.send(new InvokeCommand({\n  FunctionName: \"my-function\",\n  Payload: JSON.stringify({ key: \"value\" }),\n  InvocationType: \"RequestResponse\", // synchronous\n}));\n\nconst result = JSON.parse(Buffer.from(response.Payload).toString());\nconsole.log(result); // function return value\n```\n\nInvocation types:\n- **RequestResponse** — synchronous, waits for the function to complete\n- **Event** — asynchronous, returns immediately, function runs in background\n- **DryRun** — validates the request without executing\n\n## Layers\n\nLayers let you package shared dependencies separately from function code:\n\n- Common libraries (e.g., AWS SDK extensions, utility packages)\n- Shared configuration files\n- Custom runtimes\n\nA function can use up to 5 layers. Total unzipped size (function + layers) must be under 250 MB.\n\n## Event Sources\n\nLambda can be triggered by many AWS services:\n\n| Source | Use Case |\n|--------|----------|\n| API Gateway | HTTP endpoints |\n| S3 | File upload/delete events (see [[aws/s3]]) |\n| SQS | Message queue processing |\n| DynamoDB Streams | Database change events |\n| EventBridge | Scheduled or custom events |\n| CloudWatch Logs | Log processing |\n\nConfigure event source mappings via [[aws/cloudformation]] or the Lambda console.\n\n## Cold Starts\n\nWhen Lambda creates a new execution environment, there is a one-time initialization delay (cold start):\n\n- **Node.js** — typically 100-500ms cold start\n- **Python** — typically 100-500ms cold start\n- **Java** — typically 1-5s cold start (JVM startup)\n- **Provisioned Concurrency** — pre-warms environments to eliminate cold starts for latency-sensitive workloads\n\n## Environment Variables\n\n| Variable | Purpose |\n|----------|----------|\n| `AWS_ACCESS_KEY_ID` | IAM access key for the Lambda client |\n| `AWS_SECRET_ACCESS_KEY` | IAM secret key for the Lambda client |\n| `AWS_REGION` | Target region for Lambda deployment |\n",
+  "sections": [
+    {
+      "id": "create-deploy",
+      "title": "Create and deploy",
+      "body": "Use `CreateFunctionCommand` to create a new function. Provide runtime (nodejs20.x, python3.12, etc.), handler entry point, IAM execution role (see [[aws/iam#roles]]), and zipped code. Use `UpdateFunctionCodeCommand` for subsequent deployments. For infrastructure-as-code, define functions in [[aws/cloudformation]] templates.",
+      "tags": ["create", "deploy", "runtime", "handler", "execution-role"]
+    },
+    {
+      "id": "invoke",
+      "title": "Invoke functions",
+      "body": "Use `InvokeCommand` with `FunctionName` and `Payload`. Set `InvocationType` to `RequestResponse` for synchronous calls or `Event` for async fire-and-forget. Parse the response Payload from a Uint8Array. Use `LogType: 'Tail'` to include execution logs in the response.",
+      "tags": ["invoke", "synchronous", "asynchronous", "payload", "request-response"]
+    },
+    {
+      "id": "layers",
+      "title": "Layers and dependencies",
+      "body": "Package shared code and dependencies as Lambda layers. Layers are versioned and can be shared across functions and accounts. Use layers for common libraries, custom runtimes, or configuration. A function can reference up to 5 layers. Total unzipped deployment size (code + layers) must stay under 250 MB.",
+      "tags": ["layers", "dependencies", "shared-code", "custom-runtime"]
+    },
+    {
+      "id": "event-sources",
+      "title": "Event sources and triggers",
+      "body": "Lambda integrates with API Gateway (HTTP), [[aws/s3]] (object events), SQS (messages), DynamoDB Streams (data changes), EventBridge (schedules and custom events), and CloudWatch Logs. Configure event source mappings to connect triggers to functions. Use [[aws/cloudformation]] to define triggers declaratively.",
+      "tags": ["event-source", "trigger", "api-gateway", "s3", "sqs", "dynamodb", "eventbridge"]
+    },
+    {
+      "id": "cold-starts",
+      "title": "Cold starts and performance",
+      "body": "Cold starts occur when Lambda initializes a new execution environment. Node.js and Python have 100-500ms cold starts. Java can take 1-5 seconds. Minimize cold starts by keeping function packages small, using provisioned concurrency for critical paths, and choosing lightweight runtimes. Warm functions reuse existing environments.",
+      "tags": ["cold-start", "performance", "provisioned-concurrency", "warm", "latency"]
+    }
+  ],
+  "links": [
+    { "uri": "aws/iam", "context": "Execution roles define what the Lambda function can access" },
+    { "uri": "aws/s3", "context": "S3 events can trigger Lambda for file processing" },
+    { "uri": "aws/cloudformation", "context": "Define Lambda functions and triggers in CloudFormation" },
+    { "uri": "aws/iam#roles", "context": "Create execution roles with least-privilege permissions" },
+    { "uri": "aws/s3#upload-download", "context": "Process uploaded files via S3-to-Lambda events" },
+    { "uri": "aws/cloudformation#template-anatomy", "context": "Define Lambda resources in CloudFormation templates" }
+  ],
+  "related": [
+    { "uri": "aws/iam", "relation": "prerequisite", "note": "Lambda functions require an IAM execution role" },
+    { "uri": "aws/s3", "relation": "see-also", "note": "S3 is a common event source for Lambda file processing pipelines" },
+    { "uri": "aws/cloudformation", "relation": "see-also", "note": "Use CloudFormation to deploy Lambda functions as infrastructure" }
+  ],
+  "scripts": [
+    {
+      "id": "invoke-lambda",
+      "name": "Invoke Lambda",
+      "description": "Create, deploy, and invoke an AWS Lambda serverless function",
+      "lang": "javascript",
+      "runtime": "node>=18",
+      "entry": "./scripts/invoke-lambda.js",
+      "env": {
+        "AWS_ACCESS_KEY_ID": { "required": true, "secret": true, "description": "IAM access key identifier" },
+        "AWS_SECRET_ACCESS_KEY": { "required": true, "secret": true, "description": "IAM secret access key" },
+        "AWS_REGION": { "required": true, "secret": false, "description": "AWS region for the Lambda client" }
+      },
+      "packages": ["@aws-sdk/client-lambda"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "functionName": { "type": "string", "description": "Name or ARN of the Lambda function" },
+        "payload": { "type": "object", "description": "JSON payload to pass to the function" },
+        "runtime": { "type": "string", "enum": ["nodejs20.x", "python3.12", "java21", "dotnet8", "provided.al2023"], "description": "Lambda runtime environment" }
+      },
+      "required": ["functionName"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "statusCode": { "type": "integer", "description": "HTTP status code of the invocation" },
+        "payload": { "type": "object", "description": "Response payload from the function" },
+        "logResult": { "type": "string", "description": "Base64-encoded execution logs (when LogType is Tail)" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "aws/iam", "reason": "An IAM execution role is required for Lambda to access other AWS services" }
+  ],
+  "more": {
+    "docs": "https://docs.aws.amazon.com/lambda/",
+    "sdk": "https://docs.aws.amazon.com/AWSJavaScriptSDK/v3/latest/client/lambda/",
+    "pricing": "https://aws.amazon.com/lambda/pricing/"
+  },
+  "frontmatter": {
+    "created": "2026-04-10",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "5 min",
+    "prerequisites": ["aws/iam"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

@@ -1,0 +1,120 @@
+{
+  "name": "webhooks",
+  "version": "1.0.0",
+  "uri": "slack/webhooks",
+  "type": "skill",
+  "context": "Send messages to Slack channels using incoming webhooks",
+  "info": "Incoming webhooks are the simplest way to send messages from external systems into Slack. A webhook URL maps to a specific channel — POST a JSON payload and the message appears. No bot token or OAuth required. Webhooks support plain text, mrkdwn formatting, and Block Kit layouts. They are ideal for notifications, alerts, CI/CD status updates, and monitoring integrations. For two-way interaction, use [[slack/bots]] instead. For programmatic control over multiple channels, use [[slack/messages]] with the Web API.",
+  "parent": "slack",
+  "tags": ["webhooks", "incoming", "outgoing", "integration", "notifications"],
+  "aliases": [
+    "slack webhook",
+    "slack webhooks",
+    "incoming webhook",
+    "slack notification",
+    "slack alert",
+    "webhook url",
+    "post to slack webhook",
+    "slack incoming webhook"
+  ],
+  "triggers": [
+    "send a slack webhook",
+    "set up a slack webhook",
+    "post notification to slack",
+    "send alert to slack channel",
+    "configure incoming webhook",
+    "use slack webhook url"
+  ],
+  "body": "# Slack Webhooks\n\nIncoming webhooks are the simplest way to post messages to Slack from external systems. A webhook URL is tied to a specific channel — send a JSON POST request and the message appears. No bot token or OAuth flow required.\n\n## Setting Up Incoming Webhooks\n\n1. Go to https://api.slack.com/apps and select (or create) your app\n2. Navigate to **Incoming Webhooks** and toggle it on\n3. Click **Add New Webhook to Workspace**\n4. Select the target channel and authorize\n5. Copy the webhook URL (format: `https://hooks.slack.com/services/T.../B.../xxx`)\n\nStore the webhook URL in an environment variable. Never commit it to source — anyone with the URL can post to your channel.\n\n## Sending a Message\n\n```javascript\nconst webhookUrl = process.env.SLACK_WEBHOOK_URL;\n\nconst response = await fetch(webhookUrl, {\n  method: \"POST\",\n  headers: { \"Content-Type\": \"application/json\" },\n  body: JSON.stringify({\n    text: \"Deployment complete! :rocket:\"\n  })\n});\n```\n\nOr use the `@slack/webhook` package for a typed client:\n\n```javascript\nimport { IncomingWebhook } from \"@slack/webhook\";\n\nconst webhook = new IncomingWebhook(process.env.SLACK_WEBHOOK_URL);\n\nawait webhook.send({\n  text: \"Deployment complete! :rocket:\",\n  blocks: [\n    {\n      type: \"section\",\n      text: {\n        type: \"mrkdwn\",\n        text: \"*Deployment complete* :rocket:\\nService `api-gateway` deployed to production.\"\n      }\n    },\n    {\n      type: \"context\",\n      elements: [\n        { type: \"mrkdwn\", text: \"Deployed by CI/CD pipeline | <https://github.com/org/repo/actions|View logs>\" }\n      ]\n    }\n  ]\n});\n```\n\n## Formatting\n\nWebhooks support the same formatting as regular messages:\n\n- **Plain text** — set `text` for simple messages\n- **Mrkdwn** — use Slack's `mrkdwn` syntax for `*bold*`, `_italic_`, `~strike~`, and links `<url|text>`\n- **Block Kit** — include a `blocks` array for rich layouts (see [[slack/block-kit]])\n- **Username and icon** — override with `username` and `icon_emoji` or `icon_url`\n\n```javascript\nawait webhook.send({\n  username: \"Deploy Bot\",\n  icon_emoji: \":robot_face:\",\n  text: \"Build #42 passed\",\n  blocks: [\n    {\n      type: \"header\",\n      text: { type: \"plain_text\", text: \"Build #42 Passed\" }\n    },\n    { type: \"divider\" },\n    {\n      type: \"section\",\n      fields: [\n        { type: \"mrkdwn\", text: \"*Branch:*\\nmain\" },\n        { type: \"mrkdwn\", text: \"*Duration:*\\n3m 42s\" },\n        { type: \"mrkdwn\", text: \"*Commit:*\\n`a1b2c3d`\" },\n        { type: \"mrkdwn\", text: \"*Author:*\\n<@U0123456>\" }\n      ]\n    }\n  ]\n});\n```\n\n## Best Practices\n\n- **Rate limiting** — Slack allows ~1 message per second per webhook. Batch or queue for higher volumes.\n- **Fallback text** — Always include `text` even when using `blocks` for notification previews and accessibility.\n- **Error handling** — Webhook POST returns `ok` (200) on success, or an error string. Check the response body.\n- **Security** — Treat webhook URLs as secrets. Rotate them if compromised by revoking and re-creating.\n- **Channel changes** — To post to a different channel, create a new webhook. Each URL is bound to one channel.\n- **Limitations** — Webhooks are one-way (send only). For receiving messages or interactions, use [[slack/bots]] or [[slack/events]].\n",
+  "sections": [
+    {
+      "id": "incoming-setup",
+      "title": "Incoming webhook setup",
+      "body": "Enable incoming webhooks in your Slack app settings. Add a webhook to a workspace and select the target channel. Copy the URL (`https://hooks.slack.com/services/...`). Store as `SLACK_WEBHOOK_URL` environment variable. Each URL is bound to a single channel. See [[slack#authentication]] for app setup.",
+      "tags": ["setup", "incoming", "configure", "url"]
+    },
+    {
+      "id": "send-message",
+      "title": "Sending messages via webhook",
+      "body": "POST JSON to the webhook URL with `text` and optional `blocks`. Use native `fetch()` or the `@slack/webhook` package. The response is `ok` on success. Include `username` and `icon_emoji` to customize the sender appearance.",
+      "tags": ["send", "post", "json", "fetch", "webhook-client"]
+    },
+    {
+      "id": "formatting",
+      "title": "Message formatting",
+      "body": "Webhooks support plain text, mrkdwn formatting, and full Block Kit layouts (see [[slack/block-kit]]). Use mrkdwn for bold, italic, links, and mentions. Use blocks for headers, dividers, sections with fields, and context elements. See [[slack/messages#formatting]] for the mrkdwn syntax reference.",
+      "tags": ["formatting", "mrkdwn", "blocks", "rich-messages"]
+    },
+    {
+      "id": "best-practices",
+      "title": "Best practices",
+      "body": "Rate limit: ~1 req/sec per webhook. Always include fallback `text`. Treat URLs as secrets — rotate if compromised. Handle errors by checking response body. For two-way communication, use [[slack/bots]]. For multi-channel posting, use [[slack/messages]] with the Web API.",
+      "tags": ["rate-limit", "security", "error-handling", "production"]
+    }
+  ],
+  "links": [
+    { "uri": "slack", "context": "Slack ecosystem overview and app setup" },
+    { "uri": "slack/messages", "context": "Full messaging API for multi-channel programmatic posting" },
+    { "uri": "slack/block-kit", "context": "Block Kit layouts for rich webhook messages" },
+    { "uri": "slack/bots", "context": "Full bot framework for two-way interactions" }
+  ],
+  "related": [
+    { "uri": "slack/messages", "relation": "see-also", "note": "The Web API provides more control — update, delete, thread, and multi-channel messaging" },
+    { "uri": "slack/bots", "relation": "see-also", "note": "Use bots when you need two-way interaction, not just notifications" },
+    { "uri": "slack/block-kit", "relation": "see-also", "note": "Block Kit layouts make webhook messages rich and informative" }
+  ],
+  "scripts": [
+    {
+      "id": "send-webhook",
+      "name": "Send Slack Webhook",
+      "description": "Send a message to a Slack channel via incoming webhook",
+      "lang": "javascript",
+      "runtime": "node>=18",
+      "entry": "./scripts/send-webhook.js",
+      "env": {
+        "SLACK_WEBHOOK_URL": { "required": true, "secret": true, "description": "Incoming webhook URL (https://hooks.slack.com/services/...)" }
+      },
+      "packages": []
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "text": { "type": "string", "description": "Message text (required fallback even when using blocks)" },
+        "blocks": { "type": "array", "description": "Block Kit blocks for rich message layout" },
+        "username": { "type": "string", "description": "Override the webhook's display name" },
+        "iconEmoji": { "type": "string", "description": "Override the webhook's icon with an emoji (e.g., :robot_face:)" }
+      },
+      "required": ["text"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "ok": { "type": "boolean", "description": "Whether the webhook POST succeeded" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "slack", "reason": "Requires a Slack app with incoming webhooks enabled" }
+  ],
+  "more": {
+    "docs": "https://api.slack.com/messaging/webhooks",
+    "api-ref": "https://api.slack.com/reference/messaging/webhooks"
+  },
+  "frontmatter": {
+    "created": "2026-04-10",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "developers, AI agents, DevOps",
+    "estimated_reading_time": "3 min",
+    "prerequisites": ["slack"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

@@ -1,0 +1,98 @@
+{
+  "name": "openai",
+  "version": "1.0.0",
+  "uri": "openai",
+  "type": "ecosystem",
+  "context": "OpenAI platform — chat completions, embeddings, image generation, assistants, and function calling",
+  "info": "The OpenAI ecosystem covers AI model integration via the OpenAI API platform. Primary capabilities include chat completions (GPT-4o, GPT-4o-mini, o1, o3), text embeddings for vector search and RAG, image generation and editing with DALL-E, persistent assistants with threads and tool use, and structured function/tool calling. All APIs use bearer-token authentication with an OPENAI_API_KEY. The official Node.js SDK (`openai`) and Python SDK (`openai`) are the primary client libraries. Rate limits vary by model and tier. This tree is organized around the jobs an agent performs: generating text, creating embeddings, producing images, building assistants, and using tools/functions.",
+  "parent": null,
+  "tags": ["openai", "gpt", "chatgpt", "llm", "ai", "embeddings", "dall-e", "assistants", "api", "function-calling"],
+  "aliases": [
+    "openai",
+    "openai api",
+    "gpt",
+    "chatgpt",
+    "openai platform",
+    "gpt-4o",
+    "openai development",
+    "ai api",
+    "llm api"
+  ],
+  "triggers": [
+    "work with openai",
+    "generate text with gpt",
+    "use openai api",
+    "create embeddings",
+    "generate images with dall-e",
+    "build an ai assistant",
+    "use function calling",
+    "chat completions",
+    "call openai"
+  ],
+  "body": "# OpenAI Ecosystem\n\nOpenAI provides a suite of AI models accessible via a unified REST API. Agents use these models to generate text, create vector embeddings, produce images, build persistent assistants, and invoke structured tool calls. All endpoints live under `https://api.openai.com/v1/` and authenticate with a bearer token.\n\n## Agent Jobs\n\nThe primary tasks an agent performs in this ecosystem:\n\n- **Generate text** — send system/user/assistant messages to the Chat Completions API and receive model-generated responses. See [[openai/chat]].\n- **Create embeddings** — convert text into dense vector representations for similarity search, clustering, and RAG pipelines. See [[openai/embeddings]].\n- **Produce images** — generate, edit, or create variations of images using DALL-E models. See [[openai/images]].\n- **Build assistants** — create persistent AI assistants with threads, messages, and tool use via the Assistants API. See [[openai/assistants]].\n- **Use tools/functions** — define JSON Schema tools that the model can invoke, enabling structured data extraction and external API integration. See [[openai/function-calling]].\n\n## Models\n\nOpenAI offers multiple model families optimized for different tasks:\n\n| Model | Best For | Context Window |\n|-------|----------|----------------|\n| GPT-4o | General-purpose, multimodal | 128k tokens |\n| GPT-4o-mini | Fast, cost-effective tasks | 128k tokens |\n| o1 | Complex reasoning | 200k tokens |\n| o3 | Advanced reasoning, code | 200k tokens |\n| text-embedding-3-small | Embeddings (cost-effective) | 8,191 tokens |\n| text-embedding-3-large | Embeddings (high accuracy) | 8,191 tokens |\n| DALL-E 3 | Image generation | N/A |\n\nSee [[openai/models]] for a detailed comparison including pricing and capabilities.\n\n## Libraries\n\n- **openai (Node.js)** — official TypeScript/JavaScript SDK\n- **openai (Python)** — official Python SDK\n- **REST API** — direct HTTP calls to `https://api.openai.com/v1/`\n\n## Authentication\n\nAll API requests require an `Authorization: Bearer $OPENAI_API_KEY` header. Create API keys at [platform.openai.com/api-keys](https://platform.openai.com/api-keys). Use environment variables — never commit keys to source control.\n\n```bash\nexport OPENAI_API_KEY=\"sk-...\"\n```\n\n```javascript\nimport OpenAI from \"openai\";\nconst client = new OpenAI(); // reads OPENAI_API_KEY from env\n```\n",
+  "sections": [
+    {
+      "id": "api-overview",
+      "title": "API overview",
+      "body": "The OpenAI API is organized around REST endpoints under `https://api.openai.com/v1/`. Key endpoints: `/chat/completions` (see [[openai/chat]]), `/embeddings` (see [[openai/embeddings]]), `/images/generations` (see [[openai/images]]), `/assistants` (see [[openai/assistants]]). All responses are JSON. Streaming is supported for chat completions via Server-Sent Events.",
+      "tags": ["api", "rest", "endpoints", "json", "streaming"]
+    },
+    {
+      "id": "authentication",
+      "title": "Authentication",
+      "body": "Set `OPENAI_API_KEY` as an environment variable. The official SDKs read it automatically. For direct HTTP, send `Authorization: Bearer $OPENAI_API_KEY`. Organization and project headers are optional: `OpenAI-Organization` and `OpenAI-Project`. Never commit keys to source control. Rotate keys at platform.openai.com/api-keys.",
+      "tags": ["auth", "api-key", "bearer", "security", "organization"]
+    },
+    {
+      "id": "models-overview",
+      "title": "Models overview",
+      "body": "GPT-4o is the flagship multimodal model for text and vision. GPT-4o-mini is optimized for speed and cost. o1 and o3 are reasoning models that think before answering. text-embedding-3-small and text-embedding-3-large produce vector embeddings. DALL-E 3 generates images from text prompts. See [[openai/models]] for detailed pricing and capability comparison.",
+      "tags": ["models", "gpt-4o", "gpt-4o-mini", "o1", "o3", "dall-e", "embeddings"]
+    },
+    {
+      "id": "rate-limits",
+      "title": "Rate limits",
+      "body": "Rate limits are per-organization and vary by model and tier. Limits are expressed in requests per minute (RPM), tokens per minute (TPM), and requests per day (RPD). Check your current limits at platform.openai.com/account/limits. Implement exponential backoff with retry on 429 responses. The `x-ratelimit-*` response headers show remaining quota.",
+      "tags": ["rate-limits", "throttling", "429", "retry", "backoff", "quota"]
+    }
+  ],
+  "links": [
+    { "uri": "openai/chat", "context": "Generate text with Chat Completions API" },
+    { "uri": "openai/embeddings", "context": "Create vector embeddings for text" },
+    { "uri": "openai/images", "context": "Generate and edit images with DALL-E" },
+    { "uri": "openai/assistants", "context": "Build persistent AI assistants with threads and tools" },
+    { "uri": "openai/function-calling", "context": "Define and handle structured tool/function calls" },
+    { "uri": "openai/models", "context": "Model selection guide with pricing and capabilities" },
+    { "uri": "openai/chat#streaming", "context": "Stream chat completions via Server-Sent Events" },
+    { "uri": "openai/chat#structured-output", "context": "Constrain model output to a JSON Schema" },
+    { "uri": "openai/embeddings#use-cases", "context": "Common embedding use cases: search, RAG, clustering" },
+    { "uri": "openai/assistants#tools", "context": "Assistant tool use: code interpreter, file search, functions" },
+    { "uri": "openai/function-calling#define-tools", "context": "Define tool schemas for function calling" },
+    { "uri": "openai/models#model-comparison", "context": "Side-by-side model comparison table" }
+  ],
+  "related": [
+    { "uri": "openai/chat", "relation": "see-also", "note": "Chat completions is the most commonly used API endpoint" },
+    { "uri": "openai/function-calling", "relation": "see-also", "note": "Function calling enables structured interaction between models and external tools" }
+  ],
+  "more": {
+    "docs": "https://platform.openai.com/docs",
+    "repo": "https://github.com/openai/openai-node",
+    "api": "https://api.openai.com"
+  },
+  "frontmatter": {
+    "created": "2026-04-10",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "developers, AI agents, integrators",
+    "estimated_reading_time": "5 min",
+    "prerequisites": [],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://github.com/openai/openai-node",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

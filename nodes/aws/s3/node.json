@@ -1,0 +1,128 @@
+{
+  "name": "s3",
+  "version": "1.0.0",
+  "uri": "aws/s3",
+  "type": "skill",
+  "context": "Upload, download, and manage objects in Amazon S3 buckets",
+  "info": "Amazon S3 (Simple Storage Service) provides scalable object storage with high availability and durability. Objects are stored in buckets, organized by keys (paths). S3 supports versioning, lifecycle policies, access control via bucket policies and ACLs, and presigned URLs for temporary access. The AWS SDK v3 `@aws-sdk/client-s3` package provides PutObject, GetObject, DeleteObject, ListObjects, and other commands. Use `@aws-sdk/s3-request-presigner` for generating presigned URLs. S3 integrates with [[aws/lambda]] for event-driven processing and [[aws/cloudformation]] for bucket provisioning.",
+  "parent": "aws",
+  "tags": ["s3", "storage", "bucket", "object", "upload", "download"],
+  "aliases": [
+    "s3",
+    "amazon s3",
+    "s3 bucket",
+    "s3 storage",
+    "object storage",
+    "upload to s3",
+    "download from s3",
+    "s3 files"
+  ],
+  "triggers": [
+    "upload a file to s3",
+    "download from s3",
+    "create an s3 bucket",
+    "manage s3 objects",
+    "generate a presigned url",
+    "list objects in s3",
+    "set bucket policy"
+  ],
+  "body": "# Amazon S3\n\nS3 is AWS's object storage service. Objects (files) live in buckets, addressed by a key (path). Every object has a unique combination of bucket + key. S3 delivers 99.999999999% (11 nines) durability and integrates deeply with other AWS services.\n\n## Upload and Download\n\n```javascript\nimport { S3Client, PutObjectCommand, GetObjectCommand } from \"@aws-sdk/client-s3\";\n\nconst s3 = new S3Client({ region: process.env.AWS_REGION });\n\n// Upload\nawait s3.send(new PutObjectCommand({\n  Bucket: \"my-bucket\",\n  Key: \"path/to/file.txt\",\n  Body: Buffer.from(\"Hello, S3!\"),\n  ContentType: \"text/plain\",\n}));\n\n// Download\nconst { Body } = await s3.send(new GetObjectCommand({\n  Bucket: \"my-bucket\",\n  Key: \"path/to/file.txt\",\n}));\nconst content = await Body.transformToString();\n```\n\n## Presigned URLs\n\nGenerate time-limited URLs for secure access without sharing credentials:\n\n```javascript\nimport { getSignedUrl } from \"@aws-sdk/s3-request-presigner\";\n\nconst url = await getSignedUrl(s3, new GetObjectCommand({\n  Bucket: \"my-bucket\",\n  Key: \"path/to/file.txt\",\n}), { expiresIn: 3600 }); // 1 hour\n```\n\nPresigned URLs are ideal for allowing clients to upload or download without direct AWS credentials.\n\n## Bucket Policies\n\nBucket policies control access at the bucket level using JSON policy documents. Combine with [[aws/iam]] policies for fine-grained control:\n\n- **Public read** — allow anonymous GET requests (use sparingly)\n- **Cross-account** — grant access to IAM principals in other AWS accounts\n- **IP restrictions** — limit access to specific CIDR ranges\n- **VPC endpoint** — restrict access to traffic from a specific VPC\n\n## Lifecycle Rules\n\nAutomate object transitions and expiration:\n\n- **Transition** — move objects to cheaper storage classes (S3 Standard -> S3 Glacier) after N days\n- **Expiration** — automatically delete objects after N days\n- **Abort incomplete multipart uploads** — clean up failed large uploads\n\nLifecycle rules reduce storage costs for data with known access patterns. Define them in [[aws/cloudformation]] templates for infrastructure-as-code management.\n\n## Storage Classes\n\n| Class | Use Case | Durability |\n|-------|----------|------------|\n| S3 Standard | Frequently accessed data | 99.999999999% |\n| S3 Intelligent-Tiering | Unknown access patterns | 99.999999999% |\n| S3 Glacier | Archival, minutes-to-hours retrieval | 99.999999999% |\n| S3 Glacier Deep Archive | Long-term archival, 12-hour retrieval | 99.999999999% |\n\n## Environment Variables\n\n| Variable | Purpose |\n|----------|----------|\n| `AWS_ACCESS_KEY_ID` | IAM access key |\n| `AWS_SECRET_ACCESS_KEY` | IAM secret key |\n| `AWS_REGION` | Target region for the S3 client |\n",
+  "sections": [
+    {
+      "id": "upload-download",
+      "title": "Upload and download",
+      "body": "Use `PutObjectCommand` to upload and `GetObjectCommand` to download. Specify Bucket, Key, and Body (for uploads). Set ContentType for proper MIME handling. For large files, use multipart upload via `@aws-sdk/lib-storage` Upload class. Downloads return a readable stream — use `Body.transformToString()` for text or pipe to a file.",
+      "tags": ["upload", "download", "put-object", "get-object", "multipart"]
+    },
+    {
+      "id": "presigned-urls",
+      "title": "Presigned URLs",
+      "body": "Generate time-limited signed URLs with `@aws-sdk/s3-request-presigner`. Set `expiresIn` in seconds (default 900, max 604800 for 7 days). Use presigned PUT URLs for client-side uploads without exposing credentials. Presigned URLs inherit the permissions of the IAM principal that generated them — see [[aws/iam#policies]] for scoping.",
+      "tags": ["presigned", "signed-url", "temporary-access", "upload-url"]
+    },
+    {
+      "id": "bucket-policies",
+      "title": "Bucket policies and access control",
+      "body": "Bucket policies are JSON documents attached to buckets that grant or deny access. Combine with [[aws/iam]] user/role policies. Use `s3:GetObject`, `s3:PutObject`, `s3:DeleteObject` actions. Block public access by default — enable only when explicitly needed. Use S3 Block Public Access settings as a safety net.",
+      "tags": ["bucket-policy", "acl", "public-access", "permissions", "iam"]
+    },
+    {
+      "id": "lifecycle-rules",
+      "title": "Lifecycle rules",
+      "body": "Automate storage class transitions and object expiration. Transition to Glacier after 90 days for archival. Expire temporary objects after 30 days. Abort incomplete multipart uploads after 7 days. Define lifecycle rules in [[aws/cloudformation]] templates or via the S3 console. Reduce costs by matching storage class to access patterns.",
+      "tags": ["lifecycle", "transition", "expiration", "glacier", "cost-optimization"]
+    }
+  ],
+  "links": [
+    { "uri": "aws/iam", "context": "IAM policies control who can access S3 objects" },
+    { "uri": "aws/lambda", "context": "Trigger Lambda functions on S3 events (upload, delete)" },
+    { "uri": "aws/cloudformation", "context": "Provision S3 buckets via CloudFormation templates" },
+    { "uri": "aws/iam#policies", "context": "Scope IAM policies for S3 access" },
+    { "uri": "aws/lambda#event-sources", "context": "Configure S3 as a Lambda event source" },
+    { "uri": "aws/cloudformation#template-anatomy", "context": "Define S3 bucket resources in CloudFormation" }
+  ],
+  "related": [
+    { "uri": "aws/iam", "relation": "prerequisite", "note": "IAM credentials and policies are required for S3 access" },
+    { "uri": "aws/lambda", "relation": "see-also", "note": "Lambda can process S3 events for automated workflows" },
+    { "uri": "aws/cloudformation", "relation": "see-also", "note": "Use CloudFormation to provision and configure S3 buckets" }
+  ],
+  "scripts": [
+    {
+      "id": "s3-operations",
+      "name": "S3 Operations",
+      "description": "Upload, download, and manage objects in an Amazon S3 bucket",
+      "lang": "javascript",
+      "runtime": "node>=18",
+      "entry": "./scripts/s3-operations.js",
+      "env": {
+        "AWS_ACCESS_KEY_ID": { "required": true, "secret": true, "description": "IAM access key identifier" },
+        "AWS_SECRET_ACCESS_KEY": { "required": true, "secret": true, "description": "IAM secret access key" },
+        "AWS_REGION": { "required": true, "secret": false, "description": "AWS region for the S3 client" }
+      },
+      "packages": ["@aws-sdk/client-s3", "@aws-sdk/s3-request-presigner"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "bucket": { "type": "string", "description": "S3 bucket name" },
+        "key": { "type": "string", "description": "Object key (path) within the bucket" },
+        "body": { "type": "string", "description": "Object content to upload" },
+        "acl": { "type": "string", "enum": ["private", "public-read", "authenticated-read"], "description": "Access control list preset" }
+      },
+      "required": ["bucket", "key"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "etag": { "type": "string", "description": "Entity tag (MD5 hash) of the uploaded object" },
+        "versionId": { "type": "string", "description": "Version ID if bucket versioning is enabled" },
+        "url": { "type": "string", "description": "URL of the object (https://bucket.s3.region.amazonaws.com/key)" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "aws/iam", "reason": "IAM credentials with s3:PutObject and s3:GetObject permissions are required" }
+  ],
+  "more": {
+    "docs": "https://docs.aws.amazon.com/s3/",
+    "sdk": "https://docs.aws.amazon.com/AWSJavaScriptSDK/v3/latest/client/s3/",
+    "pricing": "https://aws.amazon.com/s3/pricing/"
+  },
+  "frontmatter": {
+    "created": "2026-04-10",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "5 min",
+    "prerequisites": ["aws/iam"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

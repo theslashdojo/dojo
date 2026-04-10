@@ -1,0 +1,157 @@
+{
+  "name": "chat",
+  "version": "1.0.0",
+  "uri": "openai/chat",
+  "type": "skill",
+  "context": "Generate text using the OpenAI Chat Completions API with system/user/assistant messages",
+  "info": "The Chat Completions API is the primary interface for generating text with OpenAI models. You send an array of messages with roles (system, user, assistant) and receive a model-generated completion. Supports GPT-4o, GPT-4o-mini, o1, o3, and other models. Features include streaming via Server-Sent Events, temperature and top_p sampling controls, structured output via JSON Schema, vision (image inputs), and tool/function calling (see [[openai/function-calling]]). The endpoint is `POST /v1/chat/completions`. The official Node.js SDK (`openai`) wraps this with typed methods and automatic retries.",
+  "parent": "openai",
+  "tags": ["chat", "completions", "gpt-4", "gpt-4o", "messages", "streaming", "temperature"],
+  "aliases": [
+    "chat completions",
+    "openai chat",
+    "gpt chat",
+    "text generation",
+    "chat api",
+    "completions api",
+    "generate text with openai",
+    "gpt-4o chat",
+    "openai messages"
+  ],
+  "triggers": [
+    "generate text with openai",
+    "use chat completions api",
+    "send messages to gpt",
+    "stream openai responses",
+    "use gpt-4o",
+    "create a chat completion",
+    "call openai chat api"
+  ],
+  "body": "# Chat Completions\n\nThe Chat Completions API generates text from a conversation of messages. Each message has a `role` (system, user, assistant, or tool) and `content`. The model responds with an assistant message.\n\n## Basic Usage\n\n```javascript\nimport OpenAI from \"openai\";\n\nconst client = new OpenAI(); // reads OPENAI_API_KEY from env\n\nconst completion = await client.chat.completions.create({\n  model: \"gpt-4o\",\n  messages: [\n    { role: \"system\", content: \"You are a helpful assistant.\" },\n    { role: \"user\", content: \"Explain quantum computing in one paragraph.\" },\n  ],\n});\n\nconsole.log(completion.choices[0].message.content);\n```\n\n## Streaming\n\nStream responses token-by-token using Server-Sent Events:\n\n```javascript\nconst stream = await client.chat.completions.create({\n  model: \"gpt-4o\",\n  messages: [{ role: \"user\", content: \"Write a poem about code.\" }],\n  stream: true,\n});\n\nfor await (const chunk of stream) {\n  const content = chunk.choices[0]?.delta?.content || \"\";\n  process.stdout.write(content);\n}\n```\n\n## System Prompts\n\nThe system message sets the model's behavior, personality, and constraints:\n\n```javascript\nmessages: [\n  {\n    role: \"system\",\n    content: \"You are a senior software engineer. Respond with concise, production-ready code. Always include error handling.\"\n  },\n  { role: \"user\", content: \"Write a function to parse CSV files.\" },\n]\n```\n\n## Structured Output\n\nConstrain the model to output valid JSON matching a schema:\n\n```javascript\nconst completion = await client.chat.completions.create({\n  model: \"gpt-4o\",\n  messages: [{ role: \"user\", content: \"Extract the name and age from: John is 30 years old.\" }],\n  response_format: {\n    type: \"json_schema\",\n    json_schema: {\n      name: \"person\",\n      schema: {\n        type: \"object\",\n        properties: {\n          name: { type: \"string\" },\n          age: { type: \"integer\" },\n        },\n        required: [\"name\", \"age\"],\n      },\n    },\n  },\n});\n```\n\n## Vision\n\nGPT-4o accepts image inputs alongside text:\n\n```javascript\nconst completion = await client.chat.completions.create({\n  model: \"gpt-4o\",\n  messages: [\n    {\n      role: \"user\",\n      content: [\n        { type: \"text\", text: \"What is in this image?\" },\n        { type: \"image_url\", image_url: { url: \"https://example.com/photo.jpg\" } },\n      ],\n    },\n  ],\n});\n```\n\n## Parameters\n\n| Parameter | Type | Description |\n|-----------|------|-------------|\n| `model` | string | Model ID (e.g. `gpt-4o`, `gpt-4o-mini`, `o1`) |\n| `messages` | array | Conversation messages with role and content |\n| `temperature` | number | Sampling temperature 0-2 (default 1). Lower = more deterministic |\n| `max_tokens` | integer | Maximum tokens to generate |\n| `stream` | boolean | Enable streaming responses |\n| `tools` | array | Tool definitions for function calling (see [[openai/function-calling]]) |\n| `response_format` | object | Constrain output format (json_object or json_schema) |\n\nSee [[openai/models]] for model selection guidance and [[openai/function-calling]] for tool integration.\n",
+  "sections": [
+    {
+      "id": "basic-usage",
+      "title": "Basic usage",
+      "body": "Create an OpenAI client (reads `OPENAI_API_KEY` from env), call `client.chat.completions.create()` with a model and messages array. Each message has `role` (system, user, assistant, tool) and `content`. The response contains `choices[0].message.content` with the generated text. See [[openai/models]] for available models.",
+      "tags": ["basic", "create", "messages", "roles", "response"]
+    },
+    {
+      "id": "streaming",
+      "title": "Streaming",
+      "body": "Set `stream: true` to receive responses as Server-Sent Events. Iterate with `for await (const chunk of stream)`. Each chunk contains `choices[0].delta.content` with the incremental text. Streaming reduces time-to-first-token and enables real-time UIs. The final chunk has `finish_reason` set.",
+      "tags": ["streaming", "sse", "delta", "real-time", "chunks"]
+    },
+    {
+      "id": "system-prompts",
+      "title": "System prompts",
+      "body": "The system message (role: system) is the first message in the array and defines the model's persona, capabilities, and constraints. Use it to set tone, output format, domain expertise, and guardrails. System prompts persist across the conversation. Multi-turn conversations append user and assistant messages after the system message.",
+      "tags": ["system", "prompt", "persona", "instructions", "behavior"]
+    },
+    {
+      "id": "structured-output",
+      "title": "Structured output",
+      "body": "Use `response_format: { type: 'json_schema', json_schema: { name, schema } }` to constrain output to a JSON Schema. The model guarantees valid JSON matching the schema. Useful for data extraction, classification, and structured responses. Alternatively, `{ type: 'json_object' }` ensures valid JSON without schema validation. See also [[openai/function-calling]] for tool-based structured extraction.",
+      "tags": ["json", "schema", "structured", "extraction", "format"]
+    },
+    {
+      "id": "vision",
+      "title": "Vision",
+      "body": "GPT-4o and GPT-4o-mini accept images in the `content` array alongside text. Pass images as URLs or base64 data URIs. Use `{ type: 'image_url', image_url: { url } }` content parts. Supports analysis, OCR, description, and visual reasoning. Image tokens count toward the context window and billing.",
+      "tags": ["vision", "images", "multimodal", "ocr", "image-url"]
+    }
+  ],
+  "links": [
+    { "uri": "openai", "context": "OpenAI ecosystem overview and authentication" },
+    { "uri": "openai/function-calling", "context": "Define tools for the model to call during chat" },
+    { "uri": "openai/models", "context": "Model selection: GPT-4o vs GPT-4o-mini vs o1 vs o3" },
+    { "uri": "openai/assistants", "context": "For persistent multi-turn conversations with tool use" },
+    { "uri": "openai#authentication", "context": "API key setup and authentication" },
+    { "uri": "openai#rate-limits", "context": "Rate limits and retry strategies" }
+  ],
+  "related": [
+    { "uri": "openai/function-calling", "relation": "see-also", "note": "Function calling extends chat completions with structured tool invocations" },
+    { "uri": "openai/assistants", "relation": "see-also", "note": "Assistants API provides persistent threads for multi-turn conversations" },
+    { "uri": "openai/models", "relation": "see-also", "note": "Model selection impacts quality, speed, and cost of completions" }
+  ],
+  "scripts": [
+    {
+      "id": "chat-completion",
+      "name": "Chat Completion",
+      "description": "Generate text using the OpenAI Chat Completions API",
+      "lang": "javascript",
+      "runtime": "node>=18",
+      "entry": "./scripts/chat-completion.js",
+      "env": {
+        "OPENAI_API_KEY": { "required": true, "secret": true, "description": "OpenAI API key for authentication" }
+      },
+      "packages": ["openai"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "model": { "type": "string", "description": "Model ID (e.g. gpt-4o, gpt-4o-mini, o1)", "default": "gpt-4o" },
+        "messages": {
+          "type": "array",
+          "description": "Conversation messages with role and content",
+          "items": {
+            "type": "object",
+            "properties": {
+              "role": { "type": "string", "enum": ["system", "user", "assistant", "tool"] },
+              "content": { "type": "string" }
+            },
+            "required": ["role", "content"]
+          }
+        },
+        "temperature": { "type": "number", "description": "Sampling temperature 0-2 (lower = more deterministic)", "default": 1 },
+        "maxTokens": { "type": "integer", "description": "Maximum tokens to generate" },
+        "tools": {
+          "type": "array",
+          "description": "Tool definitions for function calling (see [[openai/function-calling]])",
+          "items": { "type": "object" }
+        }
+      },
+      "required": ["model", "messages"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "content": { "type": "string", "description": "Generated text content" },
+        "usage": {
+          "type": "object",
+          "description": "Token usage statistics",
+          "properties": {
+            "promptTokens": { "type": "integer" },
+            "completionTokens": { "type": "integer" },
+            "totalTokens": { "type": "integer" }
+          }
+        },
+        "finishReason": { "type": "string", "description": "Reason generation stopped (stop, length, tool_calls, content_filter)" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "openai", "reason": "Requires an OpenAI API key and client configuration" }
+  ],
+  "more": {
+    "docs": "https://platform.openai.com/docs/api-reference/chat",
+    "guide": "https://platform.openai.com/docs/guides/text-generation",
+    "repo": "https://github.com/openai/openai-node"
+  },
+  "frontmatter": {
+    "created": "2026-04-10",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "5 min",
+    "prerequisites": ["openai"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

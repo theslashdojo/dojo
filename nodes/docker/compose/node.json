@@ -1,0 +1,133 @@
+{
+  "name": "compose",
+  "version": "1.0.0",
+  "uri": "docker/compose",
+  "type": "skill",
+  "context": "Define and run multi-container applications with Docker Compose",
+  "info": "Docker Compose defines multi-container applications in a `docker-compose.yml` (or `compose.yml`) file. Services declare their image or build context, environment variables, port mappings, volume mounts, network connections, and dependency ordering. Compose V2 is integrated into the Docker CLI as `docker compose` (no hyphen). Profiles allow selective service startup for different environments (development, testing, production). Health checks ensure services are ready before dependents start. Compose handles service discovery via DNS — containers reach each other by service name. This skill covers writing Compose files, managing service lifecycles, and orchestrating development and CI environments.",
+  "parent": "docker",
+  "tags": ["compose", "multi-container", "services", "yaml", "docker-compose"],
+  "aliases": [
+    "docker compose",
+    "docker-compose",
+    "compose file",
+    "compose services",
+    "multi-container app",
+    "compose yaml",
+    "compose orchestration",
+    "docker compose up"
+  ],
+  "triggers": [
+    "run docker compose",
+    "define multi-container app",
+    "write a docker-compose file",
+    "compose up services",
+    "orchestrate containers",
+    "docker compose development setup",
+    "manage multiple containers"
+  ],
+  "body": "# Docker Compose\n\nDocker Compose defines and runs multi-container applications from a single YAML file. Each service declares its image (or build context), configuration, dependencies, and resource constraints. Compose handles networking, volume management, and service lifecycle.\n\n## Compose File\n\n```yaml\n# compose.yml (or docker-compose.yml)\nservices:\n  web:\n    build:\n      context: .\n      dockerfile: Dockerfile\n      target: production\n    ports:\n      - \"8080:3000\"\n    environment:\n      - DATABASE_URL=postgres://db:5432/myapp\n      - REDIS_URL=redis://cache:6379\n    depends_on:\n      db:\n        condition: service_healthy\n      cache:\n        condition: service_started\n    networks:\n      - app-network\n    restart: unless-stopped\n\n  db:\n    image: postgres:16-alpine\n    environment:\n      POSTGRES_DB: myapp\n      POSTGRES_USER: app\n      POSTGRES_PASSWORD: secret\n    volumes:\n      - pgdata:/var/lib/postgresql/data\n    healthcheck:\n      test: [\"CMD-SHELL\", \"pg_isready -U app\"]\n      interval: 5s\n      timeout: 3s\n      retries: 5\n    networks:\n      - app-network\n\n  cache:\n    image: redis:7-alpine\n    networks:\n      - app-network\n\nvolumes:\n  pgdata:\n\nnetworks:\n  app-network:\n    driver: bridge\n```\n\n## Services\n\nServices are the core building block. Each service defines:\n\n- **image** or **build** — pre-built image or build from Dockerfile (see [[docker/build]])\n- **ports** — host:container port mapping (see [[docker/networking#port-mapping]])\n- **environment** — environment variables or `env_file` reference\n- **volumes** — named volumes or bind mounts (see [[docker/volumes]])\n- **depends_on** — service startup ordering with optional health conditions\n- **networks** — which networks the service joins (see [[docker/networking#network-types]])\n- **restart** — restart policy: `no`, `always`, `on-failure`, `unless-stopped`\n\n## Volumes and Networks\n\nCompose creates named volumes and networks declared in the top-level `volumes:` and `networks:` sections. Services reference them by name. Compose automatically creates a default network for the project — all services can reach each other by service name via DNS.\n\nFor persistent data, declare named volumes. See [[docker/volumes#named-volumes]] for details. For network isolation, create separate networks. See [[docker/networking#network-isolation]] for patterns.\n\n## Profiles\n\nProfiles activate subsets of services for different workflows:\n\n```yaml\nservices:\n  web:\n    # always starts (no profile)\n    build: .\n    ports: [\"8080:3000\"]\n\n  debug:\n    profiles: [\"debug\"]\n    image: busybox\n    command: top\n\n  test-runner:\n    profiles: [\"test\"]\n    build:\n      context: .\n      target: test\n    command: npm test\n```\n\n```bash\ndocker compose up                    # starts only 'web'\ndocker compose --profile debug up    # starts 'web' + 'debug'\ndocker compose --profile test up     # starts 'web' + 'test-runner'\n```\n\n## Health Checks\n\nHealth checks verify that a service is ready to accept traffic:\n\n```yaml\nhealthcheck:\n  test: [\"CMD\", \"curl\", \"-f\", \"http://localhost:3000/health\"]\n  interval: 10s\n  timeout: 5s\n  retries: 3\n  start_period: 30s\n```\n\nUse `depends_on` with `condition: service_healthy` to wait for dependencies to pass their health check before starting dependent services.\n\n## Common Commands\n\n```bash\ndocker compose up -d              # start all services in background\ndocker compose down               # stop and remove containers, networks\ndocker compose logs -f web        # follow logs for a service\ndocker compose ps                 # list running services\ndocker compose exec web sh        # shell into a running service\ndocker compose build              # rebuild images\ndocker compose pull               # pull latest images\n```\n",
+  "sections": [
+    {
+      "id": "compose-file",
+      "title": "Compose file format",
+      "body": "The Compose file (`compose.yml` or `docker-compose.yml`) declares services, volumes, networks, and configs. Compose V2 uses the `services:` top-level key. The file supports variable interpolation via `${VAR}` syntax and `.env` files. Use `docker compose config` to validate and view the resolved configuration.",
+      "tags": ["compose-file", "yaml", "config", "interpolation", "env"]
+    },
+    {
+      "id": "services",
+      "title": "Defining services",
+      "body": "Each service declares its image or build context (see [[docker/build]]), ports, environment, volumes (see [[docker/volumes]]), networks (see [[docker/networking]]), depends_on ordering, restart policy, and resource limits. Services communicate by name via DNS on shared networks. Use `scale` or `deploy.replicas` for multiple instances.",
+      "tags": ["services", "image", "build", "ports", "environment", "depends-on", "restart"]
+    },
+    {
+      "id": "volumes-networks",
+      "title": "Volumes and networks in Compose",
+      "body": "Declare named volumes in the top-level `volumes:` section and reference them in services. Compose creates a default bridge network for the project. Declare additional networks in the `networks:` section for isolation. See [[docker/volumes]] for volume types and [[docker/networking]] for network drivers.",
+      "tags": ["volumes", "networks", "named-volumes", "bridge", "dns", "service-discovery"]
+    },
+    {
+      "id": "profiles",
+      "title": "Compose profiles",
+      "body": "Assign profiles to services that should only start in specific workflows (debug, test, monitoring). Services without a profile always start. Activate profiles with `--profile name` on the command line. Multiple profiles can be activated simultaneously. Useful for separating development tools from production services.",
+      "tags": ["profiles", "selective", "debug", "test", "workflows"]
+    },
+    {
+      "id": "healthchecks",
+      "title": "Health checks",
+      "body": "Define health checks with `test`, `interval`, `timeout`, `retries`, and `start_period`. The test command runs inside the container — use `CMD-SHELL` for shell commands or `CMD` for exec form. Combine with `depends_on: condition: service_healthy` to ensure dependencies are ready before starting dependent services. See also the `HEALTHCHECK` Dockerfile instruction in [[docker/build#best-practices]].",
+      "tags": ["healthcheck", "readiness", "depends-on", "condition", "service-healthy"]
+    }
+  ],
+  "links": [
+    { "uri": "docker/build", "context": "Build images from Dockerfiles for Compose services" },
+    { "uri": "docker/networking", "context": "Network configuration for Compose services" },
+    { "uri": "docker/volumes", "context": "Volume management for persistent service data" },
+    { "uri": "docker/registry", "context": "Pull images from registries for Compose services" },
+    { "uri": "docker/build#multi-stage", "context": "Multi-stage builds with Compose build targets" },
+    { "uri": "docker/networking#network-types", "context": "Bridge and overlay networks in Compose" },
+    { "uri": "docker/networking#dns-resolution", "context": "DNS-based service discovery in Compose" },
+    { "uri": "docker/volumes#named-volumes", "context": "Named volumes declared in Compose files" }
+  ],
+  "related": [
+    { "uri": "docker/build", "relation": "see-also", "note": "Compose services reference Dockerfiles for building images" },
+    { "uri": "docker/networking", "relation": "see-also", "note": "Compose auto-creates networks for service communication" },
+    { "uri": "docker/volumes", "relation": "see-also", "note": "Compose manages named volumes for persistent data" }
+  ],
+  "scripts": [
+    {
+      "id": "compose-up",
+      "name": "Compose Up",
+      "description": "Start multi-container application defined in a Compose file",
+      "lang": "bash",
+      "runtime": "docker>=20",
+      "entry": "./scripts/compose-up.sh",
+      "env": {
+        "COMPOSE_FILE": { "required": false, "secret": false, "description": "Path to compose file (default: ./compose.yml)" }
+      },
+      "packages": ["docker", "docker-compose-v2"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "composeFile": { "type": "string", "description": "Path to the Compose file (default: ./compose.yml)" },
+        "services": { "type": "array", "items": { "type": "string" }, "description": "Specific services to start (default: all)" },
+        "profiles": { "type": "array", "items": { "type": "string" }, "description": "Profiles to activate" }
+      },
+      "required": []
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "services": { "type": "array", "items": { "type": "string" }, "description": "List of started service names" },
+        "ports": { "type": "object", "description": "Port mappings per service (service -> host:container)" },
+        "status": { "type": "string", "description": "Overall status: running, partially-running, stopped" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "docker", "reason": "Docker Engine and Compose V2 must be installed" }
+  ],
+  "more": {
+    "docs": "https://docs.docker.com/compose/",
+    "compose-spec": "https://docs.docker.com/compose/compose-file/",
+    "repo": "https://github.com/docker/compose"
+  },
+  "frontmatter": {
+    "created": "2026-04-10",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "developers, AI agents, DevOps engineers",
+    "estimated_reading_time": "5 min",
+    "prerequisites": [],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

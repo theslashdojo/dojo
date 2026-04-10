@@ -1,0 +1,129 @@
+{
+  "name": "queries",
+  "version": "1.0.0",
+  "uri": "postgres/queries",
+  "type": "skill",
+  "context": "Write, execute, and optimize PostgreSQL queries: SELECT, INSERT, UPDATE, CTEs, window functions",
+  "info": "This skill covers the full range of PostgreSQL query operations: basic CRUD with SELECT, INSERT, UPDATE, and DELETE; Common Table Expressions (CTEs) for breaking complex queries into readable steps; window functions for analytics, ranking, and running totals; parameterized queries to prevent SQL injection; and transaction management with BEGIN, COMMIT, and ROLLBACK. The pg (node-postgres) library is the primary driver, using parameterized queries with $1, $2 placeholders. All queries should use parameterized inputs to prevent injection. CTEs and window functions are PostgreSQL strengths that enable complex analytics without application-level processing.",
+  "parent": "postgres",
+  "tags": ["queries", "select", "insert", "update", "cte", "window-functions", "prepared-statements"],
+  "aliases": [
+    "sql queries",
+    "postgres queries",
+    "postgresql queries",
+    "write sql",
+    "select query",
+    "insert query",
+    "update query",
+    "cte query",
+    "window function",
+    "parameterized query"
+  ],
+  "triggers": [
+    "write a sql query",
+    "query the database",
+    "select from table",
+    "insert into table",
+    "write a CTE",
+    "use window functions",
+    "run a parameterized query",
+    "execute a transaction"
+  ],
+  "body": "# PostgreSQL Queries\n\nPostgreSQL queries are the primary way agents interact with data. This skill covers everything from basic CRUD to advanced CTEs and window functions, all using parameterized inputs to prevent SQL injection.\n\n## Basic CRUD\n\n```javascript\nimport pg from \"pg\";\nconst pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });\n\n// SELECT\nconst { rows } = await pool.query(\n  \"SELECT id, name, email FROM users WHERE active = $1 ORDER BY created_at DESC LIMIT $2\",\n  [true, 100]\n);\n\n// INSERT with RETURNING\nconst { rows: [newUser] } = await pool.query(\n  \"INSERT INTO users (name, email) VALUES ($1, $2) RETURNING id, name, email, created_at\",\n  [\"Alice\", \"alice@example.com\"]\n);\n\n// UPDATE\nconst { rowCount } = await pool.query(\n  \"UPDATE users SET email = $1, updated_at = NOW() WHERE id = $2\",\n  [\"newemail@example.com\", userId]\n);\n\n// DELETE\nawait pool.query(\"DELETE FROM users WHERE id = $1\", [userId]);\n\n// UPSERT (INSERT ... ON CONFLICT)\nawait pool.query(\n  `INSERT INTO settings (key, value) VALUES ($1, $2)\n   ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()`,\n  [\"theme\", \"dark\"]\n);\n```\n\n## Common Table Expressions (CTEs)\n\nCTEs break complex queries into named, readable steps:\n\n```sql\nWITH monthly_revenue AS (\n  SELECT\n    date_trunc('month', created_at) AS month,\n    SUM(amount) AS revenue\n  FROM orders\n  WHERE status = 'completed'\n  GROUP BY 1\n),\ngrowth AS (\n  SELECT\n    month,\n    revenue,\n    LAG(revenue) OVER (ORDER BY month) AS prev_revenue,\n    ROUND((revenue - LAG(revenue) OVER (ORDER BY month)) / LAG(revenue) OVER (ORDER BY month) * 100, 2) AS growth_pct\n  FROM monthly_revenue\n)\nSELECT * FROM growth ORDER BY month DESC;\n```\n\n## Window Functions\n\nWindow functions compute values across rows related to the current row without collapsing them:\n\n```sql\n-- Rank users by total spend\nSELECT\n  user_id,\n  total_spend,\n  RANK() OVER (ORDER BY total_spend DESC) AS spend_rank,\n  NTILE(4) OVER (ORDER BY total_spend DESC) AS quartile\nFROM user_stats;\n\n-- Running total\nSELECT\n  date,\n  amount,\n  SUM(amount) OVER (ORDER BY date ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS running_total\nFROM transactions;\n\n-- Partition by category\nSELECT\n  category,\n  product,\n  price,\n  ROW_NUMBER() OVER (PARTITION BY category ORDER BY price DESC) AS rank_in_category\nFROM products;\n```\n\n## Parameterized Queries\n\nAlways use parameterized queries to prevent SQL injection. Never interpolate user input into SQL strings:\n\n```javascript\n// CORRECT - parameterized\nawait pool.query(\"SELECT * FROM users WHERE email = $1\", [userEmail]);\n\n// WRONG - vulnerable to injection\nawait pool.query(`SELECT * FROM users WHERE email = '${userEmail}'`);\n```\n\n## Transactions\n\n```javascript\nconst client = await pool.connect();\ntry {\n  await client.query(\"BEGIN\");\n  await client.query(\"UPDATE accounts SET balance = balance - $1 WHERE id = $2\", [amount, fromId]);\n  await client.query(\"UPDATE accounts SET balance = balance + $1 WHERE id = $2\", [amount, toId]);\n  await client.query(\"INSERT INTO transfers (from_id, to_id, amount) VALUES ($1, $2, $3)\", [fromId, toId, amount]);\n  await client.query(\"COMMIT\");\n} catch (e) {\n  await client.query(\"ROLLBACK\");\n  throw e;\n} finally {\n  client.release();\n}\n```\n",
+  "sections": [
+    {
+      "id": "basic-crud",
+      "title": "Basic CRUD",
+      "body": "SELECT, INSERT, UPDATE, DELETE with the pg driver. Always use `$1, $2` placeholders for parameterized queries. Use `RETURNING` on INSERT/UPDATE to get back the affected rows without a separate SELECT. Use `ON CONFLICT` for upserts. See [[postgres/performance#explain-analyze]] for optimizing slow queries.",
+      "tags": ["select", "insert", "update", "delete", "upsert", "returning", "crud"]
+    },
+    {
+      "id": "ctes",
+      "title": "Common Table Expressions",
+      "body": "CTEs use `WITH name AS (...)` syntax to define named subqueries. Chain multiple CTEs with commas. Recursive CTEs use `WITH RECURSIVE` for tree traversal and hierarchical data. CTEs improve readability and allow reuse of intermediate results. PostgreSQL materializes CTEs by default in older versions; in v12+ use `NOT MATERIALIZED` hint if the planner should inline them. See [[postgres/performance#explain-analyze]] to verify CTE execution plans.",
+      "tags": ["cte", "with", "recursive", "subquery", "readability"]
+    },
+    {
+      "id": "window-functions",
+      "title": "Window functions",
+      "body": "Window functions compute across a set of rows related to the current row. Key functions: `ROW_NUMBER()`, `RANK()`, `DENSE_RANK()`, `NTILE()`, `LAG()`, `LEAD()`, `SUM() OVER()`, `AVG() OVER()`. Use `PARTITION BY` to group and `ORDER BY` to sequence within partitions. Frame clauses (`ROWS BETWEEN ...`) control the window bounds. Window functions avoid the need for self-joins and subqueries in analytics.",
+      "tags": ["window", "rank", "row-number", "lag", "lead", "partition", "analytics"]
+    },
+    {
+      "id": "parameterized",
+      "title": "Parameterized queries",
+      "body": "Always use `$1, $2, ...` placeholders with the pg driver. Never concatenate user input into SQL strings. Parameterized queries prevent SQL injection and enable query plan caching via prepared statements. For dynamic column or table names (which cannot be parameterized), use a whitelist of allowed names and validate strictly.",
+      "tags": ["parameterized", "prepared", "sql-injection", "security", "placeholders"]
+    },
+    {
+      "id": "transactions",
+      "title": "Transactions",
+      "body": "Use `BEGIN`, `COMMIT`, `ROLLBACK` for multi-statement atomicity. Acquire a dedicated client from the pool with `pool.connect()`. Always release the client in a `finally` block. Use `SAVEPOINT` for nested transaction checkpoints. Set isolation levels with `SET TRANSACTION ISOLATION LEVEL` (READ COMMITTED default, REPEATABLE READ, SERIALIZABLE). See [[postgres/performance#connection-pooling]] for pool sizing with transactions.",
+      "tags": ["transaction", "begin", "commit", "rollback", "savepoint", "isolation"]
+    }
+  ],
+  "links": [
+    { "uri": "postgres/performance#explain-analyze", "context": "Analyze query plans to optimize slow queries" },
+    { "uri": "postgres/performance#index-strategies", "context": "Index strategies to speed up queries" },
+    { "uri": "postgres/performance#connection-pooling", "context": "Pool sizing when using transactions" },
+    { "uri": "postgres/extensions#full-text-search", "context": "Full-text search queries with tsvector and tsquery" },
+    { "uri": "postgres/extensions#pgvector", "context": "Vector similarity queries with pgvector" }
+  ],
+  "related": [
+    { "uri": "database/sql", "relation": "implements", "note": "PostgreSQL queries implement standard SQL with extensions" }
+  ],
+  "scripts": [
+    {
+      "id": "execute-query",
+      "name": "Execute Query",
+      "description": "Execute a parameterized PostgreSQL query and return results",
+      "lang": "javascript",
+      "runtime": "node>=18",
+      "entry": "./scripts/execute-query.js",
+      "env": {
+        "DATABASE_URL": { "required": true, "secret": true, "description": "PostgreSQL connection string" }
+      },
+      "packages": ["pg"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "query": { "type": "string", "description": "SQL query with $1, $2 placeholders" },
+        "params": { "type": "array", "description": "Parameter values for placeholders" },
+        "timeout": { "type": "integer", "description": "Query timeout in milliseconds" }
+      },
+      "required": ["query"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "rows": { "type": "array", "description": "Array of result row objects" },
+        "rowCount": { "type": "integer", "description": "Number of rows affected or returned" },
+        "fields": { "type": "array", "description": "Column metadata (name, dataTypeID)" }
+      }
+    }
+  },
+  "more": {
+    "docs": "https://www.postgresql.org/docs/current/sql.html",
+    "pg": "https://node-postgres.com",
+    "ctes": "https://www.postgresql.org/docs/current/queries-with.html",
+    "window": "https://www.postgresql.org/docs/current/tutorial-window.html"
+  },
+  "frontmatter": {
+    "created": "2026-04-10",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "6 min",
+    "prerequisites": [],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

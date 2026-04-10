@@ -1,0 +1,121 @@
+{
+  "name": "server",
+  "version": "1.0.0",
+  "uri": "ethereum/x402/server",
+  "type": "skill",
+  "context": "Accept x402 stablecoin payments as an HTTP server using Express, Hono, or Next.js middleware",
+  "info": "This skill adds x402 payment acceptance to any HTTP server. The server-side integration is a single middleware that intercepts configured routes, returns 402 with payment requirements when no payment is present, and verifies/settles payments through a facilitator when a PAYMENT-SIGNATURE header arrives. Supported frameworks include Express, Hono, and Next.js. The middleware needs a wallet address to receive payments, a facilitator URL, and a route-to-price mapping. Settlement happens automatically — the facilitator handles onchain submission.",
+  "parent": "ethereum/x402",
+  "tags": ["x402", "server", "express", "hono", "nextjs", "middleware", "accept-payment", "api", "monetize"],
+  "aliases": [
+    "x402 server",
+    "accept x402 payments",
+    "x402 middleware",
+    "x402 express",
+    "x402 hono",
+    "x402 nextjs",
+    "paywall api",
+    "monetize api with x402",
+    "charge for api calls"
+  ],
+  "triggers": [
+    "accept x402 payments on my server",
+    "add x402 to my express app",
+    "monetize my api with stablecoins",
+    "add a payment wall to my endpoint",
+    "charge per request with x402",
+    "set up x402 server middleware"
+  ],
+  "body": "# x402 Server Integration\n\nAdd payment acceptance to any HTTP server with one middleware call. This integrates the [[ethereum/x402]] protocol into your server. You will need a [[ethereum/wallets]] to receive payments.\n\n## Express\n\n```typescript\nimport express from \"express\";\nimport { paymentMiddleware } from \"@x402/express\";\n\nconst app = express();\n\napp.use(\n  paymentMiddleware({\n    \"GET /weather\": {\n      price: \"$0.01\",\n      network: \"base\",\n      config: {\n        description: \"Weather data\",\n      },\n    },\n  }, {\n    walletAddress: process.env.WALLET_ADDRESS,\n    facilitatorUrl: \"https://x402.org/facilitator\",\n  })\n);\n\napp.get(\"/weather\", (req, res) => {\n  res.json({ temp: 72, unit: \"F\" });\n});\n\napp.listen(3000);\n```\n\n## Hono\n\n```typescript\nimport { Hono } from \"hono\";\nimport { paymentMiddleware } from \"@x402/hono\";\n\nconst app = new Hono();\n\napp.use(\n  \"/data/*\",\n  paymentMiddleware({\n    \"GET /data/premium\": {\n      price: \"$0.05\",\n      network: \"base\",\n      config: { description: \"Premium data access\" },\n    },\n  }, {\n    walletAddress: process.env.WALLET_ADDRESS,\n    facilitatorUrl: \"https://x402.org/facilitator\",\n  })\n);\n```\n\n## How It Works\n\n1. Middleware intercepts requests matching configured routes\n2. If no `PAYMENT-SIGNATURE` header → respond HTTP 402 with `PAYMENT-REQUIRED` header\n3. If header present → forward to facilitator `/verify` endpoint\n4. If verification passes → run the route handler, then call facilitator `/settle`\n5. Return 200 with resource + `PAYMENT-RESPONSE` header\n\nSee [[ethereum/x402#protocol-flow]] for the full sequence diagram and [[ethereum/x402#facilitator]] for details on how the facilitator verifies and settles.\n\n## Configuration\n\nThe route map defines which endpoints require payment:\n\n```typescript\n{\n  \"METHOD /path\": {\n    price: \"$0.01\",          // USD amount (converted to token decimals)\n    network: \"base\",         // Target chain\n    config: {\n      description: \"...\",    // Human-readable description\n    },\n  },\n}\n```\n\nGlobal options:\n- `walletAddress` — your receiving wallet address\n- `facilitatorUrl` — facilitator endpoint (default: CDP facilitator)\n\n## Environment Variables\n\n| Variable | Purpose |\n|----------|----------|\n| `WALLET_ADDRESS` | Address to receive payments |\n| `FACILITATOR_URL` | Facilitator endpoint (optional, defaults to CDP) |\n",
+  "sections": [
+    {
+      "id": "express-setup",
+      "title": "Express middleware",
+      "body": "Install `@x402/express`. Import `paymentMiddleware`. Call `app.use(paymentMiddleware(routeMap, options))` before your route handlers. The middleware auto-handles 402 responses, verification, and settlement. See [[ethereum/x402#sdks]] for all available SDK packages.",
+      "tags": ["express", "middleware", "setup"]
+    },
+    {
+      "id": "hono-setup",
+      "title": "Hono middleware",
+      "body": "Install `@x402/hono`. Import `paymentMiddleware`. Apply to specific paths with `app.use(\"/path/*\", paymentMiddleware(routeMap, options))`. Same configuration shape as Express.",
+      "tags": ["hono", "middleware", "setup"]
+    },
+    {
+      "id": "route-config",
+      "title": "Route configuration",
+      "body": "Each entry maps `\"METHOD /path\"` to a payment requirement object with `price` (USD string), `network` (chain name), and optional `config.description`. Multiple routes can have different prices and chains.",
+      "tags": ["routes", "config", "price", "network"]
+    },
+    {
+      "id": "settlement-flow",
+      "title": "Settlement flow",
+      "body": "After verification, the middleware calls the facilitator's `/settle` endpoint. The facilitator submits the signed payment transaction onchain and returns a receipt (see [[ethereum/x402#facilitator]]). The server includes this receipt in the `PAYMENT-RESPONSE` header. Settlement is asynchronous — the server returns the resource immediately after verification, and settlement completes in the background. The [[ethereum/x402/client]] can inspect the `PAYMENT-RESPONSE` header for the transaction hash.",
+      "tags": ["settlement", "facilitator", "onchain", "async"]
+    }
+  ],
+  "links": [
+    { "uri": "ethereum/x402", "context": "x402 protocol overview and payment schemes" },
+    { "uri": "ethereum/x402/client", "context": "Client-side integration for testing or agent-to-agent payments" },
+    { "uri": "ethereum/x402#facilitator", "context": "How the facilitator verifies and settles payments" },
+    { "uri": "ethereum/wallets", "context": "Set up the receiving wallet" }
+  ],
+  "related": [
+    { "uri": "ethereum/x402/client", "relation": "see-also", "note": "Build the client side to test your server or enable agent-to-agent flows" },
+    { "uri": "ethereum/contract-deploy", "relation": "see-also", "note": "Deploy a contract that the x402 server interacts with" }
+  ],
+  "scripts": [
+    {
+      "id": "x402-server",
+      "name": "x402 Server Setup",
+      "description": "Scaffold an Express server with x402 payment middleware",
+      "lang": "typescript",
+      "runtime": "node>=18",
+      "entry": "./scripts/x402-server.ts",
+      "env": {
+        "WALLET_ADDRESS": { "required": true, "secret": false, "description": "Address to receive payments" },
+        "FACILITATOR_URL": { "required": false, "secret": false, "default": "https://x402.org/facilitator", "description": "Facilitator endpoint" }
+      },
+      "packages": ["@x402/core", "@x402/express", "express"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "framework": { "type": "string", "enum": ["express", "hono", "nextjs"], "default": "express" },
+        "walletAddress": { "type": "string", "description": "Receiving wallet address" },
+        "routes": {
+          "type": "object",
+          "description": "Map of 'METHOD /path' to payment config",
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "price": { "type": "string" },
+              "network": { "type": "string" }
+            }
+          }
+        }
+      },
+      "required": ["walletAddress", "routes"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "serverCode": { "type": "string", "description": "Generated server code" },
+        "dependencies": { "type": "array", "items": { "type": "string" } }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "ethereum/wallets", "reason": "A wallet address is needed to receive payments" }
+  ],
+  "more": {
+    "docs": "https://docs.cdp.coinbase.com/x402/welcome",
+    "repo": "https://github.com/coinbase/x402"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}
