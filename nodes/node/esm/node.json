@@ -1,0 +1,118 @@
+{
+  "name": "esm",
+  "version": "1.0.0",
+  "uri": "node/esm",
+  "type": "context",
+  "content_type": "guide",
+  "context": "ES Modules in Node.js: import/export syntax, package.json type field, CommonJS interop, conditional exports, and dual-package publishing",
+  "info": "ES Modules (ESM) are the official JavaScript module standard, and Node.js has supported them natively since v12 (unflagged since v13.2). ESM replaces CommonJS (CJS) as the forward-looking module system, bringing static analysis, tree-shaking, top-level await, and alignment with browser JavaScript. The transition from CJS to ESM is one of the most consequential shifts in the Node.js ecosystem, affecting how packages are authored, published, and consumed. Enabling ESM requires setting `\"type\": \"module\"` in package.json or using the `.mjs` extension. The `import.meta` object provides ESM-specific metadata like `import.meta.url`, `import.meta.dirname` (v21+), and `import.meta.filename`. The package.json `\"exports\"` field enables conditional exports for dual CJS/ESM packages, subpath exports, and environment-specific entry points. Understanding ESM is essential for modern Node.js development and for building packages that work across the ecosystem.",
+  "parent": "node",
+  "tags": ["esm", "modules", "import", "export", "commonjs", "cjs", "mjs", "package-exports", "dual-package"],
+  "aliases": [
+    "esm",
+    "es modules",
+    "ecmascript modules",
+    "import export",
+    "mjs",
+    "module system",
+    "es6 modules",
+    "node modules",
+    "import syntax",
+    "export syntax",
+    "type module",
+    "package exports"
+  ],
+  "triggers": [
+    "use import instead of require",
+    "set up es modules in node",
+    "publish dual esm cjs package",
+    "convert commonjs to esm",
+    "configure package.json for esm",
+    "use import.meta in node",
+    "set up conditional exports",
+    "create a dual package for npm",
+    "enable es modules in node project",
+    "use top level await in node"
+  ],
+  "body": "# ES Modules in Node.js\n\nES Modules (ESM) are the standard JavaScript module system, defined by the ECMAScript specification. Node.js has supported ESM natively since v12, and it is now the recommended way to write modular JavaScript. ESM brings static imports, tree-shaking, top-level `await`, and alignment with browser JavaScript.\n\n## Enabling ESM\n\nThere are two ways to enable ESM in Node.js:\n\n### 1. Set `\"type\": \"module\"` in package.json\n\n```json\n{\n  \"name\": \"my-package\",\n  \"version\": \"1.0.0\",\n  \"type\": \"module\"\n}\n```\n\nWith `\"type\": \"module\"`, all `.js` files in the package are treated as ESM. To use CommonJS in this mode, use the `.cjs` extension.\n\n### 2. Use the `.mjs` extension\n\nFiles ending in `.mjs` are always treated as ESM regardless of the `\"type\"` field. Similarly, `.cjs` files are always CommonJS.\n\n```\nproject/\n  package.json          # no \"type\" field (defaults to \"commonjs\")\n  app.mjs               # ESM - uses import/export\n  utils.cjs             # CJS - uses require/module.exports\n  legacy.js             # CJS - because no \"type\": \"module\"\n```\n\n### Extension resolution summary\n\n| `\"type\"` field | `.js` | `.mjs` | `.cjs` |\n|----------------|-------|--------|--------|\n| `\"module\"`     | ESM   | ESM    | CJS    |\n| `\"commonjs\"` (default) | CJS | ESM | CJS |\n| absent         | CJS   | ESM    | CJS    |\n\n## import/export Syntax\n\n### Named exports\n\n```javascript\n// math.js\nexport function add(a, b) {\n  return a + b;\n}\n\nexport function multiply(a, b) {\n  return a * b;\n}\n\nexport const PI = 3.14159265;\n```\n\n```javascript\n// app.js\nimport { add, multiply, PI } from './math.js';\n\nconsole.log(add(2, 3));       // 5\nconsole.log(multiply(4, PI)); // 12.566...\n```\n\n### Default exports\n\n```javascript\n// logger.js\nexport default class Logger {\n  constructor(prefix) {\n    this.prefix = prefix;\n  }\n  log(msg) {\n    console.log(`[${this.prefix}] ${msg}`);\n  }\n}\n```\n\n```javascript\n// app.js\nimport Logger from './logger.js';\n\nconst logger = new Logger('app');\nlogger.log('started');\n```\n\n### Namespace imports\n\n```javascript\nimport * as math from './math.js';\n\nconsole.log(math.add(1, 2));\nconsole.log(math.PI);\n```\n\n### Re-exports\n\n```javascript\n// index.js — barrel file\nexport { add, multiply } from './math.js';\nexport { default as Logger } from './logger.js';\nexport * from './constants.js';\nexport * as utils from './utils.js';\n```\n\n### Combined default and named imports\n\n```javascript\nimport Logger, { add, multiply } from './module.js';\n```\n\n### Important: File extensions are required\n\nUnlike CommonJS `require()`, ESM `import` in Node.js requires explicit file extensions:\n\n```javascript\n// WRONG in Node.js ESM\nimport { add } from './math';       // Error: cannot find module\n\n// CORRECT\nimport { add } from './math.js';    // Must include .js\nimport config from './config.json' with { type: 'json' };\n```\n\n## import.meta\n\nThe `import.meta` object provides metadata about the current module.\n\n### import.meta.url\n\nReturns the file URL of the current module:\n\n```javascript\nconsole.log(import.meta.url);\n// file:///home/user/project/app.js\n\n// Convert to file path\nimport { fileURLToPath } from 'url';\nconst __filename = fileURLToPath(import.meta.url);\nconsole.log(__filename);\n// /home/user/project/app.js\n\nimport { dirname } from 'path';\nconst __dirname = dirname(__filename);\nconsole.log(__dirname);\n// /home/user/project\n```\n\n### import.meta.dirname and import.meta.filename (v21.2+)\n\nNode.js v21.2+ provides these directly, removing the need for the `url`/`path` workaround:\n\n```javascript\n// Node.js v21.2+ only\nconsole.log(import.meta.filename); // /home/user/project/app.js\nconsole.log(import.meta.dirname);  // /home/user/project\n\n// Use for resolving relative paths\nimport { join } from 'path';\nconst configPath = join(import.meta.dirname, 'config.json');\n```\n\n### import.meta.resolve()\n\nResolve a module specifier to a URL without importing it:\n\n```javascript\n// Synchronous in Node.js 20.6+\nconst resolved = import.meta.resolve('./utils.js');\nconsole.log(resolved); // file:///home/user/project/utils.js\n\nconst pkgPath = import.meta.resolve('lodash');\nconsole.log(pkgPath); // file:///home/user/project/node_modules/lodash/lodash.js\n```\n\n## Dynamic import()\n\nThe `import()` function loads modules dynamically at runtime. It returns a Promise and works in both ESM and CJS.\n\n```javascript\n// Conditional loading\nlet db;\nif (process.env.DB === 'postgres') {\n  db = await import('pg');\n} else {\n  db = await import('better-sqlite3');\n}\n\n// Loading based on user input\nasync function loadPlugin(name) {\n  try {\n    const plugin = await import(`./plugins/${name}.js`);\n    return plugin.default;\n  } catch (err) {\n    console.error(`Plugin ${name} not found`);\n    return null;\n  }\n}\n\n// Dynamic import in CommonJS files\n// (import() is the ONLY way to load ESM from CJS)\nasync function loadESMFromCJS() {\n  const { default: chalk } = await import('chalk');\n  console.log(chalk.green('Loaded ESM package from CJS!'));\n}\n```\n\n## CommonJS Interop\n\nESM and CJS modules can import each other, but with important caveats.\n\n### Importing CJS from ESM\n\n```javascript\n// CJS module: legacy-utils.cjs\nmodule.exports = {\n  format(str) { return str.toUpperCase(); },\n  parse(str) { return str.split(','); }\n};\nmodule.exports.VERSION = '1.0.0';\n```\n\n```javascript\n// ESM importing CJS\nimport legacyUtils from './legacy-utils.cjs';\n// CJS module.exports becomes the default export\nconsole.log(legacyUtils.format('hello')); // HELLO\nconsole.log(legacyUtils.VERSION);          // 1.0.0\n\n// Named imports from CJS MAY work if Node can statically analyze the exports\n// This is NOT guaranteed for all CJS modules\nimport { format, parse } from './legacy-utils.cjs';\n```\n\n### Importing ESM from CJS\n\nYou CANNOT use `require()` to load ESM. You MUST use dynamic `import()`:\n\n```javascript\n// CJS file trying to use an ESM package\n// WRONG:\n// const chalk = require('chalk'); // Error: require() of ES Module\n\n// CORRECT:\nasync function main() {\n  const { default: chalk } = await import('chalk');\n  console.log(chalk.green('Works!'));\n}\nmain();\n```\n\n### __dirname and __filename equivalents\n\nESM does not have `__dirname` or `__filename`. Here is how to get them:\n\n```javascript\n// Method 1: import.meta.dirname/filename (Node.js v21.2+)\nconst __dirname = import.meta.dirname;\nconst __filename = import.meta.filename;\n\n// Method 2: url module (works in all ESM-supporting Node versions)\nimport { fileURLToPath } from 'url';\nimport { dirname } from 'path';\n\nconst __filename = fileURLToPath(import.meta.url);\nconst __dirname = dirname(__filename);\n```\n\n## Package Exports Field\n\nThe `\"exports\"` field in package.json defines the public API of your package and controls how consumers import it.\n\n### Basic exports\n\n```json\n{\n  \"name\": \"my-lib\",\n  \"exports\": {\n    \".\": \"./src/index.js\",\n    \"./utils\": \"./src/utils.js\",\n    \"./helpers/*\": \"./src/helpers/*.js\"\n  }\n}\n```\n\n```javascript\n// Consumer code\nimport myLib from 'my-lib';           // -> my-lib/src/index.js\nimport utils from 'my-lib/utils';     // -> my-lib/src/utils.js\nimport sort from 'my-lib/helpers/sort'; // -> my-lib/src/helpers/sort.js\n\n// This will FAIL — not exported\nimport internal from 'my-lib/src/internal.js'; // Error!\n```\n\n### Conditional exports\n\nConditional exports let you serve different code based on the import context:\n\n```json\n{\n  \"name\": \"my-lib\",\n  \"exports\": {\n    \".\": {\n      \"import\": \"./dist/esm/index.js\",\n      \"require\": \"./dist/cjs/index.cjs\",\n      \"default\": \"./dist/esm/index.js\"\n    },\n    \"./utils\": {\n      \"import\": \"./dist/esm/utils.js\",\n      \"require\": \"./dist/cjs/utils.cjs\"\n    }\n  }\n}\n```\n\nCondition keys are evaluated in order. Common conditions:\n\n| Condition | When it matches |\n|-----------|----------------|\n| `\"import\"` | When loaded via `import` or `import()` |\n| `\"require\"` | When loaded via `require()` |\n| `\"node\"` | When running in Node.js |\n| `\"browser\"` | When bundled for browser (bundler-specific) |\n| `\"default\"` | Fallback — always matches |\n| `\"types\"` | TypeScript type declarations |\n| `\"development\"` | Development builds (bundler-specific) |\n| `\"production\"` | Production builds (bundler-specific) |\n\n### Subpath patterns\n\n```json\n{\n  \"exports\": {\n    \".\": \"./index.js\",\n    \"./*.js\": \"./src/*.js\",\n    \"./internal/*\": null\n  }\n}\n```\n\nSetting an export to `null` explicitly blocks access to that subpath.\n\n## Dual-Package Publishing (CJS + ESM)\n\nPublishing a package that works with both `require()` and `import` requires careful setup.\n\n### Approach 1: Conditional exports (recommended)\n\n```json\n{\n  \"name\": \"my-dual-package\",\n  \"version\": \"2.0.0\",\n  \"type\": \"module\",\n  \"main\": \"./dist/cjs/index.cjs\",\n  \"exports\": {\n    \".\": {\n      \"import\": {\n        \"types\": \"./dist/types/index.d.ts\",\n        \"default\": \"./dist/esm/index.js\"\n      },\n      \"require\": {\n        \"types\": \"./dist/types/index.d.cts\",\n        \"default\": \"./dist/cjs/index.cjs\"\n      }\n    }\n  },\n  \"files\": [\"dist\"]\n}\n```\n\nProject structure:\n\n```\nmy-dual-package/\n  src/\n    index.ts\n  dist/\n    esm/\n      index.js          # ESM output\n    cjs/\n      index.cjs         # CJS output\n    types/\n      index.d.ts        # ESM types\n      index.d.cts       # CJS types\n  package.json\n  tsconfig.json\n```\n\n### Approach 2: Thin CJS wrapper\n\n```json\n{\n  \"name\": \"my-lib\",\n  \"type\": \"module\",\n  \"exports\": {\n    \".\": {\n      \"import\": \"./index.js\",\n      \"require\": \"./index.cjs\"\n    }\n  }\n}\n```\n\n```javascript\n// index.js (ESM - the real implementation)\nexport function greet(name) {\n  return `Hello, ${name}!`;\n}\nexport default greet;\n```\n\n```javascript\n// index.cjs (CJS wrapper)\nmodule.exports = async function loadModule() {\n  return import('./index.js');\n};\n// Or for synchronous default export:\nmodule.exports = require('./dist/cjs-bundle.cjs');\n```\n\n### The dual-package hazard\n\nWhen the same package is loaded via both `import` and `require()` in the same application, you get two separate instances. This breaks `instanceof` checks, singletons, and shared state. Mitigate by:\n\n1. Making state external (database, file, env var)\n2. Using an ESM-only wrapper over a shared CJS core\n3. Documenting that consumers should use one or the other, not both\n\n## Top-Level Await\n\nESM supports `await` at the module's top level, outside any `async` function:\n\n```javascript\n// config.js (ESM)\nconst response = await fetch('https://api.example.com/config');\nexport const config = await response.json();\n\n// db.js (ESM)\nimport { createConnection } from './database.js';\nexport const db = await createConnection(process.env.DATABASE_URL);\nconsole.log('Database connected');\n```\n\n```javascript\n// app.js\nimport { config } from './config.js'; // Waits for fetch to complete\nimport { db } from './db.js';          // Waits for DB connection\n\nconsole.log('App ready with config:', config);\n```\n\nTop-level `await` pauses the module graph until the awaited promise resolves. Use it carefully in library code, as it delays all downstream importers.\n\n## JSON Imports\n\nESM can import JSON files using import attributes:\n\n```javascript\n// Node.js 20.10+ (import attributes — current standard)\nimport config from './config.json' with { type: 'json' };\nconsole.log(config.port);\n\n// Node.js 18-20.9 (import assertions — deprecated but supported)\nimport config from './config.json' assert { type: 'json' };\n\n// Dynamic import of JSON\nconst pkg = await import('./package.json', { with: { type: 'json' } });\nconsole.log(pkg.default.version);\n\n// Alternative: read and parse manually\nimport { readFile } from 'fs/promises';\nconst config = JSON.parse(\n  await readFile(new URL('./config.json', import.meta.url), 'utf8')\n);\n```\n\n## Migrating from CommonJS to ESM\n\nStep-by-step checklist for converting a CJS project to ESM:\n\n1. **Add `\"type\": \"module\"` to package.json**\n2. **Rename files that must stay CJS** to `.cjs`\n3. **Replace `require()` with `import`**:\n   ```javascript\n   // Before (CJS)\n   const fs = require('fs');\n   const { join } = require('path');\n   const myLib = require('./lib');\n\n   // After (ESM)\n   import fs from 'fs';\n   import { join } from 'path';\n   import myLib from './lib.js'; // Add .js extension!\n   ```\n4. **Replace `module.exports` with `export`**:\n   ```javascript\n   // Before (CJS)\n   module.exports = { add, subtract };\n   module.exports.default = Calculator;\n\n   // After (ESM)\n   export { add, subtract };\n   export default Calculator;\n   ```\n5. **Replace `__dirname` / `__filename`**:\n   ```javascript\n   // Before (CJS)\n   const configPath = path.join(__dirname, 'config.json');\n\n   // After (ESM — Node.js v21.2+)\n   const configPath = path.join(import.meta.dirname, 'config.json');\n\n   // After (ESM — older Node.js)\n   import { fileURLToPath } from 'url';\n   import { dirname, join } from 'path';\n   const __dirname = dirname(fileURLToPath(import.meta.url));\n   const configPath = join(__dirname, 'config.json');\n   ```\n6. **Replace `require.resolve()` with `import.meta.resolve()`**\n7. **Add file extensions** to all relative imports\n8. **Update JSON imports** to use import attributes\n9. **Test thoroughly** — some CJS packages may not work with named imports",
+  "sections": [
+    {
+      "id": "enabling-esm",
+      "title": "Enabling ESM in Node.js",
+      "body": "Set `\"type\": \"module\"` in package.json to treat all `.js` files as ESM, or use the `.mjs` extension for individual files. Files with `.cjs` are always CommonJS. Without a `\"type\"` field, `.js` defaults to CommonJS. The `--input-type=module` flag can force ESM for `--eval` and STDIN input. When `\"type\": \"module\"` is set, the nearest parent package.json determines the mode for all `.js` files in that directory tree.",
+      "tags": ["type-module", "mjs", "cjs", "enable", "extension"]
+    },
+    {
+      "id": "import-export",
+      "title": "import and export syntax",
+      "body": "ESM provides static `import` and `export` declarations that are analyzed before execution. Named exports (`export function foo()`) allow selective importing (`import { foo }`). Default exports (`export default`) provide a single primary export. Namespace imports (`import * as mod`) gather all exports. Re-exports (`export { x } from './mod.js'`) create barrel files. Unlike CJS `require()`, ESM imports are live bindings: if the exporting module changes a value, the importing module sees the update. File extensions are mandatory for relative imports in Node.js ESM.",
+      "tags": ["import", "export", "named", "default", "namespace", "re-export", "live-bindings"]
+    },
+    {
+      "id": "import-meta",
+      "title": "import.meta properties",
+      "body": "`import.meta` is an object available only in ESM that provides module-level metadata. `import.meta.url` returns the `file://` URL of the current module. Node.js v21.2+ adds `import.meta.dirname` and `import.meta.filename` as direct equivalents of CJS `__dirname`/`__filename`. `import.meta.resolve(specifier)` resolves a module specifier to a URL without loading the module (synchronous in Node.js v20.6+). These properties are essential for path resolution in ESM, replacing the CJS globals that are not available in ES modules.",
+      "tags": ["import-meta", "url", "dirname", "filename", "resolve"]
+    },
+    {
+      "id": "cjs-interop",
+      "title": "CommonJS interop",
+      "body": "ESM can import CJS modules: `import pkg from './cjs-module.cjs'` imports the `module.exports` as the default export. Named imports from CJS may work if Node.js can statically analyze the exports, but this is not guaranteed. CJS CANNOT `require()` ESM — it must use dynamic `import()`. This asymmetry is the biggest pain point in the CJS-to-ESM transition. For packages that must support both worlds, use conditional exports in package.json. The `createRequire()` function from `module` lets ESM files use `require()` for CJS-only packages that resist dynamic import.",
+      "tags": ["commonjs", "require", "interop", "create-require", "module-exports"]
+    },
+    {
+      "id": "package-exports",
+      "title": "Package exports and conditional exports",
+      "body": "The `\"exports\"` field in package.json defines the public entry points of a package and encapsulates internal files. Subpath exports map import specifiers to file paths. Conditional exports serve different files based on context: `\"import\"` for ESM, `\"require\"` for CJS, `\"node\"` for Node.js, `\"browser\"` for browser bundlers, `\"types\"` for TypeScript declarations, and `\"default\"` as a fallback. Conditions are evaluated in order — put more specific conditions first. Subpath patterns (`\"./*.js\"`) allow wildcard exports. Setting an export to `null` blocks access. The `\"exports\"` field takes precedence over `\"main\"` when present.",
+      "tags": ["exports", "conditional", "subpath", "encapsulation", "entry-point"]
+    },
+    {
+      "id": "dual-package",
+      "title": "Dual-package publishing",
+      "body": "Publishing a package that works with both `require()` and `import` uses conditional exports to point to CJS and ESM builds respectively. The recommended approach is to write source in ESM (or TypeScript) and build to both formats. Use `\"import\"` and `\"require\"` conditions in the `\"exports\"` map. Beware the dual-package hazard: if the same package is loaded via both module systems in one application, two separate copies exist, breaking singletons and `instanceof`. Mitigate by isolating state or using an ESM wrapper over a CJS core. See [[node/npm/publish]] for publishing workflows.",
+      "tags": ["dual-package", "publish", "cjs-esm", "hazard", "npm"]
+    },
+    {
+      "id": "top-level-await",
+      "title": "Top-level await",
+      "body": "ESM supports `await` at the top level of a module, outside any async function. This enables async initialization (database connections, config fetching, dynamic imports) at module load time. When a module uses top-level await, all modules that import it will wait for the await to resolve before executing. This can delay application startup, so use it judiciously in library code. Top-level await is not available in CommonJS.",
+      "tags": ["top-level-await", "async", "initialization", "module-loading"]
+    },
+    {
+      "id": "json-imports",
+      "title": "JSON imports",
+      "body": "ESM can import JSON files using import attributes (the `with` keyword). Syntax: `import data from './data.json' with { type: 'json' }`. The older `assert` keyword is deprecated but still works in Node.js 18-20.9. JSON is imported as the default export (no named exports). Dynamic import of JSON: `const data = await import('./data.json', { with: { type: 'json' } })`. As an alternative, read and parse JSON manually using `fs.readFile` and `JSON.parse`.",
+      "tags": ["json", "import-attributes", "import-assertions", "with", "assert"]
+    }
+  ],
+  "links": [
+    { "uri": "node", "context": "Parent node covering Node.js runtime fundamentals" },
+    { "uri": "node/npm", "context": "package.json configuration including type and exports fields" },
+    { "uri": "node/npm/publish", "context": "Publishing dual CJS/ESM packages to npm" }
+  ],
+  "related": [
+    { "uri": "node", "relation": "prerequisite", "note": "Understanding the Node.js runtime is foundational before configuring its module system" },
+    { "uri": "node/npm", "relation": "see-also", "note": "Package.json fields like type, exports, and main directly control ESM behavior" },
+    { "uri": "node/npm/publish", "relation": "see-also", "note": "Dual-package publishing is a key ESM concern when releasing to npm" }
+  ],
+  "more": {
+    "docs": "https://nodejs.org/api/esm.html",
+    "spec": "https://tc39.es/ecma262/#sec-modules",
+    "wiki": "https://nodejs.org/api/packages.html#packages_determining_module_system"
+  },
+  "frontmatter": {
+    "created": "2026-04-10",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "14 min",
+    "prerequisites": ["node"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

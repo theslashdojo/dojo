@@ -1,0 +1,91 @@
+{
+  "name": "models",
+  "version": "1.0.0",
+  "uri": "anthropic/models",
+  "type": "context",
+  "content_type": "reference",
+  "context": "Claude model IDs, context windows, max output tokens, capabilities, and selection guidance",
+  "info": "This reference covers all available Claude models: their API IDs, aliases, context window sizes, maximum output tokens, training data cutoffs, and capabilities. Use this to choose the right model for your task. The three current flagship models are Claude Opus 4.6 (most intelligent, 1M context, 128k output, $5/$25 per MTok), Claude Sonnet 4.6 (best speed/intelligence balance, 1M context, 64k output, $3/$15 per MTok), and Claude Haiku 4.5 (fastest, 200k context, 64k output, $1/$5 per MTok). All models support text, images, tool use, extended thinking, and streaming. Legacy models (Opus 4.5, 4.1, 4.0, Sonnet 4.5, 4.0) remain available. Use the Models API (`GET /v1/models`) to query capabilities programmatically.",
+  "parent": "anthropic",
+  "tags": ["models", "model-ids", "context-window", "capabilities", "selection"],
+  "aliases": [
+    "claude models",
+    "model ids",
+    "model selection",
+    "which claude model",
+    "claude model comparison",
+    "anthropic models",
+    "model list",
+    "available models",
+    "claude opus",
+    "claude sonnet",
+    "claude haiku"
+  ],
+  "triggers": [
+    "which claude model should i use",
+    "list available claude models",
+    "what is the latest claude model",
+    "claude model context window size",
+    "compare claude opus sonnet haiku",
+    "what is claude-sonnet-4-6",
+    "what models does anthropic offer"
+  ],
+  "body": "# Claude Models Reference\n\nAll available Claude models, their capabilities, and when to use each.\n\n## Current Flagship Models\n\n| Model | API ID | Context | Max Output | Input $/MTok | Output $/MTok |\n|-------|--------|---------|------------|-------------|---------------|\n| **Opus 4.6** | `claude-opus-4-6` | 1M tokens | 128k tokens | $5 | $25 |\n| **Sonnet 4.6** | `claude-sonnet-4-6` | 1M tokens | 64k tokens | $3 | $15 |\n| **Haiku 4.5** | `claude-haiku-4-5` | 200k tokens | 64k tokens | $1 | $5 |\n\n## When to Use Each Model\n\n| Use Case | Recommended Model |\n|----------|-------------------|\n| Complex reasoning, agents, coding | **Opus 4.6** |\n| General-purpose, good balance | **Sonnet 4.6** |\n| High-volume, cost-sensitive | **Haiku 4.5** |\n| Simple classification/extraction | **Haiku 4.5** |\n| Long document analysis (>200k) | **Opus 4.6** or **Sonnet 4.6** (1M context) |\n\n## Model Selection Guide\n\n```\nNeed maximum intelligence?  → Opus 4.6\nNeed speed + intelligence?  → Sonnet 4.6\nNeed lowest cost?           → Haiku 4.5\nNeed 1M context window?     → Opus 4.6 or Sonnet 4.6\nBuilding an agent?          → Opus 4.6 (best tool use)\n```\n\n## All Model IDs\n\n### Current Models\n\n| Model | API ID | Alias |\n|-------|--------|-------|\n| Opus 4.6 | `claude-opus-4-6` | `claude-opus-4-6` |\n| Sonnet 4.6 | `claude-sonnet-4-6` | `claude-sonnet-4-6` |\n| Haiku 4.5 | `claude-haiku-4-5-20251001` | `claude-haiku-4-5` |\n\n### Legacy Models (Still Available)\n\n| Model | API ID | Alias | Context | Max Output |\n|-------|--------|-------|---------|------------|\n| Sonnet 4.5 | `claude-sonnet-4-5-20250929` | `claude-sonnet-4-5` | 200k | 64k |\n| Opus 4.5 | `claude-opus-4-5-20251101` | `claude-opus-4-5` | 200k | 64k |\n| Opus 4.1 | `claude-opus-4-1-20250805` | `claude-opus-4-1` | 200k | 32k |\n| Sonnet 4 | `claude-sonnet-4-20250514` | `claude-sonnet-4-0` | 200k | 64k |\n| Opus 4 | `claude-opus-4-20250514` | `claude-opus-4-0` | 200k | 32k |\n\n### Deprecated Models\n\n| Model | API ID | Retirement |\n|-------|--------|------------|\n| Haiku 3 | `claude-3-haiku-20240307` | April 19, 2026 |\n\n## Capabilities (All Current Models)\n\n- Text input and output\n- Vision (images: JPEG, PNG, GIF, WebP)\n- Document processing (PDFs)\n- Tool use / function calling\n- Extended thinking (configurable budget)\n- Streaming (SSE)\n- Prompt caching\n- Batch processing\n- Structured output (JSON Schema)\n- Multilingual support\n\n## Knowledge Cutoffs\n\n| Model | Reliable Knowledge | Training Data |\n|-------|-------------------|---------------|\n| Opus 4.6 | May 2025 | Aug 2025 |\n| Sonnet 4.6 | Aug 2025 | Jan 2026 |\n| Haiku 4.5 | Feb 2025 | Jul 2025 |\n\n## Models API\n\nQuery model capabilities programmatically:\n\n```python\nimport anthropic\n\nclient = anthropic.Anthropic()\nmodels = client.models.list()\nfor model in models.data:\n    print(f\"{model.id}: {model.display_name}\")\n```\n\n```bash\ncurl https://api.anthropic.com/v1/models \\\n  -H \"x-api-key: $ANTHROPIC_API_KEY\" \\\n  -H \"anthropic-version: 2023-06-01\"\n```\n\nThe response includes `max_input_tokens`, `max_tokens`, and a `capabilities` object.\n\n## Cloud Platform IDs\n\n| Model | AWS Bedrock | GCP Vertex AI |\n|-------|------------|---------------|\n| Opus 4.6 | `anthropic.claude-opus-4-6-v1` | `claude-opus-4-6` |\n| Sonnet 4.6 | `anthropic.claude-sonnet-4-6` | `claude-sonnet-4-6` |\n| Haiku 4.5 | `anthropic.claude-haiku-4-5-20251001-v1:0` | `claude-haiku-4-5@20251001` |\n\n## Extended Output (Batch API)\n\nOn the Batch API, Opus 4.6 and Sonnet 4.6 support up to 300k output tokens using the `output-300k-2026-03-24` beta header.\n",
+  "sections": [
+    {
+      "id": "flagship-models",
+      "title": "Current flagship models",
+      "body": "The three flagship models as of 2026: **Opus 4.6** (`claude-opus-4-6`) — most intelligent, 1M context, 128k output, $5/$25 per MTok. **Sonnet 4.6** (`claude-sonnet-4-6`) — best speed/intelligence balance, 1M context, 64k output, $3/$15 per MTok. **Haiku 4.5** (`claude-haiku-4-5`) — fastest with near-frontier intelligence, 200k context, 64k output, $1/$5 per MTok. All support tool use, vision, extended thinking, and streaming.",
+      "tags": ["opus", "sonnet", "haiku", "flagship", "current"]
+    },
+    {
+      "id": "model-selection",
+      "title": "Choosing a model",
+      "body": "Use Opus 4.6 for maximum intelligence: complex reasoning, agentic workflows, and coding. Use Sonnet 4.6 for general-purpose tasks with good speed. Use Haiku 4.5 for high-volume, cost-sensitive workloads like classification, extraction, and simple Q&A. If you need a 1M token context window, only Opus 4.6 and Sonnet 4.6 qualify. Start with Sonnet 4.6 and upgrade to Opus 4.6 only if quality demands it.",
+      "tags": ["selection", "comparison", "guide", "cost", "performance"]
+    },
+    {
+      "id": "legacy-models",
+      "title": "Legacy models",
+      "body": "Legacy models remain available: Sonnet 4.5 (`claude-sonnet-4-5`), Opus 4.5 (`claude-opus-4-5`), Opus 4.1 (`claude-opus-4-1`), Sonnet 4 (`claude-sonnet-4-0`), Opus 4 (`claude-opus-4-0`). These have 200k context windows. Haiku 3 (`claude-3-haiku-20240307`) is deprecated and retires April 19, 2026. Migrate to Haiku 4.5.",
+      "tags": ["legacy", "deprecated", "migration", "old-models"]
+    },
+    {
+      "id": "cloud-platforms",
+      "title": "Cloud platform availability",
+      "body": "Claude is available on AWS Bedrock, Google Vertex AI, and Microsoft Azure AI. Model IDs differ by platform. Bedrock uses `anthropic.` prefix and version suffix. Vertex AI uses `@` date suffix. Starting with Sonnet 4.5, cloud platforms offer global and regional endpoints (regional has 10% premium).",
+      "tags": ["bedrock", "vertex-ai", "azure", "cloud", "platform"]
+    }
+  ],
+  "links": [
+    { "uri": "anthropic/messages", "context": "Specify model ID in every Messages API request" },
+    { "uri": "anthropic/pricing", "context": "Per-model token pricing" },
+    { "uri": "anthropic/rate-limits", "context": "Rate limits differ by model family" },
+    { "uri": "anthropic/auth", "context": "API key needed for Models API queries" },
+    { "uri": "anthropic/batch", "context": "Extended 300k output available via batch API" }
+  ],
+  "related": [
+    { "uri": "anthropic/pricing", "relation": "see-also", "note": "Pricing varies by model" },
+    { "uri": "anthropic/rate-limits", "relation": "see-also", "note": "Rate limits grouped by model family" },
+    { "uri": "anthropic/messages", "relation": "see-also", "note": "Model ID is a required parameter" }
+  ],
+  "more": {
+    "docs": "https://docs.anthropic.com/en/docs/about-claude/models",
+    "api": "https://docs.anthropic.com/en/api/models-list",
+    "pricing": "https://docs.anthropic.com/en/docs/about-claude/pricing"
+  },
+  "frontmatter": {
+    "created": "2026-04-10",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "4 min",
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

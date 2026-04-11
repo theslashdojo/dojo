@@ -1,0 +1,175 @@
+{
+  "name": "fs",
+  "version": "1.0.0",
+  "uri": "node/fs",
+  "type": "skill",
+  "context": "Read, write, watch, and manage files and directories using the Node.js fs, fs/promises, and path modules",
+  "info": "The Node.js fs module provides a complete filesystem API with three calling conventions: the fs/promises interface for async/await, the callback-based fs interface for event-driven code, and the fs.*Sync interface for blocking calls in CLI scripts and startup. readFile and writeFile handle whole-file I/O, while createReadStream and createWriteStream provide backpressure-aware streaming for large files. The path module is inseparable from fs work — join, resolve, dirname, basename, and extname construct cross-platform paths without manual separator concatenation. File descriptors from open() enable low-level positioned reads and writes. stat, lstat, and access inspect metadata and permissions. watch and watchFile observe changes, though production use cases typically rely on chokidar for cross-platform consistency. mkdtemp creates unique temporary directories under os.tmpdir(). Agents use this module constantly for code generation output, configuration management, log file handling, recursive directory traversal, and build artifact manipulation.",
+  "parent": "node",
+  "tags": ["fs", "filesystem", "file-io", "read-file", "write-file", "path", "watch", "directory"],
+  "aliases": [
+    "fs module",
+    "file system",
+    "read file",
+    "write file",
+    "node filesystem",
+    "file io",
+    "fs promises",
+    "node:fs",
+    "fs/promises",
+    "node fs"
+  ],
+  "triggers": [
+    "read a file in node",
+    "write to a file",
+    "watch for file changes",
+    "list directory contents",
+    "create directory",
+    "check if a file exists in node",
+    "get file size or modification time",
+    "create a temporary file or directory"
+  ],
+  "body": "# Node.js File System\n\nThe `fs` module is the foundation of all file I/O in Node.js. Always prefer `node:fs/promises` for new code and reserve sync methods for CLI startup paths.\n\n## Reading Files\n\n```javascript\nimport { readFile } from 'node:fs/promises';\nimport { createReadStream } from 'node:fs';\n\n// Read entire file as string\nconst content = await readFile('config.json', 'utf-8');\nconst data = JSON.parse(content);\n\n// Read as Buffer (binary, no encoding argument)\nconst buffer = await readFile('image.png');\n\n// readFileSync — only at startup or in CLI scripts\nimport { readFileSync } from 'node:fs';\nconst pkg = JSON.parse(readFileSync('package.json', 'utf-8'));\n\n// Stream large files (>100MB) with backpressure\nconst stream = createReadStream('huge-log.txt', { encoding: 'utf-8' });\nfor await (const chunk of stream) {\n  process.stdout.write(chunk);\n}\n```\n\n## Writing Files\n\n```javascript\nimport { writeFile, appendFile, mkdir, rename } from 'node:fs/promises';\nimport { createWriteStream } from 'node:fs';\nimport { dirname } from 'node:path';\nimport { randomUUID } from 'node:crypto';\n\n// Always create parent directories first\nawait mkdir(dirname('output/data/result.json'), { recursive: true });\nawait writeFile('output/data/result.json', JSON.stringify(data, null, 2));\n\n// Append to a log file\nawait appendFile('app.log', `${new Date().toISOString()} Started\\n`);\n\n// Exclusive write — fail if file already exists\nawait writeFile('lock.pid', String(process.pid), { flag: 'wx' });\n\n// Atomic write: write to temp file then rename (rename is atomic on same fs)\nconst tmp = `config.json.${randomUUID()}.tmp`;\nawait writeFile(tmp, JSON.stringify(config, null, 2));\nawait rename(tmp, 'config.json');\n\n// Stream writes for large output\nconst ws = createWriteStream('large-output.csv');\nfor (const row of rows) {\n  if (!ws.write(row.join(',') + '\\n')) {\n    await new Promise((resolve) => ws.once('drain', resolve));\n  }\n}\nws.end();\nawait new Promise((resolve) => ws.on('finish', resolve));\n```\n\n## Directory Operations\n\n```javascript\nimport { mkdir, readdir, rm, cp, rename } from 'node:fs/promises';\n\n// Create nested directories in one call\nawait mkdir('src/components/ui/buttons', { recursive: true });\n\n// List directory contents with type info\nconst entries = await readdir('src', { withFileTypes: true });\nconst dirs = entries.filter(e => e.isDirectory()).map(e => e.name);\nconst files = entries.filter(e => e.isFile()).map(e => e.name);\n\n// Recursive listing (Node 20+)\nconst allEntries = await readdir('src', { withFileTypes: true, recursive: true });\n\n// Copy an entire directory tree\nawait cp('src', 'backup/src', { recursive: true });\n\n// Remove directory and all contents\nawait rm('dist', { recursive: true, force: true });\n\n// Rename / move a file (same filesystem only)\nawait rename('old.js', 'new.js');\n```\n\n## File Stats and Existence Checks\n\n```javascript\nimport { stat, lstat, access, constants } from 'node:fs/promises';\n\n// Get file metadata\nconst info = await stat('package.json');\nconsole.log(info.size, info.mtime, info.isFile(), info.isDirectory());\n\n// Idiomatic existence check (fs.exists is deprecated)\ntry {\n  await access('config.json');\n  // file exists\n} catch {\n  // file does not exist\n}\n\n// Check specific permissions\nawait access('data.json', constants.R_OK | constants.W_OK);\n\n// Inspect symlink itself (stat follows symlinks, lstat does not)\nconst linkInfo = await lstat('symlink.js');\nconsole.log(linkInfo.isSymbolicLink());\n```\n\n## Watching Files\n\n```javascript\nimport { watch } from 'node:fs/promises';\n\n// Async iterator watch (Node 19+)\nconst watcher = watch('src', { recursive: true });\nfor await (const event of watcher) {\n  console.log(event.eventType, event.filename);\n}\n\n// fs.watch (callback style)\nimport { watch as watchCb } from 'node:fs';\nconst w = watchCb('config.json', (eventType, filename) => {\n  console.log(`${eventType}: ${filename}`);\n});\nprocess.on('SIGINT', () => w.close());\n\n// For production, prefer chokidar for cross-platform consistency:\n// import chokidar from 'chokidar';\n// chokidar.watch('src', { ignoreInitial: true })\n//   .on('change', (path) => console.log('changed:', path));\n```\n\n## Path Module Integration\n\n```javascript\nimport { join, resolve, dirname, basename, extname, parse, relative } from 'node:path';\nimport { fileURLToPath } from 'node:url';\n\n// ESM equivalent of __dirname and __filename\nconst __filename = fileURLToPath(import.meta.url);\nconst __dirname = dirname(__filename);\n\n// Always use join — never concatenate with '/'\nconst configPath = join(__dirname, '..', 'config', 'app.json');\n\n// Resolve to absolute path\nconst abs = resolve('relative/path/file.txt');\n\n// Extract path components\nbasename('src/index.ts');        // 'index.ts'\nbasename('src/index.ts', '.ts'); // 'index'\nextname('file.tar.gz');          // '.gz'\ndirname('/usr/local/bin/node');   // '/usr/local/bin'\n\n// Relative path between two locations\nrelative('/data/orandea/test/aaa', '/data/orandea/impl/bbb'); // '../../impl/bbb'\n\n// Parse into components\nconst parts = parse('/home/user/file.txt');\n// { root: '/', dir: '/home/user', base: 'file.txt', ext: '.txt', name: 'file' }\n```\n\n## Temporary Files and Directories\n\n```javascript\nimport { mkdtemp, writeFile, rm } from 'node:fs/promises';\nimport { tmpdir } from 'node:os';\nimport { join } from 'node:path';\n\n// Create a unique temporary directory\nconst tmpDir = await mkdtemp(join(tmpdir(), 'myapp-'));\n// e.g. '/tmp/myapp-A1B2C3'\n\ntry {\n  await writeFile(join(tmpDir, 'data.json'), JSON.stringify(data));\n  // ... do work with temp files ...\n} finally {\n  // Clean up temp directory\n  await rm(tmpDir, { recursive: true, force: true });\n}\n```\n\n## Environment Variables\n\n| Variable | Purpose |\n|----------|----------|\n| `NODE_PATH` | Additional directories to search when resolving modules with require/import |\n| `TMPDIR` / `TMP` / `TEMP` | Override default temporary directory (used by `os.tmpdir()`) |\n| `HOME` / `USERPROFILE` | User home directory, used by `os.homedir()` |\n| `UV_THREADPOOL_SIZE` | Controls libuv thread pool size for async fs operations (default 4, max 1024) |\n",
+  "sections": [
+    {
+      "id": "reading",
+      "title": "Reading Files",
+      "body": "Use `readFile(path, 'utf-8')` to read a file as a string, or omit the encoding to get a Buffer. `readFileSync` blocks the event loop and should only be used at startup or in CLI scripts. For large files (over 100MB), use `createReadStream` which returns a Readable stream with automatic backpressure. Pass `{ encoding: 'utf-8' }` to the stream for text, or leave it for binary chunks. Use `for await (const chunk of stream)` to consume an async readable stream. The `{ highWaterMark }` option controls stream buffer size.",
+      "tags": ["read", "readfile", "stream", "buffer", "encoding"]
+    },
+    {
+      "id": "writing",
+      "title": "Writing Files",
+      "body": "Use `writeFile(path, data)` to create or overwrite a file. Always create parent directories first with `mkdir(dirname(path), { recursive: true })`. For append operations, use `appendFile`. For atomic writes (preventing corruption on crash), write to a temporary file then `rename` it to the target path — rename is atomic on the same filesystem. Use `createWriteStream` for large outputs or when data arrives incrementally. The `{ flag: 'wx' }` option makes writeFile fail if the file already exists, useful for lock files. Handle backpressure with the `drain` event on writable streams.",
+      "tags": ["write", "writefile", "append", "stream", "atomic-write"]
+    },
+    {
+      "id": "directories",
+      "title": "Directory Operations",
+      "body": "Use `mkdir(path, { recursive: true })` to create deeply nested directories without checking each level. `readdir` returns file names by default; pass `{ withFileTypes: true }` to get Dirent objects with `.isFile()`, `.isDirectory()`, and `.isSymbolicLink()` methods. Node 20+ supports `{ recursive: true }` for deep listing. `rm(path, { recursive: true, force: true })` removes a directory and all contents. `cp(src, dest, { recursive: true })` copies directory trees. `rename` moves files but fails across filesystem boundaries — use cp + rm instead.",
+      "tags": ["directory", "mkdir", "readdir", "rm", "cp", "rename"]
+    },
+    {
+      "id": "watching",
+      "title": "Watching for Changes",
+      "body": "The `fs.watch` API returns an async iterable of change events with `eventType` ('rename' or 'change') and `filename`. Pass `{ recursive: true }` for deep watching (macOS and Windows natively, Linux via polling). Caveats: events may fire multiple times per change, filenames may be null on some platforms, and behavior is not fully consistent across OSes. For production file watching, use the `chokidar` package which normalizes cross-platform behavior, provides glob pattern matching, ready events, and debouncing. `fs.watchFile` uses polling and is more reliable but slower.",
+      "tags": ["watch", "watchfile", "chokidar", "events", "polling"]
+    },
+    {
+      "id": "metadata",
+      "title": "File Metadata and Permissions",
+      "body": "Use `stat` to get file size, modification time, and type checks via `isFile()`, `isDirectory()`, `isSymbolicLink()`. `stat` follows symlinks; use `lstat` to inspect the symlink itself. The `access` function checks readability (`constants.R_OK`), writability (`constants.W_OK`), and executability (`constants.X_OK`). Use `try { await access(path) } catch {}` as the idiomatic file-exists check — `fs.exists` is deprecated. The `mode` field from stat contains Unix permission bits. `utimes` sets access and modification times.",
+      "tags": ["stat", "access", "permissions", "lstat", "metadata"]
+    },
+    {
+      "id": "path-module",
+      "title": "Path Module",
+      "body": "Always use `path.join()` instead of string concatenation with '/' — join normalizes separators for the current OS. `path.resolve()` converts relative paths to absolute using the current working directory. `dirname`, `basename`, and `extname` extract path components. In ESM modules, `__dirname` is not available — use `dirname(fileURLToPath(import.meta.url))` to reconstruct it. `path.parse()` splits a path into root, dir, base, ext, and name. `path.relative()` computes the relative path between two locations. On Windows, use `path.win32` or `path.posix` for explicit platform-specific behavior.",
+      "tags": ["path", "join", "resolve", "dirname", "basename", "extname"]
+    }
+  ],
+  "links": [
+    { "uri": "node", "context": "Node.js runtime environment" },
+    { "uri": "node/streams", "context": "createReadStream and createWriteStream produce Node streams" },
+    { "uri": "node/esm", "context": "ES module import syntax for node:fs/promises" },
+    { "uri": "node/child-process", "context": "Spawn file-based tools like tar, gzip, and rsync" }
+  ],
+  "related": [
+    { "uri": "node", "relation": "prerequisite", "note": "Node.js runtime is required for the fs module" },
+    { "uri": "node/streams", "relation": "see-also", "note": "createReadStream and createWriteStream produce Node readable/writable streams" },
+    { "uri": "node/child-process", "relation": "see-also", "note": "Use child processes to run file tools like tar, gzip, and rsync" }
+  ],
+  "scripts": [
+    {
+      "id": "file-operations",
+      "name": "File Operations",
+      "description": "Read, write, list, stat, and manage files and directories from the command line",
+      "lang": "javascript",
+      "runtime": "node>=18",
+      "entry": "./scripts/file-operations.js",
+      "packages": []
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "operation": {
+          "type": "string",
+          "enum": ["read", "write", "append", "list", "stat", "mkdir", "copy", "remove", "exists"],
+          "description": "File system operation to perform"
+        },
+        "path": {
+          "type": "string",
+          "description": "Target file or directory path"
+        },
+        "content": {
+          "type": "string",
+          "description": "Content to write (for write and append operations)"
+        },
+        "options": {
+          "type": "object",
+          "properties": {
+            "encoding": { "type": "string", "default": "utf-8" },
+            "recursive": { "type": "boolean", "default": false },
+            "force": { "type": "boolean", "default": false },
+            "dest": { "type": "string", "description": "Destination path for copy operation" }
+          }
+        }
+      },
+      "required": ["operation", "path"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "data": {
+          "type": "string",
+          "description": "File content or operation result"
+        },
+        "stats": {
+          "type": "object",
+          "description": "File metadata from stat operation",
+          "properties": {
+            "size": { "type": "integer" },
+            "isFile": { "type": "boolean" },
+            "isDirectory": { "type": "boolean" },
+            "modified": { "type": "string", "format": "date-time" },
+            "permissions": { "type": "string" }
+          }
+        },
+        "entries": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": { "type": "string" },
+              "type": { "type": "string", "enum": ["file", "dir", "link"] }
+            }
+          },
+          "description": "Directory listing entries"
+        }
+      }
+    }
+  },
+  "depends": [],
+  "more": {
+    "docs": "https://nodejs.org/docs/latest/api/fs.html",
+    "api": "https://nodejs.org/docs/latest/api/fs.html#promises-api",
+    "path": "https://nodejs.org/docs/latest/api/path.html"
+  },
+  "frontmatter": {
+    "created": "2026-04-10",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "6 min",
+    "prerequisites": ["node"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

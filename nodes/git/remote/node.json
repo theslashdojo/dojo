@@ -1,0 +1,138 @@
+{
+  "name": "remote",
+  "version": "1.0.0",
+  "uri": "git/remote",
+  "type": "skill",
+  "context": "Manage remote repositories — add, fetch, pull, push, and configure origin and upstream remotes",
+  "info": "Remotes are named references to other git repositories, typically hosted on GitHub, GitLab, or Bitbucket. The default remote is 'origin' (where you cloned from). This skill covers adding and removing remotes, fetching to download remote state without merging, pulling to fetch-and-merge in one step, pushing to upload local commits, and managing upstream tracking branches. Agents must understand the fetch-before-push pattern: always fetch to check for remote changes before pushing. Force-pushing (git push --force) is dangerous and should only be used on personal branches after rebase. See [[git/branch]] for tracking branch relationships, [[git/merge]] for integrating fetched changes, and [[git/config]] for remote URL and credential configuration.",
+  "parent": "git",
+  "tags": ["remote", "origin", "upstream", "fetch", "pull", "push", "clone"],
+  "aliases": [
+    "git remote",
+    "git push",
+    "git pull",
+    "git fetch",
+    "git clone",
+    "origin",
+    "upstream",
+    "remote repository",
+    "push changes",
+    "pull changes",
+    "fetch remote"
+  ],
+  "triggers": [
+    "push changes to remote",
+    "pull latest changes",
+    "fetch from remote",
+    "add a remote",
+    "change remote URL",
+    "push to origin",
+    "set upstream remote",
+    "clone a repository",
+    "force push",
+    "list remotes"
+  ],
+  "body": "# Git Remote\n\nRemotes connect your local repository to copies hosted elsewhere. Most workflows involve one remote (origin), but contributing to open source typically uses two (origin for your fork, upstream for the original).\n\n## Cloning\n\n```bash\n# Clone via HTTPS\ngit clone https://github.com/owner/repo.git\n\n# Clone via SSH\ngit clone git@github.com:owner/repo.git\n\n# Clone into a specific directory\ngit clone https://github.com/owner/repo.git my-project\n\n# Shallow clone (last N commits only — faster for large repos)\ngit clone --depth 1 https://github.com/owner/repo.git\n\n# Clone a specific branch\ngit clone -b develop https://github.com/owner/repo.git\n```\n\nCloning automatically sets up the `origin` remote pointing to the clone URL.\n\n## Managing Remotes\n\n```bash\n# List remotes\ngit remote -v\n\n# Add a remote\ngit remote add upstream https://github.com/original/repo.git\n\n# Rename a remote\ngit remote rename origin old-origin\n\n# Remove a remote\ngit remote remove upstream\n\n# Change remote URL\ngit remote set-url origin git@github.com:owner/repo.git\n\n# Show detailed remote info\ngit remote show origin\n```\n\n## Fetching\n\nFetch downloads objects and refs from a remote without modifying your working tree:\n\n```bash\n# Fetch from origin\ngit fetch origin\n\n# Fetch from all remotes\ngit fetch --all\n\n# Fetch and prune stale remote-tracking branches\ngit fetch --prune\n\n# Fetch a specific branch\ngit fetch origin main\n\n# Fetch tags\ngit fetch --tags\n```\n\nAfter fetching, remote-tracking branches (e.g., `origin/main`) are updated. Use [[git/merge]] or [[git/rebase]] to integrate.\n\n## Pulling\n\nPull = fetch + merge (or fetch + rebase with `--rebase`):\n\n```bash\n# Pull current branch from tracking remote\ngit pull\n\n# Pull with rebase instead of merge\ngit pull --rebase\n\n# Pull a specific branch\ngit pull origin main\n\n# Pull and auto-stash dirty working tree\ngit pull --autostash\n```\n\n**Prefer `git pull --rebase`** for feature branches to maintain linear history. Configure as default:\n```bash\ngit config --global pull.rebase true\n```\n\n## Pushing\n\n```bash\n# Push current branch to tracking remote\ngit push\n\n# Push and set upstream tracking\ngit push -u origin feature-branch\n\n# Push a specific branch\ngit push origin main\n\n# Push all branches\ngit push --all\n\n# Push tags\ngit push --tags\ngit push origin v1.0.0  # specific tag\n\n# Delete a remote branch\ngit push origin --delete feature-done\n```\n\n### Force Push\n\n```bash\n# Force push (DANGEROUS — overwrites remote history)\ngit push --force\n\n# Safer: force-with-lease (fails if remote has new commits you haven't fetched)\ngit push --force-with-lease\n```\n\n**Always prefer `--force-with-lease` over `--force`.** It prevents overwriting commits others have pushed. Only force-push personal feature branches after rebase — never force-push main or shared branches.\n\n## Fork and Upstream Workflow\n\nCommon for open-source contributions:\n\n```bash\n# Clone your fork\ngit clone git@github.com:you/repo.git\n\n# Add upstream (original repo)\ngit remote add upstream https://github.com/original/repo.git\n\n# Sync your fork with upstream\ngit fetch upstream\ngit checkout main\ngit merge upstream/main\ngit push origin main\n\n# Alternative: rebase onto upstream\ngit fetch upstream\ngit rebase upstream/main\ngit push origin main\n```\n\n## Agent Best Practices\n\n1. **Always fetch before push** — `git fetch origin && git push` avoids surprises\n2. **Use --force-with-lease** — never bare `--force` unless you've verified nobody else pushed\n3. **Use -u on first push** — `git push -u origin branch` sets tracking for future push/pull\n4. **Prune regularly** — `git fetch --prune` removes stale remote-tracking branches\n5. **Use SSH for automation** — SSH keys don't expire like tokens and support key-based auth\n6. **Shallow clone for CI** — `git clone --depth 1` is much faster for build pipelines\n",
+  "sections": [
+    {
+      "id": "clone",
+      "title": "Cloning repositories",
+      "body": "`git clone <url>` creates a local copy with `origin` set to the clone URL. Clone via HTTPS (requires token/password) or SSH (requires key). Use `--depth N` for shallow clones (faster, less disk). Use `-b <branch>` to check out a non-default branch. Use `--recurse-submodules` for repos with submodules.",
+      "tags": ["clone", "https", "ssh", "shallow", "depth"]
+    },
+    {
+      "id": "fetch",
+      "title": "Fetching remote changes",
+      "body": "`git fetch <remote>` downloads new objects and updates remote-tracking branches (e.g., `origin/main`) without touching your working tree or local branches. This is always safe. Use `--all` to fetch all remotes, `--prune` to clean up deleted remote branches, `--tags` to fetch tags. After fetching, integrate with [[git/merge]] or [[git/rebase]].",
+      "tags": ["fetch", "download", "remote-tracking", "prune"]
+    },
+    {
+      "id": "pull",
+      "title": "Pulling (fetch + merge/rebase)",
+      "body": "`git pull` fetches and merges the tracking branch. `git pull --rebase` fetches and rebases instead (preferred for feature branches). `git pull --autostash` stashes dirty working tree, pulls, then re-applies the stash. Configure `pull.rebase true` globally to make rebase the default. See [[git/merge]] and [[git/rebase]] for the underlying operations.",
+      "tags": ["pull", "fetch-merge", "rebase", "autostash"]
+    },
+    {
+      "id": "push",
+      "title": "Pushing local commits",
+      "body": "`git push` uploads local commits to the remote. First push: `git push -u origin <branch>` sets tracking. `git push --tags` pushes all tags. `git push origin --delete <branch>` deletes a remote branch. **Force push**: `--force-with-lease` is safe (checks for remote changes); `--force` is dangerous (overwrites unconditionally). Never force-push shared branches.",
+      "tags": ["push", "upload", "force-push", "force-with-lease", "tags"]
+    },
+    {
+      "id": "managing",
+      "title": "Adding and configuring remotes",
+      "body": "`git remote add <name> <url>` adds a new remote. `git remote set-url <name> <url>` changes the URL. `git remote -v` lists all remotes with URLs. `git remote show <name>` shows detailed info including tracking branches. Common setup: `origin` for your fork/copy, `upstream` for the original repository.",
+      "tags": ["add-remote", "set-url", "configure", "origin", "upstream"]
+    }
+  ],
+  "links": [
+    { "uri": "git/branch", "context": "Remote-tracking branches and upstream tracking" },
+    { "uri": "git/merge", "context": "Merge fetched changes into local branches" },
+    { "uri": "git/rebase", "context": "Rebase onto fetched remote changes" },
+    { "uri": "git/commit", "context": "Commits are what you push and pull" },
+    { "uri": "git/config", "context": "Configure remote URLs and credentials" },
+    { "uri": "git/stash", "context": "Autostash during pull" },
+    { "uri": "github/repos", "context": "GitHub is the most common remote host" }
+  ],
+  "related": [
+    { "uri": "git/branch", "relation": "see-also", "note": "Tracking branches connect local branches to remote counterparts" },
+    { "uri": "git/merge", "relation": "see-also", "note": "Pull performs a merge by default after fetching" },
+    { "uri": "git/rebase", "relation": "see-also", "note": "Pull --rebase performs a rebase after fetching" },
+    { "uri": "github/repos", "relation": "see-also", "note": "GitHub repos are the most common remote targets" }
+  ],
+  "scripts": [
+    {
+      "id": "remote-sync",
+      "name": "Remote Sync",
+      "description": "Fetch, check for divergence, and push or pull as needed",
+      "lang": "bash",
+      "runtime": "git>=2.30",
+      "entry": "./scripts/remote-sync.sh",
+      "inline": "#!/usr/bin/env bash\nset -euo pipefail\n\nREMOTE=\"${1:-origin}\"\nBRANCH=$(git branch --show-current)\n\necho \"Syncing $BRANCH with $REMOTE/$BRANCH\"\n\n# Fetch latest\ngit fetch \"$REMOTE\"\n\n# Check if remote branch exists\nif ! git rev-parse --verify \"$REMOTE/$BRANCH\" >/dev/null 2>&1; then\n  echo \"Remote branch $REMOTE/$BRANCH does not exist.\"\n  echo \"Push with: git push -u $REMOTE $BRANCH\"\n  exit 0\nfi\n\n# Count ahead/behind\nLOCAL=$(git rev-parse HEAD)\nREMOTE_HEAD=$(git rev-parse \"$REMOTE/$BRANCH\")\nBASE=$(git merge-base HEAD \"$REMOTE/$BRANCH\")\n\nif [ \"$LOCAL\" = \"$REMOTE_HEAD\" ]; then\n  echo \"Already up to date.\"\nelif [ \"$LOCAL\" = \"$BASE\" ]; then\n  BEHIND=$(git rev-list --count HEAD..\"$REMOTE/$BRANCH\")\n  echo \"Behind by $BEHIND commit(s). Pulling...\"\n  git pull --rebase \"$REMOTE\" \"$BRANCH\"\nelif [ \"$REMOTE_HEAD\" = \"$BASE\" ]; then\n  AHEAD=$(git rev-list --count \"$REMOTE/$BRANCH\"..HEAD)\n  echo \"Ahead by $AHEAD commit(s). Pushing...\"\n  git push \"$REMOTE\" \"$BRANCH\"\nelse\n  AHEAD=$(git rev-list --count \"$REMOTE/$BRANCH\"..HEAD)\n  BEHIND=$(git rev-list --count HEAD..\"$REMOTE/$BRANCH\")\n  echo \"Diverged: $AHEAD ahead, $BEHIND behind.\"\n  echo \"Recommend: git pull --rebase $REMOTE $BRANCH && git push\"\nfi"
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "action": { "type": "string", "enum": ["clone", "fetch", "pull", "push", "add", "set-url"], "description": "Remote operation" },
+        "remote": { "type": "string", "default": "origin", "description": "Remote name" },
+        "url": { "type": "string", "description": "Remote URL (for clone, add, set-url)" },
+        "branch": { "type": "string", "description": "Branch to push/pull" },
+        "force": { "type": "boolean", "default": false, "description": "Force push (use --force-with-lease)" }
+      },
+      "required": ["action"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "success": { "type": "boolean" },
+        "ahead": { "type": "integer", "description": "Commits ahead of remote" },
+        "behind": { "type": "integer", "description": "Commits behind remote" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "git/config", "reason": "Remote URLs and credentials must be configured", "optional": true }
+  ],
+  "more": {
+    "docs": "https://git-scm.com/docs/git-remote",
+    "book": "https://git-scm.com/book/en/v2/Git-Basics-Working-with-Remotes",
+    "push": "https://git-scm.com/docs/git-push",
+    "fetch": "https://git-scm.com/docs/git-fetch"
+  },
+  "frontmatter": {
+    "created": "2026-04-10",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "5 min",
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

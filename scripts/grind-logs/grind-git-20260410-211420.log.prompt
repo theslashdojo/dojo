@@ -1,0 +1,107 @@
+You are working in the Dojo repository at /workspaces/Contracts/dojo.
+
+Your task: build the "git" ecosystem node tree for Dojo.
+
+## Context
+Every code agent uses git constantly — commit, branch, merge, rebase, stash, log, diff, cherry-pick
+
+## Target Tree
+[
+  {
+    "uri": "git",
+    "type": "ecosystem"
+  },
+  {
+    "uri": "git/commit",
+    "type": "skill"
+  },
+  {
+    "uri": "git/branch",
+    "type": "skill"
+  },
+  {
+    "uri": "git/merge",
+    "type": "skill"
+  },
+  {
+    "uri": "git/rebase",
+    "type": "skill"
+  },
+  {
+    "uri": "git/stash",
+    "type": "skill"
+  },
+  {
+    "uri": "git/log",
+    "type": "skill"
+  },
+  {
+    "uri": "git/diff",
+    "type": "skill"
+  },
+  {
+    "uri": "git/remote",
+    "type": "skill"
+  },
+  {
+    "uri": "git/worktree",
+    "type": "skill"
+  },
+  {
+    "uri": "git/config",
+    "type": "context"
+  },
+  {
+    "uri": "git/hooks",
+    "type": "context"
+  },
+  {
+    "uri": "git/troubleshooting",
+    "type": "context"
+  }
+]
+
+## Instructions
+
+1. Read the SPEC at /workspaces/Contracts/dojo/SPEC.md (sections 1-4 at minimum) and the schema at /workspaces/Contracts/dojo/schema/node.schema.json for the exact node.json format.
+2. Look at /workspaces/Contracts/dojo/nodes/github/repos/node.json and /workspaces/Contracts/dojo/nodes/github/issues/node.json as references for well-formed skill nodes.
+3. Research the official documentation for "git" — use WebFetch to pull docs, API references, CLI help, and examples from official sources.
+4. For each node in the target tree above, create a node.json file in the appropriate directory under /workspaces/Contracts/dojo/nodes/.
+5. Make every node rich and complete:
+   - context: one line, under 200 chars, tells an agent when to use this node
+   - info: dense paragraph with scope, execution surface, and why it matters
+   - body: long-form markdown with [[uri]] wiki-links, code examples, environment variables, real commands
+   - sections: addressable chunks with ids, titles, bodies — these become direct-linkable knowledge
+   - aliases: the real phrases agents and users actually say, including acronyms and common misspellings
+   - triggers: natural language phrases that should surface this node in search
+   - tags: concrete keywords for filtering
+   - links: directed next steps to related nodes with context
+   - related: semantic relationships (prerequisite, see-also, implements, extends)
+6. For skill and sub nodes, include:
+   - scripts with real executable commands/code (not placeholders), lang, runtime, entry, env vars, packages
+   - schema with input/output JSON contracts
+   - depends for required dependencies on other nodes
+7. Create parent directories as needed (mkdir -p).
+8. Do NOT ask questions. Do NOT ask for confirmation. Just build all the nodes.
+9. After creating all nodes, validate that each node.json is valid JSON.
+
+## Agent Skills Format
+
+For any executable skill node, also create a SKILL.md following the Agent Skills spec (https://github.com/agentskills/agentskills):
+- YAML frontmatter with name, description
+- name must be lowercase-hyphenated and match the directory name
+- description says what the skill does AND when to use it
+- Markdown body with instructions, workflow, examples, edge cases
+- Add scripts/ directory for deterministic execution when useful
+- Add references/ directory for bulky reference material
+- Keep SKILL.md under 500 lines; move detail to references/
+
+## Quality Bar
+
+Every node must teach well enough that another agent can learn and act from it without reading upstream docs. Skeleton nodes are failures. Placeholder scripts are failures.
+
+Think about what an autonomous agent actually needs:
+- Can it find this node when it needs it? (aliases, triggers, tags)
+- Can it learn enough to act? (body, sections, code examples)
+- Can it execute? (scripts, schema, env vars)
+- Does it know where to go next? (links, related, depends)

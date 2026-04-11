@@ -1,0 +1,124 @@
+{
+  "name": "resources",
+  "version": "1.0.0",
+  "uri": "mcp/server/resources",
+  "type": "sub",
+  "context": "Expose contextual data sources via MCP resources — files, database schemas, API responses identified by URIs",
+  "info": "MCP resources are application-controlled data sources that servers expose to provide context to AI applications. Unlike tools (which are model-invoked), resources are selected by the application or user to enrich the LLM's context. Each resource is identified by a URI (file://, https://, custom schemes), has a name, optional description, and MIME type. Resources support text and binary content, URI templates for parameterized access, subscriptions for real-time updates, and list change notifications. Servers declare the `resources` capability during initialization, optionally with `subscribe: true` and `listChanged: true`. Resources are discovered via `resources/list`, read via `resources/read`, and templates listed via `resources/templates/list`.",
+  "parent": "mcp/server",
+  "tags": ["mcp-resources", "resources", "data-sources", "uri", "context", "files", "subscriptions"],
+  "aliases": [
+    "mcp resources",
+    "MCP resources",
+    "mcp resource",
+    "resource uri",
+    "resources/list",
+    "resources/read",
+    "resource template",
+    "server resources",
+    "expose data via mcp",
+    "mcp data source"
+  ],
+  "triggers": [
+    "expose data via MCP resources",
+    "add a resource to my MCP server",
+    "serve files through MCP",
+    "create an MCP resource",
+    "subscribe to resource changes",
+    "how do MCP resources work",
+    "expose a database schema as a resource",
+    "use resource templates"
+  ],
+  "body": "# MCP Resources\n\nResources are application-controlled data sources that MCP servers expose to provide context to AI applications. They represent things like files, database schemas, API responses, and configuration — any data that enriches the LLM's understanding.\n\n## Resource Definition\n\nEach resource has:\n- **`uri`** — Unique identifier using standard URI schemes (file://, https://, custom://)\n- **`name`** — Human-readable name\n- **`title`** — Optional display name\n- **`description`** — What the resource contains\n- **`mimeType`** — Content type (text/plain, application/json, etc.)\n- **`size`** — Optional size in bytes\n- **`annotations`** — Optional metadata (audience, priority, lastModified)\n\n## Python (FastMCP)\n\n```python\nfrom mcp.server.fastmcp import FastMCP\n\nmcp = FastMCP(\"resources-example\")\n\n@mcp.resource(\"file://readme\")\ndef readme() -> str:\n    \"\"\"Project README file.\"\"\"\n    return open(\"README.md\").read()\n\n@mcp.resource(\"schema://database\")\ndef db_schema() -> str:\n    \"\"\"Database schema definition.\"\"\"\n    return open(\"schema.sql\").read()\n\n@mcp.resource(\"config://app\")\ndef app_config() -> str:\n    \"\"\"Application configuration.\"\"\"\n    return json.dumps(load_config(), indent=2)\n```\n\n## TypeScript (McpServer)\n\n```typescript\nimport { McpServer } from \"@modelcontextprotocol/sdk/server/mcp.js\";\n\nconst server = new McpServer({ name: \"resources-example\", version: \"1.0.0\" });\n\nserver.resource(\n  \"readme\",\n  \"file://readme\",\n  async (uri) => ({\n    contents: [{\n      uri: uri.href,\n      mimeType: \"text/markdown\",\n      text: await fs.readFile(\"README.md\", \"utf-8\")\n    }]\n  })\n);\n```\n\n## Protocol Messages\n\n### List Resources: `resources/list`\n\n```json\n// Request\n{\"jsonrpc\": \"2.0\", \"id\": 1, \"method\": \"resources/list\"}\n\n// Response\n{\n  \"jsonrpc\": \"2.0\", \"id\": 1,\n  \"result\": {\n    \"resources\": [{\n      \"uri\": \"file:///project/README.md\",\n      \"name\": \"README.md\",\n      \"description\": \"Project documentation\",\n      \"mimeType\": \"text/markdown\"\n    }]\n  }\n}\n```\n\n### Read Resource: `resources/read`\n\n```json\n// Request\n{\n  \"jsonrpc\": \"2.0\", \"id\": 2,\n  \"method\": \"resources/read\",\n  \"params\": {\"uri\": \"file:///project/README.md\"}\n}\n\n// Response\n{\n  \"jsonrpc\": \"2.0\", \"id\": 2,\n  \"result\": {\n    \"contents\": [{\n      \"uri\": \"file:///project/README.md\",\n      \"mimeType\": \"text/markdown\",\n      \"text\": \"# My Project\\n\\nA great project.\"\n    }]\n  }\n}\n```\n\n### Resource Templates\n\nTemplates allow parameterized resource URIs using RFC 6570 URI templates:\n\n```json\n// resources/templates/list response\n{\n  \"resourceTemplates\": [{\n    \"uriTemplate\": \"file:///{path}\",\n    \"name\": \"Project Files\",\n    \"description\": \"Access files in the project directory\",\n    \"mimeType\": \"application/octet-stream\"\n  }]\n}\n```\n\n### Subscriptions\n\nClients can subscribe to resource changes:\n\n```json\n// Subscribe\n{\"jsonrpc\": \"2.0\", \"id\": 3, \"method\": \"resources/subscribe\", \"params\": {\"uri\": \"file:///config.json\"}}\n\n// Server notification when resource changes\n{\"jsonrpc\": \"2.0\", \"method\": \"notifications/resources/updated\", \"params\": {\"uri\": \"file:///config.json\"}}\n```\n\n## Content Types\n\n### Text Content\n```json\n{\"uri\": \"file:///example.txt\", \"mimeType\": \"text/plain\", \"text\": \"Content here\"}\n```\n\n### Binary Content\n```json\n{\"uri\": \"file:///image.png\", \"mimeType\": \"image/png\", \"blob\": \"base64-encoded-data\"}\n```\n\n## Common URI Schemes\n\n| Scheme | Use Case |\n|--------|----------|\n| `file://` | Filesystem-like resources |\n| `https://` | Web-accessible resources (client can fetch directly) |\n| `git://` | Git version control resources |\n| Custom | Application-specific schemes (e.g., `db://`, `config://`) |\n\n## Annotations\n\n```json\n{\n  \"uri\": \"file:///README.md\",\n  \"name\": \"README\",\n  \"annotations\": {\n    \"audience\": [\"user\", \"assistant\"],\n    \"priority\": 0.8,\n    \"lastModified\": \"2025-01-12T15:00:58Z\"\n  }\n}\n```\n\n## Error Handling\n\n- Resource not found: JSON-RPC error code `-32002`\n- Internal errors: JSON-RPC error code `-32603`\n",
+  "sections": [
+    {
+      "id": "uri-schemes",
+      "title": "URI schemes and resource identification",
+      "body": "Resources are identified by URIs following RFC 3986. Standard schemes: `file://` for filesystem-like resources (don't need to map to actual files), `https://` for web resources the client can fetch directly, `git://` for version control. Custom schemes like `db://`, `config://`, `schema://` are allowed and should be documented. URI templates (RFC 6570) enable parameterized access patterns like `file:///{path}` or `db:///{table}/{id}`.",
+      "tags": ["uri", "schemes", "file", "https", "custom", "templates"]
+    },
+    {
+      "id": "subscriptions",
+      "title": "Resource subscriptions",
+      "body": "Servers can support resource subscriptions by declaring `subscribe: true` in the resources capability. Clients subscribe via `resources/subscribe` with a resource URI. When the resource changes, the server sends `notifications/resources/updated`. The client then re-reads the resource via `resources/read` to get updated content. This enables real-time context updates — e.g., watching a config file for changes.",
+      "tags": ["subscriptions", "real-time", "notifications", "updates"]
+    },
+    {
+      "id": "content-types",
+      "title": "Text and binary content",
+      "body": "Resource contents can be text (returned in `text` field) or binary (returned as base64-encoded data in `blob` field). The `mimeType` indicates the content type. Common MIME types: `text/plain`, `text/markdown`, `application/json`, `text/x-python`, `image/png`. For directories, use `inode/directory` XDG MIME type.",
+      "tags": ["text", "binary", "mime-type", "base64", "content"]
+    }
+  ],
+  "links": [
+    { "uri": "mcp/server", "context": "Parent skill for building MCP servers" },
+    { "uri": "mcp/server/tools", "context": "Tools can return resource links and embedded resources" },
+    { "uri": "mcp/server/prompts", "context": "Prompts can embed resources for context" },
+    { "uri": "mcp/client", "context": "Clients read and subscribe to resources" },
+    { "uri": "mcp/architecture", "context": "Resource flow in MCP architecture" }
+  ],
+  "related": [
+    { "uri": "mcp/server", "relation": "extends", "note": "Resources are one of three primitives servers expose" },
+    { "uri": "mcp/server/tools", "relation": "see-also", "note": "Tool results can link to or embed resources" }
+  ],
+  "scripts": [
+    {
+      "id": "resource-server",
+      "name": "MCP Resource Server Example",
+      "description": "Create and run an MCP server with example resources demonstrating text, binary, and template patterns",
+      "lang": "python",
+      "runtime": "python>=3.10",
+      "entry": "./scripts/resource-server.py",
+      "env": {},
+      "packages": ["mcp[cli]"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "uri": { "type": "string", "description": "Resource URI to read" }
+      },
+      "required": ["uri"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "contents": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "uri": { "type": "string" },
+              "mimeType": { "type": "string" },
+              "text": { "type": "string" },
+              "blob": { "type": "string" }
+            }
+          }
+        }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "mcp/server", "reason": "Resources are a primitive of MCP servers" }
+  ],
+  "more": {
+    "docs": "https://modelcontextprotocol.io/docs/concepts/resources",
+    "spec": "https://spec.modelcontextprotocol.io/specification/2025-06-18/server/resources"
+  },
+  "frontmatter": {
+    "created": "2026-04-10",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "4 min",
+    "prerequisites": ["mcp/server"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

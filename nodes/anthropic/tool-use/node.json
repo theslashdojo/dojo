@@ -1,0 +1,149 @@
+{
+  "name": "tool-use",
+  "version": "1.0.0",
+  "uri": "anthropic/tool-use",
+  "type": "skill",
+  "context": "Give Claude callable functions via tool definitions — client-side tools run in your app, server-side tools run on Anthropic",
+  "info": "Tool use (function calling) lets Claude invoke functions you define. You pass tool definitions with `name`, `description`, and `input_schema` (JSON Schema) in the `tools` parameter. When Claude decides to use a tool, the response contains a `tool_use` content block with `id`, `name`, and `input`. Your code executes the function and sends back a `tool_result` content block with the output. This creates an agentic loop: prompt → tool_use → execute → tool_result → continue. Client-side tools run in your application; server-side tools (web_search, code_execution, web_fetch) run on Anthropic infrastructure. The `tool_choice` parameter controls when Claude uses tools: `auto` (default, Claude decides), `any` (must use a tool), `tool` (must use a specific tool), `none` (disabled). Add `strict: true` to enforce exact schema conformance.",
+  "parent": "anthropic",
+  "tags": ["tool-use", "function-calling", "tools", "agentic", "client-tools", "server-tools"],
+  "aliases": [
+    "tool use",
+    "function calling",
+    "claude tools",
+    "tool calling",
+    "function calling api",
+    "tool definitions",
+    "anthropic tools",
+    "callable functions",
+    "tool_use",
+    "tool use api"
+  ],
+  "triggers": [
+    "give claude access to tools",
+    "define tools for claude",
+    "use function calling with claude",
+    "create a tool for claude to call",
+    "build an agentic loop with claude",
+    "let claude call external functions",
+    "add tools to a claude api request"
+  ],
+  "body": "# Tool Use (Function Calling)\n\nTool use lets Claude call functions you define, enabling it to interact with external systems, fetch data, and take actions.\n\n## How It Works\n\n1. You define tools with `name`, `description`, and `input_schema`\n2. Claude sees the tools and decides when to use them based on the conversation\n3. When Claude uses a tool, the response has `stop_reason: \"tool_use\"` and a `tool_use` content block\n4. Your code executes the function and sends the result back as a `tool_result`\n5. Claude incorporates the result and continues\n\n## Defining Tools\n\n```python\ntools = [\n    {\n        \"name\": \"get_weather\",\n        \"description\": \"Get the current weather for a location. Returns temperature, conditions, and humidity.\",\n        \"input_schema\": {\n            \"type\": \"object\",\n            \"properties\": {\n                \"location\": {\n                    \"type\": \"string\",\n                    \"description\": \"City name, e.g. 'San Francisco, CA'\"\n                },\n                \"unit\": {\n                    \"type\": \"string\",\n                    \"enum\": [\"celsius\", \"fahrenheit\"],\n                    \"description\": \"Temperature unit\"\n                }\n            },\n            \"required\": [\"location\"]\n        }\n    }\n]\n```\n\n## Complete Agentic Loop (Python)\n\n```python\nimport anthropic\nimport json\n\nclient = anthropic.Anthropic()\n\ndef get_weather(location: str, unit: str = \"celsius\") -> dict:\n    # Your actual implementation\n    return {\"temperature\": 22, \"conditions\": \"sunny\", \"humidity\": 45, \"unit\": unit}\n\ntools = [{\n    \"name\": \"get_weather\",\n    \"description\": \"Get current weather for a location\",\n    \"input_schema\": {\n        \"type\": \"object\",\n        \"properties\": {\n            \"location\": {\"type\": \"string\", \"description\": \"City name\"},\n            \"unit\": {\"type\": \"string\", \"enum\": [\"celsius\", \"fahrenheit\"]}\n        },\n        \"required\": [\"location\"]\n    }\n}]\n\nmessages = [{\"role\": \"user\", \"content\": \"What's the weather in San Francisco?\"}]\n\n# Agentic loop\nwhile True:\n    response = client.messages.create(\n        model=\"claude-sonnet-4-6\",\n        max_tokens=1024,\n        tools=tools,\n        messages=messages\n    )\n\n    # Add assistant response to history\n    messages.append({\"role\": \"assistant\", \"content\": response.content})\n\n    if response.stop_reason == \"end_turn\":\n        # Done — print final text\n        for block in response.content:\n            if block.type == \"text\":\n                print(block.text)\n        break\n\n    if response.stop_reason == \"tool_use\":\n        # Execute each tool call\n        tool_results = []\n        for block in response.content:\n            if block.type == \"tool_use\":\n                if block.name == \"get_weather\":\n                    result = get_weather(**block.input)\n                else:\n                    result = {\"error\": f\"Unknown tool: {block.name}\"}\n                tool_results.append({\n                    \"type\": \"tool_result\",\n                    \"tool_use_id\": block.id,\n                    \"content\": json.dumps(result)\n                })\n        messages.append({\"role\": \"user\", \"content\": tool_results})\n```\n\n## TypeScript Agentic Loop\n\n```typescript\nimport Anthropic from \"@anthropic-ai/sdk\";\n\nconst client = new Anthropic();\n\nfunction getWeather(location: string, unit = \"celsius\"): object {\n  return { temperature: 22, conditions: \"sunny\", humidity: 45, unit };\n}\n\nconst tools: Anthropic.Tool[] = [{\n  name: \"get_weather\",\n  description: \"Get current weather for a location\",\n  input_schema: {\n    type: \"object\" as const,\n    properties: {\n      location: { type: \"string\", description: \"City name\" },\n      unit: { type: \"string\", enum: [\"celsius\", \"fahrenheit\"] }\n    },\n    required: [\"location\"]\n  }\n}];\n\nconst messages: Anthropic.MessageParam[] = [\n  { role: \"user\", content: \"What's the weather in San Francisco?\" }\n];\n\nwhile (true) {\n  const response = await client.messages.create({\n    model: \"claude-sonnet-4-6\",\n    max_tokens: 1024,\n    tools,\n    messages\n  });\n\n  messages.push({ role: \"assistant\", content: response.content });\n\n  if (response.stop_reason === \"end_turn\") {\n    for (const block of response.content) {\n      if (block.type === \"text\") console.log(block.text);\n    }\n    break;\n  }\n\n  if (response.stop_reason === \"tool_use\") {\n    const results = response.content\n      .filter((b): b is Anthropic.ToolUseBlock => b.type === \"tool_use\")\n      .map((block) => ({\n        type: \"tool_result\" as const,\n        tool_use_id: block.id,\n        content: JSON.stringify(\n          block.name === \"get_weather\"\n            ? getWeather((block.input as any).location, (block.input as any).unit)\n            : { error: `Unknown tool: ${block.name}` }\n        )\n      }));\n    messages.push({ role: \"user\", content: results });\n  }\n}\n```\n\n## tool_choice Options\n\n| Value | Behavior |\n|-------|----------|\n| `{\"type\": \"auto\"}` | Claude decides whether to use tools (default) |\n| `{\"type\": \"any\"}` | Claude must use at least one tool |\n| `{\"type\": \"tool\", \"name\": \"get_weather\"}` | Claude must use this specific tool |\n| `{\"type\": \"none\"}` | Tools disabled for this request |\n\n## Strict Mode\n\nAdd `strict: true` to guarantee Claude's tool calls match your schema exactly:\n\n```python\ntools = [{\n    \"name\": \"get_weather\",\n    \"description\": \"Get weather\",\n    \"strict\": True,\n    \"input_schema\": { ... }\n}]\n```\n\n## Server-Side Tools\n\nAnthropic provides built-in tools that run on their infrastructure:\n\n```python\n# Web search\nresponse = client.messages.create(\n    model=\"claude-sonnet-4-6\",\n    max_tokens=1024,\n    tools=[{\"type\": \"web_search_20260209\", \"name\": \"web_search\"}],\n    messages=[{\"role\": \"user\", \"content\": \"What happened in tech news today?\"}]\n)\n\n# Code execution\nresponse = client.messages.create(\n    model=\"claude-sonnet-4-6\",\n    max_tokens=1024,\n    tools=[{\"type\": \"code_execution_20250825\", \"name\": \"code_execution\"}],\n    messages=[{\"role\": \"user\", \"content\": \"Calculate the first 20 Fibonacci numbers\"}]\n)\n```\n\n## Tool Use Token Cost\n\nTool definitions consume input tokens. When tools are enabled, a hidden system prompt adds ~346 tokens (auto/none) or ~313 tokens (any/tool). Each tool definition costs additional tokens based on its name, description, and schema size.\n\n## Best Practices\n\n- Write clear, specific tool descriptions — Claude uses these to decide when to call tools\n- Keep input schemas minimal — only include parameters the tool actually needs\n- Use `required` to mark mandatory parameters\n- Return structured JSON from tools for best results\n- Limit to tools Claude actually needs for the task (fewer tools = better decisions)\n",
+  "sections": [
+    {
+      "id": "defining-tools",
+      "title": "Defining tools",
+      "body": "Each tool needs `name` (lowercase, underscores), `description` (tells Claude when and why to use it), and `input_schema` (JSON Schema for arguments). The description is critical — Claude reads it to decide when to call the tool. Be specific about what the tool does, what it returns, and when it should be used. Use `strict: true` for guaranteed schema conformance.",
+      "tags": ["define", "schema", "description", "input-schema", "strict"]
+    },
+    {
+      "id": "agentic-loop",
+      "title": "The agentic loop",
+      "body": "The tool use flow is a loop: send messages → check stop_reason → if 'tool_use', execute the tool and send results back → repeat until 'end_turn'. Each `tool_use` block has an `id` that must be matched in the corresponding `tool_result`. Multiple tools can be called in a single turn — handle them all before continuing. See [[anthropic/agent-sdk]] for a higher-level abstraction.",
+      "tags": ["loop", "agentic", "tool-result", "multi-tool", "orchestration"]
+    },
+    {
+      "id": "tool-choice",
+      "title": "Controlling tool usage",
+      "body": "The `tool_choice` parameter controls Claude's tool behavior: `auto` (default — Claude decides), `any` (must use at least one tool), `tool` with `name` (must use a specific tool), `none` (tools disabled). Use `any` when you know a tool call is needed. Use `tool` for structured extraction where you want a specific schema enforced.",
+      "tags": ["tool-choice", "auto", "any", "forced", "control"]
+    },
+    {
+      "id": "server-tools",
+      "title": "Server-side tools",
+      "body": "Anthropic provides built-in server-side tools: `web_search` (search the web, $10/1000 searches), `code_execution` (run Python code), `web_fetch` (fetch URLs, free), `bash` (run shell commands), and `text_editor` (edit files). These run on Anthropic infrastructure — no tool_result needed. Add them via `type` field instead of `input_schema`.",
+      "tags": ["server-tools", "web-search", "code-execution", "web-fetch", "bash"]
+    }
+  ],
+  "links": [
+    { "uri": "anthropic/messages", "context": "Tools are passed in the Messages API request" },
+    { "uri": "anthropic/messages/stream", "context": "Stream tool use with input_json_delta events" },
+    { "uri": "anthropic/agent-sdk", "context": "Higher-level agent framework with built-in tool handling" },
+    { "uri": "anthropic/prompt-caching", "context": "Cache tool definitions to reduce token costs" },
+    { "uri": "anthropic/pricing", "context": "Tool use token costs and server tool pricing" },
+    { "uri": "anthropic/models", "context": "All current models support tool use" }
+  ],
+  "related": [
+    { "uri": "anthropic/messages", "relation": "prerequisite", "note": "Tools are a parameter of the Messages API" },
+    { "uri": "anthropic/agent-sdk", "relation": "see-also", "note": "Agent SDK abstracts the tool use loop" },
+    { "uri": "anthropic/prompt-caching", "relation": "see-also", "note": "Cache tool definitions to avoid re-processing" }
+  ],
+  "scripts": [
+    {
+      "id": "tool-use-loop",
+      "name": "Tool Use Agentic Loop",
+      "description": "Complete agentic loop with tool definitions, execution, and multi-turn handling",
+      "lang": "python",
+      "runtime": "python>=3.10",
+      "entry": "./scripts/tool-use-loop.py",
+      "env": {
+        "ANTHROPIC_API_KEY": { "required": true, "secret": true, "description": "Anthropic API key" }
+      },
+      "packages": ["anthropic"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "tools": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": { "type": "string" },
+              "description": { "type": "string" },
+              "input_schema": { "type": "object" }
+            },
+            "required": ["name", "description", "input_schema"]
+          },
+          "description": "Tool definitions"
+        },
+        "tool_choice": {
+          "type": "object",
+          "description": "auto, any, tool (with name), or none"
+        }
+      },
+      "required": ["tools"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "tool_use_blocks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "name": { "type": "string" },
+              "input": { "type": "object" }
+            }
+          }
+        }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "anthropic/auth", "reason": "API key required" },
+    { "uri": "anthropic/messages", "reason": "Tools are passed via the Messages API" }
+  ],
+  "more": {
+    "docs": "https://docs.anthropic.com/en/docs/build-with-claude/tool-use",
+    "examples": "https://github.com/anthropics/anthropic-cookbook/tree/main/tool_use"
+  },
+  "frontmatter": {
+    "created": "2026-04-10",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "6 min",
+    "prerequisites": ["anthropic/auth", "anthropic/messages"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

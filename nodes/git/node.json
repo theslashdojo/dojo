@@ -1,0 +1,89 @@
+{
+  "name": "git",
+  "version": "1.0.0",
+  "uri": "git",
+  "type": "ecosystem",
+  "context": "Distributed version control — commit, branch, merge, rebase, stash, diff, and manage code history",
+  "info": "Git is the universal version control system for software development. Every code agent interacts with git constantly — committing changes, creating branches, merging work, rebasing history, stashing work-in-progress, inspecting logs and diffs, managing remotes, and using worktrees for parallel development. This ecosystem covers the full git CLI surface that agents need for autonomous development workflows. Git operates on three core data structures: the working tree (files on disk), the staging area (index), and the object database (commits, trees, blobs). Understanding this model is essential for every operation. All skills assume git 2.30+ and execute via the git CLI directly — no wrappers or libraries needed.",
+  "parent": null,
+  "tags": ["git", "vcs", "version-control", "scm", "source-control"],
+  "aliases": [
+    "git",
+    "version control",
+    "vcs",
+    "source control",
+    "scm",
+    "git cli",
+    "git commands"
+  ],
+  "triggers": [
+    "use git to manage code",
+    "version control this project",
+    "set up git for a repository",
+    "how does git work",
+    "git workflow"
+  ],
+  "body": "# Git — Distributed Version Control\n\nGit is the standard version control system for all software projects. Every autonomous code agent must be fluent in git to commit work, manage branches, collaborate via remotes, and maintain clean history.\n\n## Core Concepts\n\nGit has three main areas:\n\n1. **Working tree** — files on disk that you edit\n2. **Staging area (index)** — snapshot of what will go into the next commit\n3. **Repository (.git)** — the object database storing all commits, trees, and blobs\n\nEvery commit is a snapshot of the entire project, identified by a SHA-1 hash. Branches are lightweight pointers to commits. HEAD points to the current branch or commit.\n\n## Skills\n\n- **[[git/commit]]** — Stage changes and create commits with good messages\n- **[[git/branch]]** — Create, switch, delete, and list branches\n- **[[git/merge]]** — Combine branches with merge commits or fast-forward\n- **[[git/rebase]]** — Rewrite history by replaying commits onto a new base\n- **[[git/stash]]** — Temporarily shelve uncommitted changes\n- **[[git/log]]** — Inspect commit history with filtering and formatting\n- **[[git/diff]]** — Compare changes between commits, branches, and the working tree\n- **[[git/remote]]** — Manage remote repositories, fetch, push, and pull\n- **[[git/worktree]]** — Work on multiple branches simultaneously with linked worktrees\n\n## Context Nodes\n\n- **[[git/config]]** — Configure git identity, aliases, and behavior\n- **[[git/hooks]]** — Automate actions with pre-commit, pre-push, and other hooks\n- **[[git/troubleshooting]]** — Fix common git mistakes — undo commits, resolve conflicts, recover lost work\n\n## The Git Object Model\n\n```\ncommit → tree → blob (file contents)\n              → tree (subdirectory) → blob\n                                    → blob\n```\n\nEvery object is content-addressed by SHA-1. Commits point to a tree (directory snapshot) and zero or more parent commits. Tags point to commits. Branches are mutable pointers to commits stored in `.git/refs/heads/`.\n\n## Essential Workflow\n\n```bash\n# Check status\ngit status\n\n# Stage specific files\ngit add src/feature.js test/feature.test.js\n\n# Commit with a descriptive message\ngit commit -m \"Add user authentication feature\"\n\n# Push to remote\ngit push origin feature-branch\n\n# Pull latest changes\ngit pull origin main\n```\n\n## Environment Variables\n\n| Variable | Purpose |\n|----------|----------|\n| `GIT_AUTHOR_NAME` | Override commit author name |\n| `GIT_AUTHOR_EMAIL` | Override commit author email |\n| `GIT_COMMITTER_NAME` | Override committer name |\n| `GIT_COMMITTER_EMAIL` | Override committer email |\n| `GIT_DIR` | Override path to .git directory |\n| `GIT_WORK_TREE` | Override working tree path |\n| `GIT_SSH_COMMAND` | Custom SSH command for remote operations |\n| `GIT_EDITOR` | Editor for commit messages |\n",
+  "sections": [
+    {
+      "id": "object-model",
+      "title": "The git object model",
+      "body": "Git stores four object types: **blobs** (file contents), **trees** (directory listings), **commits** (snapshots with parent pointers and metadata), and **tags** (named pointers to commits). All objects are content-addressed by SHA-1 hash. This immutable content-addressed design means every commit captures the full state of the project. Use `git cat-file -t <hash>` to inspect object types and `git cat-file -p <hash>` to print contents.",
+      "tags": ["object-model", "sha1", "blob", "tree", "commit-object", "internals"]
+    },
+    {
+      "id": "three-areas",
+      "title": "Working tree, staging area, and repository",
+      "body": "The working tree is your filesystem. The staging area (index) is a buffer between working tree and repository — use `git add` to stage and `git reset` to unstage. The repository (`.git/`) stores the full history. Understanding this three-area model is essential: `git diff` shows working-tree-vs-index, `git diff --staged` shows index-vs-HEAD, and `git diff HEAD` shows working-tree-vs-HEAD.",
+      "tags": ["working-tree", "staging-area", "index", "repository"]
+    },
+    {
+      "id": "refs-and-head",
+      "title": "References and HEAD",
+      "body": "Branches are mutable pointers stored in `.git/refs/heads/`. Tags live in `.git/refs/tags/`. Remote-tracking branches are in `.git/refs/remotes/`. HEAD is a symbolic ref pointing to the current branch (`ref: refs/heads/main`). Detached HEAD occurs when HEAD points directly to a commit hash instead of a branch. Use `git symbolic-ref HEAD` to check and `git checkout <branch>` to reattach.",
+      "tags": ["refs", "head", "detached-head", "branches", "tags"]
+    }
+  ],
+  "sub": ["git/commit", "git/branch", "git/merge", "git/rebase", "git/stash", "git/log", "git/diff", "git/remote", "git/worktree"],
+  "links": [
+    { "uri": "git/commit", "context": "Stage and commit changes" },
+    { "uri": "git/branch", "context": "Create and manage branches" },
+    { "uri": "git/merge", "context": "Combine branches" },
+    { "uri": "git/rebase", "context": "Rewrite commit history" },
+    { "uri": "git/stash", "context": "Shelve uncommitted work" },
+    { "uri": "git/log", "context": "Inspect commit history" },
+    { "uri": "git/diff", "context": "Compare changes" },
+    { "uri": "git/remote", "context": "Manage remote repositories" },
+    { "uri": "git/worktree", "context": "Multiple working trees" },
+    { "uri": "git/config", "context": "Configure git identity and behavior" },
+    { "uri": "git/hooks", "context": "Automate with git hooks" },
+    { "uri": "git/troubleshooting", "context": "Fix mistakes and recover" },
+    { "uri": "github/repos", "context": "GitHub repository hosting" },
+    { "uri": "github/pulls", "context": "Pull requests build on git branches" }
+  ],
+  "related": [
+    { "uri": "github/repos", "relation": "see-also", "note": "GitHub is the most common remote hosting platform for git repositories" },
+    { "uri": "github/pulls", "relation": "see-also", "note": "Pull requests are a GitHub layer on top of git branches and merges" },
+    { "uri": "github/actions", "relation": "see-also", "note": "CI/CD pipelines triggered by git events" }
+  ],
+  "more": {
+    "docs": "https://git-scm.com/doc",
+    "book": "https://git-scm.com/book/en/v2",
+    "reference": "https://git-scm.com/docs",
+    "repo": "https://github.com/git/git"
+  },
+  "frontmatter": {
+    "created": "2026-04-10",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "5 min",
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

@@ -1,0 +1,120 @@
+{
+  "name": "publish",
+  "version": "1.0.0",
+  "uri": "node/npm/publish",
+  "type": "sub",
+  "context": "Publish packages to the npm registry — versioning, scoped packages, access control, provenance, and deprecation",
+  "info": "This sub-skill covers the full npm publishing workflow: `npm publish` to push packages to the registry, `npm version` for semver bumping with git tags, `npm pack` for previewing published contents, scoped packages with `@scope/name` naming, access control for public and restricted packages, `.npmignore` and the `files` field for controlling what gets published, `prepublishOnly` lifecycle hooks for pre-flight checks, dist tags for beta and next channels, provenance attestation for supply chain security, and `npm deprecate` and `npm unpublish` for managing released versions. See [[node/npm]] for the overall ecosystem and [[node/npm/scripts]] for lifecycle hooks that run during publishing.",
+  "parent": "node/npm",
+  "tags": ["npm-publish", "registry", "versioning", "scoped-packages", "provenance", "access-control"],
+  "aliases": [
+    "npm publish",
+    "npm version",
+    "publish package",
+    "release package",
+    "npm release",
+    "package publishing",
+    "npm pack",
+    "npm deprecate",
+    "npm unpublish",
+    "scoped package"
+  ],
+  "triggers": [
+    "publish a package to npm",
+    "release to npm registry",
+    "bump package version",
+    "publish a scoped package",
+    "npm login and publish",
+    "deprecate a package version",
+    "set up provenance for publishing"
+  ],
+  "body": "# npm publish\n\nPublish packages to the npm registry with proper versioning, access control, and security.\n\n## Publish Workflow\n\n```bash\n# 1. Ensure you are logged in\nnpm login\nnpm whoami          # verify identity\n\n# 2. Check what will be published\nnpm pack --dry-run\n\n# 3. Bump the version\nnpm version patch   # 1.0.0 -> 1.0.1\nnpm version minor   # 1.0.0 -> 1.1.0\nnpm version major   # 1.0.0 -> 2.0.0\n\n# 4. Publish\nnpm publish\n\n# For scoped packages (first publish)\nnpm publish --access public\n```\n\n## Version Bumping\n\n`npm version` bumps the version in `package.json`, creates a git commit, and tags it.\n\n```bash\n# Semver bumps\nnpm version patch          # bug fix: 1.0.0 -> 1.0.1\nnpm version minor          # new feature: 1.0.0 -> 1.1.0\nnpm version major          # breaking change: 1.0.0 -> 2.0.0\n\n# Pre-release versions\nnpm version prepatch       # 1.0.0 -> 1.0.1-0\nnpm version preminor       # 1.0.0 -> 1.1.0-0\nnpm version premajor       # 1.0.0 -> 2.0.0-0\nnpm version prerelease     # 1.0.1-0 -> 1.0.1-1\nnpm version prerelease --preid=beta  # 1.0.0 -> 1.0.1-beta.0\n\n# Explicit version\nnpm version 2.0.0-beta.1\n\n# Skip git tag creation\nnpm version patch --no-git-tag-version\n```\n\n**Lifecycle hooks**: `npm version` runs `preversion`, `version`, and `postversion` scripts if defined in package.json.\n\n## Controlling Published Files\n\nUse the `files` field in `package.json` (whitelist approach — preferred):\n\n```json\n{\n  \"files\": [\"dist\", \"README.md\", \"LICENSE\"]\n}\n```\n\nOr use `.npmignore` (blacklist approach):\n\n```\nsrc/\ntest/\n*.test.js\n.github/\n.env\n```\n\n**Always included**: `package.json`, `README`, `LICENSE/LICENCE`, `CHANGELOG`.\n**Always excluded**: `.git`, `node_modules`, `.npmrc`, `.gitignore`.\n\nAlways verify with `npm pack --dry-run` before publishing.\n\n## Scoped Packages\n\nScoped packages use the `@scope/name` format (e.g., `@babel/core`, `@types/node`).\n\n```bash\n# Initialize a scoped package\nnpm init --scope=@myorg\n\n# First publish — must specify access for scoped packages\nnpm publish --access public\n\n# Subsequent publishes inherit the access level\nnpm publish\n\n# Change access later\nnpm access public @scope/package\nnpm access restricted @scope/package\n```\n\nScoped packages default to restricted (private) access on npm. Public access requires explicit opt-in on first publish.\n\n## Access Control\n\n```bash\n# Set access level\nnpm access public @scope/pkg\nnpm access restricted @scope/pkg\n\n# Team management\nnpm access grant read-write myorg:developers @scope/pkg\nnpm access revoke myorg:developers @scope/pkg\nnpm access ls-packages @scope\nnpm access ls-collaborators @scope/pkg\n\n# Require 2FA for publishing\nnpm profile enable-2fa auth-and-writes\n\n# Require 2FA for auth only\nnpm profile enable-2fa auth-only\n```\n\n## Dist Tags\n\n```bash\n# Publish to a specific tag (default is \"latest\")\nnpm publish --tag beta\nnpm publish --tag next\n\n# Add a tag to an existing version\nnpm dist-tag add @scope/pkg@1.0.0-beta.1 beta\n\n# List tags\nnpm dist-tag ls @scope/pkg\n\n# Remove a tag\nnpm dist-tag rm @scope/pkg beta\n```\n\n## Provenance\n\nProvenance attestation links a published package to its source repository and build:\n\n```bash\n# Publish with provenance (CI only — GitHub Actions, GitLab CI)\nnpm publish --provenance\n```\n\nRequires: public repository, OIDC token support, and a supported CI environment.\n\n## Deprecation and Unpublish\n\n```bash\n# Deprecate a version (preferred over unpublish)\nnpm deprecate @scope/pkg@1.0.0 \"Use @scope/pkg@2.0.0 instead\"\n\n# Unpublish a specific version (within 72 hours)\nnpm unpublish @scope/pkg@1.0.0\n\n# Unpublish entire package (within 72 hours, if no dependents)\nnpm unpublish @scope/pkg --force\n```\n\n## prepublishOnly Hook\n\nRun build and test automatically before every publish:\n\n```json\n{\n  \"scripts\": {\n    \"prepublishOnly\": \"npm run build && npm test\",\n    \"prepack\": \"npm run build\",\n    \"postpack\": \"echo 'Package created'\"\n  }\n}\n```\n\n**Lifecycle order during `npm publish`**: `prepublishOnly` -> `prepack` -> `postpack` -> `publish` -> `postpublish`.\n",
+  "sections": [
+    {
+      "id": "publish-workflow",
+      "title": "Publishing workflow",
+      "body": "The standard publish workflow: login with `npm login`, verify identity with `npm whoami`, preview contents with `npm pack --dry-run`, bump version with `npm version patch|minor|major`, then publish with `npm publish`. For scoped packages, the first publish must include `--access public`. Use `prepublishOnly` scripts to automatically run build and test before every publish. Always check the tarball contents before releasing — unexpected files (source, tests, secrets) increase download size and may leak sensitive data.",
+      "tags": ["publish", "workflow", "npm-login", "npm-pack", "dry-run"]
+    },
+    {
+      "id": "versioning",
+      "title": "Versioning with npm version",
+      "body": "`npm version` bumps the version in `package.json`, creates a git commit, and tags it. Use `patch` for bug fixes, `minor` for new features, `major` for breaking changes. Pre-release versions use `prepatch`, `preminor`, `premajor`, or `prerelease` with an optional `--preid` flag. Use `--no-git-tag-version` to skip git commit and tag. Lifecycle hooks `preversion`, `version`, and `postversion` run if defined in scripts. The `postversion` hook is commonly used to push the tag: `git push && git push --tags`.",
+      "tags": ["version", "semver", "bump", "git-tag", "prerelease"]
+    },
+    {
+      "id": "scoped-packages",
+      "title": "Scoped packages and organizations",
+      "body": "Scoped packages use `@scope/name` format. Organizations on npm get a scope matching their org name. Scoped packages default to restricted (private) access — use `--access public` on first publish for public packages. Subsequent publishes inherit the initial access level. Use `npm access public|restricted @scope/pkg` to change access after publishing. Private packages require a paid npm account or GitHub Packages. Team permissions control which members can publish to an org scope.",
+      "tags": ["scoped", "organization", "access", "private", "public"]
+    },
+    {
+      "id": "access-control",
+      "title": "Access control and 2FA",
+      "body": "Control package visibility with `npm access public|restricted`. Manage team permissions with `npm access grant|revoke`. List collaborators with `npm access ls-collaborators`. Enable 2FA with `npm profile enable-2fa auth-and-writes` for maximum security — this requires an OTP code for every publish. Use `auth-only` for 2FA on login only. When 2FA is enabled for writes, pass `--otp=<code>` to `npm publish` or npm will prompt interactively.",
+      "tags": ["access-control", "2fa", "otp", "teams", "collaborators"]
+    }
+  ],
+  "links": [
+    { "uri": "node/npm", "context": "Parent npm skill with full ecosystem overview" },
+    { "uri": "node/npm/install", "context": "Install dependencies before building and publishing" },
+    { "uri": "node/npm/scripts", "context": "Lifecycle scripts run during npm publish" }
+  ],
+  "related": [
+    { "uri": "node/npm", "relation": "prerequisite", "note": "npm CLI must be installed and configured" },
+    { "uri": "node/npm/install", "relation": "see-also", "note": "Install dependencies before building for publish" },
+    { "uri": "node/npm/scripts", "relation": "see-also", "note": "prepublishOnly and prepack scripts run automatically during publish" }
+  ],
+  "scripts": [
+    {
+      "id": "publish-package",
+      "name": "Publish Package",
+      "description": "Publish an npm package with pre-flight safety checks including version verification, file preview, and registry dedup check",
+      "lang": "bash",
+      "runtime": "node>=18",
+      "entry": "./scripts/publish-package.sh"
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "dryRun": { "type": "boolean", "default": false, "description": "Perform a dry run without actually publishing" },
+        "access": { "type": "string", "enum": ["public", "restricted"], "default": "public", "description": "Package access level for scoped packages" },
+        "tag": { "type": "string", "default": "latest", "description": "Dist tag for the published version (e.g., latest, beta, next)" },
+        "provenance": { "type": "boolean", "default": false, "description": "Publish with provenance attestation (CI only)" }
+      }
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "version": { "type": "string", "description": "The published version string" },
+        "tarball": { "type": "string", "description": "Path or URL of the published tarball" },
+        "integrity": { "type": "string", "description": "Subresource integrity hash of the tarball" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "node/npm", "reason": "npm CLI and registry authentication must be configured" }
+  ],
+  "more": {
+    "docs": "https://docs.npmjs.com/cli/v10/commands/npm-publish",
+    "versioning": "https://docs.npmjs.com/cli/v10/commands/npm-version",
+    "provenance": "https://docs.npmjs.com/generating-provenance-statements"
+  },
+  "frontmatter": {
+    "created": "2026-04-10",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "5 min",
+    "prerequisites": ["node/npm"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

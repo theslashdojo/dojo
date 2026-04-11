@@ -1,0 +1,134 @@
+{
+  "name": "log",
+  "version": "1.0.0",
+  "uri": "git/log",
+  "type": "skill",
+  "context": "Inspect commit history with filtering, formatting, graph visualization, and search across branches",
+  "info": "Git log is the primary tool for navigating commit history. It shows commits in reverse chronological order with powerful filtering (by author, date, path, message), formatting (oneline, graph, custom pretty-print), and search (grep messages, diff content with -S and -G). Agents use log constantly to understand what changed, who changed it, when, and why. Key use cases: reviewing recent changes before pushing, understanding the history of a specific file, finding which commit introduced a bug (often used with git bisect), and generating changelogs. The --graph flag visualizes branch topology. See [[git/diff]] for viewing actual code changes, [[git/commit]] for creating the history you inspect here, and [[git/branch]] for understanding branch divergence in log output.",
+  "parent": "git",
+  "tags": ["log", "history", "git-log", "graph", "blame", "bisect"],
+  "aliases": [
+    "git log",
+    "commit history",
+    "git history",
+    "show commits",
+    "git blame",
+    "git bisect",
+    "log graph",
+    "commit log",
+    "git shortlog"
+  ],
+  "triggers": [
+    "show commit history",
+    "who changed this file",
+    "find a commit by message",
+    "show branch graph",
+    "blame a file",
+    "when was this changed",
+    "list recent commits",
+    "search commit history",
+    "find which commit introduced a bug"
+  ],
+  "body": "# Git Log\n\nGit log is the window into your project's history. Every commit ever made is accessible through log.\n\n## Basic Usage\n\n```bash\n# Show full log (reverse chronological)\ngit log\n\n# Compact one-line format\ngit log --oneline\n\n# Last N commits\ngit log -5\ngit log --oneline -10\n\n# Show with diff\ngit log -p\ngit log -p -1  # last commit with full diff\n```\n\n## Graph Visualization\n\n```bash\n# ASCII branch graph\ngit log --oneline --graph\n\n# Graph with all branches\ngit log --oneline --graph --all\n\n# Graph with decoration (branch/tag labels)\ngit log --oneline --graph --all --decorate\n```\n\n## Filtering\n\n```bash\n# By author\ngit log --author=\"Alice\"\ngit log --author=\"alice@example.com\"\n\n# By date\ngit log --since=\"2026-01-01\"\ngit log --after=\"2 weeks ago\"\ngit log --until=\"2026-03-01\"\ngit log --since=\"2026-01-01\" --until=\"2026-03-01\"\n\n# By file/path\ngit log -- src/auth.js\ngit log --oneline -- src/\n\n# By commit message (grep)\ngit log --grep=\"fix auth\"\ngit log --grep=\"BREAKING\" --all-match\n\n# By content change (pickaxe — find when string was added/removed)\ngit log -S \"functionName\"\ngit log -S \"TODO\" --oneline\n\n# By regex content change\ngit log -G \"def\\s+process_.*\"\n\n# Commits on one branch but not another\ngit log main..feature\ngit log feature --not main  # equivalent\n\n# Merge commits only\ngit log --merges\n\n# Exclude merge commits\ngit log --no-merges\n```\n\n## Custom Formatting\n\n```bash\n# Pretty format\ngit log --pretty=format:\"%h %an %ar %s\"\n\n# Common format placeholders\n# %H  — full hash\n# %h  — short hash\n# %an — author name\n# %ae — author email\n# %ar — author date (relative)\n# %ad — author date\n# %s  — subject\n# %b  — body\n# %d  — decorations (branches, tags)\n\n# Example: changelog format\ngit log --pretty=format:\"- %s (%h)\" v1.0..v2.0\n\n# Shortlog (grouped by author)\ngit shortlog -sn\ngit shortlog -sn --since=\"2026-01-01\"\n```\n\n## Git Blame\n\nShow who last modified each line of a file:\n\n```bash\n# Full blame\ngit blame src/auth.js\n\n# Blame specific lines\ngit blame -L 10,20 src/auth.js\n\n# Ignore whitespace changes\ngit blame -w src/auth.js\n\n# Show original commit (before moves/copies)\ngit blame -C src/auth.js\n```\n\n## Git Bisect\n\nBinary search through history to find which commit introduced a bug:\n\n```bash\n# Start bisect\ngit bisect start\n\n# Mark current as bad\ngit bisect bad\n\n# Mark a known good commit\ngit bisect good v1.0\n\n# Git checks out a middle commit — test it, then:\ngit bisect good  # or\ngit bisect bad\n\n# Repeat until git finds the culprit\n# When done:\ngit bisect reset\n\n# Automated bisect with a test script\ngit bisect start HEAD v1.0\ngit bisect run npm test\n```\n\n## Comparing Branches\n\n```bash\n# Commits in feature not in main\ngit log main..feature --oneline\n\n# Commits in either but not both\ngit log main...feature --oneline\n\n# With left-right markers\ngit log --left-right main...feature --oneline\n```\n\n## Agent Best Practices\n\n1. **Use --oneline for scanning** — faster to parse programmatically\n2. **Use --graph --all for orientation** — shows full branch topology\n3. **Filter by path** — `git log -- path/to/file` for file-specific history\n4. **Use -S for archaeology** — find when a function or variable was added/removed\n5. **Use blame for line-level attribution** — know who changed what and when\n6. **Use bisect for bug hunting** — binary search is faster than manual inspection\n",
+  "sections": [
+    {
+      "id": "basic",
+      "title": "Basic log commands",
+      "body": "`git log` shows full history. `git log --oneline` shows compact format. `git log -N` limits to N commits. `git log -p` includes diffs. `git log --stat` shows files changed per commit. These are the starting points for any history inspection.",
+      "tags": ["basic", "oneline", "stat", "patch"]
+    },
+    {
+      "id": "filtering",
+      "title": "Filtering commits",
+      "body": "Filter by author (`--author`), date range (`--since`/`--until`), path (`-- path`), message (`--grep`), or content change (`-S` string, `-G` regex). Combine filters to narrow results. Use `--all-match` to AND multiple `--grep` patterns. Use `main..feature` to see commits in feature not in main (branch comparison).",
+      "tags": ["filter", "author", "date", "grep", "pickaxe", "range"]
+    },
+    {
+      "id": "graph",
+      "title": "Graph visualization",
+      "body": "`git log --oneline --graph --all --decorate` is the most informative view of branch topology. The graph shows merge points, branch divergence, and where each branch/tag points. This is essential for understanding the current state of a multi-branch repository.",
+      "tags": ["graph", "visualization", "topology", "branches"]
+    },
+    {
+      "id": "blame",
+      "title": "Git blame for line-level attribution",
+      "body": "`git blame <file>` annotates each line with the commit, author, and date of last modification. Use `-L start,end` for specific line ranges. Use `-w` to ignore whitespace. Use `-C` to detect code moved between files. Blame is essential for understanding why code exists in its current form and who to ask about it.",
+      "tags": ["blame", "attribution", "line-history", "who-changed"]
+    },
+    {
+      "id": "bisect",
+      "title": "Binary search with git bisect",
+      "body": "`git bisect start`, mark `good` and `bad` commits, then git binary-searches through history. At each step, test the checkout and mark good or bad. Automated: `git bisect run <test-command>` runs the test script at each step. Bisect finds the exact commit that introduced a regression in O(log n) steps. Always `git bisect reset` when done.",
+      "tags": ["bisect", "binary-search", "regression", "bug-hunting"]
+    },
+    {
+      "id": "formatting",
+      "title": "Custom output formats",
+      "body": "`git log --pretty=format:\"...\"` with placeholders: %H (hash), %h (short hash), %an (author), %ae (email), %ar (relative date), %s (subject), %b (body), %d (decorations). `git shortlog -sn` groups by author with counts. Custom formats are useful for generating changelogs, reports, and machine-parseable output.",
+      "tags": ["format", "pretty-print", "shortlog", "changelog"]
+    }
+  ],
+  "links": [
+    { "uri": "git/diff", "context": "View actual code changes referenced in log" },
+    { "uri": "git/commit", "context": "Commits are what log displays" },
+    { "uri": "git/branch", "context": "Log shows branch topology and divergence" },
+    { "uri": "git/merge", "context": "Log --graph visualizes merge topology" },
+    { "uri": "git/rebase", "context": "Log confirms rebase results" },
+    { "uri": "git/remote", "context": "Log --all shows remote-tracking branches" }
+  ],
+  "related": [
+    { "uri": "git/diff", "relation": "see-also", "note": "Log shows commit metadata; diff shows content changes" },
+    { "uri": "git/commit", "relation": "see-also", "note": "Log reads the history that commits create" },
+    { "uri": "git/troubleshooting", "relation": "see-also", "note": "Bisect and reflog are key troubleshooting tools" }
+  ],
+  "scripts": [
+    {
+      "id": "history-search",
+      "name": "History Search",
+      "description": "Search commit history with various filters",
+      "lang": "bash",
+      "runtime": "git>=2.30",
+      "entry": "./scripts/history-search.sh",
+      "inline": "#!/usr/bin/env bash\nset -euo pipefail\n\nMODE=\"${1:?Usage: history-search.sh <recent|file|search|author|graph> [args...]}\"\nshift\n\ncase \"$MODE\" in\n  recent)\n    N=\"${1:-10}\"\n    git log --oneline -\"$N\"\n    ;;\n  file)\n    FILE=\"${1:?File path required}\"\n    echo \"History for $FILE:\"\n    git log --oneline --follow -- \"$FILE\"\n    ;;\n  search)\n    TERM=\"${1:?Search term required}\"\n    echo \"Commits matching: $TERM\"\n    git log --oneline --grep=\"$TERM\"\n    ;;\n  author)\n    AUTHOR=\"${1:?Author name/email required}\"\n    echo \"Commits by $AUTHOR:\"\n    git log --oneline --author=\"$AUTHOR\"\n    ;;\n  graph)\n    git log --oneline --graph --all --decorate -20\n    ;;\n  *)\n    echo \"Unknown mode: $MODE\"\n    echo \"Usage: history-search.sh <recent|file|search|author|graph> [args...]\"\n    exit 1\n    ;;\nesac"
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "mode": { "type": "string", "enum": ["recent", "file", "search", "author", "graph", "blame", "bisect"], "description": "Type of history query" },
+        "limit": { "type": "integer", "default": 10, "description": "Max commits to show" },
+        "path": { "type": "string", "description": "File or directory path for file-scoped history" },
+        "query": { "type": "string", "description": "Search term for grep or pickaxe" },
+        "author": { "type": "string", "description": "Author filter" }
+      },
+      "required": ["mode"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "commits": { "type": "array", "items": { "type": "object", "properties": { "sha": { "type": "string" }, "message": { "type": "string" }, "author": { "type": "string" }, "date": { "type": "string" } } }, "description": "List of matching commits" }
+      }
+    }
+  },
+  "more": {
+    "docs": "https://git-scm.com/docs/git-log",
+    "book": "https://git-scm.com/book/en/v2/Git-Basics-Viewing-the-Commit-History",
+    "blame": "https://git-scm.com/docs/git-blame",
+    "bisect": "https://git-scm.com/docs/git-bisect"
+  },
+  "frontmatter": {
+    "created": "2026-04-10",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "6 min",
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

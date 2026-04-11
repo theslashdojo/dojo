@@ -1,0 +1,87 @@
+{
+  "name": "anthropic",
+  "version": "1.0.0",
+  "uri": "anthropic",
+  "type": "ecosystem",
+  "context": "Anthropic Claude API — messages, tool use, streaming, prompt caching, batch processing, and agent SDK",
+  "info": "Anthropic provides the Claude family of large language models through a REST API at https://api.anthropic.com. The Messages API is the primary interface for sending prompts and receiving completions. Claude supports multi-turn conversations, vision (images and PDFs), tool use (function calling), streaming via server-sent events, prompt caching for cost and latency optimization, and batch processing for high-volume async workloads at 50% discount. The ecosystem covers authentication via API keys, rate limiting across usage tiers, model selection (Opus, Sonnet, Haiku), and the Claude Agent SDK for building autonomous agents. All current models share a unified API surface — choose your model ID and the rest works identically.",
+  "parent": null,
+  "tags": ["anthropic", "claude", "llm", "ai", "api", "messages", "tool-use", "streaming", "agents"],
+  "aliases": [
+    "anthropic",
+    "claude api",
+    "claude",
+    "anthropic api",
+    "claude ai",
+    "anthropic claude",
+    "claude llm",
+    "claude sdk"
+  ],
+  "triggers": [
+    "call the claude api",
+    "send a message to claude",
+    "use anthropic api",
+    "build with claude",
+    "create a claude agent",
+    "integrate claude into my app",
+    "use claude for code generation"
+  ],
+  "body": "# Anthropic Claude API\n\nThe Anthropic API gives programmatic access to Claude, a family of frontier large language models. The API is RESTful, JSON-based, and available at `https://api.anthropic.com`.\n\n## Core Capabilities\n\n- **[[anthropic/messages]]** — Send prompts, receive completions. Supports multi-turn conversation, vision, and structured output.\n- **[[anthropic/messages/stream]]** — Stream responses token-by-token via server-sent events for real-time UIs.\n- **[[anthropic/tool-use]]** — Give Claude access to functions it can call. Client-side tools run in your app; server-side tools (web search, code execution) run on Anthropic infrastructure.\n- **[[anthropic/prompt-caching]]** — Cache prompt prefixes to cut latency and cost. Cache reads cost 10% of base input price.\n- **[[anthropic/batch]]** — Process thousands of requests asynchronously at 50% discount. Results in JSONL within 24 hours.\n- **[[anthropic/agent-sdk]]** — Build autonomous agents with the Claude Agent SDK. Define tools, hooks, and multi-agent handoffs.\n\n## Context & Reference\n\n- **[[anthropic/models]]** — Model IDs, context windows, max output tokens, and capabilities.\n- **[[anthropic/auth]]** — API keys, required headers, SDK setup for Python and TypeScript.\n- **[[anthropic/rate-limits]]** — Usage tiers (1–4), RPM/ITPM/OTPM limits, rate limit headers, and 429 handling.\n- **[[anthropic/pricing]]** — Per-model token pricing, cache multipliers, batch discounts, and tool use costs.\n\n## Quick Start\n\n```bash\npip install anthropic\n# or\nnpm install @anthropic-ai/sdk\n```\n\n```python\nimport anthropic\n\nclient = anthropic.Anthropic()  # uses ANTHROPIC_API_KEY env var\nmessage = client.messages.create(\n    model=\"claude-sonnet-4-6\",\n    max_tokens=1024,\n    messages=[{\"role\": \"user\", \"content\": \"Hello, Claude\"}]\n)\nprint(message.content[0].text)\n```\n\n```typescript\nimport Anthropic from \"@anthropic-ai/sdk\";\n\nconst client = new Anthropic(); // uses ANTHROPIC_API_KEY env var\nconst message = await client.messages.create({\n  model: \"claude-sonnet-4-6\",\n  max_tokens: 1024,\n  messages: [{ role: \"user\", content: \"Hello, Claude\" }]\n});\nconsole.log(message.content[0].text);\n```\n\n## Environment Variables\n\n| Variable | Purpose |\n|----------|----------|\n| `ANTHROPIC_API_KEY` | API key from console.anthropic.com |\n\n## SDK Packages\n\n| Language | Package |\n|----------|----------|\n| Python | `anthropic` |\n| TypeScript/Node | `@anthropic-ai/sdk` |\n| Java | `anthropic-java` |\n| Go | `anthropic-go` |\n| C# | `Anthropic` |\n| PHP | `anthropic-client-php` |\n",
+  "sections": [
+    {
+      "id": "overview",
+      "title": "What is the Anthropic API",
+      "body": "The Anthropic API is a RESTful JSON API at `https://api.anthropic.com` for accessing Claude models. All requests require an `x-api-key` header with your API key and an `anthropic-version` header (currently `2023-06-01`). The primary endpoint is `POST /v1/messages` for creating messages. Official SDKs handle authentication, retries, and streaming automatically. See [[anthropic/auth]] for setup.",
+      "tags": ["overview", "rest-api", "getting-started"]
+    },
+    {
+      "id": "model-families",
+      "title": "Model families",
+      "body": "Claude comes in three tiers: **Opus** (most intelligent, best for agents and complex reasoning), **Sonnet** (best speed/intelligence balance), and **Haiku** (fastest, near-frontier intelligence at lowest cost). Current flagship models are `claude-opus-4-6` (1M context, 128k output), `claude-sonnet-4-6` (1M context, 64k output), and `claude-haiku-4-5` (200k context, 64k output). See [[anthropic/models]] for full model details.",
+      "tags": ["models", "opus", "sonnet", "haiku"]
+    },
+    {
+      "id": "sdks",
+      "title": "Official SDKs",
+      "body": "Anthropic provides official SDKs for Python (`pip install anthropic`), TypeScript/Node (`npm install @anthropic-ai/sdk`), Java, Go, C#, Ruby, and PHP. SDKs handle authentication headers, request formatting, retry logic, streaming, and type safety. The Python and TypeScript SDKs are the most feature-complete. For building autonomous agents, see the [[anthropic/agent-sdk]] which wraps Claude Code.",
+      "tags": ["sdk", "python", "typescript", "node", "java", "go"]
+    }
+  ],
+  "links": [
+    { "uri": "anthropic/messages", "context": "Send messages to Claude and receive completions" },
+    { "uri": "anthropic/messages/create", "context": "Create a single message (non-streaming)" },
+    { "uri": "anthropic/messages/stream", "context": "Stream responses via server-sent events" },
+    { "uri": "anthropic/tool-use", "context": "Give Claude access to callable functions" },
+    { "uri": "anthropic/prompt-caching", "context": "Cache prompt prefixes for cost and latency savings" },
+    { "uri": "anthropic/batch", "context": "Process requests asynchronously at 50% discount" },
+    { "uri": "anthropic/models", "context": "Model IDs, capabilities, and context windows" },
+    { "uri": "anthropic/auth", "context": "API keys, headers, and SDK authentication" },
+    { "uri": "anthropic/rate-limits", "context": "Usage tiers, RPM/TPM limits, and 429 handling" },
+    { "uri": "anthropic/pricing", "context": "Token pricing, cache costs, and batch discounts" },
+    { "uri": "anthropic/agent-sdk", "context": "Build autonomous agents with Claude Agent SDK" }
+  ],
+  "related": [
+    { "uri": "github", "relation": "see-also", "note": "GitHub ecosystem for version control and CI/CD workflows" }
+  ],
+  "more": {
+    "docs": "https://docs.anthropic.com",
+    "api": "https://api.anthropic.com",
+    "console": "https://console.anthropic.com",
+    "sdk-python": "https://github.com/anthropics/anthropic-sdk-python",
+    "sdk-typescript": "https://github.com/anthropics/anthropic-sdk-typescript"
+  },
+  "frontmatter": {
+    "created": "2026-04-10",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "3 min",
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

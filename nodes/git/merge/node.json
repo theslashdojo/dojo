@@ -1,0 +1,131 @@
+{
+  "name": "merge",
+  "version": "1.0.0",
+  "uri": "git/merge",
+  "type": "skill",
+  "context": "Combine branches using fast-forward, three-way merge, squash merge, and resolve merge conflicts",
+  "info": "Merging integrates changes from one branch into another. Git supports several merge strategies: fast-forward (linear history when possible), three-way merge (creates a merge commit when branches have diverged), and squash merge (condenses a branch into a single commit). This skill covers executing merges, understanding merge strategies, resolving conflicts when files are changed in both branches, aborting failed merges, and choosing between merge and rebase workflows. Agents must understand merge conflicts — they occur when the same region of a file was modified differently in the two branches. Conflict markers (<<<<<<<, =======, >>>>>>>) must be resolved manually or programmatically. See [[git/rebase]] for the alternative history-rewriting integration method, and [[git/branch]] for branch management.",
+  "parent": "git",
+  "tags": ["merge", "merge-commit", "fast-forward", "squash", "conflict", "three-way"],
+  "aliases": [
+    "git merge",
+    "merge branches",
+    "combine branches",
+    "merge conflict",
+    "resolve conflict",
+    "fast-forward merge",
+    "squash merge",
+    "merge into main",
+    "3-way merge"
+  ],
+  "triggers": [
+    "merge a branch",
+    "merge feature into main",
+    "resolve a merge conflict",
+    "squash merge a branch",
+    "how to merge branches",
+    "abort a merge",
+    "fix merge conflicts",
+    "merge without fast forward"
+  ],
+  "body": "# Git Merge\n\nMerging brings divergent lines of development back together. It's the primary way to integrate feature work into the main branch.\n\n## Merge Strategies\n\n### Fast-Forward Merge\n\nWhen the target branch hasn't diverged, git just moves the pointer forward. No merge commit is created.\n\n```bash\n# Fast-forward if possible (default)\ngit checkout main\ngit merge feature-branch\n```\n\n```\nBefore:  main ── A ── B\n                       \\\n         feature ────── C ── D\n\nAfter:   main ── A ── B ── C ── D\n```\n\n### No Fast-Forward Merge\n\nForce a merge commit even when fast-forward is possible. Preserves branch topology.\n\n```bash\ngit merge --no-ff feature-branch\n```\n\n```\nBefore:  main ── A ── B\n                       \\\n         feature ────── C ── D\n\nAfter:   main ── A ── B ──────── M\n                       \\        /\n         feature ────── C ── D\n```\n\n### Three-Way Merge\n\nWhen both branches have new commits, git finds the merge base and creates a merge commit automatically.\n\n```bash\ngit checkout main\ngit merge feature-branch\n# Git creates a merge commit combining both histories\n```\n\n### Squash Merge\n\nCondenses all commits from a branch into a single set of changes staged in the index. You then commit manually.\n\n```bash\ngit checkout main\ngit merge --squash feature-branch\ngit commit -m \"feat(auth): add OAuth2 support (#42)\"\n```\n\nSquash merges produce cleaner history but lose individual commit detail. The source branch appears unmerged to git (since no merge commit links them), so delete it after squash merging.\n\n## Resolving Merge Conflicts\n\nConflicts occur when both branches modify the same region of a file.\n\n```bash\n# Start the merge\ngit merge feature-branch\n# CONFLICT (content): Merge conflict in src/auth.js\n```\n\n### Conflict Markers\n\n```javascript\n<<<<<<< HEAD\nconst timeout = 5000;\n=======\nconst timeout = 10000;\n>>>>>>> feature-branch\n```\n\n- `<<<<<<< HEAD` — current branch version\n- `=======` — separator\n- `>>>>>>> feature-branch` — incoming branch version\n\n### Resolution Steps\n\n1. Open each conflicted file\n2. Choose the correct code (or combine both)\n3. Remove all conflict markers\n4. Stage resolved files: `git add src/auth.js`\n5. Complete the merge: `git commit`\n\n```bash\n# See which files are conflicted\ngit status\n\n# Use theirs (accept incoming) for a specific file\ngit checkout --theirs src/auth.js\n\n# Use ours (keep current) for a specific file\ngit checkout --ours src/auth.js\n\n# After resolving, stage and commit\ngit add src/auth.js\ngit commit\n```\n\n### Aborting a Merge\n\n```bash\n# Abort and return to pre-merge state\ngit merge --abort\n```\n\n## Merge Options\n\n```bash\n# Merge with a custom message\ngit merge feature-branch -m \"Merge feature-branch: add OAuth2\"\n\n# Merge but don't auto-commit (inspect first)\ngit merge --no-commit feature-branch\n\n# Merge with specific strategy\ngit merge -s recursive feature-branch\ngit merge -s ours feature-branch  # keep our version entirely\n\n# Merge with strategy option\ngit merge -X theirs feature-branch  # auto-resolve conflicts favoring theirs\ngit merge -X ours feature-branch    # auto-resolve conflicts favoring ours\n```\n\n## Verifying a Merge\n\n```bash\n# Check the merge result\ngit log --oneline --graph -10\n\n# Verify no unresolved conflicts\ngit diff --check\n\n# See what the merge brought in\ngit diff HEAD~1..HEAD\n```\n\n## Agent Best Practices\n\n1. **Always pull before merging** — `git pull origin main` ensures you have the latest\n2. **Prefer --no-ff for feature merges** — preserves branch history in the graph\n3. **Review conflicts carefully** — don't blindly accept --ours or --theirs\n4. **Test after merging** — run the test suite to catch integration issues\n5. **Delete merged branches** — `git branch -d feature-branch` keeps things clean\n6. **Use squash for small PRs** — keeps main history clean\n",
+  "sections": [
+    {
+      "id": "fast-forward",
+      "title": "Fast-forward merge",
+      "body": "When the target branch has no new commits since the source branched off, git simply moves the target pointer forward. No merge commit is created. This is the default behavior. Use `--no-ff` to force a merge commit anyway, which preserves the fact that a branch existed. Fast-forward is clean but loses branch topology information.",
+      "tags": ["fast-forward", "linear-history", "no-ff"]
+    },
+    {
+      "id": "three-way",
+      "title": "Three-way merge",
+      "body": "When both branches have new commits, git computes the merge base (the common ancestor) and performs a three-way merge between base, ours, and theirs. If there are no conflicts, git auto-creates a merge commit with two parents. The merge commit preserves the full history of both branches. Use `git log --graph` to visualize the branch/merge topology.",
+      "tags": ["three-way", "merge-commit", "merge-base", "diverged"]
+    },
+    {
+      "id": "squash",
+      "title": "Squash merge",
+      "body": "Squash merge (`git merge --squash`) applies all changes from the source branch as staged modifications without creating a merge commit. You then create a normal (single-parent) commit. This produces linear history but loses individual commits. Important: git doesn't record the merge relationship, so the source branch appears unmerged — always delete it after squash merging to avoid confusion.",
+      "tags": ["squash", "squash-merge", "linear-history", "flatten"]
+    },
+    {
+      "id": "conflicts",
+      "title": "Resolving merge conflicts",
+      "body": "Conflicts occur when the same file region is modified differently in both branches. Git inserts conflict markers (`<<<<<<<`, `=======`, `>>>>>>>`) into the file. Resolution: edit the file to keep the correct code, remove markers, `git add` the resolved file, then `git commit`. Shortcuts: `git checkout --ours <file>` keeps the current branch version, `git checkout --theirs <file>` accepts the incoming version. Use `-X theirs` or `-X ours` as merge strategy options to auto-resolve all conflicts one way. See [[git/troubleshooting]] for complex conflict scenarios.",
+      "tags": ["conflict", "conflict-markers", "resolution", "ours", "theirs"]
+    },
+    {
+      "id": "abort",
+      "title": "Aborting a merge",
+      "body": "If a merge goes wrong or you want to start over, run `git merge --abort` to return to the pre-merge state. This resets HEAD, the index, and the working tree to the state before `git merge` was called. Only works during an unfinished merge (when `.git/MERGE_HEAD` exists).",
+      "tags": ["abort", "cancel", "undo-merge"]
+    }
+  ],
+  "links": [
+    { "uri": "git/branch", "context": "Branches are what you merge" },
+    { "uri": "git/rebase", "context": "Alternative to merge for integrating changes" },
+    { "uri": "git/commit", "context": "Merge creates a commit (or you commit after squash)" },
+    { "uri": "git/diff", "context": "Inspect merge results" },
+    { "uri": "git/log", "context": "Verify merge history with --graph" },
+    { "uri": "git/remote", "context": "Merge remote branches after fetching" },
+    { "uri": "git/troubleshooting", "context": "Complex conflict resolution strategies" }
+  ],
+  "related": [
+    { "uri": "git/rebase", "relation": "alternative", "note": "Rebase rewrites history instead of creating merge commits" },
+    { "uri": "git/branch", "relation": "prerequisite", "note": "Branches must exist before they can be merged" },
+    { "uri": "git/commit", "relation": "see-also", "note": "Merges create commits; squash merges require a manual commit" }
+  ],
+  "scripts": [
+    {
+      "id": "safe-merge",
+      "name": "Safe Merge",
+      "description": "Merge a branch with conflict detection and dry-run option",
+      "lang": "bash",
+      "runtime": "git>=2.30",
+      "entry": "./scripts/safe-merge.sh",
+      "inline": "#!/usr/bin/env bash\nset -euo pipefail\n\nSOURCE=\"${1:?Usage: safe-merge.sh <source-branch> [--squash] [--no-ff] [--dry-run]}\"\nshift\n\nSQUASH=\"\"\nNOFF=\"\"\nDRYRUN=false\n\nfor arg in \"$@\"; do\n  case \"$arg\" in\n    --squash) SQUASH=\"--squash\" ;;\n    --no-ff) NOFF=\"--no-ff\" ;;\n    --dry-run) DRYRUN=true ;;\n  esac\ndone\n\nCURRENT=$(git branch --show-current)\necho \"Merging $SOURCE into $CURRENT\"\n\n# Check if source branch exists\nif ! git rev-parse --verify \"$SOURCE\" >/dev/null 2>&1; then\n  echo \"Error: Branch '$SOURCE' does not exist\"\n  exit 1\nfi\n\n# Dry run — check for conflicts without merging\nif $DRYRUN; then\n  echo \"=== Dry run: checking for conflicts ===\"\n  if git merge --no-commit --no-ff \"$SOURCE\" >/dev/null 2>&1; then\n    echo \"No conflicts detected. Merge would succeed.\"\n    git merge --abort 2>/dev/null || true\n  else\n    echo \"Conflicts detected in:\"\n    git diff --name-only --diff-filter=U\n    git merge --abort\n  fi\n  exit 0\nfi\n\n# Perform the merge\ngit merge $SQUASH $NOFF \"$SOURCE\"\n\nif [ -n \"$SQUASH\" ]; then\n  echo \"Squash merge staged. Review and commit:\"\n  git diff --cached --stat\nelse\n  echo \"Merge complete:\"\n  git log --oneline --graph -5\nfi"
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "source": { "type": "string", "description": "Branch to merge from" },
+        "strategy": { "type": "string", "enum": ["fast-forward", "no-ff", "squash"], "description": "Merge strategy" },
+        "message": { "type": "string", "description": "Custom merge commit message" }
+      },
+      "required": ["source"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "merged": { "type": "boolean", "description": "Whether merge completed successfully" },
+        "sha": { "type": "string", "description": "SHA of the merge commit" },
+        "conflicts": { "type": "array", "items": { "type": "string" }, "description": "List of conflicted files (if any)" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "git/branch", "reason": "Source and target branches must exist" }
+  ],
+  "more": {
+    "docs": "https://git-scm.com/docs/git-merge",
+    "book": "https://git-scm.com/book/en/v2/Git-Branching-Basic-Branching-and-Merging",
+    "strategies": "https://git-scm.com/docs/merge-strategies"
+  },
+  "frontmatter": {
+    "created": "2026-04-10",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "6 min",
+    "prerequisites": ["git/branch"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

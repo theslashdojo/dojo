@@ -1,0 +1,97 @@
+{
+  "name": "config",
+  "version": "1.0.0",
+  "uri": "git/config",
+  "type": "context",
+  "content_type": "reference",
+  "context": "Configure git identity, aliases, editor, diff tools, credentials, and per-repo or global settings",
+  "info": "Git configuration controls identity (name, email), behavior (default branch, line endings, merge strategy), tooling (editor, diff tool, merge tool), and credentials (SSH keys, credential helpers). Config is layered: system (/etc/gitconfig) < global (~/.gitconfig) < local (.git/config) < worktree (.git/config.worktree). Each level overrides the previous. This context covers the essential config settings every agent and developer needs, including identity setup, useful aliases, credential caching, SSH configuration, and .gitignore patterns. See [[git/commit]] for how identity affects commits, [[git/hooks]] for automating behavior, and [[git/remote]] for credential configuration.",
+  "parent": "git",
+  "tags": ["config", "gitconfig", "identity", "aliases", "credentials", "gitignore", "settings"],
+  "aliases": [
+    "git config",
+    "gitconfig",
+    ".gitconfig",
+    "git settings",
+    "git identity",
+    "git aliases",
+    "git credentials",
+    "git editor",
+    "gitignore",
+    ".gitignore"
+  ],
+  "triggers": [
+    "configure git",
+    "set git username and email",
+    "create git aliases",
+    "configure git credentials",
+    "set default editor",
+    "set default branch name",
+    "create a gitignore",
+    "configure line endings",
+    "list git config"
+  ],
+  "body": "# Git Configuration\n\nGit config controls how git behaves, who you are, and how you interact with tools and remotes.\n\n## Config Levels\n\n```bash\n# System (all users) — /etc/gitconfig\ngit config --system\n\n# Global (current user) — ~/.gitconfig\ngit config --global\n\n# Local (current repo) — .git/config\ngit config --local\n\n# Worktree (current worktree) — .git/config.worktree\ngit config --worktree\n```\n\nPriority: worktree > local > global > system. Local settings override global.\n\n## Essential Identity Setup\n\n```bash\n# Set your name and email (required for commits)\ngit config --global user.name \"Your Name\"\ngit config --global user.email \"you@example.com\"\n\n# Verify\ngit config user.name\ngit config user.email\n\n# Per-repo identity (for work vs personal)\ncd work-project\ngit config user.email \"you@company.com\"\n```\n\n## Common Settings\n\n```bash\n# Default branch name for new repos\ngit config --global init.defaultBranch main\n\n# Default editor\ngit config --global core.editor \"code --wait\"  # VS Code\ngit config --global core.editor \"vim\"\ngit config --global core.editor \"nano\"\n\n# Pull strategy\ngit config --global pull.rebase true\n\n# Auto-correct typos (0.5 second delay)\ngit config --global help.autocorrect 5\n\n# Colorize output\ngit config --global color.ui auto\n\n# Line endings\ngit config --global core.autocrlf input   # macOS/Linux\ngit config --global core.autocrlf true    # Windows\n\n# Default merge strategy\ngit config --global merge.ff only  # refuse non-fast-forward merges\n```\n\n## Useful Aliases\n\n```bash\n# Compact log\ngit config --global alias.lg \"log --oneline --graph --all --decorate\"\n\n# Status shorthand\ngit config --global alias.st \"status -sb\"\n\n# Amend without editing message\ngit config --global alias.amend \"commit --amend --no-edit\"\n\n# Unstage a file\ngit config --global alias.unstage \"restore --staged\"\n\n# Last commit\ngit config --global alias.last \"log -1 HEAD --stat\"\n\n# Show all aliases\ngit config --global alias.aliases \"config --get-regexp ^alias\\\\.\"\n\n# Diff of staged changes\ngit config --global alias.staged \"diff --staged\"\n\n# Delete merged branches\ngit config --global alias.cleanup \"!git branch --merged | grep -v '\\\\*\\\\|main\\\\|master' | xargs -n 1 git branch -d\"\n```\n\n## Credential Management\n\n```bash\n# Cache credentials in memory (default 15 minutes)\ngit config --global credential.helper cache\n\n# Cache for longer\ngit config --global credential.helper 'cache --timeout=3600'\n\n# Store in plaintext file (less secure)\ngit config --global credential.helper store\n\n# macOS Keychain\ngit config --global credential.helper osxkeychain\n\n# Windows Credential Manager\ngit config --global credential.helper manager\n\n# Linux libsecret\ngit config --global credential.helper /usr/lib/git-core/git-credential-libsecret\n```\n\n## SSH Configuration\n\n```bash\n# Generate an SSH key\nssh-keygen -t ed25519 -C \"you@example.com\"\n\n# Add to ssh-agent\neval \"$(ssh-agent -s)\"\nssh-add ~/.ssh/id_ed25519\n\n# Test connection\nssh -T git@github.com\n\n# Force SSH for all GitHub repos\ngit config --global url.\"git@github.com:\".insteadOf \"https://github.com/\"\n```\n\n## Commit Signing\n\n```bash\n# GPG signing\ngit config --global user.signingkey YOUR_GPG_KEY_ID\ngit config --global commit.gpgsign true\n\n# SSH signing (git 2.34+)\ngit config --global gpg.format ssh\ngit config --global user.signingkey ~/.ssh/id_ed25519.pub\ngit config --global commit.gpgsign true\n```\n\n## .gitignore\n\nGlobal patterns to ignore across all repos:\n\n```bash\n# Set global gitignore\ngit config --global core.excludesFile ~/.gitignore_global\n```\n\n```gitignore\n# ~/.gitignore_global\n.DS_Store\nThumbs.db\n*.swp\n*.swo\n*~\n.env\n.env.local\nnode_modules/\n__pycache__/\n*.pyc\n.idea/\n.vscode/settings.json\n*.log\n```\n\nPer-repo `.gitignore` in the repo root:\n\n```gitignore\n# Dependencies\nnode_modules/\nvendor/\n\n# Build output\ndist/\nbuild/\n*.o\n*.so\n\n# Environment\n.env\n.env.local\n\n# IDE\n.idea/\n.vscode/\n*.swp\n\n# OS\n.DS_Store\nThumbs.db\n\n# Logs\n*.log\nlogs/\n```\n\n## Viewing Config\n\n```bash\n# List all settings with origin\ngit config --list --show-origin\n\n# List global settings\ngit config --global --list\n\n# Get a specific value\ngit config user.email\n\n# Edit global config in editor\ngit config --global --edit\n```\n\n## Conditional Includes\n\nDifferent config for different directories (git 2.13+):\n\n```ini\n# ~/.gitconfig\n[includeIf \"gitdir:~/work/\"]\n    path = ~/.gitconfig-work\n\n[includeIf \"gitdir:~/personal/\"]\n    path = ~/.gitconfig-personal\n```\n\n```ini\n# ~/.gitconfig-work\n[user]\n    email = you@company.com\n    signingkey = WORK_KEY_ID\n```\n\nThis lets you use different identities and signing keys based on where the repo lives.\n",
+  "sections": [
+    {
+      "id": "identity",
+      "title": "Identity configuration",
+      "body": "Set `user.name` and `user.email` with `git config --global`. These appear in every commit. Use `--local` (per-repo) to override for work vs personal projects. Use conditional includes (`includeIf`) to auto-switch based on directory. Verify with `git config user.name` and `git config user.email`. Identity is required — commits fail without it.",
+      "tags": ["identity", "name", "email", "conditional-includes"]
+    },
+    {
+      "id": "aliases",
+      "title": "Git aliases for productivity",
+      "body": "Define shortcuts with `git config --global alias.<name> \"<command>\"`. Prefix with `!` for shell commands: `alias.cleanup \"!git branch --merged | grep -v main | xargs git branch -d\"`. Common aliases: `lg` for graph log, `st` for short status, `amend` for `--amend --no-edit`, `unstage` for `restore --staged`. List all with `git config --get-regexp ^alias`.",
+      "tags": ["aliases", "shortcuts", "productivity"]
+    },
+    {
+      "id": "credentials",
+      "title": "Credential and SSH setup",
+      "body": "Use credential helpers to avoid re-entering passwords: `cache` (memory, 15min), `store` (plaintext file), `osxkeychain` (macOS), `manager` (Windows). For SSH: generate ed25519 keys, add to agent, add public key to GitHub. Force SSH globally: `git config --global url.\"git@github.com:\".insteadOf \"https://github.com/\"`. See [[git/remote]] for using credentials during push/pull.",
+      "tags": ["credentials", "ssh", "keychain", "token", "authentication"]
+    },
+    {
+      "id": "gitignore",
+      "title": "Ignoring files with .gitignore",
+      "body": "Per-repo: create `.gitignore` in repo root. Global: set `core.excludesFile` to a global gitignore path. Patterns use glob syntax: `*` matches anything, `**` matches directories recursively, `!` negates. Common ignores: `node_modules/`, `.env`, `dist/`, `__pycache__/`, `.DS_Store`, IDE configs. Use `git check-ignore -v <file>` to debug which rule ignores a file.",
+      "tags": ["gitignore", "ignore", "exclude", "patterns"]
+    },
+    {
+      "id": "signing",
+      "title": "Commit signing with GPG or SSH",
+      "body": "GPG: set `user.signingkey` and `commit.gpgsign true`. SSH (git 2.34+): set `gpg.format ssh`, `user.signingkey` to your `.pub` file, and `commit.gpgsign true`. Signed commits show 'Verified' on GitHub. List GPG keys: `gpg --list-secret-keys --keyid-format LONG`. See [[git/commit]] for signing individual commits.",
+      "tags": ["signing", "gpg", "ssh-signing", "verified-commits"]
+    }
+  ],
+  "links": [
+    { "uri": "git/commit", "context": "Identity config determines commit authorship" },
+    { "uri": "git/remote", "context": "Credentials are used for remote operations" },
+    { "uri": "git/hooks", "context": "Hooks and config work together for workflow automation" },
+    { "uri": "git/log", "context": "Aliases enhance log usage" }
+  ],
+  "related": [
+    { "uri": "git/commit", "relation": "see-also", "note": "user.name and user.email determine commit authorship" },
+    { "uri": "git/remote", "relation": "see-also", "note": "Credential helpers enable authenticated push/pull" },
+    { "uri": "git/hooks", "relation": "see-also", "note": "Hooks and config together control git behavior" }
+  ],
+  "more": {
+    "docs": "https://git-scm.com/docs/git-config",
+    "book": "https://git-scm.com/book/en/v2/Customizing-Git-Git-Configuration",
+    "gitignore": "https://git-scm.com/docs/gitignore"
+  },
+  "frontmatter": {
+    "created": "2026-04-10",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "6 min",
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

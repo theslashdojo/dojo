@@ -1,0 +1,101 @@
+You are working in the Dojo repository at /workspaces/Contracts/dojo.
+
+Your task: build the "git" ecosystem node tree for Dojo.
+
+## Context
+Every code agent uses git constantly — commit, branch, merge, rebase, stash, log, diff, cherry-pick
+
+## Target Tree
+[
+  {
+    "uri": "git",
+    "type": "ecosystem"
+  },
+  {
+    "uri": "git/commit",
+    "type": "skill"
+  },
+  {
+    "uri": "git/branch",
+    "type": "skill"
+  },
+  {
+    "uri": "git/merge",
+    "type": "skill"
+  },
+  {
+    "uri": "git/rebase",
+    "type": "skill"
+  },
+  {
+    "uri": "git/stash",
+    "type": "skill"
+  },
+  {
+    "uri": "git/log",
+    "type": "skill"
+  },
+  {
+    "uri": "git/diff",
+    "type": "skill"
+  },
+  {
+    "uri": "git/remote",
+    "type": "skill"
+  },
+  {
+    "uri": "git/worktree",
+    "type": "skill"
+  },
+  {
+    "uri": "git/config",
+    "type": "context"
+  },
+  {
+    "uri": "git/hooks",
+    "type": "context"
+  },
+  {
+    "uri": "git/troubleshooting",
+    "type": "context"
+  }
+]
+
+## Instructions
+
+1. Start by reading /workspaces/Contracts/dojo/skills/dojo-node-builder/SKILL.md and follow it as the authoring workflow.
+2. Read the spec at /workspaces/Contracts/dojo/SPEC.md (sections 1-4 at minimum) and the schema at /workspaces/Contracts/dojo/schema/node.schema.json for the exact node.json format.
+3. Look at /workspaces/Contracts/dojo/nodes/github/node.json, /workspaces/Contracts/dojo/nodes/github/repos/node.json, and /workspaces/Contracts/dojo/nodes/github/issues/node.json as references for well-formed ecosystem and skill nodes.
+4. Research the official documentation for "git" from official docs, API references, SDK docs, CLI help, changelogs, and official repositories. Prioritize first-party sources over blog posts.
+5. For each node in the target tree above, create or revise the node.json file in the appropriate directory under /workspaces/Contracts/dojo/nodes/.
+6. Make every node rich and complete:
+   - context: one line, under 200 chars, tells an agent when to use this node
+   - info: dense paragraph with scope, execution surface, and why it matters
+   - body: long-form markdown with [[uri]] wiki-links, code examples, environment variables, and real commands
+   - sections: addressable chunks with ids, titles, bodies, and useful tags
+   - aliases: phrases agents and users actually say, including acronyms and common broken phrasing
+   - triggers: natural-language requests that should surface this node in search
+   - tags: concrete filterable keywords
+   - links: directed next steps to related nodes with context
+   - related: semantic relationships like prerequisite, see-also, implements, extends
+7. For skill and sub nodes, include:
+   - scripts with real executable commands or code, lang, runtime, entry, env vars, and packages when needed
+   - schema with input and output JSON contracts
+   - depends for required dependencies on other nodes
+8. For every skill or sub node, create a portable Agent Skills package that follows the official spec from https://agentskills.io/specification and https://github.com/agentskills/agentskills:
+   - include SKILL.md with valid YAML frontmatter
+   - name must match the directory name, use lowercase letters/numbers/hyphens only, and stay under 64 chars
+   - description must say what the skill does and when to use it
+   - use scripts/ and references/ when they make the skill more reusable
+   - keep SKILL.md concise and push bulky detail into references/
+9. Only edit files under /workspaces/Contracts/dojo/nodes/git/. Do not touch unrelated ecosystems, scripts, or user changes elsewhere in the repo.
+10. Do not ask questions. Do not ask for confirmation. Build the full target tree.
+11. After authoring, verify:
+    - every expected node exists
+    - every node.json is valid JSON
+    - every skill/sub node has SKILL.md with valid frontmatter
+    - any script entry paths referenced in node.json actually exist
+
+## Quality Bar
+
+Every node must teach well enough that another agent can learn and act from it without reading upstream docs. Skeleton nodes are failures. Placeholder scripts are failures. Build for the jobs autonomous agents actually repeat, not for a docs sidebar mirror.

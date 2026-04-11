@@ -1,0 +1,120 @@
+{
+  "name": "scripts",
+  "version": "1.0.0",
+  "uri": "node/npm/scripts",
+  "type": "sub",
+  "context": "Run npm scripts, lifecycle hooks, npx execution, and cross-platform script composition with argument forwarding",
+  "info": "This sub-skill covers npm script execution: defining and running scripts via `npm run`, built-in shortcuts like `npm test` and `npm start`, pre/post lifecycle hooks that run automatically, the full lifecycle script order for install and publish operations, `npx` and `npm exec` for running packages without global installation, passing arguments to scripts with `--`, cross-platform considerations using `cross-env` and `shx`, and composing complex script pipelines with `npm-run-all` or shell operators. Agents use this skill whenever they need to build, test, lint, or run project-specific commands. See [[node/npm]] for the overall ecosystem and [[node/npm/publish]] for publish-specific lifecycle hooks.",
+  "parent": "node/npm",
+  "tags": ["npm-scripts", "npm-run", "lifecycle", "npx", "pre-post-hooks", "cross-platform"],
+  "aliases": [
+    "npm run",
+    "npm scripts",
+    "npm test",
+    "npm start",
+    "npx",
+    "npm exec",
+    "lifecycle scripts",
+    "pre post hooks",
+    "run script",
+    "npm-run-all"
+  ],
+  "triggers": [
+    "run an npm script",
+    "execute a build script",
+    "run npm test",
+    "use npx to run a package",
+    "set up pre and post hooks",
+    "pass arguments to npm script",
+    "run scripts across platforms",
+    "compose multiple npm scripts"
+  ],
+  "body": "# npm scripts\n\nDefine and run project commands via the `scripts` field in package.json.\n\n## Running Scripts\n\n```bash\n# Run a named script\nnpm run build\nnpm run lint\nnpm run dev\n\n# Built-in shortcuts (no \"run\" needed)\nnpm test        # runs \"test\" script\nnpm start       # runs \"start\" script\nnpm stop        # runs \"stop\" script\nnpm restart     # runs \"stop\", \"restart\", \"start\" in sequence\n\n# Pass arguments to a script\nnpm run test -- --watch --coverage\nnpm run build -- --outdir=dist\n\n# List available scripts\nnpm run\n```\n\n## Defining Scripts in package.json\n\n```json\n{\n  \"scripts\": {\n    \"build\": \"tsup src/index.ts --format cjs,esm --dts\",\n    \"dev\": \"tsx watch src/index.ts\",\n    \"test\": \"vitest\",\n    \"test:watch\": \"vitest --watch\",\n    \"lint\": \"eslint src/\",\n    \"lint:fix\": \"eslint src/ --fix\",\n    \"typecheck\": \"tsc --noEmit\",\n    \"format\": \"prettier --write \\\"src/**/*.ts\\\"\",\n    \"clean\": \"rm -rf dist node_modules/.cache\",\n    \"prepare\": \"husky install\",\n    \"prepublishOnly\": \"npm run build && npm test\"\n  }\n}\n```\n\n## Lifecycle Scripts\n\nnpm runs certain scripts automatically at specific points:\n\n### Install Lifecycle\n\n1. `preinstall` — before `npm install` runs\n2. `install` — during installation\n3. `postinstall` — after `npm install` completes\n4. `prepare` — after install and before pack (runs on `npm install` and `npm publish`)\n\n### Publish Lifecycle\n\n1. `prepublishOnly` — before pack and publish (only on `npm publish`)\n2. `prepack` — before tarball is created\n3. `postpack` — after tarball is created\n4. `publish` — after package is published\n5. `postpublish` — after publish completes\n\n### Version Lifecycle\n\n1. `preversion` — before `npm version` bumps\n2. `version` — after bump, before commit\n3. `postversion` — after commit and tag\n\n## Pre and Post Hooks\n\nAny script gets automatic `pre` and `post` hooks:\n\n```json\n{\n  \"scripts\": {\n    \"prebuild\": \"npm run clean\",\n    \"build\": \"tsup src/index.ts\",\n    \"postbuild\": \"echo 'Build complete'\",\n\n    \"pretest\": \"npm run lint\",\n    \"test\": \"vitest run\",\n    \"posttest\": \"echo 'Tests passed'\"\n  }\n}\n```\n\nWhen you run `npm run build`, npm executes: `prebuild` -> `build` -> `postbuild`.\n\n## npx — Execute Packages\n\n`npx` runs packages without permanently installing them globally.\n\n```bash\n# Run a package binary\nnpx eslint --init\nnpx create-next-app@latest my-app\nnpx tsx script.ts\n\n# Run a specific version\nnpx typescript@5.4 tsc --version\n\n# Skip confirmation prompt\nnpx --yes degit user/repo my-project\n\n# Equivalent npm exec syntax\nnpm exec -- eslint --init\nnpm exec -p typescript -c \"tsc --version\"\n```\n\n**Resolution order**: npx checks `node_modules/.bin` first, then global installs, then downloads temporarily from the registry.\n\n## Script Environment\n\nnpm makes several environment variables available inside scripts:\n\n| Variable | Value |\n|----------|-------|\n| `npm_package_name` | Package name from package.json |\n| `npm_package_version` | Package version from package.json |\n| `npm_lifecycle_event` | Name of the currently running script |\n| `PATH` | Prepended with `node_modules/.bin` |\n\nBecause `node_modules/.bin` is on PATH, scripts can reference locally installed binaries directly:\n\n```json\n{\n  \"scripts\": {\n    \"lint\": \"eslint src/\"\n  }\n}\n```\n\nThis works even though `eslint` is not installed globally — npm finds it in `node_modules/.bin/eslint`.\n\n## Cross-Platform Compatibility\n\nShell commands in npm scripts run in `sh` on Unix and `cmd.exe` on Windows by default. For cross-platform scripts:\n\n```bash\n# Use cross-env for environment variables\nnpm install -D cross-env\n```\n\n```json\n{\n  \"scripts\": {\n    \"build\": \"cross-env NODE_ENV=production webpack\",\n    \"test\": \"cross-env NODE_ENV=test vitest\"\n  }\n}\n```\n\n```bash\n# Use shx for Unix commands on Windows\nnpm install -D shx\n```\n\n```json\n{\n  \"scripts\": {\n    \"clean\": \"shx rm -rf dist\",\n    \"copy\": \"shx cp -r assets dist/assets\"\n  }\n}\n```\n\n## Composing Scripts\n\nRun multiple scripts together:\n\n```json\n{\n  \"scripts\": {\n    \"build\": \"npm run clean && npm run compile && npm run bundle\",\n    \"check\": \"npm run lint && npm run typecheck && npm run test\"\n  }\n}\n```\n\nFor parallel execution, use `npm-run-all`:\n\n```bash\nnpm install -D npm-run-all\n```\n\n```json\n{\n  \"scripts\": {\n    \"lint\": \"eslint src/\",\n    \"typecheck\": \"tsc --noEmit\",\n    \"test\": \"vitest run\",\n    \"check\": \"run-p lint typecheck test\",\n    \"build:all\": \"run-s clean build:*\"\n  }\n}\n```\n\n- `run-s` — run sequentially\n- `run-p` — run in parallel\n- `build:*` — glob pattern matches `build:client`, `build:server`, etc.\n",
+  "sections": [
+    {
+      "id": "lifecycle",
+      "title": "Lifecycle scripts",
+      "body": "npm runs lifecycle scripts automatically during `install`, `publish`, and `version` commands. Install lifecycle: `preinstall` -> `install` -> `postinstall` -> `prepare`. Publish lifecycle: `prepublishOnly` -> `prepack` -> `postpack` -> `publish` -> `postpublish`. Version lifecycle: `preversion` -> `version` -> `postversion`. The `prepare` script runs after every `npm install` and before `npm publish` — commonly used for build steps or git hooks setup (e.g., `husky install`). See [[node/npm/publish]] for publish-specific hooks.",
+      "tags": ["lifecycle", "install-hooks", "publish-hooks", "prepare", "postinstall"]
+    },
+    {
+      "id": "pre-post-hooks",
+      "title": "Pre and post hooks",
+      "body": "Any user-defined script gets automatic `pre<name>` and `post<name>` hooks. When you run `npm run build`, npm executes `prebuild` -> `build` -> `postbuild` in sequence. If the pre-hook exits non-zero, the main script does not run. Common patterns: `prebuild` for cleaning, `postbuild` for copying assets, `pretest` for linting, `posttest` for coverage reporting. Pre/post hooks do not work with lifecycle scripts like `prepare` — those have their own hook ordering.",
+      "tags": ["pre-hooks", "post-hooks", "prebuild", "posttest", "ordering"]
+    },
+    {
+      "id": "npx",
+      "title": "npx and npm exec",
+      "body": "`npx` runs packages without permanent global installation. Resolution order: local `node_modules/.bin`, then global installs, then temporary download from registry. Use `npx --yes <pkg>` to skip the confirmation prompt. Use `npx <pkg>@<version>` to run a specific version. The equivalent `npm exec` syntax: `npm exec -- <cmd>` or `npm exec -p <pkg> -c '<cmd>'`. Common uses: `npx create-next-app`, `npx tsx script.ts`, `npx eslint --init`, `npx degit user/repo`. Always specify `@latest` or a version for initializer packages to avoid using stale cached versions.",
+      "tags": ["npx", "npm-exec", "temporary-install", "bin", "initializers"]
+    },
+    {
+      "id": "cross-platform",
+      "title": "Cross-platform script compatibility",
+      "body": "npm scripts run in `sh` on Unix and `cmd.exe` on Windows. Shell-specific syntax (pipes, `&&`, `rm -rf`) may break on Windows. Use `cross-env` for setting environment variables portably: `cross-env NODE_ENV=production webpack`. Use `shx` for Unix commands on Windows: `shx rm -rf dist`. Use `npm-run-all` for composing scripts with `run-s` (sequential) and `run-p` (parallel). Alternatively, set `script-shell` in `.npmrc` to force a specific shell. For maximum portability, prefer Node.js-based tools over shell commands in scripts.",
+      "tags": ["cross-platform", "windows", "cross-env", "shx", "npm-run-all"]
+    }
+  ],
+  "links": [
+    { "uri": "node/npm", "context": "Parent npm skill with full ecosystem overview" },
+    { "uri": "node/npm/install", "context": "Install lifecycle triggers postinstall and prepare scripts" },
+    { "uri": "node/npm/publish", "context": "Publish lifecycle triggers prepublishOnly and prepack scripts" }
+  ],
+  "related": [
+    { "uri": "node/npm", "relation": "prerequisite", "note": "npm must be installed to run scripts defined in package.json" },
+    { "uri": "node/npm/install", "relation": "see-also", "note": "npm install triggers postinstall and prepare lifecycle scripts" },
+    { "uri": "node/npm/publish", "relation": "see-also", "note": "npm publish triggers prepublishOnly and prepack lifecycle scripts" }
+  ],
+  "scripts": [
+    {
+      "id": "run-script",
+      "name": "Run npm Script",
+      "description": "Run an npm script by name with optional argument forwarding and environment variable injection",
+      "lang": "bash",
+      "runtime": "node>=18",
+      "entry": "./scripts/run-script.sh"
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "scriptName": { "type": "string", "description": "Name of the npm script to run (e.g., build, test, lint)" },
+        "args": { "type": "array", "items": { "type": "string" }, "description": "Arguments to forward to the script after --" },
+        "env": { "type": "object", "additionalProperties": { "type": "string" }, "description": "Environment variables to set before running" }
+      },
+      "required": ["scriptName"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "exitCode": { "type": "integer", "description": "Exit code of the script (0 for success)" },
+        "scriptName": { "type": "string", "description": "Name of the script that was executed" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "node/npm", "reason": "npm CLI required for running scripts defined in package.json" }
+  ],
+  "more": {
+    "docs": "https://docs.npmjs.com/cli/v10/commands/npm-run-script",
+    "npx-docs": "https://docs.npmjs.com/cli/v10/commands/npx",
+    "lifecycle": "https://docs.npmjs.com/cli/v10/using-npm/scripts"
+  },
+  "frontmatter": {
+    "created": "2026-04-10",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "5 min",
+    "prerequisites": ["node/npm"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

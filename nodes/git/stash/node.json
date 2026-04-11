@@ -1,0 +1,111 @@
+{
+  "name": "stash",
+  "version": "1.0.0",
+  "uri": "git/stash",
+  "type": "skill",
+  "context": "Temporarily shelve uncommitted changes and restore them later — save, list, pop, apply, and drop stashes",
+  "info": "Git stash saves uncommitted changes (staged and unstaged) to a stack, reverting the working tree to a clean state. This is essential when you need to switch branches but aren't ready to commit, when you want to pull remote changes onto a dirty working tree, or when you need to temporarily set aside work. Stash operates as a stack (LIFO) — you push changes on and pop them off. Each stash entry records the working tree state, index state, and optionally untracked files. Agents use stash to context-switch between tasks without creating throwaway commits. See [[git/branch]] for switching branches (which often triggers stashing), [[git/commit]] for permanently saving changes instead of stashing, and [[git/worktree]] for working on multiple branches simultaneously without stashing.",
+  "parent": "git",
+  "tags": ["stash", "shelve", "wip", "save", "pop", "temporary"],
+  "aliases": [
+    "git stash",
+    "stash changes",
+    "shelve work",
+    "save work in progress",
+    "temporary save",
+    "stash pop",
+    "unstash",
+    "wip stash"
+  ],
+  "triggers": [
+    "stash my changes",
+    "save work in progress",
+    "temporarily set aside changes",
+    "shelve uncommitted work",
+    "restore stashed changes",
+    "list my stashes",
+    "pop the stash",
+    "stash including untracked files"
+  ],
+  "body": "# Git Stash\n\nStash lets you save uncommitted changes without committing them, giving you a clean working tree to do something else.\n\n## Saving to Stash\n\n```bash\n# Stash all tracked file changes (staged + unstaged)\ngit stash\n\n# Stash with a descriptive message\ngit stash push -m \"WIP: auth refactoring halfway done\"\n\n# Stash including untracked files\ngit stash -u\ngit stash push --include-untracked\n\n# Stash including untracked AND ignored files\ngit stash -a\ngit stash push --all\n\n# Stash only specific files\ngit stash push -m \"stash auth changes\" src/auth.js src/auth.test.js\n\n# Stash only staged changes (keep unstaged)\ngit stash push --staged\n```\n\n## Restoring from Stash\n\n```bash\n# Pop the most recent stash (apply + remove from stack)\ngit stash pop\n\n# Apply without removing from stack\ngit stash apply\n\n# Pop/apply a specific stash\ngit stash pop stash@{2}\ngit stash apply stash@{2}\n\n# Apply and recreate the index (staged state)\ngit stash apply --index\n```\n\n**pop vs apply**: `pop` removes the stash entry after applying. `apply` keeps it. Use `apply` when you want to apply the same stash to multiple branches.\n\n## Listing and Inspecting\n\n```bash\n# List all stashes\ngit stash list\n# stash@{0}: On feature: WIP auth refactoring\n# stash@{1}: WIP on main: abc1234 last commit msg\n\n# Show what a stash contains\ngit stash show           # summary (like --stat)\ngit stash show -p        # full diff\ngit stash show stash@{1} # specific stash\n```\n\n## Cleaning Up\n\n```bash\n# Drop a specific stash\ngit stash drop stash@{2}\n\n# Drop the most recent stash\ngit stash drop\n\n# Clear ALL stashes (irreversible!)\ngit stash clear\n```\n\n## Creating a Branch from Stash\n\n```bash\n# Create a new branch and apply the stash there\ngit stash branch new-feature-branch\ngit stash branch new-feature-branch stash@{2}\n```\n\nThis is useful when stash conflicts with the current branch — creating a branch from the stash's original commit avoids conflicts.\n\n## Stash Conflicts\n\nIf the working tree has changed since you stashed, applying may cause conflicts:\n\n```bash\n# Apply stash — conflicts may occur\ngit stash pop\n# CONFLICT in src/auth.js\n\n# Resolve conflicts, then:\ngit add src/auth.js\n# Note: on conflict, pop doesn't remove the stash.\n# Manually drop after resolving:\ngit stash drop\n```\n\n## Agent Best Practices\n\n1. **Always use descriptive messages** — `git stash push -m \"reason\"` makes `git stash list` useful\n2. **Include untracked files** — `git stash -u` ensures new files are stashed too\n3. **Prefer commits over long-lived stashes** — stashes are easy to forget; use WIP commits instead for anything lasting more than a few minutes\n4. **Check stash list before clearing** — `git stash list` then `git stash clear`\n5. **Use stash branch for complex cases** — avoids conflicts entirely\n6. **Consider [[git/worktree]]** — if you frequently stash to switch branches, worktrees may be better\n",
+  "sections": [
+    {
+      "id": "push",
+      "title": "Saving changes to stash",
+      "body": "Use `git stash` or `git stash push` to save changes. Add `-m \"message\"` for a description. Add `-u` to include untracked files. Add `-a` for untracked and ignored files. Add `--staged` to stash only what's staged. Add specific paths to stash only certain files. The stash is stored as a special commit object accessible via the stash reflog.",
+      "tags": ["push", "save", "untracked", "staged", "selective"]
+    },
+    {
+      "id": "restore",
+      "title": "Restoring stashed changes",
+      "body": "`git stash pop` applies the top stash and removes it from the stack. `git stash apply` applies without removing. Specify `stash@{n}` to target a specific entry. Add `--index` to `apply` to also restore the staging state. If pop encounters conflicts, the stash is NOT removed — resolve conflicts then `git stash drop` manually.",
+      "tags": ["pop", "apply", "restore", "index", "conflicts"]
+    },
+    {
+      "id": "manage",
+      "title": "Managing the stash stack",
+      "body": "`git stash list` shows all entries with their index, branch, and message. `git stash show -p stash@{n}` shows the full diff. `git stash drop stash@{n}` removes one entry. `git stash clear` removes all entries (irreversible). `git stash branch <name>` creates a branch from the stash's original commit and applies the stash there.",
+      "tags": ["list", "show", "drop", "clear", "branch"]
+    }
+  ],
+  "links": [
+    { "uri": "git/branch", "context": "Stash before switching branches" },
+    { "uri": "git/commit", "context": "Commit instead of stashing for permanent changes" },
+    { "uri": "git/worktree", "context": "Worktrees avoid the need to stash when switching contexts" },
+    { "uri": "git/diff", "context": "Review stash contents with git stash show -p" },
+    { "uri": "git/troubleshooting", "context": "Recover dropped stashes from reflog" }
+  ],
+  "related": [
+    { "uri": "git/commit", "relation": "alternative", "note": "WIP commits are more visible than stashes and harder to lose" },
+    { "uri": "git/worktree", "relation": "alternative", "note": "Worktrees let you work on multiple branches without stashing at all" },
+    { "uri": "git/branch", "relation": "see-also", "note": "Branch switching is the most common reason to stash" }
+  ],
+  "scripts": [
+    {
+      "id": "stash-manager",
+      "name": "Stash Manager",
+      "description": "Save, list, and restore stashes with safety checks",
+      "lang": "bash",
+      "runtime": "git>=2.30",
+      "entry": "./scripts/stash-manager.sh",
+      "inline": "#!/usr/bin/env bash\nset -euo pipefail\n\nACTION=\"${1:?Usage: stash-manager.sh <save|pop|list|show|drop> [args...]}\"\nshift\n\ncase \"$ACTION\" in\n  save)\n    MSG=\"${1:-WIP: $(date +%Y-%m-%d_%H:%M)}\"\n    if git diff --quiet && git diff --cached --quiet; then\n      echo \"Nothing to stash — working tree is clean.\"\n      exit 0\n    fi\n    git stash push -u -m \"$MSG\"\n    echo \"Stashed: $MSG\"\n    ;;\n  pop)\n    COUNT=$(git stash list | wc -l)\n    if [ \"$COUNT\" -eq 0 ]; then\n      echo \"Stash is empty — nothing to pop.\"\n      exit 0\n    fi\n    REF=\"${1:-stash@{0}}\"\n    echo \"Popping $REF:\"\n    git stash show \"$REF\" --stat\n    echo\n    git stash pop \"$REF\"\n    ;;\n  list)\n    COUNT=$(git stash list | wc -l)\n    if [ \"$COUNT\" -eq 0 ]; then\n      echo \"Stash is empty.\"\n    else\n      echo \"$COUNT stash entries:\"\n      git stash list\n    fi\n    ;;\n  show)\n    REF=\"${1:-stash@{0}}\"\n    git stash show -p \"$REF\"\n    ;;\n  drop)\n    REF=\"${1:-stash@{0}}\"\n    echo \"Dropping $REF:\"\n    git stash show \"$REF\" --stat\n    git stash drop \"$REF\"\n    ;;\n  *)\n    echo \"Unknown action: $ACTION\"\n    echo \"Usage: stash-manager.sh <save|pop|list|show|drop> [args...]\"\n    exit 1\n    ;;\nesac"
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "action": { "type": "string", "enum": ["save", "pop", "apply", "list", "drop", "clear"], "description": "Stash operation" },
+        "message": { "type": "string", "description": "Stash message (for save)" },
+        "ref": { "type": "string", "description": "Stash reference like stash@{0}" },
+        "includeUntracked": { "type": "boolean", "default": true, "description": "Include untracked files" }
+      },
+      "required": ["action"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "stashRef": { "type": "string", "description": "Reference of created/applied stash" },
+        "count": { "type": "integer", "description": "Number of stash entries" }
+      }
+    }
+  },
+  "more": {
+    "docs": "https://git-scm.com/docs/git-stash",
+    "book": "https://git-scm.com/book/en/v2/Git-Tools-Stashing-and-Cleaning"
+  },
+  "frontmatter": {
+    "created": "2026-04-10",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "4 min",
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

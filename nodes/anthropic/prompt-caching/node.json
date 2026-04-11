@@ -1,0 +1,136 @@
+{
+  "name": "prompt-caching",
+  "version": "1.0.0",
+  "uri": "anthropic/prompt-caching",
+  "type": "skill",
+  "context": "Cache prompt prefixes to reduce latency and cost — cache reads cost 10% of base input price",
+  "info": "Prompt caching stores prompt prefixes so repeated requests skip re-processing cached content. Add `cache_control` with `type: \"ephemeral\"` to mark cache breakpoints. Cached content is reused on subsequent requests with matching prefixes. Cache reads cost 10% of base input price; 5-minute cache writes cost 1.25x base; 1-hour cache writes cost 2x base. The system automatically manages breakpoints when using top-level `cache_control`, or you can place explicit breakpoints on specific content blocks (up to 4 per request). Minimum cacheable tokens vary by model: 1,024 for Sonnet 4.5/4/Opus 4.1/4, 2,048 for Sonnet 4.6/Haiku 3.5, 4,096 for Opus 4.6/4.5/Haiku 4.5. Cache TTL is 5 minutes (default, free writes) or 1 hour (2x base). Works on all active Claude models.",
+  "parent": "anthropic",
+  "tags": ["caching", "prompt-caching", "cost-optimization", "latency", "cache-control"],
+  "aliases": [
+    "prompt caching",
+    "cache control",
+    "prompt cache",
+    "caching api",
+    "cache breakpoint",
+    "ephemeral cache",
+    "cached prompt",
+    "anthropic caching"
+  ],
+  "triggers": [
+    "cache a prompt prefix",
+    "reduce api costs with caching",
+    "use prompt caching with claude",
+    "add cache control to my request",
+    "optimize token costs with caching",
+    "cache system prompt",
+    "cache tool definitions"
+  ],
+  "body": "# Prompt Caching\n\nCache prompt prefixes to cut cost (90% savings on cached tokens) and latency.\n\n## How It Works\n\n1. Mark a cache breakpoint with `cache_control: { type: \"ephemeral\" }`\n2. First request: content before the breakpoint is cached (cache write)\n3. Subsequent requests: matching prefix is read from cache (cache read at 10% cost)\n4. Cache expires after 5 minutes (default) or 1 hour (opt-in)\n\n## Automatic Caching (Recommended)\n\nAdd `cache_control` at the request level. The system automatically places the breakpoint on the last cacheable block.\n\n```python\nimport anthropic\n\nclient = anthropic.Anthropic()\n\nresponse = client.messages.create(\n    model=\"claude-sonnet-4-6\",\n    max_tokens=1024,\n    cache_control={\"type\": \"ephemeral\"},\n    system=\"You are a legal expert. Here is the full text of the contract: [very long contract text...]\",\n    messages=[{\"role\": \"user\", \"content\": \"What are the termination clauses?\"}]\n)\n\n# Check cache performance\nprint(f\"Cache write: {response.usage.cache_creation_input_tokens} tokens\")\nprint(f\"Cache read: {response.usage.cache_read_input_tokens} tokens\")\nprint(f\"Uncached: {response.usage.input_tokens} tokens\")\n```\n\n## Explicit Cache Breakpoints\n\nPlace `cache_control` on specific content blocks for fine-grained control (up to 4 breakpoints).\n\n```python\nresponse = client.messages.create(\n    model=\"claude-sonnet-4-6\",\n    max_tokens=1024,\n    system=[\n        {\n            \"type\": \"text\",\n            \"text\": \"You are a legal expert specialized in contract law.\",\n            \"cache_control\": {\"type\": \"ephemeral\"}\n        }\n    ],\n    messages=[\n        {\n            \"role\": \"user\",\n            \"content\": [\n                {\n                    \"type\": \"text\",\n                    \"text\": \"[Full contract text — thousands of tokens...]\",\n                    \"cache_control\": {\"type\": \"ephemeral\"}\n                },\n                {\n                    \"type\": \"text\",\n                    \"text\": \"What are the termination clauses?\"\n                }\n            ]\n        }\n    ]\n)\n```\n\n## 1-Hour Cache TTL\n\nFor less frequent requests, opt into 1-hour cache at 2x base input cost:\n\n```python\ncache_control={\"type\": \"ephemeral\", \"ttl\": \"1h\"}\n```\n\n## What Can Be Cached\n\n| Content | Cacheable |\n|---------|----------|\n| Tool definitions (`tools`) | Yes |\n| System messages (`system`) | Yes |\n| User/assistant messages | Yes |\n| Images and documents | Yes |\n| Tool use and tool results | Yes |\n| Thinking blocks | No (but auto-cached in assistant turns) |\n\n## Minimum Token Thresholds\n\nContent before the cache breakpoint must meet a minimum token count:\n\n| Model | Minimum Tokens |\n|-------|----------------|\n| Opus 4.6, Opus 4.5, Haiku 4.5 | 4,096 |\n| Sonnet 4.6, Haiku 3.5 | 2,048 |\n| Sonnet 4.5, Sonnet 4, Opus 4.1, Opus 4 | 1,024 |\n\nPrompts below the minimum are processed normally without caching (no error).\n\n## Pricing\n\n| Operation | Multiplier | Example (Sonnet 4.6 at $3/MTok base) |\n|-----------|-----------|---------------------------------------|\n| Cache write (5m) | 1.25x base | $3.75/MTok |\n| Cache write (1h) | 2x base | $6/MTok |\n| Cache read | 0.1x base | $0.30/MTok |\n| Uncached input | 1x base | $3/MTok |\n\nCaching pays for itself after just **one cache read** for 5-minute TTL.\n\n## Usage Response Fields\n\n```json\n{\n  \"usage\": {\n    \"input_tokens\": 50,\n    \"cache_creation_input_tokens\": 2000,\n    \"cache_read_input_tokens\": 0,\n    \"output_tokens\": 200\n  }\n}\n```\n\nTotal input = `input_tokens` + `cache_creation_input_tokens` + `cache_read_input_tokens`\n\n## Multi-Turn Conversation Strategy\n\nWith automatic caching, the breakpoint moves forward as the conversation grows:\n\n1. **Turn 1**: System + User(1) cached → cache write\n2. **Turn 2**: System + User(1) cache hit → read; User(2) → new write\n3. **Turn 3**: Growing prefix cached → incremental reads + writes\n\n## Cache Invalidation\n\nChanges to earlier content invalidate all downstream cache entries:\n- Changing `tools` → invalidates tools, system, and messages cache\n- Changing `system` → invalidates system and messages cache\n- Changing `tool_choice` → invalidates messages cache only\n\n## Best Practices\n\n1. **Start with automatic caching** for multi-turn conversations\n2. **Cache stable content**: system prompts, tool definitions, reference documents\n3. **Place breakpoints on content that stays the same** across requests\n4. **Monitor cache hit rate** via `cache_read_input_tokens` in usage\n5. **Wait for first response** before sending parallel requests (cache only available after first response begins)\n",
+  "sections": [
+    {
+      "id": "automatic-caching",
+      "title": "Automatic caching",
+      "body": "Add `cache_control: {type: 'ephemeral'}` at the top level of the request. The system automatically places the breakpoint on the last cacheable block and moves it forward as conversations grow. This is the recommended approach for multi-turn conversations. The breakpoint uses a 20-block lookback window to find prior cache entries.",
+      "tags": ["automatic", "recommended", "multi-turn", "lookback"]
+    },
+    {
+      "id": "explicit-breakpoints",
+      "title": "Explicit cache breakpoints",
+      "body": "Place `cache_control: {type: 'ephemeral'}` on individual content blocks for precise control. Up to 4 breakpoints per request. Useful when caching different sections with different change frequencies — e.g., cache the system prompt and a reference document separately. Place the breakpoint on the last block whose prefix is identical across requests.",
+      "tags": ["explicit", "breakpoints", "fine-grained", "per-block"]
+    },
+    {
+      "id": "pricing-economics",
+      "title": "Caching economics",
+      "body": "5-minute cache writes cost 1.25x base input price. 1-hour cache writes cost 2x. Cache reads cost 0.1x (90% savings). For 5-minute TTL: caching pays for itself after 1 cache read. For 1-hour TTL: pays off after 2 reads. At Tier 4 rates with 80% cache hit rate, you can effectively process 5x more input tokens per minute since cached reads don't count toward ITPM rate limits.",
+      "tags": ["pricing", "cost", "savings", "roi", "rate-limits"]
+    },
+    {
+      "id": "invalidation",
+      "title": "Cache invalidation",
+      "body": "Cache hierarchy: tools → system → messages. Changing any level invalidates all downstream levels. Changing tool definitions invalidates everything. Changing tool_choice only invalidates messages. Adding/removing images or changing thinking parameters invalidates messages. Design your cache strategy around what changes least frequently (tools/system) vs. what changes every turn (messages).",
+      "tags": ["invalidation", "hierarchy", "tools", "system", "messages"]
+    }
+  ],
+  "links": [
+    { "uri": "anthropic/messages", "context": "Cache control is a parameter of the Messages API" },
+    { "uri": "anthropic/pricing", "context": "Cache pricing multipliers by model" },
+    { "uri": "anthropic/rate-limits", "context": "Cached tokens don't count toward ITPM rate limits" },
+    { "uri": "anthropic/tool-use", "context": "Tool definitions are cacheable content" },
+    { "uri": "anthropic/models", "context": "Minimum cacheable tokens vary by model" }
+  ],
+  "related": [
+    { "uri": "anthropic/messages", "relation": "prerequisite", "note": "Caching is a feature of the Messages API" },
+    { "uri": "anthropic/pricing", "relation": "see-also", "note": "Cache reads at 10% of base input price" },
+    { "uri": "anthropic/rate-limits", "relation": "see-also", "note": "Cache reads don't count toward ITPM limits" },
+    { "uri": "anthropic/batch", "relation": "see-also", "note": "Batch + caching discounts stack" }
+  ],
+  "scripts": [
+    {
+      "id": "cached-request",
+      "name": "Cached Request",
+      "description": "Send a cached request to Claude and display cache performance metrics",
+      "lang": "python",
+      "runtime": "python>=3.10",
+      "entry": "./scripts/cached-request.py",
+      "env": {
+        "ANTHROPIC_API_KEY": { "required": true, "secret": true, "description": "Anthropic API key" }
+      },
+      "packages": ["anthropic"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "cache_control": {
+          "type": "object",
+          "properties": {
+            "type": { "type": "string", "enum": ["ephemeral"] },
+            "ttl": { "type": "string", "enum": ["5m", "1h"] }
+          },
+          "required": ["type"]
+        },
+        "system": { "type": ["string", "array"], "description": "System prompt with optional cache breakpoints" },
+        "messages": { "type": "array", "description": "Messages with optional cache breakpoints" }
+      }
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "usage": {
+          "type": "object",
+          "properties": {
+            "input_tokens": { "type": "integer" },
+            "cache_creation_input_tokens": { "type": "integer" },
+            "cache_read_input_tokens": { "type": "integer" },
+            "output_tokens": { "type": "integer" }
+          }
+        }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "anthropic/auth", "reason": "API key required" },
+    { "uri": "anthropic/messages", "reason": "Caching is a Messages API feature" }
+  ],
+  "more": {
+    "docs": "https://docs.anthropic.com/en/docs/build-with-claude/prompt-caching"
+  },
+  "frontmatter": {
+    "created": "2026-04-10",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "5 min",
+    "prerequisites": ["anthropic/auth", "anthropic/messages"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

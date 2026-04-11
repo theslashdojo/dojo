@@ -1,0 +1,89 @@
+{
+  "name": "auth",
+  "version": "1.0.0",
+  "uri": "anthropic/auth",
+  "type": "context",
+  "content_type": "guide",
+  "context": "Anthropic API authentication — API keys, required headers, SDK setup for Python and TypeScript",
+  "info": "All Anthropic API requests require authentication via an API key passed in the `x-api-key` header. Keys are created in the Claude Console at console.anthropic.com/settings/keys. Every request also requires `anthropic-version: 2023-06-01` and `content-type: application/json` headers. Official SDKs for Python (`pip install anthropic`) and TypeScript (`npm install @anthropic-ai/sdk`) handle headers automatically — just set the `ANTHROPIC_API_KEY` environment variable. The API base URL is `https://api.anthropic.com`. For AWS Bedrock and Google Vertex AI, use platform-specific authentication (IAM roles, service accounts) instead of API keys. Use workspaces to segment API keys by project and control spend.",
+  "parent": "anthropic",
+  "tags": ["auth", "authentication", "api-key", "headers", "sdk-setup"],
+  "aliases": [
+    "api key",
+    "authentication",
+    "anthropic auth",
+    "api key setup",
+    "claude authentication",
+    "x-api-key",
+    "anthropic api key",
+    "sdk setup",
+    "getting started"
+  ],
+  "triggers": [
+    "set up anthropic api key",
+    "authenticate with the claude api",
+    "how to get an anthropic api key",
+    "configure the anthropic sdk",
+    "what headers does the anthropic api need",
+    "install the anthropic python sdk",
+    "install the anthropic typescript sdk"
+  ],
+  "body": "# Authentication & Setup\n\nHow to authenticate with the Anthropic API and set up official SDKs.\n\n## API Key\n\n1. Create an account at [console.anthropic.com](https://console.anthropic.com)\n2. Go to Settings → API Keys\n3. Create a new key\n4. Set it as an environment variable:\n\n```bash\nexport ANTHROPIC_API_KEY=\"sk-ant-api03-...\"\n```\n\n## Required Headers\n\nEvery API request must include:\n\n| Header | Value | Required |\n|--------|-------|----------|\n| `x-api-key` | Your API key | Yes |\n| `anthropic-version` | `2023-06-01` | Yes |\n| `content-type` | `application/json` | Yes |\n\n## Python SDK\n\n```bash\npip install anthropic\n```\n\n```python\nimport anthropic\n\n# Reads ANTHROPIC_API_KEY from environment automatically\nclient = anthropic.Anthropic()\n\n# Or pass the key explicitly\nclient = anthropic.Anthropic(api_key=\"sk-ant-api03-...\")\n\n# Async client\nclient = anthropic.AsyncAnthropic()\n```\n\nThe SDK automatically sets `x-api-key`, `anthropic-version`, and `content-type` headers. It also handles retries with exponential backoff for transient errors.\n\n## TypeScript SDK\n\n```bash\nnpm install @anthropic-ai/sdk\n```\n\n```typescript\nimport Anthropic from \"@anthropic-ai/sdk\";\n\n// Reads ANTHROPIC_API_KEY from environment automatically\nconst client = new Anthropic();\n\n// Or pass the key explicitly\nconst client = new Anthropic({ apiKey: \"sk-ant-api03-...\" });\n```\n\n## curl\n\n```bash\ncurl https://api.anthropic.com/v1/messages \\\n  -H \"x-api-key: $ANTHROPIC_API_KEY\" \\\n  -H \"anthropic-version: 2023-06-01\" \\\n  -H \"content-type: application/json\" \\\n  -d '{\n    \"model\": \"claude-sonnet-4-6\",\n    \"max_tokens\": 1024,\n    \"messages\": [{\"role\": \"user\", \"content\": \"Hello\"}]\n  }'\n```\n\n## Other SDKs\n\n| Language | Package | Install |\n|----------|---------|----------|\n| Python | `anthropic` | `pip install anthropic` |\n| TypeScript | `@anthropic-ai/sdk` | `npm install @anthropic-ai/sdk` |\n| Java | `anthropic-java` | Maven/Gradle |\n| Go | `anthropic-go` | `go get` |\n| C# | `Anthropic` | NuGet |\n| PHP | `anthropic-client-php` | Composer |\n| Ruby | `anthropic-rb` | `gem install` |\n\nAll SDKs read `ANTHROPIC_API_KEY` from the environment by default.\n\n## Base URL\n\n```\nhttps://api.anthropic.com\n```\n\nAll endpoints are under `/v1/` (e.g., `/v1/messages`, `/v1/messages/batches`, `/v1/models`).\n\n## API Versioning\n\nThe `anthropic-version` header pins the API behavior. Current version: `2023-06-01`. This is a stable version — new features are added via beta headers without changing the base version.\n\n## Beta Features\n\nEnable beta features with the `anthropic-beta` header:\n\n```bash\n-H \"anthropic-beta: output-300k-2026-03-24\"\n```\n\nMultiple betas can be comma-separated.\n\n## Workspaces\n\nUse workspaces in the Claude Console to:\n- Segment API keys by project/team\n- Set per-workspace spend limits\n- Set per-workspace rate limits\n- Track usage separately\n\n## Cloud Platform Authentication\n\nFor AWS Bedrock and Google Vertex AI, use platform-native auth instead of API keys:\n\n### AWS Bedrock\n\n```python\nimport anthropic\n\nclient = anthropic.AnthropicBedrock(\n    aws_region=\"us-east-1\"\n    # Uses AWS credentials from environment/IAM role\n)\n```\n\n### Google Vertex AI\n\n```python\nimport anthropic\n\nclient = anthropic.AnthropicVertex(\n    project_id=\"my-project\",\n    region=\"us-east5\"\n    # Uses Google Cloud credentials from environment\n)\n```\n\n## Security Best Practices\n\n- Never commit API keys to version control\n- Use environment variables or secret managers\n- Rotate keys periodically\n- Use workspaces to limit blast radius\n- Set spend limits per workspace\n- Monitor usage in the Claude Console\n",
+  "sections": [
+    {
+      "id": "api-key",
+      "title": "Getting and using API keys",
+      "body": "Create API keys at console.anthropic.com → Settings → API Keys. Keys start with `sk-ant-api03-`. Set as the `ANTHROPIC_API_KEY` environment variable for SDKs to auto-detect. Never hardcode keys in source code. Use workspace-scoped keys to limit access and track usage per project.",
+      "tags": ["api-key", "console", "environment-variable", "workspace"]
+    },
+    {
+      "id": "sdk-setup",
+      "title": "SDK installation and setup",
+      "body": "Python: `pip install anthropic` → `client = anthropic.Anthropic()`. TypeScript: `npm install @anthropic-ai/sdk` → `new Anthropic()`. Both read `ANTHROPIC_API_KEY` from environment. Both provide sync and async clients. SDKs handle auth headers, retries, streaming, and type safety automatically.",
+      "tags": ["python", "typescript", "pip", "npm", "install", "sdk"]
+    },
+    {
+      "id": "headers",
+      "title": "Required headers",
+      "body": "Every raw HTTP request needs three headers: `x-api-key` (your API key), `anthropic-version: 2023-06-01` (API version), and `content-type: application/json`. Beta features require an additional `anthropic-beta` header. SDKs set all required headers automatically.",
+      "tags": ["headers", "x-api-key", "anthropic-version", "content-type", "beta"]
+    },
+    {
+      "id": "cloud-auth",
+      "title": "Cloud platform authentication",
+      "body": "For AWS Bedrock: use `anthropic.AnthropicBedrock()` which reads AWS credentials from environment/IAM roles. For Google Vertex AI: use `anthropic.AnthropicVertex()` with `project_id` and `region`. Both use platform-native auth (no API key needed). Model IDs differ by platform — see [[anthropic/models]] for mapping.",
+      "tags": ["bedrock", "vertex-ai", "aws", "gcp", "iam", "cloud"]
+    }
+  ],
+  "links": [
+    { "uri": "anthropic/messages", "context": "Authentication is required for all Messages API calls" },
+    { "uri": "anthropic/models", "context": "Cloud platform model IDs for Bedrock/Vertex" },
+    { "uri": "anthropic/rate-limits", "context": "Rate limits are per-organization, managed via workspaces" },
+    { "uri": "anthropic/pricing", "context": "Spend limits configurable per workspace" }
+  ],
+  "related": [
+    { "uri": "anthropic/messages", "relation": "see-also", "note": "Auth is a prerequisite for all API calls" },
+    { "uri": "anthropic/rate-limits", "relation": "see-also", "note": "Workspaces can set custom rate limits" }
+  ],
+  "more": {
+    "docs": "https://docs.anthropic.com/en/api/getting-started",
+    "console": "https://console.anthropic.com",
+    "keys": "https://console.anthropic.com/settings/keys",
+    "sdk-python": "https://github.com/anthropics/anthropic-sdk-python",
+    "sdk-typescript": "https://github.com/anthropics/anthropic-sdk-typescript"
+  },
+  "frontmatter": {
+    "created": "2026-04-10",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "3 min",
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

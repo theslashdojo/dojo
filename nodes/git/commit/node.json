@@ -1,0 +1,131 @@
+{
+  "name": "commit",
+  "version": "1.0.0",
+  "uri": "git/commit",
+  "type": "skill",
+  "context": "Stage files and create git commits with well-structured messages following conventional formats",
+  "info": "The commit skill covers the full staging-and-commit workflow: selectively staging files with git add, unstaging with git reset, crafting commit messages following conventional commit format, amending the last commit, creating empty commits, and using git commit with various flags. Agents use this constantly — every code change must be committed. The staging area (index) acts as a buffer between the working tree and the repository, letting you compose commits precisely. Good commit messages are critical for history readability; this skill teaches the conventional commits format (type(scope): description) and when to use each type. See [[git/diff]] to review changes before committing, [[git/log]] to verify commit history, and [[git/stash]] to shelve work before committing something else.",
+  "parent": "git",
+  "tags": ["commit", "staging", "git-add", "git-commit", "conventional-commits", "amend"],
+  "aliases": [
+    "git commit",
+    "git add",
+    "stage files",
+    "commit changes",
+    "save changes",
+    "create commit",
+    "amend commit",
+    "commit message",
+    "conventional commit",
+    "stage and commit"
+  ],
+  "triggers": [
+    "commit these changes",
+    "stage and commit files",
+    "write a commit message",
+    "amend the last commit",
+    "how to write good commit messages",
+    "stage specific files",
+    "create a commit",
+    "commit with a message",
+    "undo staging"
+  ],
+  "body": "# Git Commit\n\nCommitting is the most fundamental git operation. Every meaningful change to a codebase becomes a commit — a permanent snapshot with a message explaining why.\n\n## Staging Files\n\nThe staging area (index) lets you compose exactly what goes into a commit.\n\n```bash\n# Stage specific files\ngit add src/auth.js test/auth.test.js\n\n# Stage all changes in a directory\ngit add src/\n\n# Stage all tracked file changes (not new files)\ngit add -u\n\n# Stage everything (use with caution)\ngit add -A\n\n# Stage hunks interactively (for splitting changes)\ngit add -p\n```\n\n### Unstaging\n\n```bash\n# Unstage a file (keep working tree changes)\ngit reset HEAD src/auth.js\n\n# Unstage everything\ngit reset HEAD\n\n# Modern alternative (git 2.23+)\ngit restore --staged src/auth.js\n```\n\n## Creating Commits\n\n```bash\n# Commit staged changes with inline message\ngit commit -m \"feat(auth): add JWT token validation\"\n\n# Commit with multi-line message\ngit commit -m \"fix(api): handle null response from upstream\" -m \"The payment gateway occasionally returns null instead of an error object. Added null check before accessing response.status.\"\n\n# Open editor for message\ngit commit\n\n# Stage all tracked changes and commit in one step\ngit commit -am \"chore: update dependencies\"\n\n# Create an empty commit (useful for triggering CI)\ngit commit --allow-empty -m \"ci: trigger rebuild\"\n```\n\n## Conventional Commits Format\n\nThe standard format for commit messages in professional codebases:\n\n```\n<type>(<scope>): <description>\n\n[optional body]\n\n[optional footer(s)]\n```\n\n### Types\n\n| Type | When to use |\n|------|-------------|\n| `feat` | New feature or capability |\n| `fix` | Bug fix |\n| `docs` | Documentation only |\n| `style` | Formatting, whitespace (no logic change) |\n| `refactor` | Code change that neither fixes nor adds |\n| `perf` | Performance improvement |\n| `test` | Adding or correcting tests |\n| `chore` | Build, CI, tooling, dependencies |\n| `ci` | CI/CD configuration changes |\n| `revert` | Reverting a previous commit |\n\n### Examples\n\n```\nfeat(auth): add OAuth2 provider support\n\nAdded Google and GitHub OAuth2 providers to the authentication\nmodule. Users can now sign in with their existing accounts.\n\nCloses #142\n```\n\n```\nfix(api): prevent race condition in concurrent requests\n\nMutex was not held during the read-modify-write cycle in the\nsession store. Added proper locking around the critical section.\n```\n\n## Amending Commits\n\n```bash\n# Amend the last commit message\ngit commit --amend -m \"fix(api): correct error handling\"\n\n# Amend to add forgotten files (keep same message)\ngit add forgotten-file.js\ngit commit --amend --no-edit\n```\n\n**Warning**: Never amend commits that have been pushed to a shared branch. This rewrites history and forces others to re-sync. See [[git/rebase]] for rewriting older commits.\n\n## Reviewing Before Committing\n\nAlways review what you're about to commit:\n\n```bash\n# See what's staged (will be committed)\ngit diff --staged\n\n# See what's changed but not staged\ngit diff\n\n# See status overview\ngit status\n\n# See specific file changes\ngit diff --staged -- src/auth.js\n```\n\nSee [[git/diff]] for comprehensive diff usage.\n\n## Signing Commits\n\n```bash\n# Sign with GPG\ngit commit -S -m \"feat: signed commit\"\n\n# Always sign (configure globally)\ngit config --global commit.gpgsign true\n```\n\n## Common Patterns for Agents\n\n1. **Always stage specific files** — avoid `git add -A` which can catch secrets or build artifacts\n2. **Check status before committing** — `git status` prevents surprises\n3. **Review diffs before committing** — `git diff --staged` ensures you commit what you intend\n4. **Write descriptive messages** — future agents and humans read these\n5. **One logical change per commit** — don't mix refactoring with features\n",
+  "sections": [
+    {
+      "id": "staging",
+      "title": "Staging files with git add",
+      "body": "Use `git add <path>` to stage specific files or directories. Use `git add -p` to stage individual hunks for splitting changes across commits. Use `git add -u` to stage modifications to tracked files without adding new untracked files. Avoid `git add -A` in automated contexts — it can accidentally stage secrets, `.env` files, or build artifacts. Always verify with `git status` after staging. Unstage with `git restore --staged <path>` (git 2.23+) or `git reset HEAD <path>`.",
+      "tags": ["staging", "git-add", "hunks", "selective-staging", "unstage"]
+    },
+    {
+      "id": "message-format",
+      "title": "Commit message conventions",
+      "body": "Use conventional commits format: `type(scope): description`. The type classifies the change (feat, fix, docs, refactor, test, chore, perf, ci, style, revert). The scope is optional and identifies the module affected. The description is imperative mood, lowercase, no period. The body (after blank line) explains why, not what. Footers reference issues (`Closes #42`) or note breaking changes (`BREAKING CHANGE: removed v1 API`). Good messages make [[git/log]] and `git blame` useful.",
+      "tags": ["conventional-commits", "commit-message", "format", "imperative-mood"]
+    },
+    {
+      "id": "amend",
+      "title": "Amending the last commit",
+      "body": "Use `git commit --amend` to modify the most recent commit. Add `--no-edit` to keep the existing message while adding staged changes. Add `-m \"new message\"` to change the message. Amending rewrites the commit hash, so never amend commits already pushed to shared branches. For rewriting older history, see [[git/rebase]]. Amending is safe for local-only commits and is commonly used to fix typos or add forgotten files.",
+      "tags": ["amend", "rewrite", "fix-last-commit"]
+    },
+    {
+      "id": "signing",
+      "title": "Signing commits with GPG or SSH",
+      "body": "Sign commits with `git commit -S` using GPG, or configure SSH signing with `git config gpg.format ssh` and `git config user.signingkey <key>`. Enable auto-signing with `git config commit.gpgsign true`. Signed commits show a 'Verified' badge on GitHub. See [[git/config]] for global signing configuration.",
+      "tags": ["signing", "gpg", "ssh-signing", "verified"]
+    }
+  ],
+  "links": [
+    { "uri": "git/diff", "context": "Review changes before committing" },
+    { "uri": "git/log", "context": "Verify commits after creating them" },
+    { "uri": "git/stash", "context": "Shelve work before committing something else" },
+    { "uri": "git/branch", "context": "Commits advance the current branch pointer" },
+    { "uri": "git/rebase", "context": "Rewrite older commits beyond amend" },
+    { "uri": "git/hooks", "context": "Pre-commit hooks validate before committing" },
+    { "uri": "git/config", "context": "Configure author identity and signing" },
+    { "uri": "git/troubleshooting", "context": "Undo or fix bad commits" }
+  ],
+  "related": [
+    { "uri": "git/diff", "relation": "prerequisite", "note": "Review staged changes before creating commits" },
+    { "uri": "git/hooks", "relation": "see-also", "note": "Pre-commit hooks run automatically before each commit" },
+    { "uri": "git/rebase", "relation": "see-also", "note": "Interactive rebase can edit, squash, and reorder past commits" },
+    { "uri": "git/log", "relation": "see-also", "note": "Log shows the commits you've created" }
+  ],
+  "scripts": [
+    {
+      "id": "commit-staged",
+      "name": "Commit Staged Changes",
+      "description": "Stage specific files and create a conventional commit",
+      "lang": "bash",
+      "runtime": "git>=2.30",
+      "entry": "./scripts/commit-staged.sh",
+      "inline": "#!/usr/bin/env bash\nset -euo pipefail\n\n# Usage: commit-staged.sh <type> <scope> <message> [files...]\n# Example: commit-staged.sh feat auth \"add JWT validation\" src/auth.js test/auth.test.js\n\nTYPE=\"${1:?Usage: commit-staged.sh <type> <scope> <message> [files...]}\"\nSCOPE=\"${2:?Missing scope}\"\nMSG=\"${3:?Missing message}\"\nshift 3\n\nif [ $# -eq 0 ]; then\n  echo \"Error: No files specified. Stage files explicitly.\"\n  exit 1\nfi\n\n# Stage specified files\nfor f in \"$@\"; do\n  if [ ! -e \"$f\" ]; then\n    echo \"Warning: $f does not exist, skipping\"\n    continue\n  fi\n  git add \"$f\"\ndone\n\n# Verify something is staged\nif git diff --cached --quiet; then\n  echo \"Nothing staged to commit.\"\n  exit 1\nfi\n\n# Show what will be committed\necho \"=== Staged changes ===\"\ngit diff --cached --stat\necho\n\n# Commit\nif [ -n \"$SCOPE\" ] && [ \"$SCOPE\" != \"-\" ]; then\n  git commit -m \"${TYPE}(${SCOPE}): ${MSG}\"\nelse\n  git commit -m \"${TYPE}: ${MSG}\"\nfi\n\necho\ngit log --oneline -1"
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "files": { "type": "array", "items": { "type": "string" }, "description": "Files to stage" },
+        "message": { "type": "string", "description": "Commit message" },
+        "type": { "type": "string", "enum": ["feat", "fix", "docs", "style", "refactor", "perf", "test", "chore", "ci", "revert"], "description": "Conventional commit type" },
+        "scope": { "type": "string", "description": "Module or area affected" },
+        "amend": { "type": "boolean", "default": false, "description": "Amend the last commit instead of creating new" }
+      },
+      "required": ["files", "message"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "sha": { "type": "string", "description": "Full SHA of the created commit" },
+        "shortSha": { "type": "string", "description": "Short SHA (7 chars)" },
+        "message": { "type": "string", "description": "The commit message used" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "git/config", "reason": "Author identity must be configured before committing", "optional": true }
+  ],
+  "more": {
+    "docs": "https://git-scm.com/docs/git-commit",
+    "book": "https://git-scm.com/book/en/v2/Git-Basics-Recording-Changes-to-the-Repository",
+    "conventional-commits": "https://www.conventionalcommits.org/en/v1.0.0/"
+  },
+  "frontmatter": {
+    "created": "2026-04-10",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "5 min",
+    "prerequisites": ["git/config"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

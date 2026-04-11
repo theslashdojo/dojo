@@ -1,0 +1,99 @@
+{
+  "name": "hooks",
+  "version": "1.0.0",
+  "uri": "git/hooks",
+  "type": "context",
+  "content_type": "reference",
+  "context": "Automate actions with git hooks — pre-commit, pre-push, commit-msg, and other lifecycle triggers",
+  "info": "Git hooks are scripts that run automatically at specific points in the git workflow: before committing, before pushing, after merging, and more. They live in .git/hooks/ (local, not shared) or can be managed with tools like Husky, lint-staged, and pre-commit framework for team-wide enforcement. Hooks are the primary mechanism for enforcing code quality gates: running linters, formatters, type checkers, and tests before code is committed or pushed. Agents must understand hooks because they run during git operations and can cause failures — a pre-commit hook rejecting a commit is a common source of confusion. See [[git/commit]] for how pre-commit hooks interact with committing, [[git/config]] for configuring hook paths, and [[git/remote]] for pre-push hooks.",
+  "parent": "git",
+  "tags": ["hooks", "pre-commit", "pre-push", "commit-msg", "husky", "lint-staged", "automation"],
+  "aliases": [
+    "git hooks",
+    "pre-commit hook",
+    "pre-push hook",
+    "commit-msg hook",
+    "husky",
+    "lint-staged",
+    "pre-commit framework",
+    "git hook scripts",
+    "client-side hooks"
+  ],
+  "triggers": [
+    "set up pre-commit hooks",
+    "run linting before commit",
+    "add a pre-push hook",
+    "configure husky",
+    "set up lint-staged",
+    "why did my commit fail",
+    "validate commit messages",
+    "automate code formatting on commit",
+    "skip git hooks"
+  ],
+  "body": "# Git Hooks\n\nHooks are scripts that git executes automatically at specific lifecycle events. They enforce quality, consistency, and process.\n\n## Hook Types\n\n### Client-Side Hooks (Local)\n\n| Hook | Trigger | Common Use |\n|------|---------|------------|\n| `pre-commit` | Before commit is created | Lint, format, type-check |\n| `prepare-commit-msg` | After default message, before editor | Prepopulate commit message |\n| `commit-msg` | After message is entered | Validate message format |\n| `post-commit` | After commit completes | Notifications, logging |\n| `pre-rebase` | Before rebase starts | Prevent rebase on protected branches |\n| `post-merge` | After merge completes | Reinstall dependencies |\n| `pre-push` | Before push to remote | Run tests, prevent push to main |\n| `post-checkout` | After branch switch | Rebuild, reinstall deps |\n\n### Server-Side Hooks\n\n| Hook | Trigger | Common Use |\n|------|---------|------------|\n| `pre-receive` | Before accepting push | Enforce branch policies |\n| `update` | Per branch update | Per-branch access control |\n| `post-receive` | After push accepted | Deploy, notify |\n\n## Setting Up Hooks Manually\n\nHooks live in `.git/hooks/`. Create an executable script with the hook name:\n\n```bash\n# Create a pre-commit hook\ncat > .git/hooks/pre-commit << 'EOF'\n#!/usr/bin/env bash\nset -euo pipefail\n\necho \"Running pre-commit checks...\"\n\n# Run linter on staged files\nSTAGED_JS=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\\.(js|ts|jsx|tsx)$' || true)\nif [ -n \"$STAGED_JS\" ]; then\n  echo \"Linting staged JS/TS files...\"\n  echo \"$STAGED_JS\" | xargs npx eslint --fix\n  echo \"$STAGED_JS\" | xargs git add  # re-stage after fix\nfi\n\n# Check for debug statements\nif git diff --cached --diff-filter=ACM | grep -n 'console\\.log\\|debugger\\|TODO' > /dev/null 2>&1; then\n  echo \"Warning: Found debug statements or TODOs in staged changes\"\n  # exit 1  # Uncomment to block commit\nfi\n\necho \"Pre-commit checks passed.\"\nEOF\n\nchmod +x .git/hooks/pre-commit\n```\n\n## Husky (Node.js Projects)\n\nHusky is the standard tool for managing git hooks in Node.js projects:\n\n```bash\n# Install\nnpm install --save-dev husky\n\n# Initialize\nnpx husky init\n\n# Add a pre-commit hook\necho \"npm run lint\" > .husky/pre-commit\n\n# Add a pre-push hook\necho \"npm test\" > .husky/pre-push\n\n# Add commit-msg validation\necho 'npx commitlint --edit \"$1\"' > .husky/commit-msg\n```\n\nHusky hooks are shared via the repo (unlike `.git/hooks/` which is local-only).\n\n## lint-staged\n\nRun linters only on staged files (fast, focused):\n\n```bash\nnpm install --save-dev lint-staged\n```\n\n```json\n// package.json\n{\n  \"lint-staged\": {\n    \"*.{js,ts,jsx,tsx}\": [\"eslint --fix\", \"prettier --write\"],\n    \"*.{css,scss}\": [\"stylelint --fix\"],\n    \"*.{json,md}\": [\"prettier --write\"]\n  }\n}\n```\n\nIn `.husky/pre-commit`:\n```bash\nnpx lint-staged\n```\n\n## pre-commit Framework (Python)\n\nThe `pre-commit` framework works across languages:\n\n```bash\npip install pre-commit\n```\n\n```yaml\n# .pre-commit-config.yaml\nrepos:\n  - repo: https://github.com/pre-commit/pre-commit-hooks\n    rev: v4.5.0\n    hooks:\n      - id: trailing-whitespace\n      - id: end-of-file-fixer\n      - id: check-yaml\n      - id: check-json\n      - id: check-added-large-files\n  - repo: https://github.com/psf/black\n    rev: 24.1.0\n    hooks:\n      - id: black\n  - repo: https://github.com/astral-sh/ruff-pre-commit\n    rev: v0.2.0\n    hooks:\n      - id: ruff\n        args: [--fix]\n```\n\n```bash\npre-commit install\npre-commit run --all-files  # test on all files\n```\n\n## Commit Message Validation\n\n```bash\n# .git/hooks/commit-msg (or .husky/commit-msg)\n#!/usr/bin/env bash\nMSG=$(cat \"$1\")\nPATTERN='^(feat|fix|docs|style|refactor|perf|test|chore|ci|revert)(\\(.+\\))?: .{1,72}'\n\nif ! echo \"$MSG\" | head -1 | grep -qE \"$PATTERN\"; then\n  echo \"ERROR: Commit message must follow Conventional Commits format:\"\n  echo \"  type(scope): description\"\n  echo \"  Types: feat, fix, docs, style, refactor, perf, test, chore, ci, revert\"\n  echo\n  echo \"Your message: $MSG\"\n  exit 1\nfi\n```\n\nOr use commitlint:\n```bash\nnpm install --save-dev @commitlint/cli @commitlint/config-conventional\necho \"module.exports = { extends: ['@commitlint/config-conventional'] }\" > commitlint.config.js\n```\n\n## Bypassing Hooks\n\n```bash\n# Skip pre-commit and commit-msg hooks\ngit commit --no-verify -m \"emergency fix\"\n\n# Skip pre-push hook\ngit push --no-verify\n```\n\n**Warning for agents**: Bypassing hooks should be rare and justified. If a hook fails, investigate and fix the underlying issue rather than skipping the hook.\n\n## Hook Exit Codes\n\n- Exit `0` — hook passes, git continues\n- Exit non-zero — hook fails, git aborts the operation\n- Hooks receive arguments specific to their type (e.g., commit-msg receives the message file path)\n\n## Agent Best Practices\n\n1. **Never skip hooks without reason** — hooks exist to catch problems\n2. **Understand hook failures** — read the error output; it usually explains what to fix\n3. **Re-stage after auto-fixes** — if pre-commit modifies files, `git add` them before retrying\n4. **Use lint-staged** — running linters on the full codebase is slow; lint-staged scopes to changed files\n5. **Test hooks** — run `git commit --dry-run` or `pre-commit run` to test without committing\n6. **Check for hooks** — `ls .git/hooks/ .husky/ .pre-commit-config.yaml` to discover what's configured\n",
+  "sections": [
+    {
+      "id": "types",
+      "title": "Hook types and triggers",
+      "body": "Client-side hooks: `pre-commit` (before commit), `prepare-commit-msg` (before editor), `commit-msg` (validate message), `post-commit` (after commit), `pre-push` (before push), `post-merge` (after merge), `post-checkout` (after switch). Server-side: `pre-receive`, `update`, `post-receive`. Each hook receives specific arguments and can abort the operation by exiting non-zero.",
+      "tags": ["types", "client-side", "server-side", "lifecycle"]
+    },
+    {
+      "id": "husky",
+      "title": "Husky for Node.js projects",
+      "body": "Install with `npm install --save-dev husky && npx husky init`. Add hooks as files in `.husky/` directory. Husky hooks are committed to the repo and shared across the team (unlike `.git/hooks/`). Common setup: pre-commit runs lint-staged, pre-push runs tests, commit-msg runs commitlint. Husky v9+ uses simple shell scripts in `.husky/`.",
+      "tags": ["husky", "nodejs", "shared-hooks", "team"]
+    },
+    {
+      "id": "lint-staged",
+      "title": "lint-staged for efficient pre-commit checks",
+      "body": "lint-staged runs tools only on staged files, making pre-commit hooks fast regardless of project size. Configure in `package.json` under `lint-staged` key: map glob patterns to commands. Example: `\"*.{js,ts}\": [\"eslint --fix\", \"prettier --write\"]`. Invoke from `.husky/pre-commit` with `npx lint-staged`. Tools auto-fix files in place and re-stage them.",
+      "tags": ["lint-staged", "staged-files", "performance", "auto-fix"]
+    },
+    {
+      "id": "commit-msg-validation",
+      "title": "Commit message validation",
+      "body": "The `commit-msg` hook receives the path to the message file as `$1`. Read with `cat \"$1\"`, validate with regex, exit non-zero to reject. Use commitlint (`@commitlint/cli` + `@commitlint/config-conventional`) for structured validation of Conventional Commits format. See [[git/commit]] for the message format details.",
+      "tags": ["commit-msg", "validation", "commitlint", "conventional-commits"]
+    },
+    {
+      "id": "bypassing",
+      "title": "Bypassing hooks and troubleshooting",
+      "body": "`--no-verify` skips pre-commit and commit-msg hooks on commit, and pre-push on push. Use sparingly and only when justified (e.g., emergency hotfix). If a hook fails: read the error output, fix the issue, re-stage files if modified, retry the commit. Common issue: auto-formatters modify files but they aren't re-staged — run `git add` on modified files.",
+      "tags": ["bypass", "no-verify", "troubleshooting", "fix-hooks"]
+    }
+  ],
+  "links": [
+    { "uri": "git/commit", "context": "Pre-commit hooks run during commit" },
+    { "uri": "git/remote", "context": "Pre-push hooks run during push" },
+    { "uri": "git/config", "context": "core.hooksPath configures hook directory" },
+    { "uri": "git/merge", "context": "Post-merge hooks run after merge" },
+    { "uri": "git/rebase", "context": "Pre-rebase hooks can prevent unsafe rebases" }
+  ],
+  "related": [
+    { "uri": "git/commit", "relation": "see-also", "note": "Pre-commit and commit-msg hooks are the most commonly used" },
+    { "uri": "git/config", "relation": "see-also", "note": "core.hooksPath can redirect hooks to a shared directory" },
+    { "uri": "github/actions", "relation": "see-also", "note": "GitHub Actions provide server-side CI that complements local hooks" }
+  ],
+  "more": {
+    "docs": "https://git-scm.com/docs/githooks",
+    "book": "https://git-scm.com/book/en/v2/Customizing-Git-Git-Hooks",
+    "husky": "https://typicode.github.io/husky/",
+    "lint-staged": "https://github.com/lint-staged/lint-staged",
+    "pre-commit": "https://pre-commit.com/"
+  },
+  "frontmatter": {
+    "created": "2026-04-10",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "6 min",
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

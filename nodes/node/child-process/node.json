@@ -1,0 +1,154 @@
+{
+  "name": "child-process",
+  "version": "1.0.0",
+  "uri": "node/child-process",
+  "type": "skill",
+  "context": "Spawn child processes, execute shell commands, and orchestrate external tools from Node.js",
+  "info": "The Node.js child_process module provides four methods for running external programs: exec runs a command string through a shell and buffers stdout/stderr, execFile invokes a binary directly without a shell for better security and performance, spawn streams stdio for long-running or large-output processes, and fork creates a Node.js child with a built-in IPC channel for message passing. Each method has a synchronous variant (execSync, execFileSync, spawnSync) that blocks the event loop. All methods accept options for cwd, env, shell, timeout, maxBuffer, and signal (AbortController). The spawn function returns a ChildProcess object whose stdin, stdout, and stderr are Node streams — pipe them, inherit them, or ignore them via the stdio option. Exit codes indicate success (0) or failure (non-zero); signals like SIGTERM and SIGKILL indicate forced termination. Agents use child_process to run build tools, test runners, git commands, package managers, linters, formatters, and any CLI tool programmatically from JavaScript.",
+  "parent": "node",
+  "tags": ["child-process", "spawn", "exec", "fork", "subprocess", "shell", "cli"],
+  "aliases": [
+    "child process",
+    "exec",
+    "spawn",
+    "fork",
+    "shell command",
+    "run command",
+    "execute command",
+    "subprocess",
+    "child_process",
+    "node:child_process",
+    "execFile"
+  ],
+  "triggers": [
+    "run a shell command from node",
+    "spawn a child process",
+    "execute an external tool",
+    "run a CLI command programmatically",
+    "pipe output between processes",
+    "fork a node worker process",
+    "run git from javascript",
+    "execute a build tool from code"
+  ],
+  "body": "# Child Process\n\nThe `child_process` module is how Node.js runs external programs. Choose the right method based on your needs: `exec` for simple commands, `execFile` for safe direct execution, `spawn` for streaming, and `fork` for Node-to-Node IPC.\n\n## exec — Simple Shell Commands\n\n```javascript\nimport { exec } from 'node:child_process';\nimport { promisify } from 'node:util';\n\nconst execAsync = promisify(exec);\n\n// Run a shell command and capture buffered output\nconst { stdout, stderr } = await execAsync('git status --short');\nconsole.log(stdout);\n\n// Set working directory, timeout, and buffer size\nconst { stdout: files } = await execAsync('ls -la', {\n  cwd: '/tmp',\n  timeout: 5000,\n  maxBuffer: 10 * 1024 * 1024, // 10MB (default is 1MB)\n});\n\n// Shell features work: pipes, globbing, redirection\nconst { stdout: count } = await execAsync('find . -name \"*.js\" | wc -l');\n```\n\n```javascript\n// execSync — blocks the event loop, use only in CLI scripts\nimport { execSync } from 'node:child_process';\nconst version = execSync('node --version', { encoding: 'utf-8' }).trim();\n```\n\n## execFile — Safer Direct Execution\n\n```javascript\nimport { execFile } from 'node:child_process';\nimport { promisify } from 'node:util';\n\nconst execFileAsync = promisify(execFile);\n\n// No shell — arguments passed directly to binary, preventing injection\nconst { stdout } = await execFileAsync('git', ['log', '--oneline', '-5']);\nconst { stdout: nodeVer } = await execFileAsync('node', ['--version']);\n\n// Preferred when you have a known binary + arguments\n// User input is safe because no shell interprets metacharacters\nconst { stdout: result } = await execFileAsync('./my-tool', ['--input', userFile]);\n```\n\n## spawn — Streaming for Long-Running Processes\n\n```javascript\nimport { spawn } from 'node:child_process';\n\n// Inherit all stdio — preserves terminal colors and interactivity\nconst build = spawn('npm', ['run', 'build'], {\n  cwd: '/path/to/project',\n  stdio: 'inherit',\n});\nbuild.on('close', (code) => console.log(`Build exited: ${code}`));\n\n// Capture output as streams\nconst proc = spawn('git', ['log', '--oneline', '-20']);\nlet output = '';\nproc.stdout.on('data', (chunk) => { output += chunk; });\nproc.stderr.on('data', (chunk) => { process.stderr.write(chunk); });\nproc.on('close', (code) => {\n  if (code === 0) console.log(output);\n  else console.error(`Failed with code ${code}`);\n});\n\n// Pipe between processes (like shell pipes)\nconst grep = spawn('grep', ['error']);\nconst cat = spawn('cat', ['server.log']);\ncat.stdout.pipe(grep.stdin);\ngrep.stdout.pipe(process.stdout);\n\n// AbortController for timeout/cancellation\nconst controller = new AbortController();\nconst child = spawn('long-task', [], { signal: controller.signal });\nsetTimeout(() => controller.abort(), 30000);\n```\n\n## fork — Node.js IPC Workers\n\n```javascript\nimport { fork } from 'node:child_process';\n\n// Fork a Node.js module with built-in IPC channel\nconst worker = fork('./worker.mjs');\n\n// Send structured messages to child\nworker.send({ task: 'process', data: items });\n\n// Receive messages from child\nworker.on('message', (result) => {\n  console.log('Worker result:', result);\n});\n\nworker.on('exit', (code) => {\n  console.log(`Worker exited: ${code}`);\n});\n\n// In worker.mjs:\n// process.on('message', (msg) => {\n//   const result = doWork(msg.data);\n//   process.send(result);\n// });\n```\n\n## stdio Configuration\n\n```javascript\nimport { spawn } from 'node:child_process';\n\n// stdio is an array of [stdin, stdout, stderr] or a shorthand string\nspawn('cmd', [], { stdio: 'inherit' });                    // forward all to parent\nspawn('cmd', [], { stdio: 'pipe' });                       // all piped (default)\nspawn('cmd', [], { stdio: ['ignore', 'pipe', 'pipe'] });   // ignore stdin, pipe out/err\nspawn('cmd', [], { stdio: ['pipe', 'inherit', 'inherit'] });// pipe stdin, forward out/err\nspawn('cmd', [], { stdio: 'ignore' });                     // discard all I/O\n\n// Write to child stdin\nconst child = spawn('cat', [], { stdio: ['pipe', 'inherit', 'inherit'] });\nchild.stdin.write('hello from parent\\n');\nchild.stdin.end();\n```\n\n## Error Handling and Exit Codes\n\n```javascript\nimport { spawn } from 'node:child_process';\n\nconst child = spawn('some-tool', ['--flag']);\n\n// ENOENT — binary not found in PATH\nchild.on('error', (err) => {\n  if (err.code === 'ENOENT') {\n    console.error('Binary not found. Is it installed and in PATH?');\n  } else if (err.code === 'EACCES') {\n    console.error('Permission denied. Check file permissions.');\n  } else {\n    console.error('Spawn error:', err.message);\n  }\n});\n\n// Exit codes (0 = success) and signals (SIGTERM, SIGKILL)\nchild.on('close', (code, signal) => {\n  if (signal) {\n    console.error(`Killed by signal: ${signal}`);\n  } else if (code !== 0) {\n    console.error(`Exited with code: ${code}`);\n  }\n});\n```\n\n## Signal Handling\n\n```javascript\nimport { spawn } from 'node:child_process';\n\nconst child = spawn('long-running-server', []);\n\n// Graceful shutdown: SIGTERM first, then SIGKILL after timeout\nfunction shutdown() {\n  child.kill('SIGTERM');\n  setTimeout(() => {\n    if (!child.killed) {\n      child.kill('SIGKILL');\n    }\n  }, 5000);\n}\n\nprocess.on('SIGINT', shutdown);\nprocess.on('SIGTERM', shutdown);\n```\n\n## Environment Variable Passing\n\n```javascript\nimport { spawn } from 'node:child_process';\n\n// Child inherits parent env by default. Override selectively:\nconst child = spawn('my-tool', [], {\n  env: {\n    ...process.env,           // inherit everything\n    NODE_ENV: 'production',   // override specific vars\n    API_KEY: 'secret',        // add new vars\n  },\n});\n\n// Minimal env (only what the child needs)\nconst minimal = spawn('my-tool', [], {\n  env: {\n    PATH: process.env.PATH,\n    HOME: process.env.HOME,\n    MY_CONFIG: 'value',\n  },\n});\n```\n\n## Cross-Platform Considerations\n\n```javascript\nimport { spawn } from 'node:child_process';\n\n// On Windows, use { shell: true } to run .cmd and .bat files\nconst child = spawn('npm', ['run', 'build'], {\n  shell: process.platform === 'win32',\n});\n\n// Or use cross-spawn package for consistent behavior\n// import spawn from 'cross-spawn';\n// const child = spawn('npm', ['run', 'build']);\n```\n\n## Environment Variables\n\n| Variable | Purpose |\n|----------|----------|\n| `PATH` | Directories searched for executables when spawning commands |\n| `SHELL` | Default shell used by `exec` on Unix (`/bin/sh` if unset) |\n| `COMSPEC` | Default shell used by `exec` on Windows (`cmd.exe` if unset) |\n| `NODE_OPTIONS` | Options passed to forked Node.js child processes |\n| `NODE_PATH` | Additional module search paths inherited by forked children |\n",
+  "sections": [
+    {
+      "id": "exec-execfile",
+      "title": "exec and execFile",
+      "body": "The `exec` function runs a command string through a shell (`/bin/sh` on Unix, `cmd.exe` on Windows) and buffers stdout and stderr into strings. Promisify it with `util.promisify` for async/await. Set `maxBuffer` to increase the 1MB default for commands with large output. Set `timeout` to kill runaway processes. `execFile` invokes a binary directly without a shell — arguments are passed as an array, preventing shell injection. Prefer execFile when you have a known binary and arguments. Both have sync variants (`execSync`, `execFileSync`) that block the event loop and should only be used in CLI scripts or startup code.",
+      "tags": ["exec", "execfile", "execsync", "shell", "buffered", "promisify"]
+    },
+    {
+      "id": "spawn",
+      "title": "spawn for Streaming",
+      "body": "The `spawn` function starts a process and returns a ChildProcess object with streaming stdin, stdout, and stderr. Use `stdio: 'inherit'` to forward all I/O to the parent terminal (preserves colors and interactivity). Use `stdio: ['ignore', 'pipe', 'pipe']` to capture output while ignoring stdin. Spawn does not buffer output, making it suitable for long-running processes and large outputs. The `shell: true` option runs the command through a shell, enabling wildcards and pipes but introducing injection risk. Use AbortController via the `signal` option for cancellation and timeouts.",
+      "tags": ["spawn", "stream", "stdio", "pipe", "inherit", "abort"]
+    },
+    {
+      "id": "fork",
+      "title": "fork and IPC Messaging",
+      "body": "The `fork` function is a specialized spawn that creates a new Node.js process with an IPC channel. The parent calls `child.send(msg)` and listens with `child.on('message', handler)`. The child uses `process.send(msg)` and `process.on('message', handler)`. Messages are serialized via the structured clone algorithm (supports objects, arrays, Buffers, but not functions or classes). Fork is ideal for CPU-intensive work that would block the event loop — offload parsing, transformation, or computation to a forked worker. Each forked process is a full Node.js instance with its own V8 heap and event loop.",
+      "tags": ["fork", "ipc", "message", "worker", "structured-clone"]
+    },
+    {
+      "id": "error-handling",
+      "title": "Exit Codes, Signals, and Errors",
+      "body": "A process terminates with an exit code (0 = success, non-zero = failure) or a signal (SIGTERM, SIGKILL, SIGINT). The `close` event fires when all stdio streams are closed and provides both code and signal. The `error` event fires when the process cannot be spawned at all — typically ENOENT (binary not found) or EACCES (permission denied). Always handle both `error` and `close` events. Use AbortController with the `signal` option for timeout-based cancellation. Send SIGTERM for graceful shutdown and SIGKILL as a last resort. Check `child.killed` to determine if the parent sent the kill signal.",
+      "tags": ["exit-code", "signal", "sigterm", "sigkill", "enoent", "error"]
+    },
+    {
+      "id": "security",
+      "title": "Security and Shell Injection",
+      "body": "Shell injection occurs when untrusted input is interpolated into an `exec` command string. For example, `exec('git log ' + userInput)` allows arbitrary command execution if userInput contains shell metacharacters like `; rm -rf /`. Prevention: use `execFile` or `spawn` with arguments as an array — these bypass the shell entirely. If you must use `exec` (for shell features like pipes or globbing), sanitize input rigorously. Never pass user-controlled data to `exec` without validation. Prefer `spawn('git', ['log', userRef])` over `exec('git log ' + userRef)`. On Windows, be aware that `cmd.exe` has different metacharacters than `/bin/sh`.",
+      "tags": ["security", "injection", "sanitize", "shell", "metacharacters"]
+    }
+  ],
+  "links": [
+    { "uri": "node", "context": "Node.js runtime environment" },
+    { "uri": "node/streams", "context": "spawn stdio are readable/writable Node streams" },
+    { "uri": "node/fs", "context": "Combine with fs for capturing process output to files" }
+  ],
+  "related": [
+    { "uri": "node", "relation": "prerequisite", "note": "Node.js runtime is required for the child_process module" },
+    { "uri": "node/streams", "relation": "see-also", "note": "spawn returns ChildProcess with stdin/stdout/stderr as Node streams" },
+    { "uri": "node/fs", "relation": "see-also", "note": "Combine with fs for writing process output to files" }
+  ],
+  "scripts": [
+    {
+      "id": "run-command",
+      "name": "Run Command",
+      "description": "Execute shell commands with configurable exec or spawn mode, timeout, and environment",
+      "lang": "javascript",
+      "runtime": "node>=18",
+      "entry": "./scripts/run-command.js",
+      "packages": []
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "command": {
+          "type": "string",
+          "description": "Command or binary to execute"
+        },
+        "args": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Arguments to pass to the command"
+        },
+        "options": {
+          "type": "object",
+          "properties": {
+            "cwd": { "type": "string", "description": "Working directory for the child process" },
+            "env": { "type": "object", "description": "Environment variables for the child process" },
+            "shell": { "type": "boolean", "default": true, "description": "Run through a shell" },
+            "timeout": { "type": "integer", "description": "Timeout in milliseconds (0 = no timeout)" }
+          }
+        }
+      },
+      "required": ["command"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "stdout": {
+          "type": "string",
+          "description": "Standard output from the process"
+        },
+        "stderr": {
+          "type": "string",
+          "description": "Standard error from the process"
+        },
+        "exitCode": {
+          "type": "integer",
+          "description": "Process exit code (0 = success)"
+        },
+        "signal": {
+          "type": "string",
+          "description": "Signal that terminated the process (e.g., SIGTERM, SIGKILL), null if not signaled"
+        }
+      }
+    }
+  },
+  "depends": [],
+  "more": {
+    "docs": "https://nodejs.org/docs/latest/api/child_process.html",
+    "api": "https://nodejs.org/docs/latest/api/child_process.html#child-process"
+  },
+  "frontmatter": {
+    "created": "2026-04-10",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "7 min",
+    "prerequisites": ["node"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

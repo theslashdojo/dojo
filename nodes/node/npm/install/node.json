@@ -1,0 +1,120 @@
+{
+  "name": "install",
+  "version": "1.0.0",
+  "uri": "node/npm/install",
+  "type": "sub",
+  "context": "Install, update, and remove npm packages — manages dependencies, lockfiles, peer deps, overrides, and security audits",
+  "info": "This sub-skill covers the full npm dependency installation lifecycle: `npm install` for adding packages, `npm ci` for clean reproducible installs in CI, `npm update` for upgrading within semver ranges, and `npm uninstall` for removal. It explains package-lock.json management, the flattened node_modules resolution algorithm, `--save-dev` and `--save-exact` flags, peer dependency resolution, optional dependencies, the overrides field for forcing transitive dependency versions, and `npm audit` for vulnerability scanning. Agents use this skill whenever a project needs new packages, when CI pipelines require deterministic builds, or when dependency conflicts need resolution. See [[node/npm]] for the overall npm ecosystem and [[node/npm/scripts]] for running build scripts after installation.",
+  "parent": "node/npm",
+  "tags": ["npm-install", "dependencies", "node-modules", "package-lock", "npm-ci", "peer-deps", "audit"],
+  "aliases": [
+    "npm install",
+    "npm i",
+    "npm ci",
+    "npm update",
+    "npm uninstall",
+    "install dependencies",
+    "add package",
+    "clean install",
+    "dependency resolution",
+    "npm audit"
+  ],
+  "triggers": [
+    "install a package",
+    "add a dependency",
+    "clean install for CI",
+    "update packages",
+    "remove a package",
+    "fix node_modules",
+    "resolve peer dependency conflict",
+    "run npm audit",
+    "install dev dependencies"
+  ],
+  "body": "# npm install\n\nInstall, update, and remove packages from your Node.js project.\n\n## Install Modes\n\n```bash\n# Install all dependencies from package.json\nnpm install\n\n# Add a production dependency\nnpm install express\n\n# Add a dev dependency\nnpm install -D typescript\nnpm install --save-dev eslint\n\n# Add an exact version (no ^ prefix)\nnpm install --save-exact lodash@4.17.21\nnpm install -E lodash@4.17.21\n\n# Add an optional dependency\nnpm install --save-optional fsevents\n\n# Install globally\nnpm install -g typescript\n\n# Install from a git repo\nnpm install github:user/repo\nnpm install git+https://github.com/user/repo.git#branch\n\n# Install from a tarball or local folder\nnpm install ./my-local-package\nnpm install https://example.com/package.tgz\n\n# Install a specific version or range\nnpm install express@4\nnpm install express@^4.18.0\nnpm install express@latest\n```\n\n### Install Flags Reference\n\n| Flag | Short | Effect |\n|------|-------|--------|\n| `--save-dev` | `-D` | Add to devDependencies |\n| `--save-exact` | `-E` | Pin exact version (no `^` prefix) |\n| `--save-optional` | `-O` | Add to optionalDependencies |\n| `--no-save` | | Install without modifying package.json |\n| `--global` | `-g` | Install globally |\n| `--legacy-peer-deps` | | Ignore peer dependency conflicts |\n| `--force` | `-f` | Force install despite conflicts |\n| `--omit=dev` | | Skip devDependencies |\n| `--dry-run` | | Show what would be installed |\n\n## npm ci — Clean Install for CI\n\n```bash\n# Deletes node_modules, installs exactly from package-lock.json\nnpm ci\n\n# Production only (skip devDependencies)\nnpm ci --omit=dev\n```\n\n`npm ci` is faster and stricter than `npm install`:\n- Requires `package-lock.json` to exist\n- Deletes `node_modules` before installing\n- Never modifies `package.json` or `package-lock.json`\n- Fails if lock file is out of sync with `package.json`\n\n| Behavior | `npm install` | `npm ci` |\n|----------|---------------|----------|\n| Modifies lock file | Yes, if needed | Never |\n| Modifies package.json | Yes, if needed | Never |\n| Deletes node_modules | No | Yes |\n| Requires lock file | No | Yes |\n| Fails on mismatch | No | Yes |\n| Speed | Slower | Faster |\n\n**Rule**: always use `npm ci` in CI pipelines and Docker builds.\n\n## Updating and Removing\n\n```bash\n# Update all packages within semver ranges\nnpm update\n\n# Update a specific package\nnpm update express\n\n# Check for outdated packages\nnpm outdated\n\n# Remove a package\nnpm uninstall express\nnpm uninstall -D typescript\n\n# Remove extraneous packages not in package.json\nnpm prune\n\n# Production prune (remove devDependencies)\nnpm prune --omit=dev\n```\n\n## Peer Dependencies\n\nPeer dependencies declare that your package requires a specific package to be provided by the consumer:\n\n```json\n{\n  \"peerDependencies\": {\n    \"react\": \"^18.0.0\"\n  },\n  \"peerDependenciesMeta\": {\n    \"react-dom\": {\n      \"optional\": true\n    }\n  }\n}\n```\n\nnpm 7+ auto-installs peer dependencies. When conflicts arise:\n\n```bash\n# See the dependency tree to diagnose\nnpm ls react\n\n# Bypass peer dep conflicts (use cautiously)\nnpm install --legacy-peer-deps\n\n# Force through all conflicts (last resort)\nnpm install --force\n```\n\n## Dependency Overrides\n\nForce a specific version of a transitive dependency:\n\n```json\n{\n  \"overrides\": {\n    \"lodash\": \"4.17.21\",\n    \"express\": {\n      \"qs\": \"6.11.0\"\n    }\n  }\n}\n```\n\nOverrides are useful for patching security vulnerabilities in transitive dependencies, resolving duplicate versions, and forcing compatible versions when npm resolution fails.\n\n## npm audit\n\n```bash\n# Check for known vulnerabilities\nnpm audit\n\n# Auto-fix vulnerabilities\nnpm audit fix\n\n# Force major version updates to fix vulnerabilities\nnpm audit fix --force\n\n# Get JSON output for programmatic use\nnpm audit --json\n\n# Audit only production dependencies\nnpm audit --omit=dev\n\n# Set audit level threshold\nnpm audit --audit-level=high\n```\n\n## node_modules Resolution\n\nnpm uses a flattened `node_modules` structure. When two packages require different versions of the same dependency, npm hoists the most common version and nests duplicates:\n\n```\nnode_modules/\n  express/           # v4.18.2 (hoisted)\n  lodash/            # v4.17.21 (hoisted)\n  some-package/\n    node_modules/\n      lodash/        # v3.10.1 (nested — needs older version)\n```\n\n**Phantom dependencies**: code can `require()` a hoisted package it does not declare. Always declare every import in your own `dependencies`.\n",
+  "sections": [
+    {
+      "id": "install-modes",
+      "title": "Install modes and flags",
+      "body": "Use `npm install <pkg>` to add production dependencies, `npm install -D <pkg>` for dev dependencies, `npm install -E <pkg>` for exact versions, and `npm install -g <pkg>` for global binaries. Combine flags freely: `npm install -DE typescript` pins an exact dev dependency. Use `--no-save` to install without modifying `package.json`. Use `--legacy-peer-deps` to ignore peer dependency conflicts when auto-resolution fails. Use `--omit=dev` to skip devDependencies in production builds.",
+      "tags": ["install", "flags", "save-dev", "save-exact", "global", "omit"]
+    },
+    {
+      "id": "lockfile",
+      "title": "package-lock.json management",
+      "body": "The lock file pins every resolved dependency version and integrity hash. Always commit `package-lock.json` to version control. Never manually edit the lock file. Use `npm ci` in CI to install exactly what the lock file specifies — it fails if the lock file is out of sync with `package.json`. If lock file conflicts arise during merge, delete it and `node_modules`, then run `npm install` to regenerate. `npm install` updates the lock file when `package.json` changes; `npm ci` never modifies it.",
+      "tags": ["lockfile", "package-lock", "npm-ci", "integrity", "deterministic"]
+    },
+    {
+      "id": "peer-deps",
+      "title": "Peer dependency resolution",
+      "body": "Peer dependencies declare that a package expects the consumer to provide a specific dependency at a compatible version. Defined in `peerDependencies` in `package.json`. npm 7+ auto-installs peers, which can cause ERESOLVE conflicts when multiple packages require incompatible peer versions. Use `npm ls <pkg>` to trace the conflict tree. Use `--legacy-peer-deps` to fall back to npm 6 behavior (skip auto-install). Use `peerDependenciesMeta` to mark peers as optional. Use the `overrides` field to force a specific resolution when conflicts cannot be resolved otherwise.",
+      "tags": ["peer-dependencies", "eresolve", "legacy-peer-deps", "optional-peers"]
+    },
+    {
+      "id": "audit",
+      "title": "Security auditing with npm audit",
+      "body": "Run `npm audit` to scan installed packages against the npm advisory database. Use `npm audit fix` to automatically update vulnerable packages within semver ranges. Use `npm audit fix --force` to allow major version updates (may introduce breaking changes). Use `npm audit --omit=dev` to audit only production dependencies. Use `--audit-level=high` to set the minimum severity threshold. For transitive vulnerabilities that cannot be auto-fixed, use the `overrides` field in `package.json` to force a patched version.",
+      "tags": ["audit", "security", "vulnerabilities", "advisory", "overrides"]
+    }
+  ],
+  "links": [
+    { "uri": "node/npm", "context": "Parent npm skill with full ecosystem overview" },
+    { "uri": "node/npm/publish", "context": "Publish packages after building" },
+    { "uri": "node/npm/scripts", "context": "Run build scripts after installing dependencies" }
+  ],
+  "related": [
+    { "uri": "node/npm", "relation": "prerequisite", "note": "npm must be installed as part of the Node.js runtime" },
+    { "uri": "node/npm/publish", "relation": "see-also", "note": "Publishing requires dependencies to be installed and builds to pass" },
+    { "uri": "node/npm/scripts", "relation": "see-also", "note": "Scripts like postinstall run automatically after npm install" }
+  ],
+  "scripts": [
+    {
+      "id": "install-deps",
+      "name": "Install Dependencies",
+      "description": "Install npm dependencies with optional flags for dev, exact, or CI mode and run an audit check",
+      "lang": "bash",
+      "runtime": "node>=18",
+      "entry": "./scripts/install-deps.sh"
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "packages": { "type": "array", "items": { "type": "string" }, "description": "Package names to install (empty array to install all from package.json)" },
+        "flags": { "type": "string", "description": "Additional npm install flags (e.g., --save-dev --save-exact)" }
+      },
+      "required": []
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "installedCount": { "type": "integer", "description": "Number of packages installed" },
+        "auditSummary": { "type": "string", "description": "Summary of npm audit results after installation" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "node/npm", "reason": "npm CLI must be available via the Node.js installation" }
+  ],
+  "more": {
+    "docs": "https://docs.npmjs.com/cli/v10/commands/npm-install",
+    "ci-docs": "https://docs.npmjs.com/cli/v10/commands/npm-ci",
+    "audit-docs": "https://docs.npmjs.com/cli/v10/commands/npm-audit"
+  },
+  "frontmatter": {
+    "created": "2026-04-10",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "5 min",
+    "prerequisites": ["node/npm"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

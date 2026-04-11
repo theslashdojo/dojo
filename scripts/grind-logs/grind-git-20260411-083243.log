@@ -1,0 +1,763 @@
+OpenAI Codex v0.107.0 (research preview)
+--------
+workdir: /workspaces/Contracts/dojo
+model: gpt-5.4
+provider: openai
+approval: never
+sandbox: danger-full-access
+reasoning effort: xhigh
+reasoning summaries: none
+session id: 019d7bac-0f16-7821-9be2-f0defb90f54b
+--------
+user
+You are working in the Dojo repository at /workspaces/Contracts/dojo.
+
+Your task: build the "git" ecosystem node tree for Dojo.
+
+## Context
+Every code agent uses git constantly — commit, branch, merge, rebase, stash, log, diff, cherry-pick
+
+## Target Tree
+[
+  {
+    "uri": "git",
+    "type": "ecosystem"
+  },
+  {
+    "uri": "git/commit",
+    "type": "skill"
+  },
+  {
+    "uri": "git/branch",
+    "type": "skill"
+  },
+  {
+    "uri": "git/merge",
+    "type": "skill"
+  },
+  {
+    "uri": "git/rebase",
+    "type": "skill"
+  },
+  {
+    "uri": "git/stash",
+    "type": "skill"
+  },
+  {
+    "uri": "git/log",
+    "type": "skill"
+  },
+  {
+    "uri": "git/diff",
+    "type": "skill"
+  },
+  {
+    "uri": "git/remote",
+    "type": "skill"
+  },
+  {
+    "uri": "git/worktree",
+    "type": "skill"
+  },
+  {
+    "uri": "git/config",
+    "type": "context"
+  },
+  {
+    "uri": "git/hooks",
+    "type": "context"
+  },
+  {
+    "uri": "git/troubleshooting",
+    "type": "context"
+  }
+]
+
+## Instructions
+
+1. Start by reading /workspaces/Contracts/dojo/skills/dojo-node-builder/SKILL.md and follow it as the authoring workflow.
+2. Read the spec at /workspaces/Contracts/dojo/SPEC.md (sections 1-4 at minimum) and the schema at /workspaces/Contracts/dojo/schema/node.schema.json for the exact node.json format.
+3. Look at /workspaces/Contracts/dojo/nodes/github/node.json, /workspaces/Contracts/dojo/nodes/github/repos/node.json, and /workspaces/Contracts/dojo/nodes/github/issues/node.json as references for well-formed ecosystem and skill nodes.
+4. Research the official documentation for "git" from official docs, API references, SDK docs, CLI help, changelogs, and official repositories. Prioritize first-party sources over blog posts.
+5. For each node in the target tree above, create or revise the node.json file in the appropriate directory under /workspaces/Contracts/dojo/nodes/.
+6. Make every node rich and complete:
+   - context: one line, under 200 chars, tells an agent when to use this node
+   - info: dense paragraph with scope, execution surface, and why it matters
+   - body: long-form markdown with [[uri]] wiki-links, code examples, environment variables, and real commands
+   - sections: addressable chunks with ids, titles, bodies, and useful tags
+   - aliases: phrases agents and users actually say, including acronyms and common broken phrasing
+   - triggers: natural-language requests that should surface this node in search
+   - tags: concrete filterable keywords
+   - links: directed next steps to related nodes with context
+   - related: semantic relationships like prerequisite, see-also, implements, extends
+7. For skill and sub nodes, include:
+   - scripts with real executable commands or code, lang, runtime, entry, env vars, and packages when needed
+   - schema with input and output JSON contracts
+   - depends for required dependencies on other nodes
+8. For every skill or sub node, create a portable Agent Skills package that follows the official spec from https://agentskills.io/specification and https://github.com/agentskills/agentskills:
+   - include SKILL.md with valid YAML frontmatter
+   - name must match the directory name, use lowercase letters/numbers/hyphens only, and stay under 64 chars
+   - description must say what the skill does and when to use it
+   - use scripts/ and references/ when they make the skill more reusable
+   - keep SKILL.md concise and push bulky detail into references/
+9. Only edit files under /workspaces/Contracts/dojo/nodes/git/. Do not touch unrelated ecosystems, scripts, or user changes elsewhere in the repo.
+10. Do not ask questions. Do not ask for confirmation. Build the full target tree.
+11. After authoring, verify:
+    - every expected node exists
+    - every node.json is valid JSON
+    - every skill/sub node has SKILL.md with valid frontmatter
+    - any script entry paths referenced in node.json actually exist
+
+## Quality Bar
+
+Every node must teach well enough that another agent can learn and act from it without reading upstream docs. Skeleton nodes are failures. Placeholder scripts are failures. Build for the jobs autonomous agents actually repeat, not for a docs sidebar mirror.
+
+mcp startup: no servers
+2026-04-11T08:32:48.378653Z ERROR codex_core::shell_snapshot: Shell snapshot validation failed: Snapshot command exited with status exit status: 2: /home/codespace/.codex/shell_snapshots/019d7bac-0f16-7821-9be2-f0defb90f54b.tmp-1775896367022453886: line 2547: syntax error near unexpected token `('
+
+codex
+I’m loading the Dojo node authoring workflow, schema, and reference nodes first so I can match the repository’s required structure before writing anything under `nodes/git/`.
+exec
+/bin/bash -lc "sed -n '1,220p' /workspaces/Contracts/dojo/skills/dojo-node-builder/SKILL.md" in /workspaces/Contracts/dojoexec
+/bin/bash -lc "sed -n '1,260p' /workspaces/Contracts/dojo/SPEC.md" in /workspaces/Contracts/dojoexec
+/bin/bash -lc "sed -n '1,260p' /workspaces/Contracts/dojo/schema/node.schema.json" in /workspaces/Contracts/dojoexec
+/bin/bash -lc "sed -n '1,260p' /workspaces/Contracts/dojo/nodes/github/repos/node.json" in /workspaces/Contracts/dojoexec
+/bin/bash -lc "sed -n '1,260p' /workspaces/Contracts/dojo/nodes/github/node.json" in /workspaces/Contracts/dojoexec
+/bin/bash -lc "sed -n '1,260p' /workspaces/Contracts/dojo/nodes/github/issues/node.json" in /workspaces/Contracts/dojoexec
+/bin/bash -lc "find /workspaces/Contracts/dojo/nodes/git -maxdepth 4 \\( -name node.json -o -name SKILL.md -o -path '*/scripts/*' \\) | sort" in /workspaces/Contracts/dojo succeeded in 1.68s:
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://dojo.dev/schema/node.schema.json",
+  "title": "Dojo Node Manifest",
+  "description": "Schema for a Dojo node.json manifest file",
+  "type": "object",
+  "required": ["name", "version", "uri", "type", "context", "info", "tags"],
+  "properties": {
+    "name": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]*$",
+      "description": "Unique name within parent scope (lowercase, hyphens allowed)"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+(-[a-zA-Z0-9.]+)?$",
+      "description": "Semantic version"
+    },
+    "uri": {
+      "type": "string",
+ succeeded in 1.71s:
+---
+name: dojo-node-builder
+description: >
+  Use when creating or revising Dojo ecosystem, standard, skill, context, or sub
+  nodes from a tool, API, CLI, framework, protocol, or integration guide. Researches
+  official docs, API references, SDKs, and GitHub repos, then converts them into deep
+  Dojo node.json manifests and portable Agent Skills packages following the official
+  Agent Skills spec (https://agentskills.io/specification and
+  https://github.com/agentskills/agentskills).
+license: MIT
+compatibility: Requires internet access for research and a Dojo repo when writing node.json and SKILL.md files.
+metadata:
+  author: dojo-community
+  version: "2.0"
+  scope: dojo-authoring
+allowed-tools: Bash Read Write Edit Glob Grep Agent WebFetch
+---
+
+# Dojo Node Builder
+
+ succeeded in 1.70s:
+{
+  "name": "repos",
+  "version": "1.0.0",
+  "uri": "github/repos",
+  "type": "skill",
+  "context": "Create, clone, configure, and manage GitHub repositories via the API and gh CLI",
+  "info": "This skill covers the full repository lifecycle on GitHub: creating new repos (public or private, user or org-owned), cloning and forking existing repos, configuring settings like default branches and merge options, and managing branch protection rules. All operations use the GitHub REST API via @octokit/rest or the `gh` CLI. Agents use this skill to bootstrap new projects, fork upstream repos for contribution, and enforce branch policies. Sub-skills provide focused coverage: [[github/repos/create]] for new repo creation, [[github/repos/clone]] for cloning and forking, and [[github/repos/settings]] for configuration and branch protection. See [[github/auth]] for authentication setup and [[github/webhooks]] for event-driven repo automation.",
+  "parent": "github",
+  "tags": ["repos", "repository", "create-repo", "clone", "fork"],
+  "aliases": [
+    "github repos",
+    "github repository",
+    "create repository",
+    "manage repos",
+    "repo management",
+    "github repo api",
+    "fork repo",
+    "clone repo"
+  ],
+  "triggers": [
+ succeeded in 1.81s:
+# Dojo Specification v0.1.0
+
+## 1. Overview
+
+Dojo defines a universal format for AI agent skills and knowledge, discoverable, composable, hierarchical units of capability. Any agent, any framework, any LLM can query the registry and get back executable skills  and knowledge with full context.
+
+
+The knowledge layer is what makes Dojo more than npm. Every node in the tree eco, standard, skill, context, sub can carry rich, linked, wiki-like content. They are the Obsidian notes of the agent world. Context nodes are how agents learn.
+
+### 1.1 Design Principles
+
+1. **Hierarchical** — Skills form trees, ecosystem → standard → skill → sub-skill
+2. **Self-describing** — Every skill carries its own context, docs, and schema
+3. **Composable** — Skills reference and depend on other skills
+4. **Agent-native** — Designed for LLM agents to discover and execute, not just humans
+5. **Wiki-like** — Rich info fields, linked references, living documentation
+6. **Executable** — Scripts are first-class: agents run them, not just read them
+
+---
+
+ succeeded in 1.73s:
+{
+  "name": "issues",
+  "version": "1.0.0",
+  "uri": "github/issues",
+  "type": "skill",
+  "context": "Create, search, label, and manage GitHub issues programmatically",
+  "info": "This skill covers the full issue lifecycle on GitHub: creating issues with titles, bodies, labels, and assignees; searching and filtering issues with GitHub's query syntax; managing labels and milestones for triage and project tracking; and using issue templates for consistent reporting. All operations use the GitHub REST API via @octokit/rest. Agents use this skill to file bug reports, create feature requests, triage incoming issues, and track project progress. See [[github/auth]] for authentication and [[github/repos]] for repository context.",
+  "parent": "github",
+  "tags": ["issues", "bug-tracking", "labels", "milestones"],
+  "aliases": [
+    "github issues",
+    "issue tracking",
+    "create issue",
+    "manage issues",
+    "bug report",
+    "feature request",
+    "github issue api",
+    "file an issue"
+  ],
+  "triggers": [
+ succeeded in 1.74s:
+{
+  "name": "github",
+  "version": "1.0.0",
+  "uri": "github",
+  "type": "ecosystem",
+  "context": "GitHub platform ecosystem — repos, issues, PRs, actions, webhooks, and API automation",
+  "info": "The GitHub ecosystem covers repository management, issue tracking, pull request workflows, CI/CD via GitHub Actions, webhook-driven automation, and REST/GraphQL API integration. This tree is organized around the jobs an agent actually performs: creating and configuring repositories, filing and triaging issues, opening and merging pull requests, triggering CI/CD pipelines, and reacting to webhook events. Octokit is the primary SDK family. Authentication spans personal access tokens, GitHub Apps, and OAuth flows. All operations target the GitHub REST API v3 or GraphQL API v4.",
+  "parent": null,
+  "tags": ["github", "git", "repos", "issues", "pulls", "actions", "ci-cd", "webhooks", "api", "octokit"],
+  "aliases": [
+    "github",
+    "gh",
+    "github platform",
+    "github api",
+    "github automation",
+    "github development",
+    "octokit",
+    "github ecosystem"
+  ],
+  "triggers": [
+ succeeded in 1.74s:
+/workspaces/Contracts/dojo/nodes/git/branch/SKILL.md
+/workspaces/Contracts/dojo/nodes/git/branch/node.json
+/workspaces/Contracts/dojo/nodes/git/branch/scripts/branch-manager.sh
+/workspaces/Contracts/dojo/nodes/git/commit/SKILL.md
+/workspaces/Contracts/dojo/nodes/git/commit/node.json
+/workspaces/Contracts/dojo/nodes/git/commit/scripts/commit-staged.sh
+/workspaces/Contracts/dojo/nodes/git/config/node.json
+/workspaces/Contracts/dojo/nodes/git/diff/SKILL.md
+/workspaces/Contracts/dojo/nodes/git/diff/node.json
+/workspaces/Contracts/dojo/nodes/git/diff/scripts/smart-diff.sh
+/workspaces/Contracts/dojo/nodes/git/hooks/node.json
+/workspaces/Contracts/dojo/nodes/git/log/SKILL.md
+/workspaces/Contracts/dojo/nodes/git/log/node.json
+/workspaces/Contracts/dojo/nodes/git/log/scripts/history-search.sh
+/workspaces/Contracts/dojo/nodes/git/merge/SKILL.md
+/workspaces/Contracts/dojo/nodes/git/merge/node.json
+/workspaces/Contracts/dojo/nodes/git/merge/scripts/safe-merge.sh
+/workspaces/Contracts/dojo/nodes/git/node.json
+/workspaces/Contracts/dojo/nodes/git/rebase/SKILL.md
+/workspaces/Contracts/dojo/nodes/git/rebase/node.json
+codex
+I have the reads running in parallel. Next I’ll extract the node schema constraints and compare the GitHub reference nodes so the `git` tree matches the expected authoring pattern exactly.
+codex
+I’m using the `dojo-node-builder` skill because this is a node-authoring task and it sets the required research-first workflow for `node.json` plus Agent Skills packaging. Existing `nodes/git/` content is present, so I’m auditing it next to see what can be kept and what needs to be rebuilt.
+Plan update
+Author the full git ecosystem tree under nodes/git only, following the Dojo node builder workflow and validating structure afterward.
+  → Audit existing nodes/git manifests, skills, and scripts against the Dojo spec and target tree
+  • Research official git documentation and extract the workflows, flags, constraints, and cross-links needed for each node
+  • Rewrite or create node.json, SKILL.md, and script files under nodes/git to match the target tree and schema
+  • Validate JSON, skill frontmatter, expected files, and script entry references
+exec
+/bin/bash -lc "for f in /workspaces/Contracts/dojo/nodes/git/{commit,branch,merge,rebase,stash,log,diff,remote,worktree,config,hooks,troubleshooting}/node.json; do printf 'FILE %s\\n' \""'$f"; sed -n '"'1,260p' \""'$f"; printf '"'\\n'; done" in /workspaces/Contracts/dojoexec
+/bin/bash -lc "sed -n '1,260p' /workspaces/Contracts/dojo/nodes/git/node.json" in /workspaces/Contracts/dojoexec
+/bin/bash -lc "for f in /workspaces/Contracts/dojo/nodes/git/{commit,branch,merge,rebase,stash,log,diff,remote,worktree}/SKILL.md; do printf 'FILE %s\\n' \""'$f"; sed -n '"'1,140p' \""'$f"; printf '"'\\n'; done" in /workspaces/Contracts/dojoexec
+/bin/bash -lc "for f in /workspaces/Contracts/dojo/nodes/git/{commit/scripts/commit-staged.sh,branch/scripts/branch-manager.sh,merge/scripts/safe-merge.sh,rebase/scripts/interactive-rebase.sh,stash/scripts/stash-manager.sh,log/scripts/history-search.sh,diff/scripts/smart-diff.sh,remote/scripts/remote-sync.sh,worktree/scripts/worktree-manager.sh}; do printf 'FILE %s\\n' \""'$f"; sed -n '"'1,220p' \""'$f"; printf '"'\\n'; done" in /workspaces/Contracts/dojo succeeded in 761ms:
+{
+  "name": "git",
+  "version": "1.0.0",
+  "uri": "git",
+  "type": "ecosystem",
+  "context": "Distributed version control — commit, branch, merge, rebase, stash, diff, and manage code history",
+  "info": "Git is the universal version control system for software development. Every code agent interacts with git constantly — committing changes, creating branches, merging work, rebasing history, stashing work-in-progress, inspecting logs and diffs, managing remotes, and using worktrees for parallel development. This ecosystem covers the full git CLI surface that agents need for autonomous development workflows. Git operates on three core data structures: the working tree (files on disk), the staging area (index), and the object database (commits, trees, blobs). Understanding this model is essential for every operation. All skills assume git 2.30+ and execute via the git CLI directly — no wrappers or libraries needed.",
+  "parent": null,
+  "tags": ["git", "vcs", "version-control", "scm", "source-control"],
+  "aliases": [
+    "git",
+    "version control",
+    "vcs",
+    "source control",
+    "scm",
+    "git cli",
+    "git commands"
+  ],
+  "triggers": [
+    "use git to manage code",
+ succeeded in 773ms:
+FILE /workspaces/Contracts/dojo/nodes/git/commit/scripts/commit-staged.sh
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Usage: commit-staged.sh <type> <scope> <message> [files...]
+# Example: commit-staged.sh feat auth "add JWT validation" src/auth.js test/auth.test.js
+
+TYPE="${1:?Usage: commit-staged.sh <type> <scope> <message> [files...]}"
+SCOPE="${2:?Missing scope}"
+MSG="${3:?Missing message}"
+shift 3
+
+if [ $# -eq 0 ]; then
+  echo "Error: No files specified. Stage files explicitly."
+  exit 1
+fi
+
+# Stage specified files
+for f in "$@"; do
+  if [ ! -e "$f" ]; then
+ succeeded in 805ms:
+FILE /workspaces/Contracts/dojo/nodes/git/commit/SKILL.md
+---
+name: git-commit
+description: Stage files and create git commits with conventional commit messages — use when committing code changes, crafting commit messages, or staging files selectively
+---
+
+# Git Commit
+
+Stage changes and create commits with well-structured messages.
+
+## When to Use
+
+- After making code changes that need to be saved
+- When you need to selectively stage files
+- When crafting a commit message for a changeset
+- When amending the last commit
+
+## Workflow
+
+1. Review changes: `git status` and `git diff`
+ succeeded in 837ms:
+FILE /workspaces/Contracts/dojo/nodes/git/commit/node.json
+{
+  "name": "commit",
+  "version": "1.0.0",
+  "uri": "git/commit",
+  "type": "skill",
+  "context": "Stage files and create git commits with well-structured messages following conventional formats",
+  "info": "The commit skill covers the full staging-and-commit workflow: selectively staging files with git add, unstaging with git reset, crafting commit messages following conventional commit format, amending the last commit, creating empty commits, and using git commit with various flags. Agents use this constantly — every code change must be committed. The staging area (index) acts as a buffer between the working tree and the repository, letting you compose commits precisely. Good commit messages are critical for history readability; this skill teaches the conventional commits format (type(scope): description) and when to use each type. See [[git/diff]] to review changes before committing, [[git/log]] to verify commit history, and [[git/stash]] to shelve work before committing something else.",
+  "parent": "git",
+  "tags": ["commit", "staging", "git-add", "git-commit", "conventional-commits", "amend"],
+  "aliases": [
+    "git commit",
+    "git add",
+    "stage files",
+    "commit changes",
+    "save changes",
+    "create commit",
+    "amend commit",
+    "commit message",
+    "conventional commit",
+🌐 Searching the web...
+🌐 Searched: site:git-scm.com/docs git commit git branch git merge git rebase git stash git log git diff git remote git worktree git config githooks official
+🌐 Searching the web...
+🌐 Searched: site:github.com/git/git release notes latest git official repository
+codex
+I’ve finished the first pass audit. The existing `git` tree is usable but shallow in places, a few skills are too generic for repeated agent jobs, and the skill packages don’t fully match the Agent Skills frontmatter requirements yet.
+exec
+/bin/bash -lc "sed -n '260,520p' /workspaces/Contracts/dojo/SPEC.md" in /workspaces/Contracts/dojoexec
+/bin/bash -lc "sed -n '220,360p' /workspaces/Contracts/dojo/schema/node.schema.json" in /workspaces/Contracts/dojoexec
+/bin/bash -lc 'git --version' in /workspaces/Contracts/dojoexec
+/bin/bash -lc 'skills-ref --help' in /workspaces/Contracts/dojoexec
+/bin/bash -lc "sed -n '1,220p' /home/codespace/.codex/skills/.system/skill-creator/SKILL.md" in /workspaces/Contracts/dojo succeeded in 953ms:
+git version 2.52.0
+ succeeded in 1.00s:
+├── best-practices                    context (Dockerfile tips, no scripts)
+└── networking                        context (bridge, host, overlay modes)
+```
+
+**GitHub** — skills directly under eco, context node grouping auth:
+
+```
+github                                eco
+├── repos                             skill
+│   ├── create                        sub
+│   ├── clone                         sub
+│   └── settings                      sub
+├── issues                            skill
+├── pulls                             skill
+├── actions                           skill
+│   └── workflows                     skill (skill under skill)
+│       ├── deploy                    sub
+│       └── test                      sub
+└── auth                              context (info about GitHub auth)
+    └── oauth2                        standard
+ succeeded in 1.33s:
+          "description": "Version range (semver)"
+        },
+        "optional": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether this dependency is optional"
+        },
+        "reason": {
+          "type": "string",
+          "description": "Why this dependency is needed"
+        }
+      }
+    },
+    "Section": {
+      "type": "object",
+      "required": ["id", "title", "body"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9-]+$",
+ succeeded in 1.32s:
+---
+name: skill-creator
+description: Guide for creating effective skills. This skill should be used when users want to create a new skill (or update an existing skill) that extends Codex's capabilities with specialized knowledge, workflows, or tool integrations.
+metadata:
+  short-description: Create or update a skill
+---
+
+# Skill Creator
+
+This skill provides guidance for creating effective skills.
+
+## About Skills
+
+Skills are modular, self-contained folders that extend Codex's capabilities by providing
+specialized knowledge, workflows, and tools. Think of them as "onboarding guides" for specific
+domains or tasks—they transform Codex from a general-purpose agent into a specialized agent
+equipped with procedural knowledge that no model can fully possess.
+
+### What Skills Provide
+
+ exited 127 in 1.34s:
+/bin/bash: line 1: skills-ref: command not found
+codex
+I’ve confirmed the repo’s local Git CLI is `2.52.0`, which is close to current upstream docs and useful for keeping examples on the supported command set here. I’m checking the remaining schema details plus whether `skills-ref` is available for package validation before I start editing.
+🌐 Searching the web...
+🌐 Searched: https://git-scm.com/docs/git-commit
+🌐 Searching the web...
+🌐 Searched: agentskills.io specification SKILL.md YAML frontmatter official
+🌐 Searching the web...
+🌐 Searched: site:github.com/git/git Git repository release notes Documentation/RelNotes official
+🌐 Searching the web...
+🌐 Searched: https://github.com/git/git
+🌐 Searching the web...
+🌐 Searched: '--fixup' in https://git-scm.com/docs/git-commit
+🌐 Searching the web...
+🌐 Searched: https://git-scm.com/docs/githooks
+🌐 Searching the web...
+🌐 Searched: 'The default pre-commit hook' in https://git-scm.com/docs/githooks
+codex
+The command docs are enough to author against current Git behavior, but I’m pulling a few config-specific knobs from Git’s own help surface so the `config` and `hooks` context nodes stay practical instead of generic.
+exec
+/bin/bash -lc "GIT_PAGER=cat git help --config | rg -n '"'^(pull'"\\.rebase|rebase\\.autoStash|rebase\\.autoSquash|rebase\\.updateRefs|merge\\.conflictStyle|rerere\\.enabled|rerere\\.autoupdate|core\\.hooksPath|includeIf\\.|fetch\\.prune|push\\.default|branch\\.autoSetupMerge|branch\\.autoSetupRebase|worktree\\.)'" in /workspaces/Contracts/dojoexec
+/bin/bash -lc "GIT_PAGER=cat git help --config | rg -n '"'^(commit'"\\.template|commit\\.cleanup|commit\\.verbose|user\\.name|user\\.email|user\\.signingkey|commit\\.gpgSign|gpg\\.format|core\\.editor|core\\.pager|advice\\.)'" in /workspaces/Contracts/dojoexec
+/bin/bash -lc "GIT_PAGER=cat git help --config | rg -n '"'^(gc'"\\.reflogExpire|gc\\.reflogExpireUnreachable|help\\.autocorrect|diff\\.algorithm|diff\\.colorMoved|merge\\.log|merge\\.verifySignatures|pull\\.ff|push\\.autoSetupRemote|safe\\.directory)'" in /workspaces/Contracts/dojo succeeded in 743ms:
+78:branch.autoSetupMerge
+79:branch.autoSetupRebase
+226:core.hooksPath
+321:fetch.prune
+322:fetch.pruneTags
+568:includeIf.<condition>.path
+623:merge.conflictStyle
+690:pull.rebase
+693:push.default
+702:rebase.autoSquash
+703:rebase.autoStash
+712:rebase.updateRefs
+842:rerere.enabled
+970:worktree.guessRemote
+971:worktree.useRelativePaths
+ succeeded in 743ms:
+2:advice.addEmbeddedRepo
+3:advice.addEmptyPathspec
+4:advice.addIgnoredFile
+5:advice.amWorkDir
+6:advice.ambiguousFetchRefspec
+7:advice.checkoutAmbiguousRemoteBranchName
+8:advice.commitBeforeMerge
+9:advice.defaultBranchName
+10:advice.detachedHead
+11:advice.diverging
+12:advice.fetchRemoteHEADWarn
+13:advice.fetchShowForcedUpdates
+14:advice.forceDeleteBranch
+15:advice.graftFileDeprecated
+16:advice.ignoredHook
+17:advice.implicitIdentity
+18:advice.mergeConflict
+19:advice.nestedTag
+20:advice.objectNameWarning
+21:advice.pushAlreadyExists
+ succeeded in 741ms:
+275:diff.algorithm
+277:diff.colorMoved
+278:diff.colorMovedWS
+443:gc.reflogExpire
+444:gc.reflogExpireUnreachable
+628:merge.log
+636:merge.verifySignatures
+688:pull.ff
+692:push.autoSetupRemote
+845:safe.directory
+codex
+Plan:
+1. Replace the `git` root and all child manifests so they align tightly with the target tree, the node schema, and the GitHub reference-node style.
+2. Rewrite each skill package under `nodes/git/*` with valid Agent Skills frontmatter, concise `SKILL.md`, and script contracts that map to repeatable agent jobs instead of generic prose.
+3. Tighten the command coverage around real Git workflows: selective staging and amend/fixup for `commit`, tracking/upstream and cleanup for `branch`, safe merge modes and conflict handling for `merge`, autosquash/update-refs for `rebase`, named stash flows, archaeology/bisect for `log`, precise comparison surfaces for `diff`, remote sync and fork-style remotes for `remote`, and parallel checkouts plus lifecycle cleanup for `worktree`.
+4. Expand the context nodes so `config`, `hooks`, and `troubleshooting` are searchable and actionable, with section-level guidance for identity, signing, `core.hooksPath`, `includeIf`, reflog recovery, reset vs revert, detached HEAD, cherry-pick, and history cleanup.
+5. Validate everything in-place afterward: expected files, JSON parseability, frontmatter presence, and that every `scripts[].entry` target exists.
+🌐 Searching the web...
+🌐 Searched: https://agentskills.io/specification
+🌐 Searching the web...
+🌐 Searched: https://agentskills.io/specification
+🌐 Searching the web...
+🌐 Searched: https://git-scm.com/docs/git-commit
+🌐 Searching the web...
+🌐 Searched: '--fixup' in https://git-scm.com/docs/git-commit
+codex
+I have enough authoritative coverage now: Git command manuals, config surface from local `git help --config`, and the Agent Skills spec. I’m moving from research to file authoring under `nodes/git/` only.
+exec
+/bin/bash -lc "sed -n '1,260p' /workspaces/Contracts/dojo/nodes/git/config/node.json" in /workspaces/Contracts/dojoexec
+/bin/bash -lc "sed -n '1,260p' /workspaces/Contracts/dojo/nodes/git/hooks/node.json" in /workspaces/Contracts/dojoexec
+/bin/bash -lc "sed -n '1,320p' /workspaces/Contracts/dojo/nodes/git/troubleshooting/node.json" in /workspaces/Contracts/dojo succeeded in 506ms:
+{
+  "name": "config",
+  "version": "1.0.0",
+  "uri": "git/config",
+  "type": "context",
+  "content_type": "reference",
+  "context": "Configure git identity, aliases, editor, diff tools, credentials, and per-repo or global settings",
+  "info": "Git configuration controls identity (name, email), behavior (default branch, line endings, merge strategy), tooling (editor, diff tool, merge tool), and credentials (SSH keys, credential helpers). Config is layered: system (/etc/gitconfig) < global (~/.gitconfig) < local (.git/config) < worktree (.git/config.worktree). Each level overrides the previous. This context covers the essential config settings every agent and developer needs, including identity setup, useful aliases, credential caching, SSH configuration, and .gitignore patterns. See [[git/commit]] for how identity affects commits, [[git/hooks]] for automating behavior, and [[git/remote]] for credential configuration.",
+  "parent": "git",
+  "tags": ["config", "gitconfig", "identity", "aliases", "credentials", "gitignore", "settings"],
+  "aliases": [
+    "git config",
+    "gitconfig",
+    ".gitconfig",
+    "git settings",
+    "git identity",
+    "git aliases",
+    "git credentials",
+    "git editor",
+    "gitignore",
+ succeeded in 574ms:
+{
+  "name": "troubleshooting",
+  "version": "1.0.0",
+  "uri": "git/troubleshooting",
+  "type": "context",
+  "content_type": "guide",
+  "context": "Fix common git mistakes — undo commits, resolve conflicts, recover lost work, clean up history, and use reflog",
+  "info": "This context covers the most common git mistakes and how to fix them: undoing commits (reset, revert), recovering lost commits from reflog, resolving merge and rebase conflicts, cleaning up a messy working tree, removing sensitive files from history, fixing a detached HEAD, and dealing with force-push disasters. Git almost never truly destroys data — the reflog retains every HEAD position for 90 days by default, making most mistakes recoverable. This is the go-to resource when something goes wrong. See [[git/commit]] for amending the last commit, [[git/rebase]] for rewriting older history, [[git/merge]] for conflict resolution basics, and [[git/stash]] for recovering dropped stashes.",
+  "parent": "git",
+  "tags": ["troubleshooting", "undo", "reset", "revert", "reflog", "recover", "fix", "detached-head", "conflict"],
+  "aliases": [
+    "git undo",
+    "git reset",
+    "git revert",
+    "git reflog",
+    "undo commit",
+    "undo push",
+    "recover lost commit",
+    "fix git mistakes",
+    "detached head",
+ succeeded in 615ms:
+{
+  "name": "hooks",
+  "version": "1.0.0",
+  "uri": "git/hooks",
+  "type": "context",
+  "content_type": "reference",
+  "context": "Automate actions with git hooks — pre-commit, pre-push, commit-msg, and other lifecycle triggers",
+  "info": "Git hooks are scripts that run automatically at specific points in the git workflow: before committing, before pushing, after merging, and more. They live in .git/hooks/ (local, not shared) or can be managed with tools like Husky, lint-staged, and pre-commit framework for team-wide enforcement. Hooks are the primary mechanism for enforcing code quality gates: running linters, formatters, type checkers, and tests before code is committed or pushed. Agents must understand hooks because they run during git operations and can cause failures — a pre-commit hook rejecting a commit is a common source of confusion. See [[git/commit]] for how pre-commit hooks interact with committing, [[git/config]] for configuring hook paths, and [[git/remote]] for pre-push hooks.",
+  "parent": "git",
+  "tags": ["hooks", "pre-commit", "pre-push", "commit-msg", "husky", "lint-staged", "automation"],
+  "aliases": [
+    "git hooks",
+    "pre-commit hook",
+    "pre-push hook",
+    "commit-msg hook",
+    "husky",
+    "lint-staged",
+    "pre-commit framework",
+    "git hook scripts",
+    "client-side hooks"
+exec
+/bin/bash -lc "sed -n '1,320p' /workspaces/Contracts/dojo/nodes/git/merge/node.json" in /workspaces/Contracts/dojoexec
+/bin/bash -lc "sed -n '1,320p' /workspaces/Contracts/dojo/nodes/git/diff/node.json" in /workspaces/Contracts/dojoexec
+/bin/bash -lc "sed -n '1,320p' /workspaces/Contracts/dojo/nodes/git/rebase/node.json" in /workspaces/Contracts/dojoexec
+/bin/bash -lc "sed -n '1,320p' /workspaces/Contracts/dojo/nodes/git/stash/node.json" in /workspaces/Contracts/dojoexec
+/bin/bash -lc "sed -n '1,320p' /workspaces/Contracts/dojo/nodes/git/remote/node.json" in /workspaces/Contracts/dojoexec
+/bin/bash -lc "sed -n '1,320p' /workspaces/Contracts/dojo/nodes/git/log/node.json" in /workspaces/Contracts/dojoexec
+/bin/bash -lc "sed -n '1,320p' /workspaces/Contracts/dojo/nodes/git/worktree/node.json" in /workspaces/Contracts/dojo succeeded in 1.11s:
+{
+  "name": "merge",
+  "version": "1.0.0",
+  "uri": "git/merge",
+  "type": "skill",
+  "context": "Combine branches using fast-forward, three-way merge, squash merge, and resolve merge conflicts",
+  "info": "Merging integrates changes from one branch into another. Git supports several merge strategies: fast-forward (linear history when possible), three-way merge (creates a merge commit when branches have diverged), and squash merge (condenses a branch into a single commit). This skill covers executing merges, understanding merge strategies, resolving conflicts when files are changed in both branches, aborting failed merges, and choosing between merge and rebase workflows. Agents must understand merge conflicts — they occur when the same region of a file was modified differently in the two branches. Conflict markers (<<<<<<<, =======, >>>>>>>) must be resolved manually or programmatically. See [[git/rebase]] for the alternative history-rewriting integration method, and [[git/branch]] for branch management.",
+  "parent": "git",
+  "tags": ["merge", "merge-commit", "fast-forward", "squash", "conflict", "three-way"],
+  "aliases": [
+    "git merge",
+    "merge branches",
+    "combine branches",
+    "merge conflict",
+    "resolve conflict",
+    "fast-forward merge",
+    "squash merge",
+    "merge into main",
+    "3-way merge"
+  ],
+ succeeded in 1.20s:
+{
+  "name": "rebase",
+  "version": "1.0.0",
+  "uri": "git/rebase",
+  "type": "skill",
+  "context": "Rewrite commit history by replaying commits onto a new base — interactive rebase, squash, and fixup",
+  "info": "Rebasing moves or replays a series of commits onto a new base commit, rewriting their hashes in the process. It produces a linear history without merge commits. Interactive rebase (git rebase -i) is one of the most powerful git features — it lets you squash, reorder, edit, fixup, drop, and reword commits before sharing them. Agents use rebase to clean up messy work-in-progress history into logical, reviewable commits before pushing. The golden rule: never rebase commits that have been pushed to a shared branch, as it rewrites history that others depend on. See [[git/merge]] for the non-destructive alternative, [[git/commit]] for creating the commits you'll rebase, and [[git/troubleshooting]] for recovering from bad rebases.",
+  "parent": "git",
+  "tags": ["rebase", "interactive-rebase", "squash", "fixup", "reword", "history-rewrite"],
+  "aliases": [
+    "git rebase",
+    "interactive rebase",
+    "rebase onto",
+    "squash commits",
+    "rewrite history",
+    "clean up commits",
+    "fixup commits",
+    "reorder commits",
+    "rebase -i"
+  ],
+ succeeded in 1.18s:
+{
+  "name": "worktree",
+  "version": "1.0.0",
+  "uri": "git/worktree",
+  "type": "skill",
+  "context": "Work on multiple branches simultaneously using linked worktrees — no stashing or branch switching needed",
+  "info": "Git worktrees let you check out multiple branches at the same time in separate directories, all linked to the same repository. Instead of stashing or committing WIP to switch branches, you create a worktree for the other branch and work in both simultaneously. Each worktree has its own working tree and index but shares the same .git object database and refs. This is especially powerful for agents that need to work on a feature while simultaneously reviewing or testing another branch. Worktrees are also ideal for running tests on one branch while developing on another. A branch can only be checked out in one worktree at a time. See [[git/branch]] for branch management, [[git/stash]] for the alternative approach of shelving changes, and [[git/config]] for worktree-specific configuration.",
+  "parent": "git",
+  "tags": ["worktree", "multiple-branches", "parallel-work", "linked-worktree"],
+  "aliases": [
+    "git worktree",
+    "multiple working trees",
+    "parallel branches",
+    "linked worktree",
+    "work on two branches",
+    "secondary checkout",
+    "worktree add"
+  ],
+  "triggers": [
+    "work on two branches at once",
+ succeeded in 1.21s:
+{
+  "name": "remote",
+  "version": "1.0.0",
+  "uri": "git/remote",
+  "type": "skill",
+  "context": "Manage remote repositories — add, fetch, pull, push, and configure origin and upstream remotes",
+  "info": "Remotes are named references to other git repositories, typically hosted on GitHub, GitLab, or Bitbucket. The default remote is 'origin' (where you cloned from). This skill covers adding and removing remotes, fetching to download remote state without merging, pulling to fetch-and-merge in one step, pushing to upload local commits, and managing upstream tracking branches. Agents must understand the fetch-before-push pattern: always fetch to check for remote changes before pushing. Force-pushing (git push --force) is dangerous and should only be used on personal branches after rebase. See [[git/branch]] for tracking branch relationships, [[git/merge]] for integrating fetched changes, and [[git/config]] for remote URL and credential configuration.",
+  "parent": "git",
+  "tags": ["remote", "origin", "upstream", "fetch", "pull", "push", "clone"],
+  "aliases": [
+    "git remote",
+    "git push",
+    "git pull",
+    "git fetch",
+    "git clone",
+    "origin",
+    "upstream",
+    "remote repository",
+    "push changes",
+    "pull changes",
+ succeeded in 1.26s:
+{
+  "name": "diff",
+  "version": "1.0.0",
+  "uri": "git/diff",
+  "type": "skill",
+  "context": "Compare changes between working tree, staging area, commits, and branches using git diff",
+  "info": "Git diff shows the exact line-by-line changes between any two states in git: working tree vs staging area, staging area vs HEAD, commit vs commit, branch vs branch. This is the primary tool for reviewing code changes before committing, during code review, and when investigating bugs. Understanding the three-way diff model (working tree, index, HEAD) is essential. The output uses unified diff format with + for additions, - for deletions, and @@ hunk headers showing line positions. Agents should always diff before committing to verify intent. See [[git/commit]] for acting on reviewed diffs, [[git/log]] for finding commits to diff against, and [[git/merge]] for understanding merge diffs.",
+  "parent": "git",
+  "tags": ["diff", "compare", "changes", "unified-diff", "patch"],
+  "aliases": [
+    "git diff",
+    "show changes",
+    "compare files",
+    "view diff",
+    "what changed",
+    "code diff",
+    "file changes",
+    "patch",
+    "unified diff"
+  ],
+ succeeded in 1.25s:
+{
+  "name": "stash",
+  "version": "1.0.0",
+  "uri": "git/stash",
+  "type": "skill",
+  "context": "Temporarily shelve uncommitted changes and restore them later — save, list, pop, apply, and drop stashes",
+  "info": "Git stash saves uncommitted changes (staged and unstaged) to a stack, reverting the working tree to a clean state. This is essential when you need to switch branches but aren't ready to commit, when you want to pull remote changes onto a dirty working tree, or when you need to temporarily set aside work. Stash operates as a stack (LIFO) — you push changes on and pop them off. Each stash entry records the working tree state, index state, and optionally untracked files. Agents use stash to context-switch between tasks without creating throwaway commits. See [[git/branch]] for switching branches (which often triggers stashing), [[git/commit]] for permanently saving changes instead of stashing, and [[git/worktree]] for working on multiple branches simultaneously without stashing.",
+  "parent": "git",
+  "tags": ["stash", "shelve", "wip", "save", "pop", "temporary"],
+  "aliases": [
+    "git stash",
+    "stash changes",
+    "shelve work",
+    "save work in progress",
+    "temporary save",
+    "stash pop",
+    "unstash",
+    "wip stash"
+  ],
+  "triggers": [
+ succeeded in 1.25s:
+{
+  "name": "log",
+  "version": "1.0.0",
+  "uri": "git/log",
+  "type": "skill",
+  "context": "Inspect commit history with filtering, formatting, graph visualization, and search across branches",
+  "info": "Git log is the primary tool for navigating commit history. It shows commits in reverse chronological order with powerful filtering (by author, date, path, message), formatting (oneline, graph, custom pretty-print), and search (grep messages, diff content with -S and -G). Agents use log constantly to understand what changed, who changed it, when, and why. Key use cases: reviewing recent changes before pushing, understanding the history of a specific file, finding which commit introduced a bug (often used with git bisect), and generating changelogs. The --graph flag visualizes branch topology. See [[git/diff]] for viewing actual code changes, [[git/commit]] for creating the history you inspect here, and [[git/branch]] for understanding branch divergence in log output.",
+  "parent": "git",
+  "tags": ["log", "history", "git-log", "graph", "blame", "bisect"],
+  "aliases": [
+    "git log",
+    "commit history",
+    "git history",
+    "show commits",
+    "git blame",
+    "git bisect",
+    "log graph",
+    "commit log",
+    "git shortlog"
+  ],
+exec
+/bin/bash -lc "GIT_PAGER=cat git help --config | rg -n '"'^(merge'"\\.ff|init\\.defaultBranch|core\\.autocrlf|credential\\.helper|url\\..*insteadOf|core\\.excludesFile)"'$'"'" in /workspaces/Contracts/dojo succeeded in 111ms:
+203:core.autocrlf
+216:core.excludesFile
+260:credential.helper
+575:init.defaultBranch
+626:merge.ff
+962:url.<base>.insteadOf

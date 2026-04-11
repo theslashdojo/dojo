@@ -1,0 +1,121 @@
+{
+  "name": "diff",
+  "version": "1.0.0",
+  "uri": "git/diff",
+  "type": "skill",
+  "context": "Compare changes between working tree, staging area, commits, and branches using git diff",
+  "info": "Git diff shows the exact line-by-line changes between any two states in git: working tree vs staging area, staging area vs HEAD, commit vs commit, branch vs branch. This is the primary tool for reviewing code changes before committing, during code review, and when investigating bugs. Understanding the three-way diff model (working tree, index, HEAD) is essential. The output uses unified diff format with + for additions, - for deletions, and @@ hunk headers showing line positions. Agents should always diff before committing to verify intent. See [[git/commit]] for acting on reviewed diffs, [[git/log]] for finding commits to diff against, and [[git/merge]] for understanding merge diffs.",
+  "parent": "git",
+  "tags": ["diff", "compare", "changes", "unified-diff", "patch"],
+  "aliases": [
+    "git diff",
+    "show changes",
+    "compare files",
+    "view diff",
+    "what changed",
+    "code diff",
+    "file changes",
+    "patch",
+    "unified diff"
+  ],
+  "triggers": [
+    "show what changed",
+    "diff two branches",
+    "compare commits",
+    "review changes before committing",
+    "show staged changes",
+    "diff a specific file",
+    "what files changed between branches",
+    "generate a patch"
+  ],
+  "body": "# Git Diff\n\nDiff shows the exact changes between any two states in git. It's essential for reviewing work before committing and understanding what changed.\n\n## The Three Comparisons\n\nGit has three main areas, and diff compares between them:\n\n```\n Working Tree  ←→  Staging Area (Index)  ←→  HEAD (Last Commit)\n     |                    |                        |\n  git diff           git diff --staged        (committed)\n     |                    |                        |\n     └────── git diff HEAD ──────┘\n```\n\n```bash\n# Working tree vs staging area (unstaged changes)\ngit diff\n\n# Staging area vs HEAD (what will be committed)\ngit diff --staged\ngit diff --cached  # same as --staged\n\n# Working tree vs HEAD (all uncommitted changes)\ngit diff HEAD\n```\n\n## Comparing Commits and Branches\n\n```bash\n# Between two commits\ngit diff abc1234 def5678\n\n# Between branches\ngit diff main feature-branch\n\n# Changes introduced by a branch (since it diverged from main)\ngit diff main...feature-branch\n\n# What changed in the last commit\ngit diff HEAD~1 HEAD\ngit show HEAD  # shortcut for last commit diff\n\n# What changed in a specific commit\ngit show abc1234\n```\n\n## Scoping Diffs\n\n```bash\n# Specific file\ngit diff -- src/auth.js\ngit diff HEAD -- src/auth.js\n\n# Specific directory\ngit diff -- src/\n\n# Multiple paths\ngit diff -- src/auth.js src/session.js\n\n# Exclude paths\ngit diff -- . ':!vendor/' ':!node_modules/'\n```\n\n## Output Formats\n\n```bash\n# Stat summary (files changed, insertions, deletions)\ngit diff --stat\n\n# Name only (just file paths)\ngit diff --name-only\n\n# Name with status (Added, Modified, Deleted)\ngit diff --name-status\n\n# Word-level diff (instead of line-level)\ngit diff --word-diff\n\n# Compact colored diff\ngit diff --color-words\n\n# Generate a patch file\ngit diff > changes.patch\ngit diff main..feature > feature.patch\n\n# Apply a patch\ngit apply changes.patch\n```\n\n## Reading Unified Diff Output\n\n```diff\ndiff --git a/src/auth.js b/src/auth.js\nindex abc1234..def5678 100644\n--- a/src/auth.js\n+++ b/src/auth.js\n@@ -10,7 +10,8 @@ function validateToken(token) {\n   const decoded = jwt.verify(token, secret);\n-  return decoded;\n+  if (!decoded.exp || decoded.exp < Date.now() / 1000) {\n+    throw new Error('Token expired');\n+  }\n+  return decoded;\n }\n```\n\n- `---` / `+++` — old and new file paths\n- `@@` — hunk header showing line numbers\n- `-` — line removed (red)\n- `+` — line added (green)\n- ` ` — context line (unchanged)\n\n## Diff Options\n\n```bash\n# Ignore whitespace\ngit diff -w                 # ignore all whitespace\ngit diff --ignore-space-change  # ignore amount of whitespace\ngit diff -b                 # same as --ignore-space-change\n\n# Show function name in hunk header\ngit diff -p  # default, shows function context\n\n# Set context lines (default 3)\ngit diff -U5  # 5 lines of context\ngit diff -U0  # no context (just changes)\n\n# Binary files\ngit diff --binary  # include binary diffs\n\n# Check for problems\ngit diff --check  # warn about whitespace errors and conflict markers\n```\n\n## Agent Best Practices\n\n1. **Always diff --staged before committing** — verify what you're about to commit\n2. **Use --stat for overview** — see which files changed before diving into details\n3. **Use -- path to scope** — focus on relevant files in large changesets\n4. **Use --name-only for programmatic parsing** — easier to script\n5. **Use triple-dot for branch comparison** — `main...feature` shows what the branch added\n6. **Check for conflict markers** — `git diff --check` catches leftover markers\n",
+  "sections": [
+    {
+      "id": "three-way",
+      "title": "Working tree, index, and HEAD diffs",
+      "body": "`git diff` compares working tree to index (unstaged changes). `git diff --staged` compares index to HEAD (what will be committed). `git diff HEAD` compares working tree to HEAD (all uncommitted changes). Understanding these three comparisons is fundamental — they correspond to the three areas in git's architecture. Always use `git diff --staged` before committing to verify intent.",
+      "tags": ["working-tree", "index", "staged", "head", "three-way"]
+    },
+    {
+      "id": "commits-branches",
+      "title": "Comparing commits and branches",
+      "body": "Two-dot `git diff A..B` (or just `git diff A B`) compares the trees of two commits directly. Three-dot `git diff A...B` compares B against the merge base of A and B — this shows 'what did B add since diverging from A', which is what you want for branch comparison. `git show <commit>` is shorthand for the diff introduced by a single commit.",
+      "tags": ["commits", "branches", "two-dot", "three-dot", "merge-base"]
+    },
+    {
+      "id": "output-formats",
+      "title": "Output formats and patch generation",
+      "body": "`--stat` for summary, `--name-only` for file list, `--name-status` for file list with add/modify/delete status, `--word-diff` for word-level changes, `--color-words` for inline color. Redirect to a file to create a patch: `git diff > file.patch`. Apply with `git apply file.patch`. Patches are the foundation of email-based git workflows.",
+      "tags": ["stat", "name-only", "word-diff", "patch", "apply"]
+    },
+    {
+      "id": "reading-output",
+      "title": "Reading unified diff format",
+      "body": "Lines starting with `-` were removed, `+` were added, ` ` (space) are context. The `@@` hunk header shows line numbers: `@@ -old_start,old_count +new_start,new_count @@`. The header after `@@` shows the enclosing function name. `diff --git a/path b/path` separates files. `index` line shows blob hashes and file mode.",
+      "tags": ["unified-diff", "hunk", "format", "read-diff"]
+    }
+  ],
+  "links": [
+    { "uri": "git/commit", "context": "Review diffs before committing" },
+    { "uri": "git/log", "context": "Find commits to diff against" },
+    { "uri": "git/merge", "context": "Review merge results with diff" },
+    { "uri": "git/rebase", "context": "Verify rebase results" },
+    { "uri": "git/branch", "context": "Compare branches with diff" },
+    { "uri": "git/stash", "context": "Inspect stash contents with diff" }
+  ],
+  "related": [
+    { "uri": "git/log", "relation": "see-also", "note": "Log shows commit metadata; diff shows content" },
+    { "uri": "git/commit", "relation": "see-also", "note": "Always diff before committing" },
+    { "uri": "git/merge", "relation": "see-also", "note": "Diff is essential for reviewing merge results" }
+  ],
+  "scripts": [
+    {
+      "id": "smart-diff",
+      "name": "Smart Diff",
+      "description": "Show diffs with smart defaults based on context",
+      "lang": "bash",
+      "runtime": "git>=2.30",
+      "entry": "./scripts/smart-diff.sh",
+      "inline": "#!/usr/bin/env bash\nset -euo pipefail\n\nMODE=\"${1:?Usage: smart-diff.sh <staged|unstaged|all|branch|commit> [args...]}\"\nshift\n\ncase \"$MODE\" in\n  staged)\n    echo \"=== Staged changes (will be committed) ===\"\n    git diff --staged --stat\n    echo\n    git diff --staged\n    ;;\n  unstaged)\n    echo \"=== Unstaged changes ===\"\n    git diff --stat\n    echo\n    git diff\n    ;;\n  all)\n    echo \"=== All uncommitted changes ===\"\n    git diff HEAD --stat\n    echo\n    git diff HEAD\n    ;;\n  branch)\n    TARGET=\"${1:?Target branch required (e.g. main)}\"\n    echo \"=== Changes since diverging from $TARGET ===\"\n    git diff \"$TARGET\"...HEAD --stat\n    echo\n    git diff \"$TARGET\"...HEAD\n    ;;\n  commit)\n    REF=\"${1:-HEAD}\"\n    echo \"=== Changes in commit $REF ===\"\n    git show --stat \"$REF\"\n    echo\n    git show \"$REF\"\n    ;;\n  *)\n    echo \"Unknown mode: $MODE\"\n    echo \"Usage: smart-diff.sh <staged|unstaged|all|branch|commit> [args...]\"\n    exit 1\n    ;;\nesac"
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "mode": { "type": "string", "enum": ["staged", "unstaged", "all", "branch", "commit"], "description": "What to diff" },
+        "target": { "type": "string", "description": "Branch or commit to compare against" },
+        "paths": { "type": "array", "items": { "type": "string" }, "description": "Files or directories to scope the diff" },
+        "stat": { "type": "boolean", "default": false, "description": "Show stat summary only" }
+      },
+      "required": ["mode"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "filesChanged": { "type": "integer", "description": "Number of files changed" },
+        "insertions": { "type": "integer", "description": "Lines added" },
+        "deletions": { "type": "integer", "description": "Lines removed" },
+        "diff": { "type": "string", "description": "The unified diff output" }
+      }
+    }
+  },
+  "more": {
+    "docs": "https://git-scm.com/docs/git-diff",
+    "book": "https://git-scm.com/book/en/v2/Git-Basics-Recording-Changes-to-the-Repository"
+  },
+  "frontmatter": {
+    "created": "2026-04-10",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "5 min",
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

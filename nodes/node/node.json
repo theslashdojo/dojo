@@ -1,0 +1,91 @@
+{
+  "name": "node",
+  "version": "1.0.0",
+  "uri": "node",
+  "type": "ecosystem",
+  "context": "Node.js runtime and npm ecosystem — server-side JavaScript, package management, and agent toolchain foundation",
+  "info": "Node.js is the JavaScript and TypeScript runtime that underpins most AI agent toolchains, CLI tools, and server-side applications. Built on Chrome's V8 engine, Node.js provides an event-driven, non-blocking I/O model that makes it efficient for network services, file processing, and child process orchestration — all operations that agents perform constantly. The npm registry is the largest software registry in the world with over 2 million packages. This ecosystem covers the core Node.js APIs that agents use daily: the filesystem API for reading and writing files, child_process for spawning commands and scripts, streams for efficient data processing, and the ES module system for modern imports. npm skills cover the full package lifecycle from installation through publishing. Every JavaScript/TypeScript agent framework (LangChain.js, Vercel AI SDK, claude-code) runs on Node.js.",
+  "parent": null,
+  "tags": ["node", "nodejs", "npm", "javascript", "typescript", "runtime", "v8", "server-side"],
+  "aliases": [
+    "node",
+    "nodejs",
+    "node.js",
+    "node js",
+    "npm ecosystem",
+    "javascript runtime",
+    "typescript runtime",
+    "server-side javascript",
+    "v8 runtime"
+  ],
+  "triggers": [
+    "run javascript on the server",
+    "use node to execute a script",
+    "install npm packages",
+    "build a node.js application",
+    "how does node.js work",
+    "set up a node project",
+    "create a typescript project"
+  ],
+  "body": "# Node.js — JavaScript Runtime for Agents\n\nNode.js is the runtime foundation for the JavaScript and TypeScript agent ecosystem. It provides file I/O, process management, networking, and access to the npm registry — the world's largest package ecosystem.\n\n## Skills\n\n- **[[node/npm]]** — Package management: install, publish, and run scripts via npm\n- **[[node/fs]]** — Read, write, watch, and manipulate files and directories\n- **[[node/child-process]]** — Spawn processes, execute shell commands, and orchestrate external tools\n\n## Context Nodes\n\n- **[[node/streams]]** — Readable, writable, transform, and duplex streams for efficient data processing\n- **[[node/esm]]** — ES modules, import/export, package.json `type` field, and CommonJS interop\n- **[[node/debugging]]** — Inspector protocol, `--inspect`, Chrome DevTools, and diagnostic tools\n\n## Core Architecture\n\nNode.js runs on a single-threaded event loop backed by libuv for async I/O:\n\n```\n┌───────────────────────────┐\n│         V8 Engine          │  ← Executes JavaScript\n├───────────────────────────┤\n│      Node.js Bindings      │  ← C++ bridge to system APIs\n├───────────────────────────┤\n│         libuv              │  ← Event loop, async I/O, thread pool\n├───────────────────────────┤\n│    OS (fs, net, dns, etc.) │\n└───────────────────────────┘\n```\n\nThe event loop processes callbacks in phases: timers → pending callbacks → poll (I/O) → check (setImmediate) → close callbacks. Understanding this model is essential for writing correct async code.\n\n## Getting Started\n\n```bash\n# Check installed version\nnode --version\nnpm --version\n\n# Initialize a new project\nmkdir my-project && cd my-project\nnpm init -y\n\n# Run a script\nnode index.js\n\n# Run with ES modules\nnode --experimental-modules index.mjs\n# Or set \"type\": \"module\" in package.json\n\n# Run TypeScript (via tsx or ts-node)\nnpx tsx src/index.ts\n```\n\n## Version Management\n\nUse `nvm` (Node Version Manager) to switch between Node.js versions:\n\n```bash\n# Install nvm\ncurl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash\n\n# Install and use a specific version\nnvm install 22\nnvm use 22\n\n# Set default\nnvm alias default 22\n\n# Use version from .nvmrc\nnvm use\n```\n\n## Environment Variables\n\n| Variable | Purpose |\n|----------|----------|\n| `NODE_ENV` | Set to `production`, `development`, or `test` — controls behavior of many packages |\n| `NODE_PATH` | Additional directories to search for modules |\n| `NODE_OPTIONS` | CLI flags applied to every `node` invocation (e.g., `--max-old-space-size=4096`) |\n| `NODE_DEBUG` | Enable debug output for core modules (e.g., `fs,net,tls`) |\n| `NODE_EXTRA_CA_CERTS` | Path to additional CA certificates for HTTPS |\n| `NODE_NO_WARNINGS` | Set to `1` to suppress process warnings |\n| `UV_THREADPOOL_SIZE` | Size of libuv thread pool (default 4, max 1024) |\n",
+  "sections": [
+    {
+      "id": "event-loop",
+      "title": "The event loop",
+      "body": "Node.js uses a single-threaded event loop with non-blocking I/O. The loop runs in phases: timers (setTimeout/setInterval) → pending callbacks → idle/prepare → poll (I/O events) → check (setImmediate) → close callbacks. `process.nextTick()` fires between every phase. `queueMicrotask()` and resolved promises execute after the current operation completes but before the event loop continues. CPU-bound work blocks the loop — use [[node/child-process]] to offload or `worker_threads` for parallel computation.",
+      "tags": ["event-loop", "async", "non-blocking", "libuv", "single-threaded"]
+    },
+    {
+      "id": "module-system",
+      "title": "Module systems",
+      "body": "Node.js supports two module systems: CommonJS (`require()`/`module.exports`) and ES modules (`import`/`export`). The system is determined by file extension (`.cjs` vs `.mjs`) or the `type` field in package.json (`commonjs` or `module`). See [[node/esm]] for the full guide on ES modules, dual-package publishing, and CommonJS interop.",
+      "tags": ["modules", "commonjs", "esm", "require", "import"]
+    },
+    {
+      "id": "global-objects",
+      "title": "Global objects and APIs",
+      "body": "Key globals available in every Node.js module: `process` (env, argv, exit, cwd), `console` (log, error, warn, table), `Buffer` (binary data), `URL` and `URLSearchParams` (URL parsing), `fetch` (HTTP client, built-in since v18), `setTimeout`/`setInterval`/`setImmediate` (timers), `__filename` and `__dirname` (CommonJS only — use `import.meta.url` in ESM). The `process` object is especially important: `process.env` for environment variables, `process.argv` for CLI arguments, `process.exit()` for termination, and `process.cwd()` for the working directory.",
+      "tags": ["globals", "process", "buffer", "console", "fetch", "url"]
+    },
+    {
+      "id": "version-support",
+      "title": "LTS and version strategy",
+      "body": "Node.js releases even-numbered versions as LTS (Long-Term Support). LTS versions receive active support for 18 months and maintenance for another 12 months. Odd-numbered versions are current/experimental. For production and agent tooling, always target the active LTS. As of early 2026, Node.js 22 is the active LTS. Use `nvm` or `fnm` to manage multiple versions. The `engines` field in package.json declares version requirements: `\"engines\": { \"node\": \">=20\" }`.",
+      "tags": ["lts", "versions", "nvm", "fnm", "engines"]
+    }
+  ],
+  "sub": ["node/npm", "node/fs", "node/child-process"],
+  "links": [
+    { "uri": "node/npm", "context": "Package management and registry" },
+    { "uri": "node/fs", "context": "File system operations" },
+    { "uri": "node/child-process", "context": "Process spawning and orchestration" },
+    { "uri": "node/streams", "context": "Efficient data processing with streams" },
+    { "uri": "node/esm", "context": "ES module system and imports" },
+    { "uri": "node/debugging", "context": "Debugging and diagnostics" }
+  ],
+  "related": [
+    { "uri": "git", "relation": "see-also", "note": "Git is the version control system used alongside Node.js for all development workflows" },
+    { "uri": "github/repos", "relation": "see-also", "note": "Most Node.js projects are hosted on GitHub" },
+    { "uri": "docker", "relation": "see-also", "note": "Node.js applications are commonly containerized with Docker" }
+  ],
+  "more": {
+    "docs": "https://nodejs.org/docs/latest/api/",
+    "guides": "https://nodejs.org/en/learn",
+    "repo": "https://github.com/nodejs/node",
+    "npm": "https://www.npmjs.com/"
+  },
+  "frontmatter": {
+    "created": "2026-04-10",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "5 min",
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

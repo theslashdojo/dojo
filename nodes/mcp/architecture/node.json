@@ -1,0 +1,99 @@
+{
+  "name": "architecture",
+  "version": "1.0.0",
+  "uri": "mcp/architecture",
+  "type": "context",
+  "content_type": "explainer",
+  "context": "MCP architecture deep dive — hosts, clients, servers, data layer, transport layer, lifecycle, and capability negotiation",
+  "info": "MCP follows a layered client-server architecture. The host (an AI application like Claude Desktop or VS Code) creates MCP clients — one per server connection. Each client maintains a dedicated connection to an MCP server over a transport (stdio or Streamable HTTP). The architecture has two layers: the data layer (JSON-RPC 2.0 protocol with lifecycle management and server/client primitives) and the transport layer (message framing, connection management, authentication). The data layer defines three server primitives (tools, resources, prompts) and two client primitives (sampling and elicitation). The protocol is stateful, beginning with an initialization handshake where both sides negotiate capabilities, followed by an operation phase of request/response/notification exchange, and ending with shutdown.",
+  "parent": "mcp",
+  "tags": ["architecture", "design", "host", "client", "server", "json-rpc", "lifecycle", "layers"],
+  "aliases": [
+    "mcp architecture",
+    "MCP architecture",
+    "mcp design",
+    "mcp protocol design",
+    "mcp layers",
+    "mcp lifecycle",
+    "mcp host",
+    "capability negotiation",
+    "mcp protocol flow",
+    "how mcp works internally"
+  ],
+  "triggers": [
+    "how does MCP architecture work",
+    "explain MCP protocol design",
+    "MCP lifecycle management",
+    "MCP capability negotiation",
+    "what is an MCP host",
+    "how do MCP layers work",
+    "MCP protocol flow",
+    "understand MCP internals"
+  ],
+  "body": "# MCP Architecture\n\nThe Model Context Protocol follows a layered client-server architecture designed for AI applications to connect to external systems through a standardized protocol.\n\n## Participants\n\n### Host\n\nThe AI application that coordinates MCP. Examples:\n- Claude Desktop\n- Claude Code\n- VS Code (Copilot)\n- Cursor\n- ChatGPT\n- Custom chatbots\n\nThe host creates and manages MCP clients — one per server connection. It decides which servers to connect to, how to present tools/resources/prompts to users, and how to route LLM tool calls.\n\n### Client\n\nA component within the host that maintains a dedicated connection to one MCP server. The client handles:\n- Transport connection (stdio subprocess or HTTP)\n- Initialization handshake and capability negotiation\n- Sending requests (tools/list, tools/call, resources/read, prompts/get)\n- Receiving responses and notifications\n- Exposing client primitives (sampling, elicitation) to the server\n\n### Server\n\nA program that provides capabilities to clients. Servers can be:\n- **Local** — Launched as subprocesses via stdio transport (e.g., filesystem server)\n- **Remote** — Running as HTTP services via Streamable HTTP transport (e.g., Sentry MCP)\n\nServers expose three primitives: [[mcp/server/tools]], [[mcp/server/resources]], [[mcp/server/prompts]].\n\n```\n┌─────────────────────────────────────┐\n│           Host (AI App)             │\n│                                     │\n│  ┌──────────┐  ┌──────────┐        │\n│  │ Client 1 │  │ Client 2 │  ...   │\n│  └────┬─────┘  └────┬─────┘        │\n└───────┼──────────────┼──────────────┘\n        │              │\n   ┌────▼────┐    ┌────▼────┐\n   │Server A │    │Server B │\n   │ (stdio) │    │ (HTTP)  │\n   └─────────┘    └─────────┘\n```\n\n## Layers\n\n### Data Layer (Inner)\n\nImplements JSON-RPC 2.0 protocol defining message structure and semantics:\n\n**Lifecycle Management:**\n- `initialize` — Client sends protocol version and capabilities; server responds with its capabilities\n- `notifications/initialized` — Client signals readiness\n- Operation phase — Normal request/response/notification exchange\n- Shutdown — Connection terminated (stdin closed or HTTP DELETE)\n\n**Server Primitives:**\n- **[[mcp/server/tools]]** — Model-controlled functions (`tools/list`, `tools/call`)\n- **[[mcp/server/resources]]** — Application-controlled data (`resources/list`, `resources/read`, `resources/subscribe`)\n- **[[mcp/server/prompts]]** — User-controlled templates (`prompts/list`, `prompts/get`)\n\n**Client Primitives:**\n- **Sampling** — Server requests LLM completions from the client (`sampling/complete`)\n- **Elicitation** — Server requests user input from the client (`elicitation/request`)\n- **Logging** — Server sends log messages to the client\n\n**Utility Features:**\n- Notifications — Real-time updates (tools/list_changed, resources/updated)\n- Progress tracking — Long-running operation updates\n- Pagination — Cursor-based pagination for list operations\n- Completion — Auto-complete for prompt arguments and resource templates\n\n### Transport Layer (Outer)\n\nManages communication channels between clients and servers:\n\n- **[[mcp/transport]]** — stdio (local subprocess) and Streamable HTTP (remote HTTP+SSE)\n- **[[mcp/auth]]** — OAuth 2.1 authorization for HTTP transport\n- Connection establishment, message framing, session management\n\n## Lifecycle\n\n```\n1. INITIALIZE\n   Client ──→ Server: initialize(protocolVersion, capabilities, clientInfo)\n   Server ──→ Client: InitializeResult(protocolVersion, capabilities, serverInfo)\n   Client ──→ Server: notifications/initialized\n\n2. OPERATE\n   Client ──→ Server: tools/list, tools/call, resources/read, prompts/get\n   Server ──→ Client: responses, notifications\n   Server ──→ Client: sampling/complete, elicitation/request (client primitives)\n\n3. SHUTDOWN\n   Client closes stdin (stdio) or sends DELETE (HTTP)\n```\n\n## Capability Negotiation\n\nDuring initialization, both sides declare what they support:\n\n**Server capabilities:**\n```json\n{\n  \"capabilities\": {\n    \"tools\": { \"listChanged\": true },\n    \"resources\": { \"subscribe\": true, \"listChanged\": true },\n    \"prompts\": { \"listChanged\": true }\n  }\n}\n```\n\n**Client capabilities:**\n```json\n{\n  \"capabilities\": {\n    \"sampling\": {},\n    \"elicitation\": {},\n    \"roots\": { \"listChanged\": true }\n  }\n}\n```\n\nCapabilities determine which methods are available. If a server doesn't declare `tools`, the client must not send `tools/list` or `tools/call`.\n\n## JSON-RPC 2.0 Message Types\n\n### Request\n```json\n{\"jsonrpc\": \"2.0\", \"id\": 1, \"method\": \"tools/list\", \"params\": {}}\n```\n\n### Response\n```json\n{\"jsonrpc\": \"2.0\", \"id\": 1, \"result\": {\"tools\": [...]}}\n```\n\n### Error\n```json\n{\"jsonrpc\": \"2.0\", \"id\": 1, \"error\": {\"code\": -32602, \"message\": \"Unknown tool\"}}\n```\n\n### Notification (no id, no response expected)\n```json\n{\"jsonrpc\": \"2.0\", \"method\": \"notifications/tools/list_changed\"}\n```\n\n## Protocol Versioning\n\nMCP protocol versions use date-based identifiers (e.g., `2025-06-18`). During initialization, client and server negotiate a mutually compatible version. The client includes `MCP-Protocol-Version` header on HTTP requests.\n\n## Control Flow Patterns\n\n### Tool Use Flow\n```\nUser ──→ Host ──→ LLM: \"What's the weather?\"\nLLM ──→ Host: tool_use(get_weather, {city: \"SF\"})\nHost ──→ Client ──→ Server: tools/call(get_weather, {city: \"SF\"})\nServer ──→ Client ──→ Host: result({content: [{type: \"text\", text: \"72°F\"}]})\nHost ──→ LLM: tool_result\nLLM ──→ Host ──→ User: \"It's 72°F in San Francisco.\"\n```\n\n### Resource Enrichment Flow\n```\nUser selects resource in UI\nHost ──→ Client ──→ Server: resources/read(\"schema://db\")\nServer ──→ Client ──→ Host: contents({text: \"CREATE TABLE...\"})\nHost adds resource content to LLM context\n```\n\n### Prompt Invocation Flow\n```\nUser types /code_review\nHost ──→ Client ──→ Server: prompts/get(\"code_review\", {code: \"...\"})\nServer ──→ Client ──→ Host: messages([{role: \"user\", content: \"Review this...\"}])\nHost sends prompt messages to LLM\n```\n\n## Design Principles\n\n1. **Separation of concerns** — Protocol (data layer) is independent of transport\n2. **Capability negotiation** — Both sides declare what they support\n3. **Stateful connections** — Lifecycle management ensures ordered initialization\n4. **Dynamic discovery** — Capabilities can change at runtime via notifications\n5. **Transport agnostic** — Same JSON-RPC messages work over stdio and HTTP\n6. **Security by design** — Human-in-the-loop for tool calls, audience-bound tokens\n",
+  "sections": [
+    {
+      "id": "participants",
+      "title": "Host, Client, and Server roles",
+      "body": "The **Host** is the AI application (Claude Desktop, VS Code) that manages MCP clients. The **Client** is a protocol component within the host that maintains a dedicated connection to one server — handling initialization, capability negotiation, and message routing. The **Server** is an external program that exposes tools, resources, and prompts. One host can connect to many servers simultaneously, each via its own client instance. Local servers use stdio transport; remote servers use Streamable HTTP.",
+      "tags": ["host", "client", "server", "roles", "participants"]
+    },
+    {
+      "id": "data-layer",
+      "title": "Data layer (JSON-RPC protocol)",
+      "body": "The inner layer implementing JSON-RPC 2.0 with four concerns: **Lifecycle management** (initialization handshake, capability negotiation, shutdown). **Server primitives** (tools for actions, resources for data, prompts for templates). **Client primitives** (sampling for LLM access, elicitation for user input, logging for debug messages). **Utilities** (notifications for real-time updates, progress tracking, pagination, auto-completion). All messages follow JSON-RPC format with `jsonrpc`, `id`, `method`, `params`, `result`, or `error` fields.",
+      "tags": ["data-layer", "json-rpc", "primitives", "lifecycle", "protocol"]
+    },
+    {
+      "id": "capability-negotiation",
+      "title": "Capability negotiation",
+      "body": "During initialization, client and server exchange capability declarations. The server declares which primitives it supports (tools, resources, prompts) and optional features (listChanged, subscribe). The client declares which client primitives it supports (sampling, elicitation, roots). Each capability is an object — its presence means support, and nested fields configure optional features. Capabilities constrain which methods can be called — e.g., if a server doesn't declare `tools`, the client must not send `tools/list`.",
+      "tags": ["capabilities", "negotiation", "initialization", "features"]
+    },
+    {
+      "id": "message-types",
+      "title": "JSON-RPC message types",
+      "body": "Four message types: **Requests** have `id`, `method`, and optional `params` — they expect a response. **Responses** match a request by `id` and contain `result` or `error`. **Errors** include a numeric `code` (-32602 for invalid params, -32603 for internal error) and a `message` string. **Notifications** have `method` and optional `params` but no `id` — they don't expect a response. All messages are JSON-RPC 2.0 with `jsonrpc: \"2.0\"` field.",
+      "tags": ["messages", "request", "response", "error", "notification", "json-rpc"]
+    },
+    {
+      "id": "control-flows",
+      "title": "Control flow patterns",
+      "body": "Three primary flows: **Tool use** — User query → LLM selects tool → Host routes to Client → Client calls Server → Result flows back → LLM generates response. **Resource enrichment** — User or application selects a resource → Client reads from Server → Content added to LLM context. **Prompt invocation** — User selects a prompt (slash command) → Client gets prompt from Server → Messages sent to LLM. Each flow demonstrates the separation between Host (orchestration), Client (protocol), and Server (execution).",
+      "tags": ["flows", "tool-use", "resource-enrichment", "prompt-invocation"]
+    }
+  ],
+  "links": [
+    { "uri": "mcp/server", "context": "Servers expose primitives through the data layer" },
+    { "uri": "mcp/client", "context": "Clients connect to servers and route protocol messages" },
+    { "uri": "mcp/server/tools", "context": "Tools are model-controlled server primitives" },
+    { "uri": "mcp/server/resources", "context": "Resources are application-controlled data sources" },
+    { "uri": "mcp/server/prompts", "context": "Prompts are user-controlled interaction templates" },
+    { "uri": "mcp/transport", "context": "Transport layer handles connection and message framing" },
+    { "uri": "mcp/auth", "context": "Authorization layer for HTTP transport" }
+  ],
+  "related": [
+    { "uri": "mcp/server", "relation": "see-also", "note": "Server implementation details" },
+    { "uri": "mcp/client", "relation": "see-also", "note": "Client implementation details" },
+    { "uri": "mcp/transport", "relation": "see-also", "note": "Transport layer implementation" }
+  ],
+  "more": {
+    "docs": "https://modelcontextprotocol.io/docs/learn/architecture",
+    "spec": "https://spec.modelcontextprotocol.io",
+    "repo": "https://github.com/modelcontextprotocol"
+  },
+  "frontmatter": {
+    "created": "2026-04-10",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "6 min",
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

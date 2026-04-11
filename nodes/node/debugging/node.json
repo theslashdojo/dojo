@@ -1,0 +1,97 @@
+{
+  "name": "debugging",
+  "version": "1.0.0",
+  "uri": "node/debugging",
+  "type": "context",
+  "content_type": "guide",
+  "context": "Debug Node.js applications with the inspector protocol, Chrome DevTools, VS Code, and diagnostic tools",
+  "info": "Node.js ships with a built-in inspector that speaks the Chrome DevTools Protocol over WebSocket. The `--inspect` flag starts the inspector on port 9229, letting you attach Chrome DevTools, VS Code, or any CDP-compatible debugger. Beyond breakpoint debugging, Node.js provides diagnostic reports for post-mortem analysis, heap snapshots for memory leak detection, CPU profiling with `--cpu-prof`, and async stack traces for tracing promise chains. The `console` object offers far more than `console.log` — table formatting, timers, grouping, and trace. The `NODE_DEBUG` environment variable enables debug output from core modules. For production diagnostics, tools like clinic.js and 0x provide flame graphs and event loop analysis. Every agent that runs Node.js code needs to understand these tools to diagnose failures, performance issues, and memory leaks.",
+  "parent": "node",
+  "tags": ["debugging", "inspector", "devtools", "profiling", "diagnostics", "heap-snapshot", "cpu-profile", "memory-leak"],
+  "aliases": [
+    "debugging",
+    "debug",
+    "node inspect",
+    "node debugger",
+    "devtools",
+    "chrome devtools",
+    "profiling",
+    "memory leak",
+    "cpu profile",
+    "heap snapshot",
+    "node --inspect",
+    "diagnostic report"
+  ],
+  "triggers": [
+    "debug a node application",
+    "find a memory leak in node",
+    "profile node.js performance",
+    "attach debugger to node process",
+    "inspect running node process",
+    "set breakpoints in node",
+    "generate a heap snapshot",
+    "cpu profile a node app",
+    "diagnose slow node application"
+  ],
+  "body": "# Debugging Node.js Applications\n\nNode.js has first-class debugging support through the V8 inspector protocol. You can set breakpoints, step through code, inspect variables, profile performance, and hunt memory leaks — all without third-party tools.\n\n## Starting the Inspector\n\nThe `--inspect` flag starts the V8 inspector agent:\n\n```bash\n# Start inspector (doesn't pause execution)\nnode --inspect app.js\n# Debugger listening on ws://127.0.0.1:9229/uuid\n\n# Start inspector and pause on first line\nnode --inspect-brk app.js\n\n# Custom host and port\nnode --inspect=0.0.0.0:9230 app.js\n\n# Inspect a running process (send SIGUSR1)\nkill -USR1 <pid>\n```\n\nOnce the inspector is running, connect with:\n- **Chrome DevTools**: Open `chrome://inspect` in Chrome, click \"inspect\" on the listed target\n- **VS Code**: Use the built-in debugger (see launch.json below)\n- **Node.js built-in**: `node inspect app.js` (CLI debugger)\n\n## VS Code Debugging\n\nCreate `.vscode/launch.json`:\n\n```json\n{\n  \"version\": \"0.2.0\",\n  \"configurations\": [\n    {\n      \"type\": \"node\",\n      \"request\": \"launch\",\n      \"name\": \"Launch Program\",\n      \"program\": \"${workspaceFolder}/src/index.js\",\n      \"console\": \"integratedTerminal\",\n      \"skipFiles\": [\"<node_internals>/**\"]\n    },\n    {\n      \"type\": \"node\",\n      \"request\": \"attach\",\n      \"name\": \"Attach to Process\",\n      \"port\": 9229,\n      \"skipFiles\": [\"<node_internals>/**\"]\n    },\n    {\n      \"type\": \"node\",\n      \"request\": \"launch\",\n      \"name\": \"Debug Tests\",\n      \"program\": \"${workspaceFolder}/node_modules/.bin/jest\",\n      \"args\": [\"--runInBand\"],\n      \"console\": \"integratedTerminal\"\n    }\n  ]\n}\n```\n\n## Console Methods\n\nBeyond `console.log`, Node.js provides powerful console methods:\n\n```javascript\n// Table formatting for arrays and objects\nconsole.table([{ name: 'Alice', age: 30 }, { name: 'Bob', age: 25 }]);\n\n// Timing operations\nconsole.time('db-query');\nawait db.query('SELECT * FROM users');\nconsole.timeEnd('db-query');  // db-query: 45.123ms\n\n// Count invocations\nfunction processItem(item) {\n  console.count('processItem');  // processItem: 1, processItem: 2, ...\n}\n\n// Stack traces\nconsole.trace('Reached this point');\n\n// Grouped output\nconsole.group('User processing');\nconsole.log('Fetching user...');\nconsole.log('Validating...');\nconsole.groupEnd();\n\n// Deep object inspection\nconsole.dir(complexObject, { depth: null, colors: true });\n\n// Conditional logging\nconsole.assert(value > 0, 'Value must be positive:', value);\n```\n\n## NODE_DEBUG Environment Variable\n\nEnable debug output from Node.js core modules:\n\n```bash\n# Debug filesystem operations\nNODE_DEBUG=fs node app.js\n\n# Debug multiple modules\nNODE_DEBUG=fs,net,tls node app.js\n\n# Debug HTTP module\nNODE_DEBUG=http node app.js\n\n# Available modules: fs, net, tls, http, http2, stream, module, timer\n```\n\n## Diagnostic Reports\n\nNode.js can generate JSON diagnostic reports on crashes or on demand:\n\n```bash\n# Generate report on fatal error\nnode --report-on-fatalerror app.js\n\n# Generate report on uncaught exception\nnode --report-uncaught-exception app.js\n\n# Generate report on signal (SIGUSR2 by default)\nnode --report-on-signal app.js\n\n# Custom report directory\nnode --report-directory=/var/reports app.js\n```\n\n```javascript\n// Generate report programmatically\nprocess.report.writeReport();\nprocess.report.writeReport('/path/to/report.json');\n\n// Get report as JSON object\nconst report = process.report.getReport();\nconsole.log(report.header.nodeVersion);\nconsole.log(report.javascriptHeap);\n```\n\nReports include: Node.js version, platform info, JavaScript heap stats, native stack trace, libuv handle info, environment variables, and loaded modules.\n\n## Heap Snapshots and Memory Leaks\n\n```javascript\nconst v8 = require('node:v8');\nconst fs = require('node:fs');\n\n// Write heap snapshot to file\nconst filename = v8.writeHeapSnapshot();\nconsole.log(`Heap snapshot written to ${filename}`);\n\n// Or via inspector\nconst inspector = require('node:inspector');\nconst session = new inspector.Session();\nsession.connect();\nsession.post('HeapProfiler.takeHeapSnapshot', null, (err, r) => {\n  // Snapshot taken\n});\n```\n\nCommon memory leak patterns:\n- **Event listeners not removed**: Use `emitter.removeListener()` or `AbortController`\n- **Closures capturing large objects**: Break references when done\n- **Global caches without eviction**: Use `Map` with size limits or `WeakMap`/`WeakRef`\n- **Unresolved promises**: Always handle rejections\n\n```bash\n# Track heap growth over time\nnode --max-old-space-size=512 app.js\n\n# Expose GC for testing\nnode --expose-gc app.js\n# Then in code: global.gc();\n```\n\n## CPU Profiling\n\n```bash\n# V8 CPU profile (generates .cpuprofile file)\nnode --cpu-prof app.js\nnode --cpu-prof --cpu-prof-dir=./profiles app.js\n\n# V8 tick profiler (low-level)\nnode --prof app.js\n# Process the log\nnode --prof-process isolate-0xNNNN-v8.log > profile.txt\n```\n\nOpen `.cpuprofile` files in Chrome DevTools (Performance tab) or VS Code to see flame charts.\n\n## Async Stack Traces\n\nNode.js supports async stack traces that show the full call chain across async boundaries:\n\n```bash\n# Enabled by default since Node 16\n# Provides clear traces across await, setTimeout, Promise.then\nnode app.js\n```\n\n```javascript\n// Example: clear async trace\nasync function fetchUser(id) {\n  const response = await fetch(`/api/users/${id}`);\n  return response.json();  // Error here shows full async chain\n}\n\nasync function handleRequest(req) {\n  const user = await fetchUser(req.params.id);\n  return user;\n}\n```\n\n## Debugging Common Issues\n\n### Unhandled Promise Rejections\n```javascript\n// Catch all unhandled rejections\nprocess.on('unhandledRejection', (reason, promise) => {\n  console.error('Unhandled rejection at:', promise, 'reason:', reason);\n  // In production: log and exit\n  process.exit(1);\n});\n```\n\n### Event Loop Blocking\n```javascript\n// Detect blocked event loop\nconst start = process.hrtime.bigint();\nsetInterval(() => {\n  const delta = Number(process.hrtime.bigint() - start) / 1e6;\n  const drift = delta % 1000;\n  if (drift > 50) console.warn(`Event loop blocked for ${drift}ms`);\n}, 1000);\n```\n\n### Debugging with util.debuglog\n```javascript\nconst util = require('node:util');\nconst debug = util.debuglog('myapp');\n\n// Only prints when NODE_DEBUG=myapp\ndebug('Processing request %s', requestId);\n```\n\n## Third-Party Tools\n\n| Tool | Purpose | Install |\n|------|---------|--------|\n| **clinic.js** | Performance analysis suite (Doctor, Bubbleprof, Flame) | `npm i -g clinic` |\n| **0x** | Flame graph generation | `npm i -g 0x` |\n| **ndb** | Chrome DevTools-based debugger | `npm i -g ndb` |\n| **why-is-node-running** | Track active handles preventing exit | `npm i why-is-node-running` |\n| **trace-unhandled** | Better unhandled rejection traces | `npm i trace-unhandled` |\n\n```bash\n# Flame graph with 0x\n0x app.js\n\n# Clinic.js analysis\nclinic doctor -- node app.js\nclinic flame -- node app.js\nclinic bubbleprof -- node app.js\n```\n\n## Environment Variables\n\n| Variable | Purpose |\n|----------|----------|\n| `NODE_DEBUG` | Enable debug output for core modules |\n| `NODE_OPTIONS` | Default CLI flags (e.g., `--inspect`) |\n| `NODE_V8_COVERAGE` | Directory for V8 coverage output |\n| `UV_THREADPOOL_SIZE` | libuv thread pool size for async I/O |\n",
+  "sections": [
+    {
+      "id": "inspector",
+      "title": "V8 Inspector Protocol",
+      "body": "Start the inspector with `node --inspect` (non-blocking) or `node --inspect-brk` (pause on first line). The inspector listens on `ws://127.0.0.1:9229` by default. Connect via Chrome DevTools (`chrome://inspect`), VS Code debugger, or any Chrome DevTools Protocol client. To debug a running process, send `SIGUSR1` to enable the inspector: `kill -USR1 <pid>`. The inspector supports breakpoints, stepping, call stack inspection, variable watches, and expression evaluation.",
+      "tags": ["inspector", "inspect", "inspect-brk", "sigusr1", "breakpoints"]
+    },
+    {
+      "id": "devtools",
+      "title": "Chrome DevTools and VS Code",
+      "body": "Chrome DevTools: open `chrome://inspect`, configure network targets if needed, click 'inspect' on the listed Node.js target. VS Code: create a `.vscode/launch.json` with `type: 'node'` configurations. Use `request: 'launch'` to start debugging or `request: 'attach'` to connect to a running inspector. Set `skipFiles: ['<node_internals>/**']` to skip Node.js internal frames. The `restart: true` option enables auto-reconnect on server restart.",
+      "tags": ["chrome-devtools", "vscode", "launch-json", "attach", "skipfiles"]
+    },
+    {
+      "id": "console-methods",
+      "title": "Advanced console methods",
+      "body": "Beyond `console.log`: `console.table()` formats arrays and objects as tables. `console.time()`/`console.timeEnd()` measures execution duration. `console.count()` counts invocations. `console.trace()` prints stack traces. `console.group()`/`console.groupEnd()` nests output. `console.dir(obj, { depth: null })` inspects objects beyond default depth. `console.assert(condition, message)` logs only on failure. `util.debuglog('section')` creates loggers that only output when `NODE_DEBUG=section`.",
+      "tags": ["console", "table", "time", "count", "trace", "group", "dir", "debuglog"]
+    },
+    {
+      "id": "diagnostics",
+      "title": "Diagnostic reports and heap snapshots",
+      "body": "Diagnostic reports (`--report-on-fatalerror`, `process.report.writeReport()`) generate JSON files with Node.js version, heap stats, native stack, libuv handles, and environment. Heap snapshots (`v8.writeHeapSnapshot()`) capture the full JavaScript heap for analysis in Chrome DevTools. Compare two snapshots to find memory leaks. Use `--max-old-space-size` to set heap limits and `--expose-gc` to manually trigger garbage collection during debugging.",
+      "tags": ["diagnostic-report", "heap-snapshot", "memory-leak", "v8", "gc"]
+    },
+    {
+      "id": "profiling",
+      "title": "CPU and performance profiling",
+      "body": "Use `--cpu-prof` to generate V8 CPU profiles (`.cpuprofile` files) viewable as flame charts in Chrome DevTools or VS Code. The lower-level `--prof` flag generates tick-processor logs that `--prof-process` converts to human-readable output. Third-party tools like `0x` generate interactive flame graphs and `clinic.js` provides Doctor (event loop), Flame (CPU), and Bubbleprof (async) analysis modes. Always profile under realistic load — use tools like `autocannon` or `wrk` to generate traffic.",
+      "tags": ["cpu-prof", "profiling", "flame-graph", "0x", "clinic", "performance"]
+    }
+  ],
+  "links": [
+    { "uri": "node", "context": "Node.js runtime foundation" },
+    { "uri": "node/child-process", "context": "Debug child processes spawned from Node.js" },
+    { "uri": "node/streams", "context": "Debug stream backpressure and data flow issues" }
+  ],
+  "related": [
+    { "uri": "node", "relation": "prerequisite", "note": "Understanding Node.js runtime basics is essential before debugging" }
+  ],
+  "more": {
+    "docs": "https://nodejs.org/docs/latest/api/debugger.html",
+    "inspector": "https://nodejs.org/docs/latest/api/inspector.html",
+    "diagnostics": "https://nodejs.org/docs/latest/api/report.html",
+    "v8": "https://nodejs.org/docs/latest/api/v8.html"
+  },
+  "frontmatter": {
+    "created": "2026-04-10",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "8 min",
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

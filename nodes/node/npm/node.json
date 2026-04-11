@@ -1,0 +1,126 @@
+{
+  "name": "npm",
+  "version": "1.0.0",
+  "uri": "node/npm",
+  "type": "skill",
+  "context": "Use npm to install, manage, and publish JavaScript packages via the npm registry and configure Node.js project dependencies",
+  "info": "This skill covers the npm CLI and ecosystem: initializing projects with package.json, installing and resolving dependencies from the npm registry, managing lockfiles for deterministic builds, running scripts for build and test workflows, configuring workspaces for monorepo setups, and publishing packages. npm ships with Node.js and is the default package manager for the JavaScript ecosystem. The registry at npmjs.com hosts over two million packages. Sub-skills provide focused coverage: [[node/npm/install]] for dependency installation and lockfile management, [[node/npm/publish]] for releasing packages to the registry, and [[node/npm/scripts]] for running and composing npm scripts. See [[node]] for the Node.js runtime and [[node/esm]] for ES module configuration.",
+  "parent": "node",
+  "tags": ["npm", "package-manager", "registry", "dependencies", "package-json"],
+  "aliases": [
+    "npm",
+    "node package manager",
+    "package manager",
+    "yarn alternative",
+    "pnpm alternative",
+    "npmjs",
+    "package.json",
+    "node_modules",
+    "npm registry"
+  ],
+  "triggers": [
+    "install packages",
+    "manage dependencies",
+    "create package.json",
+    "run npm scripts",
+    "publish a package to npm",
+    "set up a node project",
+    "configure npm workspaces",
+    "set up .npmrc"
+  ],
+  "body": "# npm — Node Package Manager\n\nnpm is the default package manager shipped with Node.js. It provides a CLI for installing dependencies, running scripts, and publishing packages to the npm registry at https://www.npmjs.com.\n\n## Sub-Skills\n\nThis skill is divided into focused sub-skills for specific operations:\n\n- **[[node/npm/install]]** — Install, update, and remove packages; manage lockfiles and dependency resolution\n- **[[node/npm/publish]]** — Publish packages to the registry with versioning, access control, and provenance\n- **[[node/npm/scripts]]** — Run scripts, lifecycle hooks, npx execution, and cross-platform composition\n\n## Initializing a Project\n\n```bash\n# Create a new project with defaults\nmkdir my-app && cd my-app\nnpm init -y\n\n# Interactive initialization\nnpm init\n\n# Scoped package\nnpm init --scope=@myorg\n\n# Use an initializer package\nnpm init @vitejs/app my-app\nnpm init react-app my-app\n```\n\n## Installing Dependencies\n\n```bash\n# Install all from package.json\nnpm install\n\n# Add production dependency\nnpm install express\n\n# Add dev dependency\nnpm install -D typescript @types/express\n\n# Add exact version (no ^ prefix)\nnpm install -E lodash@4.17.21\n\n# Install globally\nnpm install -g tsx\n```\n\n## Running Scripts\n\n```bash\n# Run a named script\nnpm run build\nnpm run lint\n\n# Shortcuts\nnpm test        # runs \"test\" script\nnpm start       # runs \"start\" script\n\n# Pass arguments to a script\nnpm run test -- --watch\n\n# Run across all workspaces\nnpm run build --workspaces\n```\n\n## package.json Anatomy\n\n```json\n{\n  \"name\": \"@scope/my-package\",\n  \"version\": \"1.0.0\",\n  \"type\": \"module\",\n  \"main\": \"./dist/index.cjs\",\n  \"module\": \"./dist/index.mjs\",\n  \"types\": \"./dist/index.d.ts\",\n  \"exports\": {\n    \".\": {\n      \"import\": \"./dist/index.mjs\",\n      \"require\": \"./dist/index.cjs\",\n      \"types\": \"./dist/index.d.ts\"\n    }\n  },\n  \"scripts\": {\n    \"build\": \"tsup src/index.ts --format cjs,esm --dts\",\n    \"test\": \"vitest\",\n    \"lint\": \"eslint src/\",\n    \"prepublishOnly\": \"npm run build && npm test\"\n  },\n  \"dependencies\": {},\n  \"devDependencies\": {},\n  \"peerDependencies\": {},\n  \"engines\": { \"node\": \">=20\" },\n  \"files\": [\"dist\"],\n  \"private\": false\n}\n```\n\n### Key Fields\n\n| Field | Purpose |\n|-------|---------|\n| `name` | Package name; scoped names use `@scope/name` |\n| `version` | Semver version string |\n| `type` | `\"module\"` for ESM, omit or `\"commonjs\"` for CJS |\n| `main` | Entry point for CommonJS `require()` |\n| `exports` | Modern conditional entry point map (preferred over main) |\n| `scripts` | Named commands run via `npm run <name>` |\n| `dependencies` | Production runtime dependencies |\n| `devDependencies` | Build and test tools |\n| `peerDependencies` | Dependencies the consumer must provide |\n| `engines` | Required Node.js and npm versions |\n| `files` | Whitelist of files included when publishing |\n| `private` | Set `true` to prevent accidental publishing |\n\n## Semver Ranges\n\n| Range | Meaning |\n|-------|--------|\n| `^1.2.3` | Compatible with 1.x.x (>=1.2.3 <2.0.0) |\n| `~1.2.3` | Patch-level only (>=1.2.3 <1.3.0) |\n| `1.2.3` | Exact version |\n| `*` | Any version |\n| `>=1.0.0 <2.0.0` | Explicit range |\n| `1.x` | Wildcard for minor and patch |\n\n## npm Workspaces (Monorepo)\n\nWorkspaces let you manage multiple packages in a single repository.\n\n```json\n{\n  \"name\": \"my-monorepo\",\n  \"private\": true,\n  \"workspaces\": [\"packages/*\", \"apps/*\"]\n}\n```\n\n```bash\n# Install all workspace dependencies (hoisted to root)\nnpm install\n\n# Run script in one workspace\nnpm run build -w packages/core\n\n# Run script in all workspaces\nnpm run build --workspaces\n\n# Add a dependency to a specific workspace\nnpm install lodash -w packages/utils\n\n# List workspaces\nnpm ls --workspaces --depth=0\n```\n\nWorkspaces share a single root `node_modules` via symlinks. Cross-workspace dependencies resolve automatically when versions match.\n\n## .npmrc Configuration\n\n`.npmrc` files configure npm behavior at the project, user, or global level.\n\n```ini\n# .npmrc — project-level configuration\nregistry=https://registry.npmjs.org/\n@myorg:registry=https://npm.pkg.github.com/\n//npm.pkg.github.com/:_authToken=${GITHUB_TOKEN}\n\n# Save exact versions by default\nsave-exact=true\n\n# Set the default Node.js engine strictness\nengine-strict=true\n\n# Use a specific shell for npm scripts\nscript-shell=/bin/bash\n```\n\n**Precedence** (highest to lowest):\n1. Command-line flags\n2. Environment variables (`npm_config_<key>`)\n3. Project `.npmrc` (in project root)\n4. User `~/.npmrc`\n5. Global `/etc/npmrc`\n\n## Environment Variables\n\n| Variable | Purpose |\n|----------|---------|\n| `NPM_TOKEN` | Authentication token for the npm registry |\n| `NPM_CONFIG_REGISTRY` | Override the default registry URL |\n| `NPM_CONFIG_PREFIX` | Set the global install prefix |\n| `NODE_ENV` | When `production`, `npm install` skips devDependencies |\n| `npm_config_<key>` | Override any npm config value |\n| `npm_package_name` | Available in scripts — current package name |\n| `npm_package_version` | Available in scripts — current package version |\n| `npm_lifecycle_event` | Available in scripts — name of the running script |\n\n## Common Commands Reference\n\n```bash\nnpm init -y                    # Initialize with defaults\nnpm install                    # Install all from package.json\nnpm install <pkg>              # Add to dependencies\nnpm install -D <pkg>           # Add to devDependencies\nnpm install -g <pkg>           # Install globally\nnpm update                     # Update within semver ranges\nnpm outdated                   # Check for outdated packages\nnpm audit                      # Security vulnerability check\nnpm audit fix                  # Auto-fix vulnerabilities\nnpm ls --depth=0               # List top-level packages\nnpm info <pkg>                 # Package metadata from registry\nnpm search <query>             # Search the registry\nnpm cache clean --force        # Clear the npm cache\nnpm config list                # Show active configuration\nnpm config set <key> <value>   # Set a config value\n```\n",
+  "sections": [
+    {
+      "id": "package-json",
+      "title": "package.json configuration",
+      "body": "The `package.json` file is the manifest for any Node.js project. Key fields: `name` (unique on registry; scoped names use `@scope/name`), `version` (semver string), `type` (set to `\"module\"` for ESM), `main` (CJS entry point), `exports` (modern conditional entry map — preferred over main/module), `scripts` (named commands via `npm run`), `dependencies` and `devDependencies` (runtime vs build-time packages), `peerDependencies` (consumer-provided deps), `engines` (required Node.js version), `files` (whitelist for publishing), and `private` (set `true` to prevent accidental publish). Use `npm init -y` to scaffold a default package.json or `npm init` for the interactive wizard.",
+      "tags": ["package-json", "manifest", "exports", "engines", "files"]
+    },
+    {
+      "id": "lockfiles",
+      "title": "Lockfiles and deterministic installs",
+      "body": "The `package-lock.json` file pins every resolved dependency version and integrity hash, ensuring deterministic installs across machines. Always commit this file to version control. Use `npm ci` in CI pipelines — it reads the lockfile strictly and fails if it is out of sync with `package.json`. Never manually edit the lockfile. If merge conflicts occur, delete `package-lock.json` and `node_modules`, then run `npm install` to regenerate. The lockfile enables reproducible builds and prevents supply-chain drift. See [[node/npm/install]] for `npm ci` vs `npm install` details.",
+      "tags": ["lockfile", "package-lock", "npm-ci", "deterministic", "reproducible"]
+    },
+    {
+      "id": "workspaces",
+      "title": "npm workspaces for monorepos",
+      "body": "Workspaces enable managing multiple packages in a single repository. Define them in the root `package.json` with `\"workspaces\": [\"packages/*\", \"apps/*\"]`. Run `npm install` at the root to hoist shared dependencies and create symlinks for cross-workspace resolution. Target a specific workspace with `-w packages/core` or all workspaces with `--workspaces`. Workspaces reduce disk usage through hoisting and simplify cross-package development. Set `\"private\": true` on the root package to prevent accidental publishing of the monorepo root.",
+      "tags": ["workspaces", "monorepo", "hoisting", "symlinks", "multi-package"]
+    },
+    {
+      "id": "npmrc",
+      "title": ".npmrc configuration",
+      "body": "The `.npmrc` file controls npm behavior at the project, user, or global level. Common settings: `registry` (default package source), scoped registries (`@myorg:registry=https://npm.pkg.github.com/`), auth tokens (`//registry.npmjs.org/:_authToken=${NPM_TOKEN}`), `save-exact=true` (pin exact versions), and `engine-strict=true` (enforce engines field). Precedence order: command-line flags > env vars (`npm_config_*`) > project `.npmrc` > user `~/.npmrc` > global `/etc/npmrc`. Never commit tokens directly — use environment variable interpolation.",
+      "tags": ["npmrc", "configuration", "registry", "auth", "scoped-registry"]
+    },
+    {
+      "id": "semver",
+      "title": "Semantic versioning and ranges",
+      "body": "npm uses semantic versioning (semver) for dependency resolution. Format: `MAJOR.MINOR.PATCH`. MAJOR for breaking changes, MINOR for backwards-compatible features, PATCH for backwards-compatible fixes. Range operators: `^1.2.3` (caret — allows minor and patch), `~1.2.3` (tilde — allows patch only), `>=1.0.0` (comparison), `1.x` (wildcard), and `1.0.0 - 2.0.0` (hyphen range). Pre-release tags like `1.0.0-beta.1` sort before the release version. The lockfile pins exact resolved versions regardless of range specifiers.",
+      "tags": ["semver", "versioning", "caret", "tilde", "ranges"]
+    }
+  ],
+  "sub": ["node/npm/install", "node/npm/publish", "node/npm/scripts"],
+  "links": [
+    { "uri": "node/npm/install", "context": "Install and manage dependencies" },
+    { "uri": "node/npm/publish", "context": "Publish packages to the registry" },
+    { "uri": "node/npm/scripts", "context": "Run and compose npm scripts" },
+    { "uri": "node", "context": "Node.js runtime that ships npm" },
+    { "uri": "node/esm", "context": "ES module configuration for type: module" }
+  ],
+  "related": [
+    { "uri": "node", "relation": "prerequisite", "note": "Node.js must be installed — npm ships bundled with the Node.js runtime" },
+    { "uri": "node/esm", "relation": "see-also", "note": "ES module configuration affects how packages are loaded and the type field in package.json" }
+  ],
+  "scripts": [
+    {
+      "id": "npm-init",
+      "name": "Initialize npm Project",
+      "description": "Create a new npm project directory with a configured package.json and sensible defaults",
+      "lang": "bash",
+      "runtime": "node>=18",
+      "entry": "./scripts/npm-init.sh"
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "projectName": { "type": "string", "description": "Name for the new project directory and package" },
+        "description": { "type": "string", "description": "Package description for package.json" },
+        "private": { "type": "boolean", "default": false, "description": "Whether to mark the package as private" },
+        "type": { "type": "string", "enum": ["module", "commonjs"], "default": "module", "description": "Module system — module for ESM, commonjs for CJS" }
+      },
+      "required": ["projectName"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "packageJsonPath": { "type": "string", "description": "Absolute path to the created package.json" },
+        "name": { "type": "string", "description": "The resolved package name written to package.json" }
+      }
+    }
+  },
+  "depends": [],
+  "more": {
+    "docs": "https://docs.npmjs.com/",
+    "registry": "https://www.npmjs.com/",
+    "cli-docs": "https://docs.npmjs.com/cli/v10/commands"
+  },
+  "frontmatter": {
+    "created": "2026-04-10",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "6 min",
+    "prerequisites": ["node"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

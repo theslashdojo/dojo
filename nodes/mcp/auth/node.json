@@ -1,0 +1,92 @@
+{
+  "name": "auth",
+  "version": "1.0.0",
+  "uri": "mcp/auth",
+  "type": "context",
+  "content_type": "reference",
+  "context": "MCP authorization via OAuth 2.1 — protected resource metadata, token exchange, PKCE, and bearer token usage for HTTP servers",
+  "info": "MCP provides optional authorization at the transport level for HTTP-based servers. The mechanism is based on OAuth 2.1 with Protected Resource Metadata (RFC 9728) for authorization server discovery, Dynamic Client Registration (RFC 7591) for automatic client registration, and PKCE for authorization code protection. The flow: client requests without a token, server returns 401 with WWW-Authenticate header pointing to resource metadata, client discovers the authorization server, performs the OAuth flow, and includes the access token as a Bearer header on all subsequent requests. STDIO transport servers should use environment-based credentials instead. Token audience validation is mandatory to prevent confused deputy attacks.",
+  "parent": "mcp",
+  "tags": ["auth", "oauth", "oauth2", "authorization", "bearer-token", "pkce", "security", "tokens"],
+  "aliases": [
+    "mcp auth",
+    "MCP authorization",
+    "mcp oauth",
+    "mcp authentication",
+    "mcp bearer token",
+    "mcp security",
+    "oauth 2.1",
+    "mcp token",
+    "mcp access token",
+    "protected resource metadata"
+  ],
+  "triggers": [
+    "authenticate with an MCP server",
+    "set up OAuth for MCP",
+    "secure an MCP server",
+    "use bearer tokens with MCP",
+    "MCP authorization flow",
+    "how does MCP auth work",
+    "add authentication to my MCP server",
+    "protect my MCP server"
+  ],
+  "body": "# MCP Authorization\n\nMCP provides optional authorization at the transport level, enabling clients to make authenticated requests to protected servers. Authorization is based on OAuth 2.1 and applies to HTTP-based transports only.\n\n## When Authorization Applies\n\n- **HTTP servers**: SHOULD use OAuth 2.1 per this specification\n- **STDIO servers**: SHOULD NOT use OAuth; use environment variables for credentials\n- **Custom transports**: MUST follow established security best practices for their protocol\n\n## Roles\n\n| Role | MCP Participant |\n|------|----------------|\n| Resource Server | MCP Server (accepts access tokens) |\n| Client | MCP Client (obtains and presents tokens) |\n| Authorization Server | Issues access tokens (may be separate from MCP server) |\n\n## Authorization Flow\n\n```\nClient                    MCP Server              Auth Server\n  │                           │                       │\n  ├── Request (no token) ──→  │                       │\n  │  ←── 401 + WWW-Auth ────  │                       │\n  │                           │                       │\n  ├── GET /.well-known/       │                       │\n  │    oauth-protected-       │                       │\n  │    resource ────────────→ │                       │\n  │  ←── Resource metadata ─  │                       │\n  │      (auth server URL)    │                       │\n  │                           │                       │\n  ├── GET /.well-known/oauth-authorization-server ──→ │\n  │  ←── Auth server metadata ──────────────────────  │\n  │                                                   │\n  ├── POST /register (Dynamic Client Registration) ─→│\n  │  ←── Client credentials ────────────────────────  │\n  │                                                   │\n  ├── Redirect user to authorize ───────────────────→ │\n  │  ←── Authorization code ────────────────────────  │\n  │                                                   │\n  ├── POST /token (code + PKCE verifier) ───────────→ │\n  │  ←── Access token + refresh token ──────────────  │\n  │                           │                       │\n  ├── Request + Bearer token → │                       │\n  │  ←── MCP response ──────  │                       │\n```\n\n## Discovery: Protected Resource Metadata (RFC 9728)\n\nMCP servers MUST implement Protected Resource Metadata. When a client sends an unauthenticated request:\n\n1. Server returns `401 Unauthorized` with `WWW-Authenticate` header containing the resource metadata URL\n2. Client fetches `/.well-known/oauth-protected-resource` from the MCP server\n3. Response includes `authorization_servers` field with auth server URLs\n\n```http\nHTTP/1.1 401 Unauthorized\nWWW-Authenticate: Bearer resource_metadata=\"https://mcp.example.com/.well-known/oauth-protected-resource\"\n```\n\n## Discovery: Auth Server Metadata (RFC 8414)\n\nClient fetches `/.well-known/oauth-authorization-server` from the authorization server to get:\n- `authorization_endpoint` — where to redirect users\n- `token_endpoint` — where to exchange codes for tokens\n- `registration_endpoint` — where to register clients dynamically\n\n## Dynamic Client Registration (RFC 7591)\n\nMCP clients and auth servers SHOULD support dynamic registration. This enables automatic client registration without manual setup:\n\n```json\nPOST /register\n{\n  \"client_name\": \"My MCP Client\",\n  \"redirect_uris\": [\"http://localhost:8080/callback\"],\n  \"grant_types\": [\"authorization_code\"],\n  \"token_endpoint_auth_method\": \"none\"\n}\n```\n\n## PKCE (Required)\n\nMCP clients MUST implement PKCE to prevent authorization code interception:\n\n```python\nimport hashlib, base64, secrets\n\n# Generate verifier and challenge\ncode_verifier = secrets.token_urlsafe(32)\ncode_challenge = base64.urlsafe_b64encode(\n    hashlib.sha256(code_verifier.encode()).digest()\n).rstrip(b\"=\").decode()\n\n# Include in authorization request\nauth_url = f\"{auth_endpoint}?code_challenge={code_challenge}&code_challenge_method=S256\"\n\n# Include verifier in token request\ntoken_response = requests.post(token_endpoint, data={\n    \"grant_type\": \"authorization_code\",\n    \"code\": auth_code,\n    \"code_verifier\": code_verifier,\n})\n```\n\n## Resource Indicators (RFC 8707)\n\nMCP clients MUST include the `resource` parameter in authorization and token requests to bind tokens to the intended MCP server:\n\n```\n&resource=https%3A%2F%2Fmcp.example.com\n```\n\n## Access Token Usage\n\nTokens MUST be sent as Bearer tokens in the Authorization header on every request:\n\n```http\nGET /mcp HTTP/1.1\nHost: mcp.example.com\nAuthorization: Bearer eyJhbGciOiJIUzI1NiIs...\nMcp-Session-Id: abc123\nMCP-Protocol-Version: 2025-06-18\n```\n\n- Tokens MUST NOT be sent in URL query strings\n- Tokens MUST be included in every HTTP request (even within a session)\n- Server MUST validate tokens were issued specifically for it (audience check)\n- Server MUST NOT pass client tokens to upstream APIs\n\n## Error Codes\n\n| Code | Meaning |\n|------|---------|\n| 401 | Authorization required or token invalid/expired |\n| 403 | Invalid scopes or insufficient permissions |\n| 400 | Malformed authorization request |\n\n## Security Requirements\n\n1. **HTTPS everywhere** — All auth endpoints MUST use HTTPS\n2. **PKCE required** — Prevents code interception attacks\n3. **Audience validation** — Servers MUST verify tokens are intended for them\n4. **No token passthrough** — Servers MUST NOT forward client tokens to upstream APIs\n5. **Short-lived tokens** — Auth servers SHOULD issue short-lived access tokens\n6. **Refresh token rotation** — For public clients, rotate refresh tokens on use\n7. **Redirect URI validation** — Must match pre-registered values exactly\n8. **Secure token storage** — Clients must store tokens securely\n\n## STDIO Credential Handling\n\nFor stdio servers, credentials come from the environment:\n\n```json\n{\n  \"mcpServers\": {\n    \"database\": {\n      \"command\": \"python\",\n      \"args\": [\"db_server.py\"],\n      \"env\": {\n        \"DB_PASSWORD\": \"secret\",\n        \"API_KEY\": \"key-123\"\n      }\n    }\n  }\n}\n```\n",
+  "sections": [
+    {
+      "id": "oauth-flow",
+      "title": "OAuth 2.1 authorization flow",
+      "body": "The full flow: 1) Client makes unauthenticated request. 2) Server returns 401 with WWW-Authenticate header. 3) Client discovers resource metadata (RFC 9728) to find the auth server. 4) Client fetches auth server metadata (RFC 8414) for endpoints. 5) Client optionally registers dynamically (RFC 7591). 6) Client redirects user to authorize with PKCE challenge and resource parameter. 7) User authorizes, client receives authorization code. 8) Client exchanges code + PKCE verifier for access token. 9) Client includes Bearer token on all subsequent requests.",
+      "tags": ["oauth", "flow", "authorization-code", "pkce", "token-exchange"]
+    },
+    {
+      "id": "discovery",
+      "title": "Authorization server discovery",
+      "body": "MCP servers MUST implement Protected Resource Metadata (RFC 9728) at `/.well-known/oauth-protected-resource`. This document includes `authorization_servers` listing one or more auth server URLs. The WWW-Authenticate header on 401 responses points clients to this metadata. Clients then fetch `/.well-known/oauth-authorization-server` from the auth server to discover endpoints (authorization, token, registration). This two-step discovery ensures clients always find the correct auth server.",
+      "tags": ["discovery", "metadata", "rfc9728", "rfc8414", "well-known"]
+    },
+    {
+      "id": "token-security",
+      "title": "Token security and audience validation",
+      "body": "MCP servers MUST validate that access tokens were issued specifically for them — not for some other service. Clients MUST include the `resource` parameter (RFC 8707) in auth requests to bind tokens to the intended server. Servers MUST NOT accept tokens intended for other audiences. Servers MUST NOT forward client tokens to upstream APIs (prevents confused deputy attacks). Tokens must be stored securely, sent only via Authorization headers (never query strings), and should be short-lived with rotating refresh tokens.",
+      "tags": ["tokens", "audience", "validation", "security", "confused-deputy"]
+    },
+    {
+      "id": "stdio-credentials",
+      "title": "STDIO credential handling",
+      "body": "STDIO servers should NOT use OAuth. Credentials are passed via environment variables when the host launches the server subprocess. Configure API keys, database passwords, and other secrets in the server configuration's `env` block. This avoids the complexity of OAuth for local-only servers where the host process already has full control.",
+      "tags": ["stdio", "environment", "credentials", "api-keys"]
+    }
+  ],
+  "links": [
+    { "uri": "mcp/transport", "context": "Auth applies to HTTP transport only" },
+    { "uri": "mcp/server", "context": "Servers implement resource metadata for auth" },
+    { "uri": "mcp/client", "context": "Clients perform the OAuth flow and present tokens" },
+    { "uri": "mcp/architecture", "context": "Auth sits in the transport layer of MCP" }
+  ],
+  "related": [
+    { "uri": "mcp/transport", "relation": "prerequisite", "note": "Authorization is part of the HTTP transport layer" },
+    { "uri": "mcp/server", "relation": "see-also", "note": "Servers implement the resource server role" },
+    { "uri": "mcp/client", "relation": "see-also", "note": "Clients implement the OAuth client role" }
+  ],
+  "more": {
+    "docs": "https://modelcontextprotocol.io/specification/2025-06-18/basic/authorization",
+    "spec": "https://spec.modelcontextprotocol.io/specification/2025-06-18/basic/authorization",
+    "oauth21": "https://datatracker.ietf.org/doc/html/draft-ietf-oauth-v2-1-13",
+    "rfc9728": "https://datatracker.ietf.org/doc/html/rfc9728",
+    "rfc8414": "https://datatracker.ietf.org/doc/html/rfc8414"
+  },
+  "frontmatter": {
+    "created": "2026-04-10",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "5 min",
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

@@ -1,0 +1,115 @@
+{
+  "name": "worktree",
+  "version": "1.0.0",
+  "uri": "git/worktree",
+  "type": "skill",
+  "context": "Work on multiple branches simultaneously using linked worktrees — no stashing or branch switching needed",
+  "info": "Git worktrees let you check out multiple branches at the same time in separate directories, all linked to the same repository. Instead of stashing or committing WIP to switch branches, you create a worktree for the other branch and work in both simultaneously. Each worktree has its own working tree and index but shares the same .git object database and refs. This is especially powerful for agents that need to work on a feature while simultaneously reviewing or testing another branch. Worktrees are also ideal for running tests on one branch while developing on another. A branch can only be checked out in one worktree at a time. See [[git/branch]] for branch management, [[git/stash]] for the alternative approach of shelving changes, and [[git/config]] for worktree-specific configuration.",
+  "parent": "git",
+  "tags": ["worktree", "multiple-branches", "parallel-work", "linked-worktree"],
+  "aliases": [
+    "git worktree",
+    "multiple working trees",
+    "parallel branches",
+    "linked worktree",
+    "work on two branches",
+    "secondary checkout",
+    "worktree add"
+  ],
+  "triggers": [
+    "work on two branches at once",
+    "create a worktree",
+    "check out a branch in a separate directory",
+    "parallel development on multiple branches",
+    "list worktrees",
+    "remove a worktree",
+    "avoid stashing by using worktree"
+  ],
+  "body": "# Git Worktree\n\nWorktrees let you have multiple branches checked out simultaneously in different directories, all sharing the same git repository.\n\n## Why Worktrees?\n\nWithout worktrees, working on another branch means:\n1. Stash or commit your current work\n2. Switch branches\n3. Do the other work\n4. Switch back\n5. Unstash or continue\n\nWith worktrees:\n1. Create a worktree for the other branch\n2. Work in both directories simultaneously\n3. Remove the worktree when done\n\nNo stashing, no context switching, no lost work.\n\n## Creating Worktrees\n\n```bash\n# Create a worktree for an existing branch\ngit worktree add ../hotfix-dir hotfix-branch\n\n# Create a worktree with a new branch\ngit worktree add -b new-feature ../feature-dir main\n\n# Create a worktree at a specific path\ngit worktree add /tmp/review-branch review-branch\n\n# Create a detached HEAD worktree (for a tag or commit)\ngit worktree add --detach ../release-check v2.0\n```\n\nThe first argument is the directory path, the second is the branch to check out. The directory is created automatically.\n\n## Listing Worktrees\n\n```bash\n# List all worktrees\ngit worktree list\n\n# Verbose listing with branch info\ngit worktree list --porcelain\n```\n\nOutput:\n```\n/home/user/project          abc1234 [main]\n/home/user/project-hotfix   def5678 [hotfix-login]\n```\n\n## Working in a Worktree\n\nEach worktree is a normal directory. All git commands work as expected:\n\n```bash\ncd ../hotfix-dir\ngit status\ngit add .\ngit commit -m \"fix: resolve login issue\"\ngit push origin hotfix-branch\n```\n\nThe worktree shares the same object database, so:\n- Commits made in any worktree are visible from all worktrees\n- Branches, tags, and refs are shared\n- Fetches from any worktree update all worktrees\n\n## Removing Worktrees\n\n```bash\n# Remove a worktree (after you're done)\ngit worktree remove ../hotfix-dir\n\n# Force remove (even if dirty)\ngit worktree remove --force ../hotfix-dir\n\n# Clean up stale worktree references\ngit worktree prune\n```\n\n## Constraints\n\n- **One branch per worktree**: A branch can only be checked out in one worktree at a time. Attempting to check it out in a second worktree fails.\n- **No nested worktrees**: You can't create a worktree inside another worktree.\n- **Shared refs**: Changes to branches/tags in one worktree are immediately visible in others.\n\n```bash\n# If you need the same branch in two places, create a new branch:\ngit worktree add -b feature-copy ../copy-dir feature-branch\n```\n\n## Common Workflows\n\n### Hotfix While Developing\n\n```bash\n# You're on feature-branch, urgent fix needed\ngit worktree add ../hotfix hotfix-urgent main\ncd ../hotfix\n# Fix the bug\ngit commit -am \"fix: urgent production issue\"\ngit push origin hotfix-urgent\ncd ../project\ngit worktree remove ../hotfix\n```\n\n### Code Review\n\n```bash\n# Review a PR branch without leaving your current work\ngit fetch origin\ngit worktree add ../review-pr origin/pr-branch\ncd ../review-pr\n# Review, test, run linters\ncd ../project\ngit worktree remove ../review-pr\n```\n\n### Running Tests on Another Branch\n\n```bash\n# Run test suite on main while developing on feature\ngit worktree add ../test-main main\ncd ../test-main && npm test\ncd ../project  # continue working\ngit worktree remove ../test-main\n```\n\n## Agent Best Practices\n\n1. **Use worktrees instead of stash** — more explicit, less error-prone\n2. **Place worktrees in sibling directories** — `../name` keeps things organized\n3. **Remove when done** — don't leave worktrees lingering\n4. **Name directories descriptively** — `../hotfix-login` not `../tmp`\n5. **Prune regularly** — `git worktree prune` cleans up manually deleted directories\n6. **Combine with agents** — spawn a sub-agent in a worktree for parallel work\n",
+  "sections": [
+    {
+      "id": "create",
+      "title": "Creating worktrees",
+      "body": "`git worktree add <path> <branch>` creates a new working directory with that branch checked out. Add `-b <new-branch> <start-point>` to create a new branch. Add `--detach` for a detached HEAD. The directory is created automatically and linked to the main repository. Each worktree gets its own index (staging area) and working tree but shares .git/objects and .git/refs.",
+      "tags": ["create", "add", "new-branch", "detach"]
+    },
+    {
+      "id": "manage",
+      "title": "Listing and removing worktrees",
+      "body": "`git worktree list` shows all worktrees with paths, HEAD commits, and branches. `git worktree remove <path>` cleans up a worktree (fails if dirty — use `--force` to override). `git worktree prune` removes references to worktrees whose directories were deleted manually. Always remove worktrees you're done with to keep the list clean.",
+      "tags": ["list", "remove", "prune", "cleanup"]
+    },
+    {
+      "id": "workflows",
+      "title": "Common worktree workflows",
+      "body": "**Hotfix**: Create a worktree from main, fix the bug, push, remove the worktree. **Code review**: Fetch the PR branch, create a worktree, review/test, remove. **Parallel testing**: Create a worktree for main, run tests there while developing on feature. **Agent parallelism**: Spawn sub-agents in separate worktrees for independent tasks. Worktrees avoid the stash-switch-unstash dance entirely.",
+      "tags": ["hotfix", "code-review", "testing", "parallel", "agent"]
+    },
+    {
+      "id": "constraints",
+      "title": "Worktree constraints",
+      "body": "Each branch can only be checked out in one worktree at a time. Worktrees can't be nested inside each other. All worktrees share the same object database and refs — a commit in one is visible in all. Lock files (.git/worktrees/<name>/locked) prevent accidental removal. Use `git worktree lock` and `unlock` for worktrees on removable media.",
+      "tags": ["constraints", "one-branch", "shared-refs", "lock"]
+    }
+  ],
+  "links": [
+    { "uri": "git/branch", "context": "Branches are checked out in worktrees" },
+    { "uri": "git/stash", "context": "Worktrees are an alternative to stashing" },
+    { "uri": "git/commit", "context": "Commits work normally in worktrees" },
+    { "uri": "git/remote", "context": "Fetch/push work from any worktree" },
+    { "uri": "git/config", "context": "Worktree-specific config extensions" }
+  ],
+  "related": [
+    { "uri": "git/stash", "relation": "alternative", "note": "Worktrees eliminate the need to stash when switching contexts" },
+    { "uri": "git/branch", "relation": "prerequisite", "note": "Branches must exist (or be created) to check out in worktrees" }
+  ],
+  "scripts": [
+    {
+      "id": "worktree-manager",
+      "name": "Worktree Manager",
+      "description": "Create, list, and remove worktrees with conventions",
+      "lang": "bash",
+      "runtime": "git>=2.30",
+      "entry": "./scripts/worktree-manager.sh",
+      "inline": "#!/usr/bin/env bash\nset -euo pipefail\n\nACTION=\"${1:?Usage: worktree-manager.sh <create|list|remove|cleanup> [args...]}\"\nshift\n\n# Worktrees go in sibling directory by convention\nREPO_ROOT=$(git rev-parse --show-toplevel)\nPARENT=$(dirname \"$REPO_ROOT\")\nREPO_NAME=$(basename \"$REPO_ROOT\")\n\ncase \"$ACTION\" in\n  create)\n    BRANCH=\"${1:?Branch name required}\"\n    BASE=\"${2:-HEAD}\"\n    WTPATH=\"$PARENT/${REPO_NAME}-wt-${BRANCH//\\//-}\"\n    if [ -d \"$WTPATH\" ]; then\n      echo \"Worktree already exists at $WTPATH\"\n      exit 1\n    fi\n    # Check if branch exists\n    if git rev-parse --verify \"$BRANCH\" >/dev/null 2>&1; then\n      git worktree add \"$WTPATH\" \"$BRANCH\"\n    else\n      echo \"Creating new branch $BRANCH from $BASE\"\n      git worktree add -b \"$BRANCH\" \"$WTPATH\" \"$BASE\"\n    fi\n    echo \"Worktree created at: $WTPATH\"\n    echo \"cd $WTPATH\"\n    ;;\n  list)\n    git worktree list\n    ;;\n  remove)\n    BRANCH=\"${1:?Branch name required}\"\n    WTPATH=\"$PARENT/${REPO_NAME}-wt-${BRANCH//\\//-}\"\n    if [ ! -d \"$WTPATH\" ]; then\n      echo \"No worktree at $WTPATH\"\n      echo \"Current worktrees:\"\n      git worktree list\n      exit 1\n    fi\n    git worktree remove \"$WTPATH\"\n    echo \"Removed worktree: $WTPATH\"\n    ;;\n  cleanup)\n    echo \"Pruning stale worktree references...\"\n    git worktree prune -v\n    echo\n    echo \"Current worktrees:\"\n    git worktree list\n    ;;\n  *)\n    echo \"Unknown action: $ACTION\"\n    echo \"Usage: worktree-manager.sh <create|list|remove|cleanup> [args...]\"\n    exit 1\n    ;;\nesac"
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "action": { "type": "string", "enum": ["create", "list", "remove", "cleanup"], "description": "Worktree operation" },
+        "branch": { "type": "string", "description": "Branch to check out in the worktree" },
+        "base": { "type": "string", "description": "Base ref for new branches (default: HEAD)" },
+        "path": { "type": "string", "description": "Custom path for the worktree directory" }
+      },
+      "required": ["action"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "path": { "type": "string", "description": "Path to the created/managed worktree" },
+        "worktrees": { "type": "array", "items": { "type": "object", "properties": { "path": { "type": "string" }, "branch": { "type": "string" }, "head": { "type": "string" } } }, "description": "List of all worktrees" }
+      }
+    }
+  },
+  "more": {
+    "docs": "https://git-scm.com/docs/git-worktree",
+    "book": "https://git-scm.com/book/en/v2/Git-Tools-Worktrees"
+  },
+  "frontmatter": {
+    "created": "2026-04-10",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "5 min",
+    "prerequisites": ["git/branch"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

@@ -1,0 +1,125 @@
+{
+  "name": "branch",
+  "version": "1.0.0",
+  "uri": "git/branch",
+  "type": "skill",
+  "context": "Create, switch, rename, delete, and list git branches for parallel development workflows",
+  "info": "Branches are git's mechanism for parallel development. A branch is a lightweight movable pointer to a commit — creating one is instant and costs almost nothing. This skill covers creating branches from any ref, switching between branches with checkout and switch, listing local and remote branches, renaming and deleting branches, and understanding tracking relationships with upstream branches. Agents use branches constantly to isolate feature work, bug fixes, and experiments. The default branch (usually main) is the integration target. Feature branches diverge from main and eventually merge back via [[git/merge]] or [[git/rebase]]. Remote-tracking branches (origin/main) mirror the state of branches on [[git/remote]] repositories.",
+  "parent": "git",
+  "tags": ["branch", "checkout", "switch", "feature-branch", "branching"],
+  "aliases": [
+    "git branch",
+    "git checkout",
+    "git switch",
+    "create branch",
+    "switch branch",
+    "delete branch",
+    "feature branch",
+    "branch management",
+    "list branches",
+    "rename branch"
+  ],
+  "triggers": [
+    "create a new branch",
+    "switch to a branch",
+    "delete a branch",
+    "list all branches",
+    "rename a branch",
+    "create a feature branch",
+    "checkout a branch",
+    "what branch am I on",
+    "show remote branches"
+  ],
+  "body": "# Git Branch\n\nBranches let you work on multiple things in parallel. Creating a branch is instant — it just writes a 40-byte commit hash to a file in `.git/refs/heads/`.\n\n## Creating Branches\n\n```bash\n# Create a branch at current HEAD\ngit branch feature-auth\n\n# Create and switch to it in one step\ngit checkout -b feature-auth\n\n# Modern alternative (git 2.23+)\ngit switch -c feature-auth\n\n# Create from a specific commit or branch\ngit branch hotfix-login origin/main\ngit checkout -b hotfix-login origin/main\n\n# Create from a tag\ngit checkout -b release-prep v2.1.0\n```\n\n## Switching Branches\n\n```bash\n# Switch to existing branch\ngit checkout main\ngit switch main  # modern alternative\n\n# Switch and discard local changes (dangerous)\ngit checkout -f main\n\n# Switch back to previous branch\ngit checkout -\ngit switch -\n```\n\n**Warning**: Switching branches with uncommitted changes will fail if those changes conflict with the target branch. Either [[git/commit]] or [[git/stash]] your changes first.\n\n## Listing Branches\n\n```bash\n# List local branches (* marks current)\ngit branch\n\n# List remote-tracking branches\ngit branch -r\n\n# List all branches (local + remote)\ngit branch -a\n\n# List with last commit info\ngit branch -v\n\n# List branches merged into current\ngit branch --merged\n\n# List branches NOT merged into current\ngit branch --no-merged\n\n# List branches containing a specific commit\ngit branch --contains abc1234\n```\n\n## Renaming Branches\n\n```bash\n# Rename current branch\ngit branch -m new-name\n\n# Rename a specific branch\ngit branch -m old-name new-name\n\n# Rename and update remote\ngit branch -m old-name new-name\ngit push origin :old-name new-name\ngit push origin -u new-name\n```\n\n## Deleting Branches\n\n```bash\n# Delete a merged branch\ngit branch -d feature-done\n\n# Force delete an unmerged branch\ngit branch -D feature-abandoned\n\n# Delete a remote branch\ngit push origin --delete feature-done\n\n# Clean up stale remote-tracking branches\ngit remote prune origin\n# or\ngit fetch --prune\n```\n\n## Tracking Branches\n\n```bash\n# Set upstream for current branch\ngit branch -u origin/main\n\n# Create branch tracking a remote\ngit checkout --track origin/feature-x\n\n# See tracking info\ngit branch -vv\n```\n\nTracking branches enable `git pull` and `git push` without specifying the remote and branch name. When you clone, `main` automatically tracks `origin/main`.\n\n## Branch Naming Conventions\n\n| Pattern | Purpose |\n|---------|---------|\n| `main` | Primary integration branch |\n| `develop` | Development integration (gitflow) |\n| `feature/<name>` | Feature development |\n| `fix/<name>` or `bugfix/<name>` | Bug fixes |\n| `hotfix/<name>` | Urgent production fixes |\n| `release/<version>` | Release preparation |\n| `chore/<name>` | Maintenance tasks |\n\n## Agent Best Practices\n\n1. **Always branch from the latest main** — `git checkout -b feature main && git pull origin main`\n2. **Use descriptive names** — `feature/add-oauth` not `my-branch`\n3. **Delete after merge** — keep the branch list clean\n4. **Check branch status** — `git branch -vv` shows ahead/behind counts\n5. **Don't delete unmerged work** — use `-d` (safe) not `-D` (force) unless intentional\n",
+  "sections": [
+    {
+      "id": "create",
+      "title": "Creating branches",
+      "body": "Create with `git branch <name>` (creates only) or `git switch -c <name>` / `git checkout -b <name>` (creates and switches). Create from any ref: `git switch -c hotfix origin/main`, `git switch -c release v2.0`. The new branch points to the same commit as the source ref. No files are copied — branches are just pointers.",
+      "tags": ["create", "new-branch", "checkout-b", "switch-c"]
+    },
+    {
+      "id": "switch",
+      "title": "Switching between branches",
+      "body": "Use `git switch <branch>` (git 2.23+) or `git checkout <branch>`. Use `git switch -` to go back to the previous branch. Switching fails if uncommitted changes conflict with the target — resolve by committing ([[git/commit]]) or stashing ([[git/stash]]). Use `git switch --discard-changes` to force (destroys local changes).",
+      "tags": ["switch", "checkout", "change-branch"]
+    },
+    {
+      "id": "delete",
+      "title": "Deleting branches",
+      "body": "Safe delete with `git branch -d <name>` — refuses if branch has unmerged commits. Force delete with `git branch -D <name>`. Delete remote branch with `git push origin --delete <name>`. Clean stale remote refs with `git fetch --prune`. Always verify with `git branch --merged` before bulk cleanup.",
+      "tags": ["delete", "cleanup", "prune", "remote-delete"]
+    },
+    {
+      "id": "tracking",
+      "title": "Upstream tracking",
+      "body": "Set upstream with `git branch -u origin/<branch>` or `git push -u origin <branch>`. View tracking info with `git branch -vv`. Tracking enables argument-free `git pull` and `git push`. When you `git checkout <remote-branch>` and a matching remote-tracking branch exists, git auto-creates a local tracking branch.",
+      "tags": ["tracking", "upstream", "push-u", "remote-tracking"]
+    }
+  ],
+  "links": [
+    { "uri": "git/merge", "context": "Merge branches back together" },
+    { "uri": "git/rebase", "context": "Rebase feature branches onto main" },
+    { "uri": "git/commit", "context": "Commits advance the current branch" },
+    { "uri": "git/stash", "context": "Stash changes before switching branches" },
+    { "uri": "git/remote", "context": "Remote-tracking branches mirror remote state" },
+    { "uri": "git/worktree", "context": "Work on multiple branches simultaneously" },
+    { "uri": "git/log", "context": "View branch divergence history" },
+    { "uri": "git/troubleshooting", "context": "Recover deleted branches" }
+  ],
+  "related": [
+    { "uri": "git/merge", "relation": "see-also", "note": "Branches exist to diverge and merge — merge brings them back together" },
+    { "uri": "git/rebase", "relation": "see-also", "note": "Rebase is an alternative to merge for integrating branch changes" },
+    { "uri": "git/stash", "relation": "see-also", "note": "Stash is needed when switching branches with uncommitted work" },
+    { "uri": "git/worktree", "relation": "alternative", "note": "Worktrees let you have two branches checked out simultaneously without switching" }
+  ],
+  "scripts": [
+    {
+      "id": "branch-manager",
+      "name": "Branch Manager",
+      "description": "Create, list, or delete branches with safety checks",
+      "lang": "bash",
+      "runtime": "git>=2.23",
+      "entry": "./scripts/branch-manager.sh",
+      "inline": "#!/usr/bin/env bash\nset -euo pipefail\n\nACTION=\"${1:?Usage: branch-manager.sh <create|list|delete|cleanup> [args...]}\"\nshift\n\ncase \"$ACTION\" in\n  create)\n    NAME=\"${1:?Branch name required}\"\n    BASE=\"${2:-HEAD}\"\n    git switch -c \"$NAME\" \"$BASE\"\n    echo \"Created and switched to branch: $NAME (from $BASE)\"\n    git log --oneline -1\n    ;;\n  list)\n    echo \"=== Local branches ===\"\n    git branch -vv\n    echo\n    echo \"=== Remote branches ===\"\n    git branch -r\n    ;;\n  delete)\n    NAME=\"${1:?Branch name required}\"\n    CURRENT=$(git branch --show-current)\n    if [ \"$NAME\" = \"$CURRENT\" ]; then\n      echo \"Error: Cannot delete the current branch. Switch first.\"\n      exit 1\n    fi\n    if [ \"$NAME\" = \"main\" ] || [ \"$NAME\" = \"master\" ]; then\n      echo \"Error: Refusing to delete $NAME\"\n      exit 1\n    fi\n    git branch -d \"$NAME\"\n    echo \"Deleted branch: $NAME\"\n    ;;\n  cleanup)\n    echo \"Branches merged into $(git branch --show-current):\"\n    git branch --merged | grep -v '\\*\\|main\\|master' || echo \"(none)\"\n    echo\n    echo \"Run 'git branch -d <name>' to delete merged branches.\"\n    ;;\n  *)\n    echo \"Unknown action: $ACTION\"\n    echo \"Usage: branch-manager.sh <create|list|delete|cleanup> [args...]\"\n    exit 1\n    ;;\nesac"
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "action": { "type": "string", "enum": ["create", "switch", "delete", "list", "rename"], "description": "Branch operation to perform" },
+        "name": { "type": "string", "description": "Branch name" },
+        "base": { "type": "string", "description": "Base ref to create from (default: HEAD)" },
+        "force": { "type": "boolean", "default": false, "description": "Force delete even if unmerged" }
+      },
+      "required": ["action"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "currentBranch": { "type": "string", "description": "Current branch after operation" },
+        "branches": { "type": "array", "items": { "type": "string" }, "description": "List of branches (for list action)" }
+      }
+    }
+  },
+  "more": {
+    "docs": "https://git-scm.com/docs/git-branch",
+    "book": "https://git-scm.com/book/en/v2/Git-Branching-Branches-in-a-Nutshell",
+    "switch-docs": "https://git-scm.com/docs/git-switch"
+  },
+  "frontmatter": {
+    "created": "2026-04-10",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "5 min",
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

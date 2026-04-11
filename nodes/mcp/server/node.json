@@ -1,0 +1,132 @@
+{
+  "name": "server",
+  "version": "1.0.0",
+  "uri": "mcp/server",
+  "type": "skill",
+  "context": "Build MCP servers that expose tools, resources, and prompts to AI agents via JSON-RPC over stdio or HTTP",
+  "info": "An MCP server is a program that exposes capabilities to AI applications through the Model Context Protocol. Servers declare which primitives they support during initialization — tools for executable functions, resources for contextual data, and prompts for interaction templates. The Python SDK provides FastMCP for rapid development using decorators; the TypeScript SDK uses McpServer with Zod schemas. Servers run over stdio (launched as subprocesses by the host) or Streamable HTTP (running as independent HTTP services). Every server must handle the initialization handshake, capability negotiation, and JSON-RPC message routing. Use the MCP Inspector (`npx @modelcontextprotocol/inspector`) for interactive testing during development.",
+  "parent": "mcp",
+  "tags": ["mcp-server", "server", "fastmcp", "tools", "resources", "prompts", "json-rpc"],
+  "aliases": [
+    "mcp server",
+    "MCP server",
+    "build mcp server",
+    "create mcp server",
+    "fastmcp",
+    "FastMCP",
+    "McpServer",
+    "mcp server python",
+    "mcp server typescript",
+    "mcp server node"
+  ],
+  "triggers": [
+    "build an MCP server",
+    "create an MCP server",
+    "expose tools via MCP",
+    "set up a new MCP server",
+    "add tools to my MCP server",
+    "write an MCP server in python",
+    "write an MCP server in typescript",
+    "how to build an MCP server"
+  ],
+  "body": "# Building MCP Servers\n\nAn MCP server exposes tools, resources, and prompts to AI applications through the Model Context Protocol. Servers are the supply side of MCP — they provide capabilities that clients discover and consume.\n\n## Python (FastMCP)\n\nThe Python SDK provides `FastMCP`, a high-level API that uses decorators and type hints to automatically generate tool definitions:\n\n```python\nfrom mcp.server.fastmcp import FastMCP\n\nmcp = FastMCP(\"my-server\")\n\n@mcp.tool()\nasync def query_database(sql: str) -> str:\n    \"\"\"Execute a read-only SQL query against the database.\"\"\"\n    # Tool implementation\n    result = await db.execute(sql)\n    return json.dumps(result)\n\n@mcp.resource(\"schema://main\")\ndef get_schema() -> str:\n    \"\"\"Return the database schema.\"\"\"\n    return open(\"schema.sql\").read()\n\n@mcp.prompt()\ndef sql_expert(table: str) -> str:\n    \"\"\"Generate a prompt for SQL query assistance.\"\"\"\n    return f\"You are a SQL expert. Help write queries for the {table} table.\"\n\nif __name__ == \"__main__\":\n    mcp.run()  # Runs over stdio by default\n```\n\n### Running over HTTP\n\n```python\nif __name__ == \"__main__\":\n    mcp.run(transport=\"streamable-http\", host=\"0.0.0.0\", port=8000)\n```\n\n## TypeScript (McpServer)\n\nThe TypeScript SDK uses `McpServer` with Zod for input validation:\n\n```typescript\nimport { McpServer } from \"@modelcontextprotocol/sdk/server/mcp.js\";\nimport { StdioServerTransport } from \"@modelcontextprotocol/sdk/server/stdio.js\";\nimport { z } from \"zod\";\n\nconst server = new McpServer({\n  name: \"my-server\",\n  version: \"1.0.0\"\n});\n\n// Register a tool\nserver.tool(\n  \"query_database\",\n  \"Execute a read-only SQL query\",\n  { sql: z.string().describe(\"The SQL query to execute\") },\n  async ({ sql }) => ({\n    content: [{ type: \"text\", text: JSON.stringify(await db.query(sql)) }]\n  })\n);\n\n// Register a resource\nserver.resource(\n  \"schema\",\n  \"schema://main\",\n  async (uri) => ({\n    contents: [{ uri: uri.href, mimeType: \"text/plain\", text: schemaContent }]\n  })\n);\n\n// Connect transport\nconst transport = new StdioServerTransport();\nawait server.connect(transport);\n```\n\n## Setup & Installation\n\n```bash\n# Python\nuv init my-mcp-server && cd my-mcp-server\nuv add \"mcp[cli]\"\n\n# TypeScript\nnpm init -y && npm install @modelcontextprotocol/sdk zod\n```\n\n## Server Configuration (Claude Desktop)\n\nAdd to `claude_desktop_config.json`:\n\n```json\n{\n  \"mcpServers\": {\n    \"my-server\": {\n      \"command\": \"python\",\n      \"args\": [\"path/to/server.py\"]\n    }\n  }\n}\n```\n\n## Testing\n\n```bash\n# MCP Inspector — interactive testing UI\nnpx @modelcontextprotocol/inspector python server.py\n\n# Or for TypeScript\nnpx @modelcontextprotocol/inspector node server.js\n```\n\n## Logging\n\n**STDIO servers**: Never write to stdout — it corrupts JSON-RPC messages. Use `stderr` or a logging framework:\n\n```python\nimport sys\nprint(\"debug info\", file=sys.stderr)  # Safe\nprint(\"debug info\")  # BREAKS PROTOCOL\n```\n\n**HTTP servers**: Standard output logging is fine since it doesn't interfere with HTTP responses.\n\n## Sub-Skills\n\n- **[[mcp/server/tools]]** — Define and expose executable functions\n- **[[mcp/server/resources]]** — Expose contextual data sources\n- **[[mcp/server/prompts]]** — Expose reusable prompt templates\n\n## Environment Variables\n\n| Variable | Purpose |\n|----------|----------|\n| `MCP_SERVER_NAME` | Server name used during initialization |\n| `MCP_TRANSPORT` | Transport type: `stdio` or `streamable-http` |\n| `MCP_PORT` | Port for HTTP transport (default: 8000) |\n",
+  "sections": [
+    {
+      "id": "python-fastmcp",
+      "title": "Python FastMCP development",
+      "body": "FastMCP is the high-level Python API for building MCP servers. Import from `mcp.server.fastmcp`, instantiate with a server name, and use `@mcp.tool()`, `@mcp.resource()`, and `@mcp.prompt()` decorators. FastMCP auto-generates JSON Schema from Python type hints and docstrings. Call `mcp.run()` to start — defaults to stdio transport. Requires Python 3.10+ and `mcp` package (`pip install 'mcp[cli]'`). Use `uv` for project management.",
+      "tags": ["python", "fastmcp", "decorators", "type-hints"]
+    },
+    {
+      "id": "typescript-sdk",
+      "title": "TypeScript SDK development",
+      "body": "Use `McpServer` from `@modelcontextprotocol/sdk/server/mcp.js`. Register tools with `server.tool(name, description, schema, handler)` using Zod schemas for input validation. Register resources with `server.resource(name, uri, handler)`. Connect via `StdioServerTransport` or `StreamableHTTPServerTransport`. Install with `npm install @modelcontextprotocol/sdk zod`.",
+      "tags": ["typescript", "node", "zod", "mcp-sdk"]
+    },
+    {
+      "id": "capabilities",
+      "title": "Capability negotiation",
+      "body": "During initialization, the server declares which capabilities it supports in the `capabilities` object: `tools` (with optional `listChanged`), `resources` (with optional `subscribe` and `listChanged`), and `prompts` (with optional `listChanged`). The client reads these capabilities to know which `*/list` and `*/call` methods are available. If a capability is not declared, the client must not attempt to use it.",
+      "tags": ["capabilities", "initialization", "negotiation"]
+    },
+    {
+      "id": "testing",
+      "title": "Testing and debugging",
+      "body": "Use the MCP Inspector (`npx @modelcontextprotocol/inspector`) for interactive testing — it provides a web UI to list tools/resources/prompts, call tools, and inspect JSON-RPC messages. For stdio servers, never print to stdout as it corrupts the protocol. Use `stderr` or structured logging. For integration testing, use the MCP client SDK to programmatically connect and verify behavior.",
+      "tags": ["testing", "inspector", "debugging", "logging"]
+    }
+  ],
+  "sub": ["mcp/server/tools", "mcp/server/resources", "mcp/server/prompts"],
+  "links": [
+    { "uri": "mcp/server/tools", "context": "Define executable functions that agents can invoke" },
+    { "uri": "mcp/server/resources", "context": "Expose contextual data for agent consumption" },
+    { "uri": "mcp/server/prompts", "context": "Expose reusable prompt templates" },
+    { "uri": "mcp/client", "context": "Build clients that connect to MCP servers" },
+    { "uri": "mcp/transport", "context": "Stdio and HTTP transport mechanisms" },
+    { "uri": "mcp/auth", "context": "OAuth 2.1 authorization for remote servers" },
+    { "uri": "mcp/architecture", "context": "Protocol architecture and design principles" }
+  ],
+  "related": [
+    { "uri": "mcp/client", "relation": "see-also", "note": "Clients connect to and consume MCP servers" },
+    { "uri": "mcp/transport", "relation": "prerequisite", "note": "Servers must choose a transport mechanism" },
+    { "uri": "mcp/auth", "relation": "see-also", "note": "Remote servers may require OAuth authorization" }
+  ],
+  "scripts": [
+    {
+      "id": "create-server",
+      "name": "Create MCP Server",
+      "description": "Scaffold and run a new MCP server with tools, resources, and prompts",
+      "lang": "python",
+      "runtime": "python>=3.10",
+      "entry": "./scripts/create-server.py",
+      "env": {
+        "MCP_SERVER_NAME": { "required": false, "default": "my-server", "description": "Name for the MCP server" }
+      },
+      "packages": ["mcp[cli]"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "description": "Server name" },
+        "transport": { "type": "string", "enum": ["stdio", "streamable-http"], "default": "stdio", "description": "Transport mechanism" },
+        "tools": { "type": "array", "items": { "type": "string" }, "description": "List of tool names to register" },
+        "port": { "type": "integer", "default": 8000, "description": "Port for HTTP transport" }
+      },
+      "required": ["name"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "serverName": { "type": "string", "description": "Name of the created server" },
+        "transport": { "type": "string", "description": "Transport mechanism in use" },
+        "capabilities": { "type": "object", "description": "Declared server capabilities" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "mcp/transport", "reason": "Servers must use a transport mechanism to communicate with clients" }
+  ],
+  "more": {
+    "docs": "https://modelcontextprotocol.io/docs/develop/build-server",
+    "spec": "https://spec.modelcontextprotocol.io",
+    "repo": "https://github.com/modelcontextprotocol/python-sdk",
+    "examples": "https://github.com/modelcontextprotocol/servers"
+  },
+  "frontmatter": {
+    "created": "2026-04-10",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "5 min",
+    "prerequisites": ["mcp/transport"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

@@ -1,0 +1,139 @@
+{
+  "name": "rebase",
+  "version": "1.0.0",
+  "uri": "git/rebase",
+  "type": "skill",
+  "context": "Rewrite commit history by replaying commits onto a new base — interactive rebase, squash, and fixup",
+  "info": "Rebasing moves or replays a series of commits onto a new base commit, rewriting their hashes in the process. It produces a linear history without merge commits. Interactive rebase (git rebase -i) is one of the most powerful git features — it lets you squash, reorder, edit, fixup, drop, and reword commits before sharing them. Agents use rebase to clean up messy work-in-progress history into logical, reviewable commits before pushing. The golden rule: never rebase commits that have been pushed to a shared branch, as it rewrites history that others depend on. See [[git/merge]] for the non-destructive alternative, [[git/commit]] for creating the commits you'll rebase, and [[git/troubleshooting]] for recovering from bad rebases.",
+  "parent": "git",
+  "tags": ["rebase", "interactive-rebase", "squash", "fixup", "reword", "history-rewrite"],
+  "aliases": [
+    "git rebase",
+    "interactive rebase",
+    "rebase onto",
+    "squash commits",
+    "rewrite history",
+    "clean up commits",
+    "fixup commits",
+    "reorder commits",
+    "rebase -i"
+  ],
+  "triggers": [
+    "rebase a branch",
+    "squash commits together",
+    "clean up commit history",
+    "interactive rebase",
+    "rebase onto main",
+    "reorder commits",
+    "edit a past commit",
+    "fixup a commit",
+    "linearize history"
+  ],
+  "body": "# Git Rebase\n\nRebase replays commits from one branch onto another base, creating new commits with the same changes but different hashes. It produces clean, linear history.\n\n## Basic Rebase\n\n```bash\n# Rebase current branch onto main\ngit checkout feature\ngit rebase main\n```\n\n```\nBefore:  main ── A ── B ── C\n                  \\\n   feature ─────── D ── E\n\nAfter:   main ── A ── B ── C\n                            \\\n   feature ────────────────── D' ── E'\n```\n\nD' and E' have the same changes as D and E but are new commits with new hashes.\n\n## Interactive Rebase\n\nThe most powerful git feature for history cleanup:\n\n```bash\n# Rebase last 3 commits interactively\ngit rebase -i HEAD~3\n\n# Rebase onto main interactively\ngit rebase -i main\n```\n\nThis opens an editor with a todo list:\n\n```\npick abc1234 feat: add login form\npick def5678 fix: typo in login\npick ghi9012 feat: add validation\n```\n\n### Interactive Commands\n\n| Command | Short | Effect |\n|---------|-------|--------|\n| `pick` | `p` | Keep commit as-is |\n| `reword` | `r` | Keep commit, edit message |\n| `edit` | `e` | Pause to amend the commit |\n| `squash` | `s` | Meld into previous commit, combine messages |\n| `fixup` | `f` | Meld into previous commit, discard this message |\n| `drop` | `d` | Remove commit entirely |\n\n### Common Patterns\n\n**Squash WIP commits into one:**\n```\npick abc1234 feat: add login form\nfixup def5678 fix: typo in login\nfixup ghi9012 wip: more login stuff\n```\n\n**Reorder commits:**\n```\npick ghi9012 feat: add validation\npick abc1234 feat: add login form\n```\n\n**Edit a past commit:**\n```\nedit abc1234 feat: add login form\npick def5678 fix: typo in login\n```\nGit pauses at abc1234. Make changes, `git add`, then `git rebase --continue`.\n\n## Rebase Onto\n\nReplay a specific range of commits onto a new base:\n\n```bash\n# Transplant commits from feature that aren't on main onto release\ngit rebase --onto release main feature\n```\n\nUseful when you branched off the wrong base or need to move commits between branches.\n\n## Resolving Rebase Conflicts\n\nConflicts during rebase are resolved one commit at a time:\n\n```bash\n# Conflict occurs during rebase\n# Fix the conflict in the file\ngit add resolved-file.js\ngit rebase --continue\n\n# Skip this commit entirely\ngit rebase --skip\n\n# Abort and return to pre-rebase state\ngit rebase --abort\n```\n\n## Autosquash\n\nCreate fixup commits that automatically squash during interactive rebase:\n\n```bash\n# Create a fixup commit targeting a specific commit\ngit commit --fixup=abc1234\n\n# Later, autosquash during rebase\ngit rebase -i --autosquash main\n# The fixup commit is automatically placed after its target\n```\n\n## The Golden Rule\n\n**Never rebase commits that have been pushed to a shared branch.** Rebase rewrites commit hashes. If others have based work on the original commits, their history will diverge and they'll need to force-reconcile.\n\nSafe to rebase:\n- Local commits not yet pushed\n- Your own feature branch that nobody else uses\n\nNever rebase:\n- main/master\n- Any branch others have checked out\n- Published release branches\n\n## Agent Best Practices\n\n1. **Rebase feature branches onto main before merging** — keeps history linear\n2. **Use fixup commits during development** — `git commit --fixup=<sha>` then `git rebase -i --autosquash`\n3. **Squash WIP commits** — clean up \"wip\", \"temp\", \"fix typo\" commits before sharing\n4. **Never rebase shared branches** — use [[git/merge]] instead\n5. **Use --abort if confused** — you can always start over\n",
+  "sections": [
+    {
+      "id": "basic",
+      "title": "Basic rebase",
+      "body": "Run `git rebase <base>` to replay current branch commits onto `<base>`. This creates new commits with new hashes but identical changes. The branch pointer moves to the new tip. Common pattern: `git checkout feature && git rebase main` to update a feature branch with the latest main changes, producing linear history.",
+      "tags": ["basic-rebase", "replay", "linear-history"]
+    },
+    {
+      "id": "interactive",
+      "title": "Interactive rebase",
+      "body": "Run `git rebase -i <base>` to open an editor with the commit todo list. Commands: pick (keep), reword (edit message), edit (pause to modify), squash (meld with previous, combine messages), fixup (meld with previous, discard message), drop (remove). Commits execute top-to-bottom. Reorder lines to reorder commits. Delete lines to drop commits. This is the primary tool for cleaning up history before sharing.",
+      "tags": ["interactive", "rebase-i", "squash", "fixup", "reword", "edit", "drop"]
+    },
+    {
+      "id": "onto",
+      "title": "Rebase --onto for transplanting",
+      "body": "Use `git rebase --onto <newbase> <upstream> <branch>` to transplant a range of commits. This replays commits reachable from `<branch>` but not from `<upstream>` onto `<newbase>`. Use case: moving commits from one base branch to another, or extracting a subset of commits from a longer branch.",
+      "tags": ["onto", "transplant", "move-commits"]
+    },
+    {
+      "id": "autosquash",
+      "title": "Autosquash workflow",
+      "body": "Create fixup commits with `git commit --fixup=<target-sha>`. When you later run `git rebase -i --autosquash <base>`, fixup commits are automatically reordered to follow their targets and marked as fixup. This is the cleanest workflow for iterative development: make changes, create fixup commits, then autosquash before pushing.",
+      "tags": ["autosquash", "fixup", "workflow"]
+    },
+    {
+      "id": "conflicts",
+      "title": "Handling rebase conflicts",
+      "body": "During rebase, conflicts are resolved one commit at a time. Fix the conflicted file, `git add` it, then `git rebase --continue` to proceed to the next commit. Use `git rebase --skip` to drop a commit that's entirely conflicted. Use `git rebase --abort` to cancel and return to the original state. Unlike merge conflicts (resolved once), rebase conflicts may recur for each replayed commit.",
+      "tags": ["conflicts", "continue", "skip", "abort"]
+    },
+    {
+      "id": "golden-rule",
+      "title": "The golden rule of rebase",
+      "body": "Never rebase commits that exist on a remote branch that others use. Rebase rewrites history — every rebased commit gets a new SHA. If collaborators have based work on the original SHAs, they'll need to reconcile divergent history. Safe: local branches, personal feature branches. Unsafe: main, develop, release branches, any shared branch. When in doubt, use [[git/merge]] instead.",
+      "tags": ["golden-rule", "safety", "shared-branches", "force-push"]
+    }
+  ],
+  "links": [
+    { "uri": "git/merge", "context": "Non-destructive alternative to rebase" },
+    { "uri": "git/commit", "context": "Commits are what gets rebased" },
+    { "uri": "git/branch", "context": "Rebase moves branch pointers" },
+    { "uri": "git/log", "context": "Verify rebase results" },
+    { "uri": "git/diff", "context": "Check changes during conflict resolution" },
+    { "uri": "git/troubleshooting", "context": "Recover from bad rebases with reflog" },
+    { "uri": "git/remote", "context": "Force-push after rebasing a pushed branch" }
+  ],
+  "related": [
+    { "uri": "git/merge", "relation": "alternative", "note": "Merge preserves history; rebase rewrites it for linearity" },
+    { "uri": "git/commit", "relation": "prerequisite", "note": "Rebase operates on existing commits" },
+    { "uri": "git/troubleshooting", "relation": "see-also", "note": "Reflog can recover commits lost during a bad rebase" }
+  ],
+  "scripts": [
+    {
+      "id": "interactive-rebase",
+      "name": "Interactive Rebase Helper",
+      "description": "Start an interactive rebase with autosquash support",
+      "lang": "bash",
+      "runtime": "git>=2.30",
+      "entry": "./scripts/interactive-rebase.sh",
+      "inline": "#!/usr/bin/env bash\nset -euo pipefail\n\nBASE=\"${1:?Usage: interactive-rebase.sh <base> [--autosquash]}\"\nAUTOSQUASH=\"\"\n\nif [ \"${2:-}\" = \"--autosquash\" ]; then\n  AUTOSQUASH=\"--autosquash\"\nfi\n\n# Show what will be rebased\nCOMMIT_COUNT=$(git rev-list --count \"$BASE\"..HEAD)\necho \"Rebasing $COMMIT_COUNT commits onto $BASE\"\necho\ngit log --oneline \"$BASE\"..HEAD\necho\n\nif [ \"$COMMIT_COUNT\" -eq 0 ]; then\n  echo \"Nothing to rebase — HEAD is already on or behind $BASE\"\n  exit 0\nfi\n\n# Check for fixup commits\nFIXUPS=$(git log --oneline \"$BASE\"..HEAD | grep -c '^[a-f0-9]* fixup!' || true)\nif [ \"$FIXUPS\" -gt 0 ] && [ -z \"$AUTOSQUASH\" ]; then\n  echo \"Found $FIXUPS fixup commit(s). Consider using --autosquash.\"\nfi\n\ngit rebase -i $AUTOSQUASH \"$BASE\""
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "base": { "type": "string", "description": "Base ref to rebase onto" },
+        "interactive": { "type": "boolean", "default": false, "description": "Use interactive mode" },
+        "autosquash": { "type": "boolean", "default": false, "description": "Auto-reorder fixup commits" },
+        "onto": { "type": "string", "description": "New base for --onto rebase" }
+      },
+      "required": ["base"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "success": { "type": "boolean" },
+        "commitsRebased": { "type": "integer" },
+        "newHead": { "type": "string", "description": "SHA of new HEAD after rebase" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "git/branch", "reason": "Must be on a branch to rebase" },
+    { "uri": "git/commit", "reason": "Must have commits to rebase" }
+  ],
+  "more": {
+    "docs": "https://git-scm.com/docs/git-rebase",
+    "book": "https://git-scm.com/book/en/v2/Git-Branching-Rebasing"
+  },
+  "frontmatter": {
+    "created": "2026-04-10",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "6 min",
+    "prerequisites": ["git/commit", "git/branch"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}

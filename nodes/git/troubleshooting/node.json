@@ -1,0 +1,124 @@
+{
+  "name": "troubleshooting",
+  "version": "1.0.0",
+  "uri": "git/troubleshooting",
+  "type": "context",
+  "content_type": "guide",
+  "context": "Fix common git mistakes — undo commits, resolve conflicts, recover lost work, clean up history, and use reflog",
+  "info": "This context covers the most common git mistakes and how to fix them: undoing commits (reset, revert), recovering lost commits from reflog, resolving merge and rebase conflicts, cleaning up a messy working tree, removing sensitive files from history, fixing a detached HEAD, and dealing with force-push disasters. Git almost never truly destroys data — the reflog retains every HEAD position for 90 days by default, making most mistakes recoverable. This is the go-to resource when something goes wrong. See [[git/commit]] for amending the last commit, [[git/rebase]] for rewriting older history, [[git/merge]] for conflict resolution basics, and [[git/stash]] for recovering dropped stashes.",
+  "parent": "git",
+  "tags": ["troubleshooting", "undo", "reset", "revert", "reflog", "recover", "fix", "detached-head", "conflict"],
+  "aliases": [
+    "git undo",
+    "git reset",
+    "git revert",
+    "git reflog",
+    "undo commit",
+    "undo push",
+    "recover lost commit",
+    "fix git mistakes",
+    "detached head",
+    "git clean",
+    "remove file from history",
+    "git cherry-pick",
+    "oh shit git"
+  ],
+  "triggers": [
+    "undo the last commit",
+    "I committed to the wrong branch",
+    "recover a deleted branch",
+    "undo a push",
+    "remove a file from git history",
+    "fix detached HEAD",
+    "I lost my commits",
+    "undo git reset",
+    "revert a commit without losing history",
+    "cherry-pick a commit",
+    "clean untracked files",
+    "resolve merge conflicts",
+    "my git is messed up"
+  ],
+  "body": "# Git Troubleshooting\n\nGit almost never destroys data. The reflog keeps a record of every HEAD position for 90 days. Most mistakes are recoverable.\n\n## Undo the Last Commit\n\n### Keep Changes (Soft Reset)\n\n```bash\n# Undo commit, keep changes staged\ngit reset --soft HEAD~1\n\n# Undo commit, keep changes unstaged\ngit reset HEAD~1\ngit reset --mixed HEAD~1  # same as above\n```\n\n### Discard Changes (Hard Reset)\n\n```bash\n# Undo commit AND discard all changes (DANGEROUS)\ngit reset --hard HEAD~1\n```\n\n**Warning**: `--hard` destroys uncommitted changes. Use `--soft` or `--mixed` unless you're sure.\n\n### Undo Multiple Commits\n\n```bash\n# Undo last 3 commits, keep changes\ngit reset --soft HEAD~3\n\n# Reset to a specific commit\ngit reset --soft abc1234\n```\n\n## Revert (Safe Undo for Pushed Commits)\n\nRevert creates a new commit that undoes a previous commit — safe for shared branches:\n\n```bash\n# Revert the last commit\ngit revert HEAD\n\n# Revert a specific commit\ngit revert abc1234\n\n# Revert without auto-committing (inspect first)\ngit revert --no-commit abc1234\n\n# Revert a merge commit (specify which parent to keep)\ngit revert -m 1 <merge-commit-sha>\n```\n\n**Use revert (not reset) for commits that have been pushed.** Reset rewrites history; revert adds history.\n\n## Reflog — Your Safety Net\n\nThe reflog records every HEAD position. Use it to find \"lost\" commits:\n\n```bash\n# Show reflog\ngit reflog\n\n# Show reflog with dates\ngit reflog --date=relative\n\n# Example output:\nabc1234 HEAD@{0}: reset: moving to HEAD~1\ndef5678 HEAD@{1}: commit: feat: add auth module\nghi9012 HEAD@{2}: checkout: moving from main to feature\n```\n\n### Recover a Lost Commit\n\n```bash\n# Find the commit in reflog\ngit reflog\n\n# Reset back to it\ngit reset --hard def5678\n\n# Or create a branch pointing to it\ngit branch recovered-work def5678\n```\n\n### Recover a Deleted Branch\n\n```bash\n# Find where the branch pointed\ngit reflog | grep \"checkout: moving from deleted-branch\"\n\n# Recreate the branch\ngit branch deleted-branch abc1234\n```\n\n### Recover a Dropped Stash\n\n```bash\n# Find stash commits in reflog\ngit fsck --no-reflog | grep commit\n# or\ngit log --oneline --all --walk-reflogs | grep \"WIP on\"\n\n# Apply the found commit\ngit stash apply <sha>\n```\n\n## Committed to the Wrong Branch\n\n### Move Last Commit to Another Branch\n\n```bash\n# Save the commit hash\ngit log --oneline -1\n# abc1234 feat: add auth\n\n# Move to the correct branch\ngit checkout correct-branch\ngit cherry-pick abc1234\n\n# Remove from wrong branch\ngit checkout wrong-branch\ngit reset --hard HEAD~1\n```\n\n### Move Uncommitted Changes to Another Branch\n\n```bash\n# Option 1: Stash and apply\ngit stash\ngit checkout other-branch\ngit stash pop\n\n# Option 2: If branches don't conflict, just switch\ngit switch other-branch  # uncommitted changes come along\n```\n\n## Cherry-Pick\n\nApply a specific commit from any branch:\n\n```bash\n# Pick a single commit\ngit cherry-pick abc1234\n\n# Pick multiple commits\ngit cherry-pick abc1234 def5678\n\n# Pick a range\ngit cherry-pick abc1234..def5678\n\n# Pick without committing (stage only)\ngit cherry-pick --no-commit abc1234\n\n# Abort a conflicted cherry-pick\ngit cherry-pick --abort\n```\n\n## Fix Detached HEAD\n\nDetached HEAD means you're not on any branch:\n\n```bash\n# Check if detached\ngit status  # \"HEAD detached at abc1234\"\n\n# Save work by creating a branch\ngit checkout -b save-my-work\n\n# Or return to a branch (losing any new commits in detached state)\ngit checkout main\n# Warning: commits made in detached HEAD are orphaned if you don't branch\n```\n\n## Remove Sensitive Files from History\n\n```bash\n# Remove a file from all history (git 2.24+)\ngit filter-repo --path secrets.env --invert-paths\n\n# Or with BFG Repo-Cleaner (faster)\nbfg --delete-files secrets.env\ngit reflog expire --expire=now --all\ngit gc --prune=now --aggressive\n\n# Force push the cleaned history\ngit push --force-with-lease --all\n```\n\n**After removing secrets**: rotate all exposed credentials immediately.\n\n## Clean Up Working Directory\n\n```bash\n# See what would be deleted\ngit clean -n\n\n# Delete untracked files\ngit clean -f\n\n# Delete untracked files and directories\ngit clean -fd\n\n# Delete untracked and ignored files\ngit clean -fdx\n\n# Interactive clean\ngit clean -i\n```\n\n## Undo a Bad Merge\n\n```bash\n# If not yet pushed: reset to before the merge\ngit reset --hard HEAD~1  # if merge was the last commit\n\n# If already pushed: revert the merge commit\ngit revert -m 1 <merge-commit-sha>\n```\n\n## Undo a Bad Rebase\n\n```bash\n# Find pre-rebase HEAD in reflog\ngit reflog\n# Look for the entry before \"rebase (start)\"\n\n# Reset to pre-rebase state\ngit reset --hard HEAD@{n}\n```\n\n## Undo git reset --hard\n\n```bash\n# The reflog still has the old HEAD\ngit reflog\ngit reset --hard <old-sha>\n```\n\nReflog retains the reference for ~90 days. Unstaged changes that were never committed are gone forever — `git reset --hard` is one of the few truly destructive operations.\n\n## Force Push Recovery\n\nIf someone force-pushed over your work:\n\n```bash\n# Fetch the latest\ngit fetch origin\n\n# Check reflog for the old remote state\ngit reflog show origin/main\n\n# If you have the old commits locally:\ngit push --force-with-lease origin main\n```\n\n## Agent Best Practices\n\n1. **Use reflog first** — `git reflog` is your time machine\n2. **Prefer revert over reset for pushed commits** — revert is safe; reset rewrites history\n3. **Prefer --soft reset** — keeps your changes; you can always discard later\n4. **Never hard reset without checking reflog** — make sure you can recover\n5. **Branch before experimenting** — `git checkout -b experiment` is cheap insurance\n6. **Check status after every recovery** — `git status && git log --oneline -5`\n7. **Cherry-pick for surgical fixes** — move specific commits without merge/rebase\n",
+  "sections": [
+    {
+      "id": "undo-commit",
+      "title": "Undoing commits with reset and revert",
+      "body": "`git reset --soft HEAD~1` undoes the commit but keeps changes staged. `git reset HEAD~1` (mixed) keeps changes unstaged. `git reset --hard HEAD~1` discards everything (dangerous). For pushed commits, use `git revert <sha>` which creates a new undo commit. Revert is safe for shared branches; reset is for local-only history.",
+      "tags": ["undo", "reset", "revert", "soft", "hard", "mixed"]
+    },
+    {
+      "id": "reflog",
+      "title": "Using reflog to recover lost work",
+      "body": "`git reflog` shows every position HEAD has been at, with timestamps. It records commits, resets, rebases, checkouts — everything. Find the SHA you want and `git reset --hard <sha>` or `git branch recovered <sha>`. Reflog entries expire after 90 days (configurable via `gc.reflogExpire`). Reflog is local-only and not shared via push/pull.",
+      "tags": ["reflog", "recover", "lost-commits", "safety-net"]
+    },
+    {
+      "id": "cherry-pick",
+      "title": "Cherry-picking specific commits",
+      "body": "`git cherry-pick <sha>` applies a single commit's changes as a new commit on the current branch. Use for moving commits between branches, backporting fixes, and extracting specific changes. Use `--no-commit` to stage without committing. Use `--abort` to cancel a conflicted cherry-pick. Cherry-pick creates a new commit with a different SHA but the same diff.",
+      "tags": ["cherry-pick", "backport", "extract", "specific-commit"]
+    },
+    {
+      "id": "wrong-branch",
+      "title": "Committed to the wrong branch",
+      "body": "If the commit hasn't been pushed: cherry-pick it to the right branch, then reset the wrong branch. If changes are uncommitted: either stash-and-switch or just switch (uncommitted changes move with you if no conflicts). If already pushed: cherry-pick to correct branch, then revert on the wrong branch.",
+      "tags": ["wrong-branch", "move-commit", "fix-branch"]
+    },
+    {
+      "id": "detached-head",
+      "title": "Fixing detached HEAD",
+      "body": "Detached HEAD means HEAD points to a commit, not a branch. Commits made here are orphaned when you switch away. Fix: `git checkout -b <new-branch>` to create a branch at the current position. Or `git checkout <existing-branch>` to reattach (but new commits become orphaned — recover via reflog if needed). Detached HEAD commonly happens when checking out a tag, a remote branch, or a specific commit.",
+      "tags": ["detached-head", "orphaned-commits", "reattach"]
+    },
+    {
+      "id": "clean-history",
+      "title": "Removing files from git history",
+      "body": "Use `git filter-repo --path <file> --invert-paths` to remove a file from all history. Or BFG Repo-Cleaner for large repos. After rewriting: `git reflog expire --expire=now --all && git gc --prune=now --aggressive` to purge objects. Then force-push all branches. **Critical**: rotate any exposed secrets immediately — git history on forks and caches may still contain them.",
+      "tags": ["filter-repo", "bfg", "remove-secrets", "rewrite-history", "sensitive-data"]
+    },
+    {
+      "id": "clean-working-tree",
+      "title": "Cleaning untracked files",
+      "body": "`git clean -n` dry-run shows what would be deleted. `git clean -f` deletes untracked files. `git clean -fd` includes directories. `git clean -fdx` includes ignored files (build artifacts etc). `git clean -i` for interactive mode. Always dry-run first. `git checkout -- .` or `git restore .` discards unstaged changes to tracked files.",
+      "tags": ["clean", "untracked", "discard", "restore"]
+    }
+  ],
+  "links": [
+    { "uri": "git/commit", "context": "Amend for simple last-commit fixes" },
+    { "uri": "git/rebase", "context": "Interactive rebase for rewriting older history" },
+    { "uri": "git/merge", "context": "Merge conflict resolution" },
+    { "uri": "git/stash", "context": "Recover dropped stashes from reflog" },
+    { "uri": "git/branch", "context": "Recover deleted branches" },
+    { "uri": "git/remote", "context": "Force push after history rewrite" },
+    { "uri": "git/log", "context": "Bisect to find which commit broke things" },
+    { "uri": "git/diff", "context": "Review changes during conflict resolution" }
+  ],
+  "related": [
+    { "uri": "git/commit", "relation": "see-also", "note": "git commit --amend is the simplest undo for the last commit" },
+    { "uri": "git/rebase", "relation": "see-also", "note": "Interactive rebase rewrites history; reflog recovers from bad rebases" },
+    { "uri": "git/merge", "relation": "see-also", "note": "Merge conflicts are a common troubleshooting scenario" },
+    { "uri": "git/log", "relation": "see-also", "note": "Bisect uses log to binary-search for bug-introducing commits" }
+  ],
+  "more": {
+    "docs": "https://git-scm.com/docs/git-reset",
+    "book": "https://git-scm.com/book/en/v2/Git-Tools-Reset-Demystified",
+    "reflog": "https://git-scm.com/docs/git-reflog",
+    "revert": "https://git-scm.com/docs/git-revert",
+    "filter-repo": "https://github.com/newren/git-filter-repo",
+    "cherry-pick": "https://git-scm.com/docs/git-cherry-pick"
+  },
+  "frontmatter": {
+    "created": "2026-04-10",
+    "updated": "2026-04-10",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "8 min",
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-10T00:00:00Z",
+  "status": "published"
+}
