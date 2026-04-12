@@ -1,0 +1,156 @@
+{
+  "name": "troubleshooting",
+  "version": "1.0.0",
+  "uri": "kubernetes/troubleshooting",
+  "type": "context",
+  "content_type": "guide",
+  "context": "Diagnose and fix common Kubernetes failures — CrashLoopBackOff, OOMKilled, ImagePullBackOff, pending Pods, and networking issues",
+  "info": "Kubernetes troubleshooting is the most critical skill for production operations. When workloads fail, agents need systematic approaches to diagnose and fix issues. This skill covers the most common failure modes: CrashLoopBackOff (app crashes on startup), OOMKilled (memory limit exceeded), ImagePullBackOff (can't pull container image), Pending Pods (insufficient resources or scheduling constraints), Service/Ingress routing failures, and volume mount errors. Each failure mode includes the diagnostic workflow, root cause patterns, and fixes.",
+  "parent": "kubernetes",
+  "tags": ["troubleshooting", "debugging", "crashloopbackoff", "oomkilled", "imagepullbackoff", "pending", "events", "logs"],
+  "aliases": [
+    "kubernetes troubleshooting",
+    "k8s troubleshooting",
+    "kubernetes debugging",
+    "debug kubernetes",
+    "kubectl debug",
+    "pod not starting",
+    "pod crashing",
+    "crashloopbackoff",
+    "oomkilled",
+    "imagepullbackoff",
+    "kubernetes errors"
+  ],
+  "triggers": [
+    "pod is in CrashLoopBackOff",
+    "pod is OOMKilled",
+    "pod is stuck in Pending",
+    "image pull back off",
+    "pod is not starting",
+    "service is not routing traffic",
+    "deployment is stuck",
+    "debug a kubernetes issue",
+    "kubectl describe shows errors",
+    "pod keeps restarting"
+  ],
+  "body": "# Kubernetes Troubleshooting\n\nSystematic approach to diagnosing Kubernetes failures. Start with the universal debug workflow, then dive into specific failure modes.\n\n## Universal Debug Workflow\n\nFor ANY Kubernetes issue, start here:\n\n```bash\n# 1. What's the current state?\nkubectl get pods -n <namespace> -o wide\n\n# 2. What happened? (Events are the #1 diagnostic tool)\nkubectl describe pod <pod-name> -n <namespace>\n# Focus on: Events section (bottom), Conditions, Container Statuses\n\n# 3. What did the app say?\nkubectl logs <pod-name> -n <namespace> --tail=100\nkubectl logs <pod-name> -n <namespace> --previous  # crashed container\nkubectl logs <pod-name> -c <container> -n <namespace>  # specific container\n\n# 4. What's happening at the cluster level?\nkubectl get events -n <namespace> --sort-by=.metadata.creationTimestamp | tail -20\n\n# 5. Can I get inside?\nkubectl exec -it <pod-name> -n <namespace> -- /bin/sh\n\n# 6. Resource state\nkubectl get all -n <namespace>\nkubectl top pods -n <namespace>\nkubectl top nodes\n```\n\n## CrashLoopBackOff\n\n**Symptom:** Pod repeatedly crashes and restarts with increasing backoff delay.\n\n**Diagnosis:**\n```bash\nkubectl describe pod <name>  # check Exit Code in Container Status\nkubectl logs <name> --previous  # logs from the crashed container\n```\n\n**Common Causes & Fixes:**\n\n| Exit Code | Cause | Fix |\n|-----------|-------|-----|\n| 1 | Application error (unhandled exception) | Check logs, fix app code |\n| 127 | Command not found | Fix `command` or `args` in Pod spec |\n| 137 | OOMKilled (SIGKILL) | Increase `resources.limits.memory` |\n| 139 | Segfault (SIGSEGV) | Debug the application, check native deps |\n| 143 | SIGTERM (graceful shutdown timeout) | Increase `terminationGracePeriodSeconds` |\n\n```bash\n# Quick fix: increase memory if OOMKilled\nkubectl set resources deployment/<name> --limits=memory=1Gi\n\n# Quick fix: check if command exists\nkubectl run debug --rm -it --image=<same-image> -- /bin/sh\n```\n\n## OOMKilled\n\n**Symptom:** Container terminated with reason OOMKilled, exit code 137.\n\n**Diagnosis:**\n```bash\nkubectl describe pod <name>  # Last State: Terminated, Reason: OOMKilled\nkubectl top pods -n <namespace>  # check current memory usage\n```\n\n**Fixes:**\n1. **Increase memory limits** — the app genuinely needs more memory\n   ```bash\n   kubectl set resources deployment/<name> --limits=memory=2Gi --requests=memory=1Gi\n   ```\n2. **Fix memory leak** — if usage grows unbounded, the app has a leak\n3. **Tune JVM/runtime** — set `-Xmx` for Java, `--max-old-space-size` for Node.js\n4. **Use VPA** — Vertical Pod Autoscaler can recommend right-sized limits\n\n## ImagePullBackOff\n\n**Symptom:** Pod stuck in `ImagePullBackOff` or `ErrImagePull`.\n\n**Diagnosis:**\n```bash\nkubectl describe pod <name>  # Events: Failed to pull image\n```\n\n**Common Causes & Fixes:**\n\n| Cause | Fix |\n|-------|-----|\n| Image doesn't exist | Verify image name and tag: `docker pull <image>` |\n| Wrong tag | Check available tags in registry |\n| Private registry, no credentials | Create `imagePullSecrets` |\n| Registry rate limit (Docker Hub) | Use authenticated pulls or mirror |\n\n```bash\n# Create registry credentials\nkubectl create secret docker-registry regcred \\\n  --docker-server=myregistry.io \\\n  --docker-username=user \\\n  --docker-password=token \\\n  -n <namespace>\n\n# Add to Pod spec or ServiceAccount\n```\n\n```yaml\nspec:\n  imagePullSecrets:\n    - name: regcred\n  containers:\n    - name: app\n      image: myregistry.io/my-app:v1.2.0\n```\n\n## Pending Pods\n\n**Symptom:** Pod stuck in `Pending` state.\n\n**Diagnosis:**\n```bash\nkubectl describe pod <name>  # Events: FailedScheduling\nkubectl get events --field-selector reason=FailedScheduling\n```\n\n**Common Causes & Fixes:**\n\n| Cause | Events Message | Fix |\n|-------|---------------|-----|\n| Insufficient CPU/memory | `Insufficient cpu` / `Insufficient memory` | Add nodes or reduce requests |\n| No matching node | `node(s) didn't match Pod's node affinity` | Fix nodeSelector/affinity |\n| PVC not bound | `persistentvolumeclaim not found` or `unbound` | Create PV or fix StorageClass |\n| Taint not tolerated | `node(s) had taints that the pod didn't tolerate` | Add tolerations |\n| ResourceQuota exceeded | `exceeded quota` | Increase quota or reduce requests |\n\n```bash\n# Check node capacity\nkubectl describe nodes | grep -A 5 \"Allocated resources\"\nkubectl top nodes\n\n# Check PVC status\nkubectl get pvc -n <namespace>\n\n# Check ResourceQuota\nkubectl describe resourcequota -n <namespace>\n```\n\n## Service Not Routing Traffic\n\n**Symptom:** Service exists but requests fail or time out.\n\n**Diagnosis:**\n```bash\n# Check endpoints (are there Pods behind the Service?)\nkubectl get endpoints <service-name> -n <namespace>\n\n# If empty — no Pods match the selector\nkubectl get svc <service-name> -n <namespace> -o yaml | grep -A 5 selector\nkubectl get pods -n <namespace> --show-labels\n\n# Test from inside the cluster\nkubectl run curl-test --rm -it --image=curlimages/curl -- \\\n  curl -v http://<service>.<namespace>.svc.cluster.local\n```\n\n**Common Causes:**\n\n| Cause | Fix |\n|-------|-----|\n| No endpoints (selector mismatch) | Fix Service selector to match Pod labels |\n| Pods not Ready | Fix readinessProbe — failing probes remove Pods from endpoints |\n| Wrong port | Verify `targetPort` matches the container's listening port |\n| NetworkPolicy blocking | Check NetworkPolicies in the namespace |\n\n## Ingress Not Working\n\n**Diagnosis:**\n```bash\n# Check Ingress resource\nkubectl describe ingress <name> -n <namespace>\n\n# Check Ingress controller logs\nkubectl logs -n ingress-nginx -l app.kubernetes.io/name=ingress-nginx --tail=50\n\n# Check the backend Service has endpoints\nkubectl get endpoints <backend-service> -n <namespace>\n\n# Check Ingress controller Service has external IP\nkubectl get svc -n ingress-nginx\n```\n\n## Volume Mount Failures\n\n**Diagnosis:**\n```bash\nkubectl describe pod <name>  # Events: FailedMount, FailedAttachVolume\nkubectl get pvc -n <namespace>  # Status: Pending = not bound\nkubectl get pv  # Check available PVs\n```\n\n**Common Causes:**\n\n| Cause | Fix |\n|-------|-----|\n| PVC not bound | Check StorageClass exists and has available capacity |\n| Multi-attach error | Volume is RWO and already attached to another node. Use RWX or reschedule. |\n| Permission denied | Check `fsGroup` in Pod securityContext |\n| Subpath doesn't exist | Ensure the subPath directory exists in the volume |\n\n## Useful Debug Commands\n\n```bash\n# Run an ephemeral debug container (k8s 1.23+)\nkubectl debug pod/<name> -it --image=busybox --target=<container>\n\n# Run a debug Pod in the same namespace\nkubectl run debug --rm -it --image=nicolaka/netshoot -- /bin/bash\n\n# DNS debugging\nkubectl run dns-test --rm -it --image=busybox -- nslookup <service>.<namespace>.svc.cluster.local\n\n# Network debugging\nkubectl run net-test --rm -it --image=nicolaka/netshoot -- \\\n  curl -v http://<service>.<namespace>.svc.cluster.local\n\n# Check cluster component health\nkubectl get componentstatuses  # deprecated but still works in some clusters\nkubectl get nodes\nkubectl describe node <node-name>\n```\n\n## Environment Variables\n\n| Variable | Purpose |\n|----------|----------|\n| `KUBECONFIG` | Path to kubeconfig file |\n| `KUBE_NAMESPACE` | Default namespace |\n",
+  "sections": [
+    {
+      "id": "crashloopbackoff",
+      "title": "CrashLoopBackOff",
+      "body": "Pod crashes and restarts with increasing backoff (10s, 20s, 40s, up to 5min). Diagnose: `kubectl describe pod` for exit code, `kubectl logs --previous` for crash logs. Exit code 1 = app error, 137 = OOMKilled, 127 = command not found, 139 = segfault. Fix depends on cause: increase memory for OOM, fix command for 127, fix app code for 1. Use `kubectl debug` for ephemeral debug containers.",
+      "tags": ["crashloopbackoff", "crash", "restart", "exit-code", "backoff", "oomkilled"]
+    },
+    {
+      "id": "imagepullbackoff",
+      "title": "ImagePullBackOff",
+      "body": "Pod can't pull container image. Causes: image doesn't exist, wrong tag, private registry without credentials, Docker Hub rate limit. Fix: verify image with `docker pull`, create `imagePullSecrets` for private registries, authenticate with Docker Hub to increase rate limits. Check Events in `kubectl describe pod` for the exact pull error message.",
+      "tags": ["imagepullbackoff", "errimagepull", "registry", "credentials", "rate-limit", "pull"]
+    },
+    {
+      "id": "pending-pods",
+      "title": "Pending Pods",
+      "body": "Pod stays in Pending — scheduler can't find a suitable node. Causes: insufficient CPU/memory (add nodes or reduce requests), no matching nodeSelector/affinity, PVC not bound, taints without tolerations, ResourceQuota exceeded. Debug with `kubectl describe pod` Events (FailedScheduling reason), `kubectl describe nodes` for capacity, `kubectl get pvc` for volume status.",
+      "tags": ["pending", "scheduling", "insufficient-resources", "node-affinity", "taint", "toleration"]
+    },
+    {
+      "id": "networking",
+      "title": "Networking issues",
+      "body": "Service not routing: check endpoints (`kubectl get endpoints`), verify selector matches Pod labels, verify Pods are Ready (failing readinessProbe removes from endpoints), check targetPort matches container port. Ingress not routing: check ingress controller is running, check Events in `kubectl describe ingress`, verify backend Service has endpoints. Use `kubectl run debug --rm -it --image=nicolaka/netshoot` for DNS and connectivity testing.",
+      "tags": ["networking", "service", "endpoints", "dns", "ingress", "connectivity", "netshoot"]
+    },
+    {
+      "id": "volume-issues",
+      "title": "Volume mount failures",
+      "body": "FailedMount events: PVC not bound (check StorageClass), multi-attach error (RWO volume attached elsewhere — reschedule or use RWX), permission denied (set `securityContext.fsGroup`), timeout waiting for volume (CSI driver issue). Check `kubectl get pvc` status, `kubectl get pv` for available volumes, `kubectl describe pod` Events for mount error details.",
+      "tags": ["volume", "mount", "pvc", "failedmount", "multi-attach", "permissions", "fsgroup"]
+    }
+  ],
+  "links": [
+    { "uri": "kubernetes/pods", "context": "Pod lifecycle, logs, exec, and debugging basics" },
+    { "uri": "kubernetes/deployments", "context": "Deployment rollout failures" },
+    { "uri": "kubernetes/services", "context": "Service and endpoint debugging" },
+    { "uri": "kubernetes/ingress", "context": "Ingress routing failures" },
+    { "uri": "kubernetes/volumes", "context": "Volume mount and PVC binding issues" },
+    { "uri": "kubernetes/configmaps", "context": "ConfigMap/Secret mount errors" },
+    { "uri": "kubernetes/namespaces", "context": "ResourceQuota exceeded errors" },
+    { "uri": "kubernetes/hpa", "context": "HPA not scaling debugging" }
+  ],
+  "related": [
+    { "uri": "kubernetes/pods", "relation": "see-also", "note": "Pods are where most troubleshooting starts — logs, describe, exec" },
+    { "uri": "kubernetes/services", "relation": "see-also", "note": "Service routing issues are a common failure mode" }
+  ],
+  "scripts": [
+    {
+      "id": "diagnose-pod",
+      "name": "Diagnose Pod",
+      "description": "Run comprehensive diagnostics on a failing Pod",
+      "lang": "bash",
+      "runtime": "kubectl",
+      "entry": "./scripts/diagnose-pod.sh",
+      "inline": "#!/bin/bash\nset -euo pipefail\nPOD=${1:?Usage: diagnose-pod.sh <pod-name>}\nNS=${KUBE_NAMESPACE:-default}\n\necho \"========================================\"\necho \"Diagnosing Pod: $POD in namespace: $NS\"\necho \"========================================\"\n\necho \"\"\necho \"=== Pod Status ===\"\nkubectl get pod \"$POD\" -n \"$NS\" -o wide 2>/dev/null || { echo \"Pod not found\"; exit 1; }\n\nSTATUS=$(kubectl get pod \"$POD\" -n \"$NS\" -o jsonpath='{.status.phase}')\necho \"Phase: $STATUS\"\n\necho \"\"\necho \"=== Container Statuses ===\"\nkubectl get pod \"$POD\" -n \"$NS\" -o jsonpath='{range .status.containerStatuses[*]}{.name}: ready={.ready}, restarts={.restartCount}, state={.state}{\"\\n\"}{end}' 2>/dev/null || echo \"No container statuses\"\n\necho \"\"\necho \"=== Events (last 10) ===\"\nkubectl describe pod \"$POD\" -n \"$NS\" 2>/dev/null | grep -A 50 '^Events:' | head -15\n\necho \"\"\necho \"=== Current Logs (last 30 lines) ===\"\nkubectl logs \"$POD\" -n \"$NS\" --tail=30 2>/dev/null || echo \"No current logs\"\n\necho \"\"\necho \"=== Previous Container Logs (last 20 lines) ===\"\nkubectl logs \"$POD\" -n \"$NS\" --previous --tail=20 2>/dev/null || echo \"No previous logs\"\n\necho \"\"\necho \"=== Resource Usage ===\"\nkubectl top pod \"$POD\" -n \"$NS\" 2>/dev/null || echo \"metrics-server not available\"\n\necho \"\"\necho \"=== Node Status ===\"\nNODE=$(kubectl get pod \"$POD\" -n \"$NS\" -o jsonpath='{.spec.nodeName}' 2>/dev/null)\nif [ -n \"$NODE\" ]; then\n  echo \"Scheduled on: $NODE\"\n  kubectl top node \"$NODE\" 2>/dev/null || echo \"Node metrics not available\"\nelse\n  echo \"Pod not yet scheduled to a node\"\nfi",
+      "env": {
+        "KUBECONFIG": { "required": false, "secret": false, "default": "~/.kube/config", "description": "Path to kubeconfig file" },
+        "KUBE_NAMESPACE": { "required": false, "secret": false, "default": "default", "description": "Target namespace" }
+      },
+      "packages": []
+    },
+    {
+      "id": "diagnose-service",
+      "name": "Diagnose Service",
+      "description": "Debug a Service that is not routing traffic correctly",
+      "lang": "bash",
+      "runtime": "kubectl",
+      "entry": "./scripts/diagnose-service.sh",
+      "inline": "#!/bin/bash\nset -euo pipefail\nSVC=${1:?Usage: diagnose-service.sh <service-name>}\nNS=${KUBE_NAMESPACE:-default}\n\necho \"========================================\"\necho \"Diagnosing Service: $SVC in namespace: $NS\"\necho \"========================================\"\n\necho \"\"\necho \"=== Service ===\"\nkubectl get svc \"$SVC\" -n \"$NS\" -o wide 2>/dev/null || { echo \"Service not found\"; exit 1; }\n\necho \"\"\necho \"=== Selector ===\"\nSELECTOR=$(kubectl get svc \"$SVC\" -n \"$NS\" -o jsonpath='{.spec.selector}' 2>/dev/null)\necho \"$SELECTOR\"\n\necho \"\"\necho \"=== Endpoints ===\"\nkubectl get endpoints \"$SVC\" -n \"$NS\" 2>/dev/null || echo \"No endpoints found\"\n\nENDPOINT_COUNT=$(kubectl get endpoints \"$SVC\" -n \"$NS\" -o jsonpath='{.subsets[*].addresses}' 2>/dev/null | grep -c 'ip' || echo 0)\nif [ \"$ENDPOINT_COUNT\" = \"0\" ]; then\n  echo \"\"\n  echo \"WARNING: No endpoints! Pods may not match the Service selector.\"\n  echo \"\"\n  echo \"Pods with matching labels:\"\n  # Extract selector as label query\n  LABEL_SELECTOR=$(kubectl get svc \"$SVC\" -n \"$NS\" -o jsonpath='{range .spec.selector}{@}{end}' 2>/dev/null | sed 's/map\\[//;s/\\]//;s/ /,/g;s/:/=/g')\n  kubectl get pods -n \"$NS\" -l \"$LABEL_SELECTOR\" 2>/dev/null || echo \"Could not query pods\"\nfi\n\necho \"\"\necho \"=== Service Events ===\"\nkubectl describe svc \"$SVC\" -n \"$NS\" 2>/dev/null | grep -A 20 '^Events:' || echo \"No events\"",
+      "env": {
+        "KUBECONFIG": { "required": false, "secret": false, "default": "~/.kube/config", "description": "Path to kubeconfig file" },
+        "KUBE_NAMESPACE": { "required": false, "secret": false, "default": "default", "description": "Target namespace" }
+      },
+      "packages": []
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "resourceType": { "type": "string", "enum": ["pod", "service", "deployment", "ingress", "pvc"], "description": "Type of resource to diagnose" },
+        "name": { "type": "string", "description": "Resource name" },
+        "namespace": { "type": "string", "default": "default" }
+      },
+      "required": ["resourceType", "name"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "issue": { "type": "string", "description": "Identified issue" },
+        "cause": { "type": "string", "description": "Root cause" },
+        "fix": { "type": "string", "description": "Recommended fix" },
+        "commands": { "type": "array", "items": { "type": "string" }, "description": "Commands to apply the fix" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "kubernetes/pods", "reason": "Most troubleshooting starts with Pod diagnostics" }
+  ],
+  "more": {
+    "docs": "https://kubernetes.io/docs/tasks/debug/",
+    "troubleshoot-pods": "https://kubernetes.io/docs/tasks/debug/debug-application/debug-pods/",
+    "troubleshoot-services": "https://kubernetes.io/docs/tasks/debug/debug-application/debug-service/"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, DevOps engineers, SREs, AI agents",
+    "estimated_reading_time": "7 min",
+    "prerequisites": ["kubernetes/pods"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

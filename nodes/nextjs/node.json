@@ -1,0 +1,103 @@
+{
+  "name": "nextjs",
+  "version": "1.0.0",
+  "uri": "nextjs",
+  "type": "ecosystem",
+  "context": "Next.js is the React meta-framework for production — routing, rendering, data fetching, and deployment in one stack",
+  "info": "Next.js is the dominant React framework for building full-stack web applications. It provides file-system based routing (both App Router and Pages Router), server-side rendering (SSR), static site generation (SSG), incremental static regeneration (ISR), API routes, Server Components, Server Actions, middleware, image optimization, and zero-config deployment to Vercel or self-hosted environments. Next.js is the most common framework agents encounter when scaffolding, modifying, or deploying React applications. Version 15+ uses the App Router by default with React Server Components, while the Pages Router remains supported for existing projects. Agents working with Next.js need to understand the routing model, data fetching patterns, component boundaries (server vs client), and deployment targets.",
+  "parent": null,
+  "tags": ["nextjs", "react", "framework", "ssr", "ssg", "fullstack", "frontend", "vercel", "app-router", "pages-router"],
+  "aliases": [
+    "next.js",
+    "nextjs",
+    "next js",
+    "next",
+    "next framework",
+    "react framework",
+    "vercel next",
+    "nextjs app",
+    "next 15",
+    "next 14"
+  ],
+  "triggers": [
+    "create a next.js app",
+    "scaffold a nextjs project",
+    "build a react website with next",
+    "set up next.js",
+    "create next app",
+    "npx create-next-app",
+    "next.js project structure",
+    "build a fullstack react app"
+  ],
+  "body": "# Next.js\n\nNext.js is a React framework for building full-stack web applications. You use React Components to build user interfaces, and Next.js for additional features and optimizations.\n\n## Quick Start\n\n```bash\nnpx create-next-app@latest my-app --yes\ncd my-app\nnpm run dev\n```\n\nThis creates a Next.js project with the App Router, TypeScript, Tailwind CSS, and ESLint preconfigured.\n\n## Core Concepts\n\n- **[[nextjs/app-router]]** — File-based routing with React Server Components (recommended for new projects)\n- **[[nextjs/pages-router]]** — Classic file-based routing with getStaticProps/getServerSideProps\n- **[[nextjs/api-routes]]** — Build REST/GraphQL API endpoints inside your Next.js app\n- **[[nextjs/server-actions]]** — Mutate data with `'use server'` functions called directly from components\n- **[[nextjs/middleware]]** — Run code before requests complete for auth, redirects, rewrites, and headers\n- **[[nextjs/data-fetching]]** — Patterns for loading data in server and client components\n- **[[nextjs/config]]** — next.config.js/mjs options for images, redirects, webpack, and more\n- **[[nextjs/deployment]]** — Deploy to Vercel, self-host with Node.js, Docker, or static export\n\n## Project Structure\n\n```\nmy-app/\n├── app/                    # App Router (recommended)\n│   ├── layout.tsx          # Root layout (required)\n│   ├── page.tsx            # Home page (/)\n│   ├── globals.css         # Global styles\n│   └── blog/\n│       ├── page.tsx        # /blog\n│       └── [slug]/\n│           └── page.tsx    # /blog/:slug\n├── public/                 # Static assets\n├── next.config.mjs         # Configuration\n├── package.json\n└── tsconfig.json\n```\n\n## Server vs Client Components\n\nIn the App Router, components are **Server Components by default**. They run on the server, can directly access databases and APIs, and send only HTML to the client.\n\nAdd `'use client'` at the top of a file to make it a Client Component — needed for useState, useEffect, event handlers, and browser APIs.\n\n```tsx\n// Server Component (default) — can fetch data directly\nexport default async function Page() {\n  const data = await fetch('https://api.example.com/posts')\n  const posts = await data.json()\n  return <ul>{posts.map(p => <li key={p.id}>{p.title}</li>)}</ul>\n}\n```\n\n```tsx\n// Client Component — for interactivity\n'use client'\nimport { useState } from 'react'\n\nexport default function Counter() {\n  const [count, setCount] = useState(0)\n  return <button onClick={() => setCount(count + 1)}>{count}</button>\n}\n```\n\n## System Requirements\n\n- Node.js 20.9+\n- macOS, Windows (WSL), or Linux\n- TypeScript 5.1+ (recommended)\n\n## Environment Variables\n\n| Variable | Purpose |\n|----------|----------|\n| `NEXT_PUBLIC_*` | Exposed to browser (prefix required) |\n| `NODE_ENV` | `development`, `production`, or `test` |\n| `PORT` | Server port (default: 3000) |\n| `HOSTNAME` | Server hostname for production |\n",
+  "sections": [
+    {
+      "id": "quick-start",
+      "title": "Quick start",
+      "body": "Run `npx create-next-app@latest my-app --yes` to scaffold a new project with App Router, TypeScript, Tailwind CSS, and ESLint. Use `npm run dev` to start the development server at http://localhost:3000. For manual setup: `npm i next react react-dom` and add `dev`, `build`, `start` scripts to package.json.",
+      "tags": ["create-next-app", "scaffold", "setup", "init"]
+    },
+    {
+      "id": "routing-models",
+      "title": "Routing models",
+      "body": "Next.js has two routing models: the **App Router** (`app/` directory, React Server Components, layouts, streaming) and the **Pages Router** (`pages/` directory, getStaticProps, getServerSideProps). New projects should use the App Router. The Pages Router is stable and supported but not receiving new features. See [[nextjs/app-router]] and [[nextjs/pages-router]].",
+      "tags": ["app-router", "pages-router", "routing", "migration"]
+    },
+    {
+      "id": "rendering",
+      "title": "Rendering strategies",
+      "body": "Next.js supports multiple rendering strategies: **Static (SSG)** — pages rendered at build time, **Server (SSR)** — pages rendered per-request, **ISR** — static pages revalidated after a time interval, **Streaming** — UI sent progressively with Suspense boundaries, **Client** — components rendered in the browser. The App Router uses Server Components by default and determines rendering strategy automatically based on data fetching patterns.",
+      "tags": ["ssr", "ssg", "isr", "streaming", "csr", "rendering"]
+    },
+    {
+      "id": "cli",
+      "title": "CLI commands",
+      "body": "`next dev` — start development server with HMR\n`next build` — create production build\n`next start` — start production server\n`next lint` — run ESLint\n`next info` — print system info for bug reports\n\nAll commands support `--turbopack` flag for the Turbopack bundler (faster builds).",
+      "tags": ["cli", "dev", "build", "start", "lint", "turbopack"]
+    }
+  ],
+  "sub": [
+    "nextjs/app-router",
+    "nextjs/pages-router",
+    "nextjs/api-routes",
+    "nextjs/server-actions",
+    "nextjs/middleware",
+    "nextjs/data-fetching",
+    "nextjs/config",
+    "nextjs/deployment"
+  ],
+  "links": [
+    { "uri": "nextjs/app-router", "context": "File-based routing with React Server Components" },
+    { "uri": "nextjs/pages-router", "context": "Classic routing with getStaticProps/getServerSideProps" },
+    { "uri": "nextjs/api-routes", "context": "Build API endpoints in Next.js" },
+    { "uri": "nextjs/server-actions", "context": "Server-side mutations with 'use server'" },
+    { "uri": "nextjs/middleware", "context": "Request interception for auth, redirects, headers" },
+    { "uri": "nextjs/data-fetching", "context": "Data loading patterns for server and client" },
+    { "uri": "nextjs/config", "context": "next.config.js configuration reference" },
+    { "uri": "nextjs/deployment", "context": "Deploy to Vercel, Docker, or static export" },
+    { "uri": "typescript", "context": "TypeScript is the recommended language for Next.js" }
+  ],
+  "related": [
+    { "uri": "typescript", "relation": "prerequisite", "note": "Next.js projects are typically TypeScript-first" }
+  ],
+  "more": {
+    "docs": "https://nextjs.org/docs",
+    "repo": "https://github.com/vercel/next.js",
+    "examples": "https://github.com/vercel/next.js/tree/canary/examples",
+    "wiki": "https://nextjs.org/learn"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "5 min",
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

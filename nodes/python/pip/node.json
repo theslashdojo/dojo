@@ -1,0 +1,124 @@
+{
+  "name": "pip",
+  "version": "1.0.0",
+  "uri": "python/pip",
+  "type": "skill",
+  "context": "Install, manage, and audit Python packages with pip — use when adding dependencies, creating requirements files, or configuring package sources",
+  "info": "This skill covers pip, the default package installer for Python. It explains installing packages with `pip install`, managing project dependencies via `requirements.txt` and constraints files, configuring pip through `pip.conf`/`pip.ini` and environment variables, working with private registries, auditing dependencies for security vulnerabilities, and managing the pip cache. pip resolves and downloads packages from PyPI (the Python Package Index) and installs them into the active Python environment. Always use pip inside a virtual environment to avoid polluting the system Python. Sub-topics include version pinning strategies (`==`, `>=`, `~=`), editable installs for local development (`pip install -e .`), hash-checking mode for supply-chain security, and integration with `pip-audit` for vulnerability scanning. See [[python/venv]] for virtual environment setup, [[python/poetry]] and [[python/uv]] for alternative dependency managers.",
+  "parent": "python",
+  "tags": ["pip", "package-manager", "pypi", "dependencies", "requirements-txt", "python-packages"],
+  "aliases": [
+    "pip",
+    "pip3",
+    "pip install",
+    "python package installer",
+    "pypi"
+  ],
+  "triggers": [
+    "install a python package",
+    "create requirements.txt",
+    "manage python dependencies",
+    "freeze python dependencies",
+    "configure pip registry",
+    "audit python packages",
+    "install from requirements file"
+  ],
+  "body": "# pip — Python Package Installer\n\npip is the default package installer for Python. It downloads and installs packages from the Python Package Index (PyPI) at https://pypi.org and installs them into the active Python environment.\n\n## Installing Packages\n\n```bash\n# Install a single package\npip install requests\n\n# Install a specific version\npip install requests==2.31.0\n\n# Install with minimum version\npip install \"requests>=2.28.0\"\n\n# Install compatible release (same major.minor)\npip install \"requests~=2.31.0\"\n\n# Install multiple packages\npip install requests flask sqlalchemy\n\n# Install with extras\npip install \"fastapi[standard]\"\npip install \"project[dev,test]\"\n\n# Install from requirements file\npip install -r requirements.txt\n\n# Editable install for local development\npip install -e .\npip install -e \".[dev]\"\n\n# Upgrade a package\npip install --upgrade requests\npip install -U pip setuptools wheel\n\n# Install to user site-packages\npip install --user requests\n\n# Install to a custom directory\npip install --target ./lib requests\n\n# Uninstall a package\npip uninstall requests\npip uninstall -y requests  # skip confirmation\n```\n\n## Managing Dependencies\n\n```bash\n# Freeze current environment to requirements.txt\npip freeze > requirements.txt\n\n# Install everything from requirements file\npip install -r requirements.txt\n\n# Use a constraints file to pin transitive deps\npip install -r requirements.txt -c constraints.txt\n\n# List installed packages\npip list\npip list --outdated\npip list --format=json\n\n# Show details about a package\npip show requests\n\n# Check available versions of a package\npip index versions requests\n\n# Check for dependency conflicts\npip check\n```\n\n## requirements.txt Format\n\n```text\n# Pinned versions (reproducible builds)\nrequests==2.31.0\nflask==3.0.0\nsqlalchemy==2.0.23\n\n# Minimum version\nrequests>=2.28.0\n\n# Compatible release (~= means >=2.31.0, <2.32.0)\nrequests~=2.31.0\n\n# Version exclusion\nrequests>=2.28.0,!=2.30.0\n\n# Extras\nfastapi[standard]==0.104.1\nuvicorn[standard]==0.24.0\n\n# Editable local package\n-e .\n\n# Include another requirements file\n-r requirements-base.txt\n\n# Apply constraints\n-c constraints.txt\n\n# With hashes for supply-chain security\nrequests==2.31.0 \\\n    --hash=sha256:abcdef1234567890\n```\n\n## pip Configuration\n\n### pip.conf (Linux/macOS) / pip.ini (Windows)\n\n```ini\n# Linux/macOS: ~/.config/pip/pip.conf or ~/.pip/pip.conf\n# Windows: %APPDATA%\\pip\\pip.ini\n# Per-project: <venv>/pip.conf\n\n[global]\nindex-url = https://pypi.org/simple\nextra-index-url = https://private.registry.example.com/simple/\ntrusted-host = private.registry.example.com\ntimeout = 60\nno-cache-dir = false\nrequire-virtualenv = true\n\n[install]\nno-deps = false\ncompile = true\n```\n\n### Environment Variables\n\n| Variable | Purpose |\n|----------|---------|\n| `PIP_INDEX_URL` | Override the default PyPI index URL |\n| `PIP_EXTRA_INDEX_URL` | Additional package index (space-separated) |\n| `PIP_NO_CACHE_DIR` | Disable the pip cache when set to `1` |\n| `PIP_REQUIRE_VIRTUALENV` | Refuse to install outside a virtualenv when set to `1` |\n| `PIP_TRUSTED_HOST` | Skip TLS verification for a host |\n| `PIP_TIMEOUT` | Network timeout in seconds |\n| `PIP_CONFIG_FILE` | Path to a custom pip configuration file |\n\n## Private Registries\n\n```bash\n# Install from a private index\npip install --index-url https://private.registry.example.com/simple/ my-package\n\n# Use an extra index alongside PyPI\npip install --extra-index-url https://private.registry.example.com/simple/ my-package\n\n# Trust a host without TLS verification\npip install --trusted-host private.registry.example.com --index-url http://private.registry.example.com/simple/ my-package\n\n# Authenticate with a token\npip install --index-url https://__token__:${REGISTRY_TOKEN}@private.registry.example.com/simple/ my-package\n```\n\n## Security\n\n```bash\n# Install with hash verification\npip install --require-hashes -r requirements.txt\n\n# Generate hashes for requirements\npip hash ./downloads/requests-2.31.0.tar.gz\n\n# Audit installed packages for known vulnerabilities\npip install pip-audit\npip-audit\npip-audit -r requirements.txt\npip-audit --fix\n```\n\n## Cache Management\n\n```bash\n# Show cache directory\npip cache dir\n\n# List cached packages\npip cache list\n\n# Purge all cached packages\npip cache purge\n\n# Remove a specific package from cache\npip cache remove requests\n\n# Install without using cache\npip install --no-cache-dir requests\n```\n\n## Common Commands Reference\n\n```bash\npip install <pkg>                  # Install a package\npip install -r requirements.txt    # Install from file\npip install -e .                   # Editable local install\npip install --upgrade <pkg>        # Upgrade a package\npip install --user <pkg>           # Install to user directory\npip install --target ./lib <pkg>   # Install to custom path\npip uninstall <pkg>                # Remove a package\npip freeze > requirements.txt      # Export installed packages\npip list                           # List installed packages\npip list --outdated                # Show outdated packages\npip show <pkg>                     # Package details\npip index versions <pkg>           # Available versions\npip check                          # Verify dependency compat\npip cache purge                    # Clear the cache\npip-audit                          # Vulnerability scan\n```\n",
+  "sections": [
+    {
+      "id": "install",
+      "title": "Installing and uninstalling packages",
+      "body": "Use `pip install <pkg>` to install from PyPI. Pin versions with `==`, set minimums with `>=`, or use compatible release with `~=`. Install extras with `pip install \"pkg[extra]\"`. Use `-r requirements.txt` to install from a file, `-e .` for editable local development installs, `--upgrade` to update a package, `--user` to install to the user site-packages, and `--target` to install to a custom directory. Remove packages with `pip uninstall <pkg>`. Always install inside a virtual environment.",
+      "tags": ["install", "uninstall", "upgrade", "editable", "extras", "user-install"]
+    },
+    {
+      "id": "requirements",
+      "title": "requirements.txt and dependency pinning",
+      "body": "Use `pip freeze > requirements.txt` to export the current environment. Pin exact versions with `==` for reproducible builds. Use `>=` for minimum versions, `~=` for compatible release constraints, and `!=` to exclude specific versions. Include extras with `pkg[extra]==1.0.0`. Reference other requirement files with `-r base.txt` and apply constraints with `-c constraints.txt`. Constraints files pin transitive dependency versions without declaring them as direct dependencies. Use `--require-hashes` with hash entries for supply-chain integrity.",
+      "tags": ["requirements-txt", "freeze", "pinning", "constraints", "hashes"]
+    },
+    {
+      "id": "configuration",
+      "title": "pip.conf, pip.ini, and environment variables",
+      "body": "Configure pip through `pip.conf` (Linux/macOS at `~/.config/pip/pip.conf`) or `pip.ini` (Windows at `%APPDATA%\\pip\\pip.ini`). Set the default index with `index-url`, add private registries with `extra-index-url`, and skip TLS checks for internal hosts with `trusted-host`. Key environment variables: `PIP_INDEX_URL` (override default index), `PIP_EXTRA_INDEX_URL` (additional indexes), `PIP_NO_CACHE_DIR` (disable cache), `PIP_REQUIRE_VIRTUALENV` (refuse to install outside a venv). Environment variables override config file values. Command-line flags override both.",
+      "tags": ["pip-conf", "pip-ini", "environment-variables", "configuration", "registry"]
+    },
+    {
+      "id": "security",
+      "title": "Security auditing and hash verification",
+      "body": "Use `--require-hashes` with `pip install -r requirements.txt` to verify package integrity against known hashes — every entry in the requirements file must include a `--hash` line. Generate hashes with `pip hash <file>`. Use `pip-audit` (install via `pip install pip-audit`) to scan installed packages for known vulnerabilities from the OSV database. Run `pip-audit --fix` to auto-upgrade vulnerable packages. Combine with `pip-audit -r requirements.txt` to audit before installing. Never install packages outside a virtual environment in production.",
+      "tags": ["security", "hashes", "pip-audit", "vulnerabilities", "supply-chain"]
+    }
+  ],
+  "links": [
+    { "uri": "python/venv", "context": "Create and manage virtual environments for isolating pip installs" },
+    { "uri": "python/poetry", "context": "Alternative dependency manager with lockfile and pyproject.toml" },
+    { "uri": "python/uv", "context": "Fast drop-in pip replacement with deterministic resolution" }
+  ],
+  "related": [
+    { "uri": "python/venv", "relation": "prerequisite", "note": "Always install packages inside a virtual environment to avoid polluting the system Python" },
+    { "uri": "python/poetry", "relation": "alternative", "note": "Poetry provides an all-in-one dependency manager with lockfile support and pyproject.toml-based configuration" },
+    { "uri": "python/uv", "relation": "alternative", "note": "uv is a fast Rust-based drop-in replacement for pip with deterministic dependency resolution" }
+  ],
+  "scripts": [
+    {
+      "id": "install-deps",
+      "name": "Install from requirements.txt",
+      "description": "Install Python packages from a requirements.txt file inside the active virtual environment",
+      "lang": "bash",
+      "runtime": "python>=3.8",
+      "entry": "./scripts/install-deps.sh"
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "packages": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "List of package names (with optional version specifiers) to install"
+        },
+        "requirements_file": {
+          "type": "string",
+          "description": "Path to a requirements.txt file to install from"
+        }
+      },
+      "required": []
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "installed_packages": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "List of packages successfully installed with their resolved versions"
+        }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "python/venv", "reason": "Always install packages inside a virtual environment to avoid system-level conflicts" }
+  ],
+  "more": {
+    "docs": "https://pip.pypa.io/en/stable/",
+    "pypi": "https://pypi.org/",
+    "cli-reference": "https://pip.pypa.io/en/stable/cli/",
+    "pip-audit": "https://github.com/pypa/pip-audit"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "6 min",
+    "prerequisites": ["python/venv"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

@@ -1,0 +1,98 @@
+{
+  "name": "troubleshooting",
+  "version": "1.0.0",
+  "uri": "prisma/troubleshooting",
+  "type": "context",
+  "content_type": "reference",
+  "context": "Prisma error codes, common issues, and fixes — P1xxx connection, P2xxx query, P3xxx migration errors",
+  "info": "Prisma uses structured error codes organized by category: P1xxx for connection/authentication errors, P2xxx for query engine errors, P3xxx for migration errors, and P4xxx for introspection errors. Each error includes a code, message, and often metadata about the failing field or constraint. The most commonly encountered errors are P2002 (unique constraint violation), P2025 (record not found), P2024 (connection pool timeout), P1001 (can't reach database), and P3006 (shadow database failure). This node provides the complete error reference and resolution steps. See [[prisma/client]] for error handling patterns and [[prisma/migrate]] for migration recovery.",
+  "parent": "prisma",
+  "tags": ["troubleshooting", "errors", "error-codes", "debugging", "fixes", "common-issues"],
+  "aliases": [
+    "prisma errors",
+    "prisma error codes",
+    "prisma troubleshooting",
+    "prisma debug",
+    "P2002",
+    "P2025",
+    "P2024",
+    "P1001",
+    "P3006",
+    "prisma connection error",
+    "prisma unique constraint",
+    "prisma not found",
+    "prisma timeout"
+  ],
+  "triggers": [
+    "prisma error P2002",
+    "unique constraint failed",
+    "record not found prisma",
+    "can't connect to database",
+    "connection pool timeout",
+    "prisma migration failed",
+    "shadow database error",
+    "fix prisma error",
+    "debug prisma",
+    "prisma not working"
+  ],
+  "body": "# Prisma Troubleshooting\n\nComplete error code reference and resolution guide for Prisma ORM.\n\n## Error Types\n\nPrisma Client throws typed error classes you can catch:\n\n```typescript\nimport { Prisma } from '@prisma/client';\n\ntry {\n  await prisma.user.create({ data: { email: 'alice@example.com' } });\n} catch (e) {\n  if (e instanceof Prisma.PrismaClientKnownRequestError) {\n    // e.code — error code (e.g., 'P2002')\n    // e.meta — metadata (e.g., { target: ['email'] })\n    // e.message — human-readable message\n    if (e.code === 'P2002') {\n      console.error(`Unique constraint failed on: ${e.meta?.target}`);\n    }\n  }\n  if (e instanceof Prisma.PrismaClientValidationError) {\n    // Invalid query structure — fix your code\n    console.error('Validation error:', e.message);\n  }\n  if (e instanceof Prisma.PrismaClientInitializationError) {\n    // Connection failure\n    console.error('Init error:', e.errorCode, e.message);\n  }\n}\n```\n\n## Connection Errors (P1xxx)\n\n| Code | Error | Fix |\n|------|-------|-----|\n| P1000 | Authentication failed | Check username/password in `DATABASE_URL` |\n| P1001 | Can't reach database server | Verify host, port, and that the database is running |\n| P1002 | Database server timed out | Check network, increase connection timeout |\n| P1003 | Database does not exist | Create the database or fix `DATABASE_URL` |\n| P1008 | Operations timed out | Increase query timeout, check slow queries |\n| P1009 | Database already exists | Expected with `prisma migrate dev` on existing DB |\n| P1010 | User denied access | Grant necessary permissions to the database user |\n| P1011 | TLS connection error | Check SSL certificates, use `?sslmode=require` |\n| P1012 | Schema validation error | Run `npx prisma validate` and fix schema syntax |\n| P1013 | Invalid connection string | Check `DATABASE_URL` format: `provider://user:pass@host:port/db` |\n| P1016 | Incorrect number of raw query parameters | Check `$queryRaw` template literal parameters |\n| P1017 | Server closed connection | Database server shut down or connection was killed |\n\n### Common: P1001 — Can't reach database\n\n```bash\n# 1. Check if the database is running\npg_isready -h localhost -p 5432\n\n# 2. Verify DATABASE_URL\necho $DATABASE_URL\n\n# 3. Test connection directly\npsql $DATABASE_URL -c \"SELECT 1\"\n\n# 4. Check if port is accessible\nnc -zv localhost 5432\n```\n\n## Query Errors (P2xxx)\n\n| Code | Error | Fix |\n|------|-------|-----|\n| P2000 | Value too long for column | Reduce value length or change column type (`@db.Text`) |\n| P2001 | Record not found in where | The `where` condition matched no records |\n| P2002 | **Unique constraint violation** | Duplicate value on `@unique` field — use `upsert` or check first |\n| P2003 | Foreign key constraint failed | Referenced record doesn't exist — create parent first |\n| P2005 | Invalid value for field type | Type mismatch — check field type in schema |\n| P2011 | Null constraint violation | Required field is null — provide a value or make field optional |\n| P2014 | Change violates required relation | Can't disconnect a required relation |\n| P2015 | Related record not found | The connected record doesn't exist |\n| P2021 | Table does not exist | Run `npx prisma migrate dev` to create tables |\n| P2022 | Column does not exist | Run `npx prisma migrate dev` to sync schema |\n| P2024 | **Connection pool timeout** | Too many concurrent queries — increase `connection_limit` |\n| P2025 | **Record not found** | `update`/`delete` target doesn't exist — check `where` clause |\n| P2034 | Write conflict/deadlock | Retry the transaction (see pattern below) |\n\n### Common: P2002 — Unique constraint violation\n\n```typescript\n// Problem: trying to create a user with an email that already exists\n// Fix: use upsert\nconst user = await prisma.user.upsert({\n  where: { email: 'alice@example.com' },\n  update: { name: 'Alice Updated' },\n  create: { email: 'alice@example.com', name: 'Alice' },\n});\n\n// Or catch and handle:\ntry {\n  await prisma.user.create({ data: { email: 'alice@example.com' } });\n} catch (e) {\n  if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') {\n    // e.meta.target tells you which field(s) caused the violation\n    console.log('User already exists');\n  }\n}\n```\n\n### Common: P2025 — Record not found\n\n```typescript\n// Problem: update/delete on a record that doesn't exist\n// Fix: use findUnique first, or catch the error\ntry {\n  await prisma.user.update({ where: { id: 999 }, data: { name: 'X' } });\n} catch (e) {\n  if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2025') {\n    console.log('Record not found');\n  }\n}\n```\n\n### Common: P2024 — Connection pool timeout\n\n```\n# Add connection pool parameters to DATABASE_URL:\npostgresql://user:pass@host:5432/db?connection_limit=20&pool_timeout=10\n```\n\n### P2034 — Write conflict retry pattern\n\n```typescript\nconst MAX_RETRIES = 5;\nlet retries = 0;\nlet result;\nwhile (retries < MAX_RETRIES) {\n  try {\n    result = await prisma.$transaction([...], {\n      isolationLevel: 'Serializable',\n    });\n    break;\n  } catch (e) {\n    if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2034') {\n      retries++;\n      continue;\n    }\n    throw e;\n  }\n}\n```\n\n## Migration Errors (P3xxx)\n\n| Code | Error | Fix |\n|------|-------|-----|\n| P3000 | Failed to create database | Check permissions — user needs `CREATE DATABASE` |\n| P3001 | Destructive migration detected | Migration drops data — review and use `--create-only` to edit |\n| P3002 | Migration rolled back | Fix the migration SQL and retry |\n| P3005 | Non-empty database | Baseline the existing DB with `prisma migrate resolve` |\n| P3006 | Shadow database failure | Grant `CREATE DATABASE` permission or use `db push` |\n| P3008 | Migration already applied | Use `prisma migrate resolve --applied` |\n| P3009 | Failed migrations block new ones | Resolve failed migration first with `prisma migrate resolve` |\n| P3014 | Cannot create shadow database | User lacks permissions — grant `CREATE DATABASE` or use `db push` |\n| P3019 | Provider mismatch | `migration_lock.toml` provider differs from schema — update or delete lock file |\n\n### Common: P3006/P3014 — Shadow database issues\n\n```bash\n# Option 1: Grant CREATE DATABASE permissions\n# PostgreSQL:\nALTER USER myuser CREATEDB;\n\n# Option 2: Use db push instead (no shadow DB needed)\nnpx prisma db push\n```\n\n## Introspection Errors (P4xxx)\n\n| Code | Error | Fix |\n|------|-------|-----|\n| P4000 | Introspection failed | Check `DATABASE_URL` and database access |\n| P4001 | Database is empty | No tables to introspect — create tables first |\n| P4002 | Inconsistent schema | Database has inconsistencies — fix manually |\n\n## Debugging Tips\n\n```typescript\n// Enable query logging\nconst prisma = new PrismaClient({ log: ['query', 'error', 'warn'] });\n\n// Log query timing\nprisma.$on('query', (e) => {\n  console.log(`${e.query} — ${e.duration}ms`);\n});\n```\n\n```bash\n# Validate schema syntax\nnpx prisma validate\n\n# Check migration status\nnpx prisma migrate status\n\n# Test database connection\nnpx prisma db execute --stdin <<< \"SELECT 1\"\n```\n",
+  "sections": [
+    {
+      "id": "connection-errors",
+      "title": "Connection errors (P1xxx)",
+      "body": "P1000 (bad credentials), P1001 (unreachable server), P1002 (timeout), P1003 (database doesn't exist), P1012 (schema validation), P1013 (invalid connection string). Fix by verifying `DATABASE_URL`, checking that the database server is running, and testing connectivity with `psql` or `mysql` directly.",
+      "tags": ["P1000", "P1001", "P1002", "P1003", "P1012", "connection"]
+    },
+    {
+      "id": "query-errors",
+      "title": "Query errors (P2xxx)",
+      "body": "P2002 (unique constraint — use upsert or catch), P2025 (record not found — check where clause), P2024 (pool timeout — increase connection_limit), P2003 (FK constraint — create parent first), P2021/P2022 (table/column missing — run migrate dev), P2034 (write conflict — retry transaction).",
+      "tags": ["P2002", "P2025", "P2024", "P2003", "P2034", "query"]
+    },
+    {
+      "id": "migration-errors",
+      "title": "Migration errors (P3xxx)",
+      "body": "P3006/P3014 (shadow database — grant CREATEDB or use db push), P3001 (destructive change — review with --create-only), P3008 (already applied — use migrate resolve), P3009 (blocked by failed — resolve first), P3019 (provider mismatch — update migration_lock.toml).",
+      "tags": ["P3006", "P3014", "P3001", "P3019", "migration"]
+    },
+    {
+      "id": "error-handling-pattern",
+      "title": "Error handling pattern",
+      "body": "Import `Prisma` from `@prisma/client` and use `instanceof` checks: `PrismaClientKnownRequestError` (has `.code` and `.meta`), `PrismaClientValidationError` (invalid query shape), `PrismaClientInitializationError` (connection issues). Switch on `.code` for specific handling (P2002 → duplicate, P2025 → not found).",
+      "tags": ["error-handling", "instanceof", "catch", "try-catch"]
+    },
+    {
+      "id": "debugging",
+      "title": "Debugging tips",
+      "body": "Enable query logging with `log: ['query']` in PrismaClient constructor. Use `$on('query')` for event-based logging with duration. Validate schema with `npx prisma validate`. Check migration status with `npx prisma migrate status`. Test connectivity with `npx prisma db execute --stdin <<< \"SELECT 1\"`.",
+      "tags": ["debugging", "logging", "validate", "status"]
+    }
+  ],
+  "links": [
+    { "uri": "prisma/client", "context": "Error handling in client code" },
+    { "uri": "prisma/migrate", "context": "Migration recovery with migrate resolve" },
+    { "uri": "prisma/schema", "context": "Fix schema validation errors (P1012)" },
+    { "uri": "prisma/studio", "context": "Visual debugging — inspect database state" }
+  ],
+  "related": [
+    { "uri": "prisma/client", "relation": "see-also", "note": "Client error handling patterns for P2xxx codes" },
+    { "uri": "prisma/migrate", "relation": "see-also", "note": "Migration recovery for P3xxx codes" }
+  ],
+  "more": {
+    "docs": "https://www.prisma.io/docs/orm/reference/error-reference"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "8 min",
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

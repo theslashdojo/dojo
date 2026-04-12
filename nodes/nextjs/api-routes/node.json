@@ -1,0 +1,132 @@
+{
+  "name": "api-routes",
+  "version": "1.0.0",
+  "uri": "nextjs/api-routes",
+  "type": "skill",
+  "context": "Build API endpoints in Next.js — Route Handlers (App Router) and API Routes (Pages Router) for REST, webhooks, and backends",
+  "info": "Next.js provides two ways to build API endpoints. In the App Router, Route Handlers are defined in `route.ts` files that export HTTP method functions (GET, POST, PUT, PATCH, DELETE, OPTIONS, HEAD). They receive a standard `Request` object (or `NextRequest` for additional helpers) and return a `Response` (or `NextResponse`). In the Pages Router, API routes live in `pages/api/` as default-exported handler functions receiving `(req, res)` objects. Both support dynamic routes, middleware, streaming responses, and edge runtime. Route Handlers are the recommended approach for new projects — they align with Web API standards and support streaming, but Pages Router API routes remain stable for existing codebases.",
+  "parent": "nextjs",
+  "tags": ["api-routes", "route-handlers", "rest-api", "endpoints", "nextjs", "backend"],
+  "aliases": [
+    "api routes",
+    "route handlers",
+    "next api",
+    "nextjs api",
+    "next.js api routes",
+    "route.ts",
+    "pages/api",
+    "api endpoints",
+    "next backend",
+    "next rest api",
+    "serverless functions"
+  ],
+  "triggers": [
+    "create an API endpoint in next.js",
+    "add a route handler",
+    "build a REST API with next",
+    "create a webhook endpoint",
+    "handle POST requests in next.js",
+    "return JSON from next.js",
+    "create pages/api route",
+    "build backend API in next",
+    "add GET endpoint",
+    "handle form submission API"
+  ],
+  "body": "# API Routes\n\nNext.js provides built-in API endpoint capabilities through two systems: Route Handlers (App Router) and API Routes (Pages Router).\n\n## Route Handlers (App Router — Recommended)\n\nRoute Handlers are defined in `route.ts` files inside the `app/` directory. They export named functions for each HTTP method.\n\n### Basic GET and POST\n\n```tsx\n// app/api/posts/route.ts\nimport { NextRequest, NextResponse } from 'next/server'\n\nexport async function GET(request: NextRequest) {\n  const posts = await db.post.findMany()\n  return NextResponse.json(posts)\n}\n\nexport async function POST(request: NextRequest) {\n  const body = await request.json()\n  const post = await db.post.create({ data: body })\n  return NextResponse.json(post, { status: 201 })\n}\n```\n\n### Dynamic Routes\n\n```tsx\n// app/api/posts/[id]/route.ts\nimport { NextRequest, NextResponse } from 'next/server'\n\nexport async function GET(\n  request: NextRequest,\n  { params }: { params: Promise<{ id: string }> }\n) {\n  const { id } = await params\n  const post = await db.post.findUnique({ where: { id } })\n\n  if (!post) {\n    return NextResponse.json({ error: 'Not found' }, { status: 404 })\n  }\n\n  return NextResponse.json(post)\n}\n\nexport async function PUT(\n  request: NextRequest,\n  { params }: { params: Promise<{ id: string }> }\n) {\n  const { id } = await params\n  const body = await request.json()\n  const post = await db.post.update({ where: { id }, data: body })\n  return NextResponse.json(post)\n}\n\nexport async function DELETE(\n  request: NextRequest,\n  { params }: { params: Promise<{ id: string }> }\n) {\n  const { id } = await params\n  await db.post.delete({ where: { id } })\n  return new NextResponse(null, { status: 204 })\n}\n```\n\n### Query Parameters\n\n```tsx\n// app/api/search/route.ts\nexport async function GET(request: NextRequest) {\n  const searchParams = request.nextUrl.searchParams\n  const query = searchParams.get('q') ?? ''\n  const page = parseInt(searchParams.get('page') ?? '1')\n\n  const results = await search(query, page)\n  return NextResponse.json(results)\n}\n```\n\n### Headers and Cookies\n\n```tsx\nimport { cookies, headers } from 'next/headers'\n\nexport async function GET() {\n  const cookieStore = await cookies()\n  const token = cookieStore.get('session')?.value\n\n  const headersList = await headers()\n  const userAgent = headersList.get('user-agent')\n\n  // Set response headers and cookies\n  const response = NextResponse.json({ ok: true })\n  response.cookies.set('visited', 'true', { maxAge: 60 * 60 * 24 })\n  response.headers.set('X-Custom-Header', 'value')\n  return response\n}\n```\n\n### Streaming Responses\n\n```tsx\nexport async function GET() {\n  const encoder = new TextEncoder()\n  const stream = new ReadableStream({\n    async start(controller) {\n      for (const chunk of data) {\n        controller.enqueue(encoder.encode(JSON.stringify(chunk) + '\\n'))\n        await new Promise(r => setTimeout(r, 100))\n      }\n      controller.close()\n    },\n  })\n\n  return new Response(stream, {\n    headers: { 'Content-Type': 'application/x-ndjson' },\n  })\n}\n```\n\n### CORS\n\n```tsx\nexport async function OPTIONS() {\n  return new NextResponse(null, {\n    status: 204,\n    headers: {\n      'Access-Control-Allow-Origin': '*',\n      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',\n      'Access-Control-Allow-Headers': 'Content-Type, Authorization',\n    },\n  })\n}\n```\n\n### Webhooks\n\n```tsx\n// app/api/webhook/route.ts\nimport { NextRequest, NextResponse } from 'next/server'\nimport crypto from 'crypto'\n\nexport async function POST(request: NextRequest) {\n  const body = await request.text()\n  const signature = request.headers.get('x-webhook-signature')\n\n  // Verify webhook signature\n  const expected = crypto\n    .createHmac('sha256', process.env.WEBHOOK_SECRET!)\n    .update(body)\n    .digest('hex')\n\n  if (signature !== expected) {\n    return NextResponse.json({ error: 'Invalid signature' }, { status: 401 })\n  }\n\n  const payload = JSON.parse(body)\n  await processWebhook(payload)\n\n  return NextResponse.json({ received: true })\n}\n```\n\n---\n\n## API Routes (Pages Router)\n\nAPI routes in the Pages Router use handler functions in the `pages/api/` directory.\n\n### Basic Handler\n\n```tsx\n// pages/api/hello.ts\nimport type { NextApiRequest, NextApiResponse } from 'next'\n\nexport default function handler(\n  req: NextApiRequest,\n  res: NextApiResponse\n) {\n  if (req.method === 'GET') {\n    res.status(200).json({ message: 'Hello' })\n  } else if (req.method === 'POST') {\n    const { name } = req.body\n    res.status(201).json({ message: `Created ${name}` })\n  } else {\n    res.setHeader('Allow', ['GET', 'POST'])\n    res.status(405).end(`Method ${req.method} Not Allowed`)\n  }\n}\n```\n\n### Dynamic API Routes\n\n```tsx\n// pages/api/posts/[id].ts\nimport type { NextApiRequest, NextApiResponse } from 'next'\n\nexport default async function handler(\n  req: NextApiRequest,\n  res: NextApiResponse\n) {\n  const { id } = req.query\n\n  switch (req.method) {\n    case 'GET':\n      const post = await getPost(id as string)\n      return res.json(post)\n    case 'DELETE':\n      await deletePost(id as string)\n      return res.status(204).end()\n    default:\n      res.setHeader('Allow', ['GET', 'DELETE'])\n      return res.status(405).end()\n  }\n}\n```\n\n### Custom Config\n\n```tsx\n// pages/api/upload.ts\nexport const config = {\n  api: {\n    bodyParser: false,        // Disable built-in body parsing\n    responseLimit: '8mb',     // Increase response size limit\n    externalResolver: true,   // Suppress \"API resolved without response\" warning\n  },\n}\n```\n\n## Environment Variables\n\n| Variable | Purpose |\n|----------|----------|\n| `NEXT_PUBLIC_API_URL` | Public API base URL (exposed to browser) |\n| `DATABASE_URL` | Database connection string (server only) |\n| `WEBHOOK_SECRET` | Webhook signature verification secret (server only) |\n",
+  "sections": [
+    {
+      "id": "route-handlers",
+      "title": "Route Handlers (App Router)",
+      "body": "Route Handlers are defined in `app/**/route.ts` files. Export named functions matching HTTP methods: `GET`, `POST`, `PUT`, `PATCH`, `DELETE`, `OPTIONS`, `HEAD`. They receive a standard `Request` (or `NextRequest`) and return a `Response` (or `NextResponse`). `route.ts` cannot coexist with `page.tsx` in the same directory. Static Route Handlers (GET without reading request) are cached by default — opt out with `export const dynamic = 'force-dynamic'`.",
+      "tags": ["route-handlers", "http-methods", "app-router", "nextrequest", "nextresponse"]
+    },
+    {
+      "id": "pages-api",
+      "title": "API Routes (Pages Router)",
+      "body": "API routes live in `pages/api/` and export a default handler function `(req: NextApiRequest, res: NextApiResponse) => void`. Route based on `req.method`. Access query params via `req.query`, body via `req.body` (auto-parsed JSON). Dynamic routes use `[param].ts` naming. Disable body parsing with `export const config = { api: { bodyParser: false } }`.",
+      "tags": ["pages-api", "handler", "nextapirequest", "nextapiresponse", "pages-router"]
+    },
+    {
+      "id": "streaming",
+      "title": "Streaming responses",
+      "body": "Route Handlers support streaming via Web Streams API. Create a `ReadableStream`, enqueue chunks with `controller.enqueue()`, and return `new Response(stream)`. Useful for server-sent events, large file downloads, and AI response streaming. Set appropriate `Content-Type` headers (`text/event-stream` for SSE, `application/x-ndjson` for newline-delimited JSON).",
+      "tags": ["streaming", "readablestream", "sse", "server-sent-events", "ndjson"]
+    },
+    {
+      "id": "cors-headers",
+      "title": "CORS and custom headers",
+      "body": "Handle CORS by exporting an `OPTIONS` handler that returns appropriate `Access-Control-Allow-*` headers. For Route Handlers, use `NextResponse` or configure CORS in [[nextjs/middleware]] for app-wide coverage. For Pages Router, set headers with `res.setHeader()`. Custom response headers can be set via `NextResponse.headers.set()` or in `next.config.js` headers configuration.",
+      "tags": ["cors", "headers", "options", "preflight", "access-control"]
+    }
+  ],
+  "links": [
+    { "uri": "nextjs/app-router", "context": "Route Handlers live inside the app directory structure" },
+    { "uri": "nextjs/pages-router", "context": "Pages Router API routes use pages/api directory" },
+    { "uri": "nextjs/middleware", "context": "Apply auth and CORS before API routes execute" },
+    { "uri": "nextjs/server-actions", "context": "Alternative to API routes for form mutations" },
+    { "uri": "nextjs/config", "context": "Configure API route headers and rewrites globally" }
+  ],
+  "related": [
+    { "uri": "nextjs/server-actions", "relation": "alternative", "note": "Server Actions can replace API routes for form submissions and mutations" },
+    { "uri": "nextjs/middleware", "relation": "see-also", "note": "Middleware can handle auth and CORS before API routes execute" },
+    { "uri": "nextjs/app-router", "relation": "prerequisite", "note": "Route Handlers require understanding of App Router directory structure" }
+  ],
+  "scripts": [
+    {
+      "id": "create-api-route",
+      "name": "Create API Route",
+      "description": "Scaffold a new API route with HTTP method handlers",
+      "lang": "bash",
+      "runtime": "bash",
+      "entry": "./scripts/create-api-route.sh",
+      "env": {
+        "ROUTE_PATH": { "required": true, "description": "API route path (e.g., 'posts' or 'posts/[id]')" },
+        "METHODS": { "required": false, "default": "GET,POST", "description": "Comma-separated HTTP methods to scaffold" },
+        "ROUTER": { "required": false, "default": "app", "description": "'app' for Route Handlers, 'pages' for API Routes" },
+        "PROJECT_DIR": { "required": false, "default": ".", "description": "Next.js project root" }
+      },
+      "packages": []
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "routePath": { "type": "string", "description": "API route path (e.g., 'posts/[id]')" },
+        "methods": { "type": "array", "items": { "type": "string", "enum": ["GET", "POST", "PUT", "PATCH", "DELETE"] }, "description": "HTTP methods" },
+        "router": { "type": "string", "enum": ["app", "pages"], "default": "app" }
+      },
+      "required": ["routePath"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "createdFile": { "type": "string", "description": "Path to the created route file" },
+        "endpointUrl": { "type": "string", "description": "URL of the API endpoint" },
+        "methods": { "type": "array", "items": { "type": "string" }, "description": "Supported HTTP methods" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "nextjs", "reason": "API routes require a Next.js project" }
+  ],
+  "more": {
+    "docs": "https://nextjs.org/docs/app/building-your-application/routing/route-handlers",
+    "pages-api": "https://nextjs.org/docs/pages/building-your-application/routing/api-routes"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "7 min",
+    "prerequisites": ["nextjs", "nextjs/app-router"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

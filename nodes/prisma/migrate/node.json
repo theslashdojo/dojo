@@ -1,0 +1,133 @@
+{
+  "name": "migrate",
+  "version": "1.0.0",
+  "uri": "prisma/migrate",
+  "type": "skill",
+  "context": "Generate, apply, and manage Prisma database migrations from schema changes",
+  "info": "Prisma Migrate translates changes in your `schema.prisma` file into versioned SQL migration files and applies them to your database. In development, `prisma migrate dev` creates migration files, applies them, and regenerates the client. In production, `prisma migrate deploy` applies pending migrations without generation. For rapid prototyping, `prisma db push` pushes schema changes directly without creating migration files. The migration history lives in `prisma/migrations/` with timestamped directories each containing a `migration.sql` file. A shadow database is used in development to validate migrations. MongoDB does not use migrations — use `db push` instead. See [[prisma/schema]] for defining models and [[prisma/troubleshooting]] for migration error codes (P3xxx).",
+  "parent": "prisma",
+  "tags": ["migrate", "migrations", "database", "schema-changes", "sql", "deploy", "prisma-migrate"],
+  "aliases": [
+    "prisma migrate",
+    "prisma migrations",
+    "prisma migrate dev",
+    "prisma migrate deploy",
+    "prisma db push",
+    "prisma db pull",
+    "database migration",
+    "schema migration",
+    "run migrations",
+    "migration files"
+  ],
+  "triggers": [
+    "run prisma migrations",
+    "create a migration",
+    "apply migrations to production",
+    "reset the database",
+    "push schema to database",
+    "introspect database schema",
+    "prisma migrate dev",
+    "prisma migrate deploy",
+    "fix failed migration",
+    "generate migration sql"
+  ],
+  "body": "# Prisma Migrate\n\nPrisma Migrate generates versioned SQL migration files from your [[prisma/schema]] changes and applies them to your database.\n\n## Development Workflow\n\n```bash\n# 1. Edit prisma/schema.prisma\n# 2. Generate and apply migration\nnpx prisma migrate dev --name add-user-table\n\n# This does three things:\n#   a) Generates prisma/migrations/<timestamp>_add_user_table/migration.sql\n#   b) Applies the migration to your dev database\n#   c) Regenerates Prisma Client\n```\n\n## Production Deployment\n\n```bash\n# Apply all pending migrations (no generation, no shadow DB)\nnpx prisma migrate deploy\n```\n\n**Critical difference:** `migrate dev` is for development only — it uses a shadow database, can reset data, and generates new migrations. `migrate deploy` is production-safe — it only applies existing migration files sequentially.\n\n## All Commands\n\n| Command | Purpose | Environment |\n|---------|---------|-------------|\n| `npx prisma migrate dev --name <name>` | Create + apply migration | Development |\n| `npx prisma migrate dev --create-only` | Create migration without applying | Development |\n| `npx prisma migrate deploy` | Apply pending migrations | Production/CI |\n| `npx prisma migrate reset` | Drop DB, reapply all migrations + seed | Development |\n| `npx prisma migrate reset --skip-seed` | Reset without seeding | Development |\n| `npx prisma migrate status` | Show migration status | Any |\n| `npx prisma migrate diff` | Compare two schema states, output SQL | Any |\n| `npx prisma migrate resolve --applied <name>` | Mark migration as applied | Recovery |\n| `npx prisma migrate resolve --rolled-back <name>` | Mark migration as rolled back | Recovery |\n| `npx prisma db push` | Push schema directly (no migration files) | Prototyping |\n| `npx prisma db push --accept-data-loss` | Push even with destructive changes | Prototyping |\n| `npx prisma db pull` | Introspect DB into schema | Any |\n| `npx prisma db execute --file script.sql` | Run raw SQL file | Any |\n\n## Migration Directory Structure\n\n```\nprisma/\n  schema.prisma\n  migrations/\n    migration_lock.toml              # Locks provider (e.g., postgresql)\n    20240101120000_init/\n      migration.sql                  # CREATE TABLE statements\n    20240102150000_add_posts/\n      migration.sql                  # ALTER TABLE statements\n    20240103090000_add_indexes/\n      migration.sql                  # CREATE INDEX statements\n```\n\nMigration files are pure SQL. You can edit them before applying (when using `--create-only`) to add custom SQL like data transformations, triggers, or views.\n\n## Shadow Database\n\nIn development, `migrate dev` creates a temporary shadow database to:\n1. Validate that migrations can be applied from scratch\n2. Detect schema drift between your migration history and current schema\n\nThe shadow database requires `CREATE DATABASE` permissions. It is **not used** by `migrate deploy`.\n\n## Prototyping with db push\n\n```bash\n# Push schema changes directly — no migration files created\nnpx prisma db push\n\n# Accept data loss (e.g., dropping a column)\nnpx prisma db push --accept-data-loss\n```\n\nUse `db push` for rapid iteration when you don't need migration history. Switch to `migrate dev` when you need reproducible, versioned migrations.\n\n## Introspection with db pull\n\n```bash\n# Generate schema from existing database\nnpx prisma db pull\n```\n\nIntrospection reads your database structure and writes models into `schema.prisma`. Useful for adopting Prisma in an existing project or syncing after manual DB changes.\n\n## Resetting the Database\n\n```bash\n# Drop all tables, reapply migrations, run seed\nnpx prisma migrate reset\n\n# Skip the confirmation prompt\nnpx prisma migrate reset --force\n```\n\n## Recovering from Failed Migrations\n\nIf a migration partially applied and left the database in a bad state:\n\n```bash\n# Fix the issue manually, then mark as applied\nnpx prisma migrate resolve --applied 20240101120000_init\n\n# Or roll back and try again\nnpx prisma migrate resolve --rolled-back 20240101120000_init\n```\n\n## MongoDB Note\n\nMongoDB does not support SQL migrations. Use `npx prisma db push` for all schema management with MongoDB.\n\n## Environment Variables\n\n| Variable | Purpose |\n|----------|--------|\n| `DATABASE_URL` | Target database for migrations |\n",
+  "sections": [
+    {
+      "id": "dev-workflow",
+      "title": "Development migration workflow",
+      "body": "Run `npx prisma migrate dev --name descriptive-name` after every schema change. This generates a timestamped migration directory with a `migration.sql` file, applies it, and regenerates the client. Use `--create-only` to generate without applying — useful when you need to edit the SQL before applying.",
+      "tags": ["migrate-dev", "development", "generate", "create-only"]
+    },
+    {
+      "id": "production-deploy",
+      "title": "Production deployment",
+      "body": "Run `npx prisma migrate deploy` in your CI/CD pipeline or deployment script. This applies all pending migrations in order. It never generates new migrations and doesn't use a shadow database. Ensure your `DATABASE_URL` points to the production database. Migrations should be committed to version control.",
+      "tags": ["migrate-deploy", "production", "ci-cd", "deployment"]
+    },
+    {
+      "id": "db-push",
+      "title": "Prototyping with db push",
+      "body": "Use `npx prisma db push` for rapid prototyping when migration history isn't important. It pushes schema changes directly to the database without creating migration files. Use `--accept-data-loss` when changes would drop data (like removing a column). Switch to `migrate dev` when you're ready for reproducible deployments.",
+      "tags": ["db-push", "prototyping", "rapid-iteration", "accept-data-loss"]
+    },
+    {
+      "id": "reset",
+      "title": "Resetting the database",
+      "body": "Run `npx prisma migrate reset` to drop all tables, reapply all migrations from scratch, and run the seed script. Use `--skip-seed` to skip seeding. This is destructive and only for development — never run in production. Use `--force` to skip the confirmation prompt.",
+      "tags": ["reset", "drop", "clean-slate", "development"]
+    },
+    {
+      "id": "recovery",
+      "title": "Migration recovery",
+      "body": "If a migration fails partway through, the database may be in an inconsistent state. Use `prisma migrate resolve --applied <name>` to mark a migration as successfully applied (after manually fixing the DB), or `--rolled-back <name>` to mark it as rolled back. Check status with `prisma migrate status`.",
+      "tags": ["recovery", "failed-migration", "resolve", "status"]
+    }
+  ],
+  "links": [
+    { "uri": "prisma/schema", "context": "Edit the schema before running migrations" },
+    { "uri": "prisma/client", "context": "Regenerated automatically after migrate dev" },
+    { "uri": "prisma/seed", "context": "Seed script runs after migrate reset" },
+    { "uri": "prisma/troubleshooting", "context": "P3xxx error codes for migration failures" }
+  ],
+  "related": [
+    { "uri": "prisma/schema", "relation": "prerequisite", "note": "Schema changes drive the migration workflow" },
+    { "uri": "prisma/seed", "relation": "see-also", "note": "Seeding runs after migrate reset to repopulate data" },
+    { "uri": "prisma/troubleshooting", "relation": "see-also", "note": "P3xxx errors cover migration-specific failures" }
+  ],
+  "scripts": [
+    {
+      "id": "run-migration",
+      "name": "Run Prisma Migration",
+      "description": "Generate and apply a Prisma migration with a descriptive name",
+      "lang": "bash",
+      "runtime": "bash",
+      "entry": "./scripts/run-migration.sh",
+      "env": {
+        "DATABASE_URL": { "required": true, "secret": true, "description": "Database connection string" },
+        "MIGRATION_NAME": { "required": true, "description": "Descriptive name for the migration (e.g., add-user-table)" }
+      },
+      "packages": ["prisma"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "description": "Migration name (kebab-case, descriptive)" },
+        "mode": { "type": "string", "enum": ["dev", "deploy", "push", "reset", "status"], "default": "dev", "description": "Migration mode" },
+        "createOnly": { "type": "boolean", "default": false, "description": "Generate migration without applying (dev mode only)" }
+      },
+      "required": ["name"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "migrationDir": { "type": "string", "description": "Path to the generated migration directory" },
+        "applied": { "type": "boolean", "description": "Whether the migration was applied" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "prisma/schema", "reason": "Migrations are generated from schema changes" }
+  ],
+  "more": {
+    "docs": "https://www.prisma.io/docs/orm/prisma-migrate",
+    "spec": "https://www.prisma.io/docs/orm/reference/prisma-cli-reference#prisma-migrate"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "5 min",
+    "prerequisites": ["prisma/schema"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

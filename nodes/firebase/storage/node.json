@@ -1,0 +1,145 @@
+{
+  "name": "storage",
+  "version": "1.0.0",
+  "uri": "firebase/storage",
+  "type": "skill",
+  "context": "Cloud Storage for Firebase — upload, download, and manage files with security rules, resumable uploads, metadata control, and CDN delivery",
+  "info": "Cloud Storage for Firebase provides scalable file storage backed by Google Cloud Storage buckets. Storage references (ref) point to files using paths like 'images/photo.jpg'. Upload files with uploadBytes for small files, uploadBytesResumable for large files with progress tracking and pause/resume, or uploadString for base64/data-URL/raw strings. Download files with getDownloadURL to get a long-lived HTTPS URL with token, getBytes to fetch into memory, or getBlob for browser blob objects. Manage file metadata (contentType, cacheControl, customMetadata) with getMetadata and updateMetadata. Delete files with deleteObject. List files and prefixes in a directory with listAll or paginate with list. Security rules in storage.rules control per-path read/write access using request.auth, resource.size, resource.contentType, and custom claims. CORS configuration is required for browser downloads from custom domains. Multiple storage buckets are supported — pass a gs:// URL to getStorage. The Admin SDK (firebase-admin) bypasses security rules and accesses buckets directly via admin.storage().bucket() with upload, download, getSignedUrl, and delete methods. Cloud Functions can trigger on storage object finalize, delete, archive, and metadata update events for server-side processing like thumbnail generation or virus scanning.",
+  "parent": "firebase",
+  "tags": ["storage", "upload", "download", "files", "bucket", "security-rules", "cdn", "images", "resumable", "metadata"],
+  "aliases": [
+    "firebase storage",
+    "cloud storage firebase",
+    "firebase file upload",
+    "firebase files",
+    "firebase bucket",
+    "firebase cdn storage",
+    "firebase images"
+  ],
+  "triggers": [
+    "upload file to firebase",
+    "download from firebase storage",
+    "set up firebase storage rules",
+    "list files in firebase storage",
+    "get download url firebase"
+  ],
+  "body": "# Cloud Storage for Firebase\n\nCloud Storage for Firebase lets you upload, download, and manage user-generated files — images, videos, documents — stored in Google Cloud Storage buckets with Firebase security rules and a global CDN.\n\n## Initialize Storage\n\n```typescript\nimport { initializeApp } from 'firebase/app';\nimport { getStorage } from 'firebase/storage';\n\nconst app = initializeApp(firebaseConfig);\nconst storage = getStorage(app);\n\n// Use a custom bucket\nconst customStorage = getStorage(app, 'gs://my-custom-bucket');\n```\n\n## Create a Storage Reference\n\nReferences point to files or directories in the bucket. They do not create the file — they are pointers used for operations.\n\n```typescript\nimport { ref } from 'firebase/storage';\n\n// Reference to a file\nconst photoRef = ref(storage, 'images/photo.jpg');\n\n// Reference to a directory\nconst imagesRef = ref(storage, 'images/');\n\n// Navigate with child, parent, root\nconst childRef = ref(imagesRef, 'photo.jpg');       // images/photo.jpg\nconst parentRef = photoRef.parent;                    // images/\nconst rootRef = photoRef.root;                        // bucket root\n\n// Properties\nconsole.log(photoRef.fullPath);  // 'images/photo.jpg'\nconsole.log(photoRef.name);      // 'photo.jpg'\nconsole.log(photoRef.bucket);    // 'my-project.appspot.com'\n```\n\n## Upload a File\n\n### Upload bytes (small files)\n\n```typescript\nimport { ref, uploadBytes } from 'firebase/storage';\n\nconst storageRef = ref(storage, 'images/photo.jpg');\n\n// From a File object (browser)\nconst snapshot = await uploadBytes(storageRef, file);\nconsole.log('Uploaded', snapshot.metadata.size, 'bytes');\n\n// From a Uint8Array (Node.js)\nconst data = new Uint8Array(fs.readFileSync('./photo.jpg'));\nconst snapshot = await uploadBytes(storageRef, data);\n```\n\n### Resumable upload (large files with progress)\n\n```typescript\nimport { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';\n\nconst storageRef = ref(storage, 'videos/clip.mp4');\nconst uploadTask = uploadBytesResumable(storageRef, file);\n\nuploadTask.on('state_changed',\n  (snapshot) => {\n    const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;\n    console.log(`Upload: ${progress.toFixed(1)}%`);\n\n    switch (snapshot.state) {\n      case 'paused':  console.log('Upload paused'); break;\n      case 'running': console.log('Upload running'); break;\n    }\n  },\n  (error) => {\n    switch (error.code) {\n      case 'storage/unauthorized': console.error('Permission denied'); break;\n      case 'storage/canceled':     console.error('Upload canceled'); break;\n      case 'storage/quota-exceeded': console.error('Quota exceeded'); break;\n      default: console.error('Upload error:', error.message);\n    }\n  },\n  async () => {\n    const url = await getDownloadURL(uploadTask.snapshot.ref);\n    console.log('Download URL:', url);\n  }\n);\n\n// Pause, resume, cancel\nuploadTask.pause();\nuploadTask.resume();\nuploadTask.cancel();\n```\n\n### Upload a string\n\n```typescript\nimport { ref, uploadString } from 'firebase/storage';\n\n// Base64\nawait uploadString(storageRef, base64String, 'base64');\n\n// Base64 URL\nawait uploadString(storageRef, base64UrlString, 'base64url');\n\n// Data URL (includes content type)\nawait uploadString(storageRef, dataUrl, 'data_url');\n\n// Raw string\nawait uploadString(storageRef, 'Hello, World!');\n```\n\n## Get Download URL\n\n```typescript\nimport { ref, getDownloadURL } from 'firebase/storage';\n\nconst storageRef = ref(storage, 'images/photo.jpg');\nconst url = await getDownloadURL(storageRef);\n// https://firebasestorage.googleapis.com/v0/b/bucket/o/images%2Fphoto.jpg?alt=media&token=...\n```\n\nThe URL includes an access token and remains valid until the token is revoked in the Firebase console or through the Admin SDK.\n\n## Download Data\n\n```typescript\nimport { ref, getBytes, getBlob, getStream } from 'firebase/storage';\n\nconst storageRef = ref(storage, 'images/photo.jpg');\n\n// Download into memory (max 256MB default)\nconst bytes = await getBytes(storageRef);\nconst data = new Uint8Array(bytes);\n\n// Download as Blob (browser)\nconst blob = await getBlob(storageRef);\nconst objectUrl = URL.createObjectURL(blob);\n\n// Download with max size (in bytes)\nconst bytes = await getBytes(storageRef, 10 * 1024 * 1024); // 10MB max\n```\n\n## File Metadata\n\n```typescript\nimport { ref, getMetadata, updateMetadata } from 'firebase/storage';\n\nconst storageRef = ref(storage, 'images/photo.jpg');\n\n// Get metadata\nconst metadata = await getMetadata(storageRef);\nconsole.log('Content-Type:', metadata.contentType);\nconsole.log('Size:', metadata.size);\nconsole.log('Created:', metadata.timeCreated);\nconsole.log('Updated:', metadata.updated);\nconsole.log('Custom:', metadata.customMetadata);\n\n// Update metadata\nawait updateMetadata(storageRef, {\n  contentType: 'image/jpeg',\n  cacheControl: 'public, max-age=31536000',\n  customMetadata: {\n    uploadedBy: 'user123',\n    originalName: 'vacation-photo.jpg',\n  },\n});\n\n// Delete a metadata property by setting it to null\nawait updateMetadata(storageRef, {\n  customMetadata: { uploadedBy: null },\n});\n```\n\n## Delete a File\n\n```typescript\nimport { ref, deleteObject } from 'firebase/storage';\n\nconst storageRef = ref(storage, 'images/photo.jpg');\nawait deleteObject(storageRef);\n```\n\n## List Files\n\n```typescript\nimport { ref, listAll, list } from 'firebase/storage';\n\n// List everything under a path\nconst imagesRef = ref(storage, 'images/');\nconst result = await listAll(imagesRef);\n\nresult.items.forEach((itemRef) => {\n  console.log('File:', itemRef.fullPath);\n});\nresult.prefixes.forEach((prefix) => {\n  console.log('Folder:', prefix.fullPath);\n});\n\n// Paginate results\nconst firstPage = await list(ref(storage, 'images/'), { maxResults: 10 });\nif (firstPage.nextPageToken) {\n  const secondPage = await list(ref(storage, 'images/'), {\n    maxResults: 10,\n    pageToken: firstPage.nextPageToken,\n  });\n}\n```\n\n## Security Rules\n\nSecurity rules live in `storage.rules` and control client SDK access:\n\n```\nrules_version = '2';\nservice firebase.storage {\n  match /b/{bucket}/o {\n\n    // Authenticated users can read all files\n    match /{allPaths=**} {\n      allow read: if request.auth != null;\n    }\n\n    // Users can write to their own directory\n    match /users/{userId}/{allPaths=**} {\n      allow write: if request.auth != null && request.auth.uid == userId;\n    }\n\n    // Restrict upload size and content type\n    match /images/{imageId} {\n      allow write: if request.auth != null\n                   && request.resource.size < 5 * 1024 * 1024\n                   && request.resource.contentType.matches('image/.*');\n    }\n\n    // Admin-only via custom claims\n    match /admin/{allPaths=**} {\n      allow read, write: if request.auth.token.admin == true;\n    }\n  }\n}\n```\n\n## CORS Configuration\n\nRequired for browser downloads from custom domains. Create a `cors.json`:\n\n```json\n[\n  {\n    \"origin\": [\"https://my-app.web.app\", \"http://localhost:3000\"],\n    \"method\": [\"GET\", \"HEAD\", \"PUT\", \"POST\", \"DELETE\"],\n    \"maxAgeSeconds\": 3600\n  }\n]\n```\n\nApply with gsutil:\n```bash\ngsutil cors set cors.json gs://my-project.appspot.com\n```\n\n## Admin SDK (Server-Side)\n\nThe Admin SDK bypasses security rules and accesses the underlying GCS bucket:\n\n```typescript\nimport { initializeApp, cert } from 'firebase-admin/app';\nimport { getStorage } from 'firebase-admin/storage';\n\nconst app = initializeApp({\n  credential: cert(require('./service-account.json')),\n  storageBucket: 'my-project.appspot.com',\n});\n\nconst bucket = getStorage().bucket();\n\n// Upload\nawait bucket.upload('./local-file.jpg', {\n  destination: 'images/photo.jpg',\n  metadata: { contentType: 'image/jpeg' },\n});\n\n// Download\nawait bucket.file('images/photo.jpg').download({\n  destination: './downloaded.jpg',\n});\n\n// Get signed URL (time-limited)\nconst [url] = await bucket.file('images/photo.jpg').getSignedUrl({\n  action: 'read',\n  expires: Date.now() + 3600 * 1000,\n});\n\n// Delete\nawait bucket.file('images/photo.jpg').delete();\n\n// List\nconst [files] = await bucket.getFiles({ prefix: 'images/' });\nfiles.forEach((file) => console.log(file.name));\n```\n",
+  "sections": [
+    {
+      "id": "references",
+      "title": "Storage references",
+      "body": "Storage references are pointers to files or directories in a Cloud Storage bucket. Create with `ref(storage, 'path/to/file')`. References expose `fullPath`, `name`, `bucket`, `parent`, and `root` properties. Navigate with child refs via `ref(parentRef, 'child')`. References do not create files — they are used as targets for upload, download, delete, and metadata operations.",
+      "tags": ["reference", "ref", "path", "bucket", "pointer"]
+    },
+    {
+      "id": "upload",
+      "title": "Upload operations",
+      "body": "Three upload methods: `uploadBytes(ref, data)` for small files from File, Blob, or Uint8Array; `uploadBytesResumable(ref, data)` for large files with progress callbacks, pause/resume/cancel support, and error handling; `uploadString(ref, string, format)` for raw, base64, base64url, or data_url strings. All accept optional UploadMetadata with contentType, cacheControl, and customMetadata. Resumable uploads fire 'state_changed' events with bytesTransferred and totalBytes.",
+      "tags": ["upload", "uploadBytes", "resumable", "uploadString", "progress", "pause"]
+    },
+    {
+      "id": "download",
+      "title": "Download operations",
+      "body": "`getDownloadURL(ref)` returns a long-lived HTTPS URL with an access token — the token persists until revoked. `getBytes(ref, maxBytes?)` downloads file content into an ArrayBuffer (default 256MB max). `getBlob(ref, maxBytes?)` downloads as a browser Blob. For server-side downloads, use the Admin SDK `bucket.file(path).download()`. Download URLs from getDownloadURL include the token in the query string and work without authentication.",
+      "tags": ["download", "getDownloadURL", "getBytes", "getBlob", "url", "token"]
+    },
+    {
+      "id": "metadata",
+      "title": "File metadata",
+      "body": "`getMetadata(ref)` returns a FullMetadata object with contentType, size, timeCreated, updated, md5Hash, and customMetadata. `updateMetadata(ref, metadata)` updates writable properties: contentType, contentDisposition, contentEncoding, contentLanguage, cacheControl, and customMetadata. Set a metadata property to null to delete it. Custom metadata is a flat string-to-string map — no nested objects.",
+      "tags": ["metadata", "contentType", "cacheControl", "customMetadata", "getMetadata", "updateMetadata"]
+    },
+    {
+      "id": "security-rules",
+      "title": "Security rules",
+      "body": "Storage security rules live in `storage.rules` and use `match` patterns on file paths. Available variables: `request.auth` (user identity and custom claims), `request.resource` (incoming file metadata for writes), `resource` (existing file metadata for reads). Common constraints: `request.resource.size < 5 * 1024 * 1024` for max file size, `request.resource.contentType.matches('image/.*')` for type restriction, `request.auth.uid == userId` for user-scoped paths. Deploy rules with `firebase deploy --only storage`.",
+      "tags": ["security-rules", "rules", "auth", "permissions", "access-control"]
+    },
+    {
+      "id": "list-delete",
+      "title": "List and delete files",
+      "body": "`listAll(ref)` returns all items (file refs) and prefixes (folder refs) under a path. `list(ref, { maxResults, pageToken })` paginates results. `deleteObject(ref)` deletes a single file. There is no bulk delete in the client SDK — loop over `listAll` results and delete individually. The Admin SDK supports `bucket.deleteFiles({ prefix })` for bulk operations.",
+      "tags": ["list", "listAll", "delete", "deleteObject", "paginate", "bulk"]
+    },
+    {
+      "id": "admin-sdk",
+      "title": "Admin SDK access",
+      "body": "The Admin SDK (`firebase-admin/storage`) accesses the underlying Google Cloud Storage bucket directly, bypassing all security rules. Use `getStorage().bucket()` to get a Bucket instance. Methods: `bucket.upload(localPath, options)`, `bucket.file(path).download(options)`, `bucket.file(path).getSignedUrl(options)`, `bucket.file(path).delete()`, `bucket.getFiles({ prefix })`. Signed URLs from the Admin SDK require a service account and have configurable expiry — different from client SDK download URLs which use Firebase tokens.",
+      "tags": ["admin", "firebase-admin", "server", "service-account", "signed-url", "bypass-rules"]
+    }
+  ],
+  "links": [
+    { "uri": "firebase", "context": "Firebase ecosystem — project setup, configuration, client and admin SDK initialization" },
+    { "uri": "firebase/auth", "context": "Authentication — request.auth in security rules depends on signed-in users" },
+    { "uri": "firebase/functions", "context": "Cloud Functions — trigger on storage object finalize, delete, archive, metadata update" },
+    { "uri": "firebase/config", "context": "Configuration — firebase.json storage rules path, storageBucket in app config" }
+  ],
+  "related": [
+    { "uri": "firebase", "relation": "prerequisite", "note": "Firebase project must be initialized with storage enabled before using Cloud Storage" },
+    { "uri": "firebase/auth", "relation": "see-also", "note": "Security rules reference request.auth for user identity and custom claims" },
+    { "uri": "supabase/storage", "relation": "alternative", "note": "Supabase Storage is an S3-compatible alternative with RLS-based policies and image transforms" }
+  ],
+  "scripts": [
+    {
+      "id": "storage-ops",
+      "name": "Firebase Cloud Storage operations",
+      "description": "Upload, download, list, delete, and manage metadata for files in Cloud Storage for Firebase",
+      "lang": "typescript",
+      "runtime": "node>=18",
+      "entry": "./scripts/storage-ops.ts",
+      "env": {
+        "FIREBASE_API_KEY": { "required": true, "secret": false, "description": "Firebase API key from project settings" },
+        "FIREBASE_AUTH_DOMAIN": { "required": true, "secret": false, "description": "Firebase auth domain (project-id.firebaseapp.com)" },
+        "FIREBASE_PROJECT_ID": { "required": true, "secret": false, "description": "Firebase project ID" },
+        "FIREBASE_STORAGE_BUCKET": { "required": true, "secret": false, "description": "Default storage bucket (project-id.appspot.com)" },
+        "GOOGLE_APPLICATION_CREDENTIALS": { "required": false, "secret": true, "description": "Path to service account JSON for Admin SDK operations" }
+      },
+      "packages": ["firebase", "firebase-admin"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "path": { "type": "string", "description": "Storage path (e.g. 'images/photo.jpg')" },
+        "file": { "type": "string", "description": "Local file path for upload or download destination" },
+        "operation": { "type": "string", "enum": ["upload", "download", "list", "delete", "metadata"], "description": "Storage operation to perform" },
+        "metadata": { "type": "object", "description": "File metadata — contentType, cacheControl, customMetadata" }
+      },
+      "required": ["path", "operation"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "downloadUrl": { "type": "string", "description": "Download URL for the file" },
+        "metadata": { "type": "object", "description": "File metadata including size, contentType, timeCreated" },
+        "fileList": { "type": "array", "items": { "type": "string" }, "description": "List of file paths at the given prefix" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "firebase/config", "reason": "Firebase must be configured with storageBucket before storage operations" }
+  ],
+  "more": {
+    "docs": "https://firebase.google.com/docs/storage",
+    "api": "https://firebase.google.com/docs/reference/js/storage",
+    "rules": "https://firebase.google.com/docs/storage/security",
+    "admin": "https://firebase.google.com/docs/storage/admin/start"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents, full-stack engineers",
+    "estimated_reading_time": "7 min",
+    "prerequisites": ["firebase/config"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://github.com/firebase/firebase-js-sdk",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

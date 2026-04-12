@@ -1,0 +1,291 @@
+{
+  "name": "playbooks",
+  "version": "1.0.0",
+  "uri": "ansible/playbooks",
+  "type": "skill",
+  "context": "Author, validate, preview, and execute reusable Ansible playbooks against controlled host subsets",
+  "info": "Playbooks are the durable execution layer in Ansible: YAML documents that target inventory groups, call modules in order, trigger handlers, consume vars files, and expose safety flags such as syntax check, list-tasks, list-tags, check mode, and diff mode. This skill is for the jobs agents perform repeatedly in production: run a version-controlled playbook, preview its impact, scope it to a canary or tag, feed it Vault secrets safely, and understand the execution controls that keep rollouts predictable. When ad-hoc work becomes repeatable, reviewed, or multi-step, it belongs here.",
+  "parent": "ansible",
+  "sub": [],
+  "tags": [
+    "ansible",
+    "playbooks",
+    "ansible-playbook",
+    "yaml",
+    "handlers",
+    "check-mode",
+    "diff",
+    "tags",
+    "orchestration"
+  ],
+  "aliases": [
+    "ansible playbook",
+    "ansible-playbook",
+    "run playbook",
+    "site.yml",
+    "playbook execution",
+    "ansible yaml automation",
+    "ansible rollout"
+  ],
+  "triggers": [
+    "run an ansible playbook",
+    "preview ansible playbook changes",
+    "syntax check a playbook",
+    "list ansible playbook tasks",
+    "run only tagged ansible tasks",
+    "limit a playbook to canary hosts",
+    "execute a playbook with vault secrets"
+  ],
+  "body": "# Ansible Playbooks\n\nPlaybooks are how Ansible becomes a maintainable engineering system instead of a pile of one-liners. They define target hosts, privilege model, variables, and ordered tasks in YAML, then run them with `ansible-playbook`.\n\n## Minimal Example\n\n```yaml\n- name: Configure web servers\n  hosts: web\n  become: true\n  tasks:\n    - name: Ensure nginx is present\n      ansible.builtin.package:\n        name: nginx\n        state: present\n\n    - name: Deploy nginx config\n      ansible.builtin.template:\n        src: templates/nginx.conf.j2\n        dest: /etc/nginx/nginx.conf\n        mode: '0644'\n      notify: restart nginx\n\n  handlers:\n    - name: restart nginx\n      ansible.builtin.service:\n        name: nginx\n        state: restarted\n```\n\n## Execution Controls\n\n```bash\nansible-playbook -i inventory site.yml\nansible-playbook -i inventory site.yml --syntax-check\nansible-playbook -i inventory site.yml --list-tasks --list-tags\nansible-playbook -i inventory site.yml -C -D\nansible-playbook -i inventory site.yml -l canary -t packages\nansible-playbook -i inventory site.yml --start-at-task 'Deploy nginx config'\nansible-playbook -i inventory site.yml --vault-id prod@prompt\n```\n\n## Project Layout\n\n```text\nansible-project/\n  inventory/\n  group_vars/\n  host_vars/\n  roles/\n  templates/\n  files/\n  site.yml\n```\n\n## When To Promote From Ad-Hoc\n\nIf a task will be repeated, reviewed in Git, needs handlers, or must run in a specific order, convert it from [[ansible/ad-hoc]] into a playbook. That is the boundary between convenient execution and operational discipline. Pair it with [[ansible/inventory]] for targeting, [[ansible/vault]] for secrets, and [[ansible/collections]] for module availability.\n",
+  "sections": [
+    {
+      "id": "structure",
+      "title": "Plays, tasks, and handlers",
+      "body": "A playbook is a list of plays. Each play targets `hosts`, can set `become`, variables, and fact gathering behavior, and contains ordered `tasks`. Handlers run only when notified, which makes them the right place for restarts and reloads. This structure gives you idempotent config changes without unnecessary service churn.",
+      "tags": ["plays", "tasks", "handlers", "idempotence"]
+    },
+    {
+      "id": "execution-flags",
+      "title": "syntax-check, list-tasks, check, and diff",
+      "body": "Use `--syntax-check` before the first run, `--list-tasks` and `--list-tags` to inspect scope, `-C` or `--check` to preview supported changes, and `-D` or `--diff` to inspect file or template deltas. These flags are the main safety controls for agent-driven runs. Pair them with limited host subsets for high-risk changes.",
+      "tags": ["syntax-check", "list-tasks", "list-tags", "check", "diff"]
+    },
+    {
+      "id": "tags-limits",
+      "title": "Use tags and limits for staged rollout",
+      "body": "Tags let you run only part of a playbook with `-t` or skip parts with `--skip-tags`. Limits such as `-l canary` constrain the host set after inventory resolution. Together they support progressive rollout: validate the playbook on one host or one task family, then widen the scope after the result looks correct.",
+      "tags": ["tags", "limits", "canary", "progressive-rollout"]
+    },
+    {
+      "id": "vault-integration",
+      "title": "Playbooks and Vault secrets",
+      "body": "Playbooks commonly load secret data from `group_vars`, `host_vars`, or `vars_files` encrypted with [[ansible/vault]]. Supply secrets with `--vault-id` or `--vault-password-file`, not by hardcoding plaintext values into YAML. Use `no_log: true` on tasks that may render secret values in stdout.",
+      "tags": ["vault", "vars-files", "secrets", "no-log"]
+    }
+  ],
+  "links": [
+    {
+      "uri": "ansible/inventory",
+      "context": "Playbooks target groups, hosts, and limits from inventory"
+    },
+    {
+      "uri": "ansible/vault",
+      "context": "Load encrypted vars and files safely during playbook execution"
+    },
+    {
+      "uri": "ansible/vault#vault-ids",
+      "context": "Use vault identities correctly when one repo spans multiple environments"
+    },
+    {
+      "uri": "ansible/collections",
+      "context": "Install the collections that provide the modules your playbook uses"
+    },
+    {
+      "uri": "ansible/troubleshooting#triage-order",
+      "context": "Use a fixed debug order when a playbook fails mid-run"
+    },
+    {
+      "uri": "ansible/config",
+      "context": "ansible.cfg and precedence rules affect playbook execution behavior"
+    },
+    {
+      "uri": "ansible/troubleshooting",
+      "context": "Debug failed tasks, handlers, host selection, and templating errors"
+    }
+  ],
+  "related": [
+    {
+      "uri": "ansible/inventory",
+      "relation": "prerequisite",
+      "note": "Playbooks cannot execute without inventory or an explicit localhost target"
+    },
+    {
+      "uri": "ansible/vault",
+      "relation": "see-also",
+      "note": "Vault is the standard way to keep secret vars out of plaintext playbooks"
+    },
+    {
+      "uri": "ansible/ad-hoc",
+      "relation": "evolution",
+      "note": "Ad-hoc commands usually become playbooks once the workflow repeats"
+    }
+  ],
+  "scripts": [
+    {
+      "id": "run-playbook",
+      "name": "Run Playbook",
+      "description": "Execute ansible-playbook with syntax checks, limits, tags, check mode, and vault options",
+      "lang": "bash",
+      "runtime": "ansible-core>=2.15",
+      "entry": "./scripts/run-playbook.sh",
+      "env": {
+        "ANSIBLE_PLAYBOOK_FILE": {
+          "required": true,
+          "secret": false,
+          "description": "Path to the playbook file to execute"
+        },
+        "ANSIBLE_INVENTORY_SOURCE": {
+          "required": false,
+          "secret": false,
+          "default": "inventory",
+          "description": "Inventory file, directory, or plugin source"
+        },
+        "ANSIBLE_PLAYBOOK_CHECK": {
+          "required": false,
+          "secret": false,
+          "default": "false",
+          "description": "Set to true to run ansible-playbook in check mode"
+        },
+        "ANSIBLE_SYNTAX_CHECK": {
+          "required": false,
+          "secret": false,
+          "default": "false",
+          "description": "Set to true to validate playbook syntax only"
+        },
+        "ANSIBLE_PLAYBOOK_DIFF": {
+          "required": false,
+          "secret": false,
+          "default": "false",
+          "description": "Set to true to show template and file diffs"
+        },
+        "ANSIBLE_TAGS": {
+          "required": false,
+          "secret": false,
+          "description": "Comma-separated tags to include"
+        },
+        "ANSIBLE_SKIP_TAGS": {
+          "required": false,
+          "secret": false,
+          "description": "Comma-separated tags to skip"
+        },
+        "ANSIBLE_START_AT_TASK": {
+          "required": false,
+          "secret": false,
+          "description": "Resume execution at the named task"
+        },
+        "ANSIBLE_EXTRA_VARS": {
+          "required": false,
+          "secret": false,
+          "description": "Extra vars passed with -e in key=value or JSON form"
+        },
+        "ANSIBLE_VAULT_ID": {
+          "required": false,
+          "secret": false,
+          "description": "Vault identity such as prod@prompt"
+        },
+        "ANSIBLE_VAULT_PASSWORD_FILE": {
+          "required": false,
+          "secret": true,
+          "description": "Path to a vault password file"
+        },
+        "ANSIBLE_LIMIT": {
+          "required": false,
+          "secret": false,
+          "description": "Host limit applied after inventory resolution"
+        }
+      },
+      "packages": [
+        "ansible-core"
+      ]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "playbookPath": {
+          "type": "string",
+          "description": "Path to the playbook file"
+        },
+        "inventorySource": {
+          "type": "string",
+          "description": "Inventory file, directory, or plugin source"
+        },
+        "check": {
+          "type": "boolean",
+          "default": false,
+          "description": "Run in check mode"
+        },
+        "diff": {
+          "type": "boolean",
+          "default": false,
+          "description": "Show diffs for changed small files and templates"
+        },
+        "tags": {
+          "type": "string",
+          "description": "Comma-separated tag filter"
+        },
+        "skipTags": {
+          "type": "string",
+          "description": "Comma-separated tag exclusion filter"
+        },
+        "limit": {
+          "type": "string",
+          "description": "Host limit"
+        },
+        "syntaxCheck": {
+          "type": "boolean",
+          "default": false,
+          "description": "Validate syntax without execution"
+        },
+        "vaultId": {
+          "type": "string",
+          "description": "Vault identity passed to ansible-playbook"
+        }
+      },
+      "required": [
+        "playbookPath"
+      ]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "command": {
+          "type": "string",
+          "description": "The ansible-playbook command that was executed"
+        },
+        "stdout": {
+          "type": "string",
+          "description": "Rendered playbook output"
+        },
+        "exitCode": {
+          "type": "integer",
+          "description": "Process exit code"
+        }
+      }
+    }
+  },
+  "depends": [
+    {
+      "uri": "ansible/inventory",
+      "reason": "Playbook host selection and variables come from inventory"
+    },
+    {
+      "uri": "ansible/vault",
+      "optional": true,
+      "reason": "Encrypted vars files often need vault identities during playbook execution"
+    }
+  ],
+  "more": {
+    "docs": "https://docs.ansible.com/projects/ansible/latest/playbook_guide/playbooks_intro.html",
+    "cli": "https://docs.ansible.com/projects/ansible/latest/cli/ansible-playbook.html"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, SREs, platform engineers, AI agents",
+    "estimated_reading_time": "7 min",
+    "prerequisites": [
+      "ansible/inventory"
+    ],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://github.com/ansible/ansible",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

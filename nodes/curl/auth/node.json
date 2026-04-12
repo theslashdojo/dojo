@@ -1,0 +1,109 @@
+{
+  "name": "auth",
+  "version": "1.0.0",
+  "uri": "curl/auth",
+  "type": "context",
+  "content_type": "reference",
+  "context": "Authentication patterns for curl — Bearer tokens, Basic auth, API keys, OAuth 2.0, and client certificates (mTLS)",
+  "info": "This context node covers every authentication method agents encounter when making HTTP requests with curl: Bearer token auth (the most common pattern for modern APIs), HTTP Basic auth (username:password), API key auth (via headers or query parameters), OAuth 2.0 flows (client credentials, authorization code), digest auth, and mutual TLS (client certificates). Agents consult this node when they have valid credentials but need to know the correct curl syntax to present them. Each pattern includes the exact curl flags and header format. Security considerations — never embed secrets in command lines visible in process listings; prefer environment variables and config files. See [[curl/request]] for request construction and [[curl/debugging]] for diagnosing auth failures (401/403 responses).",
+  "parent": "curl",
+  "tags": ["auth", "authentication", "bearer", "token", "basic-auth", "api-key", "oauth", "oauth2", "mtls", "certificate", "credentials"],
+  "aliases": [
+    "curl authentication",
+    "curl auth",
+    "curl bearer token",
+    "curl basic auth",
+    "curl api key",
+    "curl oauth",
+    "curl client certificate",
+    "curl mtls",
+    "curl credentials",
+    "http authentication",
+    "curl authorization header",
+    "curl -u",
+    "curl --user"
+  ],
+  "triggers": [
+    "authenticate a curl request",
+    "add a bearer token to curl",
+    "use basic auth with curl",
+    "send an api key with curl",
+    "curl with oauth token",
+    "curl client certificate authentication",
+    "curl with username and password",
+    "how to pass credentials in curl",
+    "curl authorization header",
+    "curl 401 unauthorized",
+    "curl 403 forbidden"
+  ],
+  "body": "# Authentication with curl\n\nMost APIs require authentication. curl supports every standard HTTP authentication mechanism. This reference covers the patterns agents need, ordered by how frequently they appear in practice.\n\n## Bearer Token (most common)\n\nUsed by OAuth 2.0 APIs, JWTs, and most modern REST APIs.\n\n```bash\n# Authorization header with Bearer token\ncurl -H \"Authorization: Bearer $API_TOKEN\" \\\n     https://api.example.com/resource\n\n# Anthropic API example\ncurl -H \"x-api-key: $ANTHROPIC_API_KEY\" \\\n     -H \"anthropic-version: 2023-06-01\" \\\n     -H \"Content-Type: application/json\" \\\n     -d '{\"model\":\"claude-sonnet-4-20250514\",\"max_tokens\":1024,\"messages\":[{\"role\":\"user\",\"content\":\"Hello\"}]}' \\\n     https://api.anthropic.com/v1/messages\n\n# GitHub API example\ncurl -H \"Authorization: Bearer $GITHUB_TOKEN\" \\\n     -H \"Accept: application/vnd.github+json\" \\\n     https://api.github.com/user/repos\n\n# Using --oauth2-bearer shorthand\ncurl --oauth2-bearer \"$TOKEN\" https://api.example.com/resource\n```\n\n## Basic Auth\n\nUsed by older APIs, internal services, and some CI/CD systems.\n\n```bash\n# -u flag (curl handles Base64 encoding)\ncurl -u \"username:password\" https://api.example.com/resource\n\n# Prompt for password (avoids it in command history)\ncurl -u \"username\" https://api.example.com/resource\n\n# Explicit Basic auth header (manual Base64)\ncurl -H \"Authorization: Basic $(echo -n 'username:password' | base64)\" \\\n     https://api.example.com/resource\n\n# Docker registry example\ncurl -u \"$DOCKER_USER:$DOCKER_PASS\" \\\n     https://registry.example.com/v2/_catalog\n```\n\n## API Key\n\nUsed by many SaaS APIs — passed as a header or query parameter.\n\n```bash\n# API key in a custom header\ncurl -H \"X-API-Key: $API_KEY\" https://api.example.com/resource\n\n# API key as query parameter (less secure — visible in logs)\ncurl \"https://api.example.com/resource?api_key=$API_KEY\"\n\n# Stripe API example (API key as Basic auth username)\ncurl -u \"$STRIPE_SECRET_KEY:\" https://api.stripe.com/v1/charges\n\n# OpenAI API example\ncurl -H \"Authorization: Bearer $OPENAI_API_KEY\" \\\n     -H \"Content-Type: application/json\" \\\n     -d '{\"model\":\"gpt-4\",\"messages\":[{\"role\":\"user\",\"content\":\"Hello\"}]}' \\\n     https://api.openai.com/v1/chat/completions\n```\n\n## OAuth 2.0 Client Credentials\n\nMachine-to-machine auth — exchange client ID + secret for an access token.\n\n```bash\n# Step 1: Get access token\nTOKEN=$(curl -s -X POST \\\n  -u \"$CLIENT_ID:$CLIENT_SECRET\" \\\n  -d \"grant_type=client_credentials\" \\\n  -d \"scope=read write\" \\\n  https://auth.example.com/oauth/token | jq -r '.access_token')\n\n# Step 2: Use the token\ncurl -H \"Authorization: Bearer $TOKEN\" \\\n     https://api.example.com/resource\n```\n\n## OAuth 2.0 Authorization Code (with PKCE)\n\nFor user-facing auth flows — the agent typically handles the token exchange, not the browser redirect.\n\n```bash\n# Exchange authorization code for tokens\ncurl -X POST \\\n  -d \"grant_type=authorization_code\" \\\n  -d \"code=$AUTH_CODE\" \\\n  -d \"redirect_uri=http://localhost:8080/callback\" \\\n  -d \"client_id=$CLIENT_ID\" \\\n  -d \"code_verifier=$CODE_VERIFIER\" \\\n  https://auth.example.com/oauth/token\n\n# Refresh an expired token\ncurl -X POST \\\n  -d \"grant_type=refresh_token\" \\\n  -d \"refresh_token=$REFRESH_TOKEN\" \\\n  -d \"client_id=$CLIENT_ID\" \\\n  https://auth.example.com/oauth/token\n```\n\n## Digest Auth\n\nMore secure than Basic — the password never crosses the wire in cleartext.\n\n```bash\ncurl --digest -u \"username:password\" https://api.example.com/resource\n```\n\n## Client Certificates (mTLS)\n\nMutual TLS — both client and server present certificates.\n\n```bash\n# Client cert + key (PEM format)\ncurl --cert ./client.pem --key ./client-key.pem \\\n     https://api.example.com/resource\n\n# PKCS#12 bundle\ncurl --cert ./client.p12:password --cert-type P12 \\\n     https://api.example.com/resource\n\n# Client cert + custom CA\ncurl --cert ./client.pem --key ./client-key.pem \\\n     --cacert ./ca-bundle.pem \\\n     https://internal.example.com/resource\n```\n\n## Security Best Practices\n\n```bash\n# NEVER: embed secrets in the command (visible in `ps`, shell history)\ncurl -H \"Authorization: Bearer sk-live-ACTUAL-SECRET\" https://api.example.com\n\n# ALWAYS: use environment variables\ncurl -H \"Authorization: Bearer $API_TOKEN\" https://api.example.com\n\n# BETTER: use a config file with restricted permissions\necho '-H \"Authorization: Bearer sk-live-token\"' > ~/.curl-auth\nchmod 600 ~/.curl-auth\ncurl -K ~/.curl-auth https://api.example.com\n\n# BEST: use a netrc file for Basic auth\necho \"machine api.example.com login user password secret\" > ~/.netrc\nchmod 600 ~/.netrc\ncurl -n https://api.example.com/resource\n```\n",
+  "sections": [
+    {
+      "id": "bearer",
+      "title": "Bearer token authentication",
+      "body": "The most common pattern for modern APIs. Set the `Authorization: Bearer <token>` header with `-H` or use `--oauth2-bearer <token>`. The token is typically a JWT, OAuth access token, or API-specific key. Store tokens in environment variables (`$API_TOKEN`, `$GITHUB_TOKEN`) — never hardcode them in commands. Some APIs use custom header names instead of `Authorization` (e.g., Anthropic uses `x-api-key`, Stripe puts the key in the Basic auth username slot).",
+      "tags": ["bearer", "jwt", "oauth", "token", "authorization-header"]
+    },
+    {
+      "id": "basic",
+      "title": "HTTP Basic authentication",
+      "body": "Pass credentials with `-u username:password`. curl handles the Base64 encoding automatically. To avoid the password appearing in shell history, omit it from the flag (`-u username`) and curl will prompt interactively. For scripting, use environment variables: `-u \"$USER:$PASS\"`. Some APIs use Basic auth with the API key as username and an empty password: `-u \"$API_KEY:\"` (note the trailing colon). Basic auth sends credentials in every request, so always use HTTPS.",
+      "tags": ["basic", "username", "password", "base64", "credentials"]
+    },
+    {
+      "id": "api-key",
+      "title": "API key authentication",
+      "body": "API keys are passed in a header (`-H 'X-API-Key: ...'`) or query parameter (`?api_key=...`). Header-based keys are preferred because query parameters appear in server logs, CDN logs, and browser history. The header name varies by API: `X-API-Key`, `Authorization`, `api-key`, `x-api-key`. Always read the API documentation for the expected header name. Store keys in environment variables and reference with `$VAR_NAME`.",
+      "tags": ["api-key", "header", "query-parameter", "x-api-key"]
+    },
+    {
+      "id": "oauth2",
+      "title": "OAuth 2.0 flows",
+      "body": "**Client Credentials** (machine-to-machine): POST to the token endpoint with `grant_type=client_credentials`, authenticate with client ID/secret via Basic auth (`-u $CLIENT_ID:$CLIENT_SECRET`), extract the `access_token` from the JSON response with `jq -r '.access_token'`. **Authorization Code**: exchange a code for tokens by POSTing `grant_type=authorization_code` with the code, redirect URI, and PKCE verifier. **Refresh**: POST `grant_type=refresh_token` with the refresh token. Token responses include `access_token`, `token_type`, `expires_in`, and optionally `refresh_token`.",
+      "tags": ["oauth2", "client-credentials", "authorization-code", "refresh-token", "pkce"]
+    },
+    {
+      "id": "mtls",
+      "title": "Client certificates and mTLS",
+      "body": "Mutual TLS requires the client to present a certificate during the TLS handshake. Use `--cert client.pem` and `--key client-key.pem` for PEM-encoded files, or `--cert client.p12:password --cert-type P12` for PKCS#12 bundles. Add `--cacert ca.pem` to verify the server against a custom CA (common in internal/corporate environments). mTLS is used for service-to-service auth in zero-trust networks and for some banking/payment APIs.",
+      "tags": ["mtls", "client-certificate", "tls", "pem", "pkcs12", "ca"]
+    },
+    {
+      "id": "security",
+      "title": "Security best practices",
+      "body": "**Never hardcode secrets in curl commands** — they appear in shell history (`~/.bash_history`), process listings (`ps aux`), and audit logs. **Use environment variables**: `$API_TOKEN`, `$GITHUB_TOKEN`. **Use config files** for repeated auth: `echo '-H \"Authorization: Bearer token\"' > ~/.curl-auth && chmod 600 ~/.curl-auth && curl -K ~/.curl-auth URL`. **Use .netrc** for Basic auth: `echo 'machine api.example.com login user password secret' > ~/.netrc && chmod 600 ~/.netrc && curl -n URL`. **Rotate credentials** regularly and use short-lived tokens when possible.",
+      "tags": ["security", "secrets", "environment-variables", "netrc", "config", "history"]
+    }
+  ],
+  "links": [
+    { "uri": "curl/request", "context": "Construct the full request after adding authentication" },
+    { "uri": "curl/debugging", "context": "Debug 401/403 auth failures with verbose output" },
+    { "uri": "curl", "context": "curl ecosystem overview" },
+    { "uri": "shell/environment", "context": "Store credentials in environment variables" }
+  ],
+  "related": [
+    { "uri": "curl/request", "relation": "see-also", "note": "Auth headers are part of the request — see request construction" },
+    { "uri": "curl/debugging", "relation": "see-also", "note": "Use -v to see exactly which auth headers are sent" },
+    { "uri": "shell/environment", "relation": "prerequisite", "note": "Credentials should be stored in environment variables, not hardcoded" }
+  ],
+  "more": {
+    "docs": "https://curl.se/docs/manpage.html#--basic",
+    "wiki": "https://everything.curl.dev/http/auth",
+    "spec": "https://datatracker.ietf.org/doc/html/rfc7235"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "AI agents, developers",
+    "estimated_reading_time": "5 min",
+    "prerequisites": ["curl/request", "shell/environment"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

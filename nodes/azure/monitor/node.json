@@ -1,0 +1,143 @@
+{
+  "name": "monitor",
+  "uri": "azure/monitor",
+  "type": "context",
+  "context": "Inspect Azure resources with metrics, activity logs, and Log Analytics queries before and after operational changes",
+  "info": "Azure Monitor is the cross-cutting observability layer for Azure resources. Agents use it to answer the first operational questions after a deploy or incident: did the control plane report a failure, is the resource emitting unhealthy metrics, and what do workspace logs say over the relevant time window? The key CLI surfaces are `az monitor metrics list`, `az monitor activity-log list`, and `az monitor log-analytics query`.",
+  "parent": "azure",
+  "content_type": "guide",
+  "tags": [
+    "azure",
+    "monitor",
+    "metrics",
+    "activity-log",
+    "log-analytics",
+    "kusto",
+    "observability",
+    "diagnostics"
+  ],
+  "aliases": [
+    "azure monitor",
+    "azure metrics",
+    "azure activity log",
+    "log analytics query",
+    "azure logs",
+    "azure observability",
+    "kusto on azure",
+    "inspect azure incidents"
+  ],
+  "triggers": [
+    "check azure metrics",
+    "query log analytics",
+    "inspect azure activity logs",
+    "find why an azure deployment failed",
+    "debug an app service incident in azure",
+    "check aks metrics in azure",
+    "look up azure control plane events",
+    "run a kusto query against azure logs"
+  ],
+  "body": "# Azure Monitor\n\nAzure Monitor answers three different questions, and agents should pick the right query surface for each one:\n\n- Metrics: is the resource healthy over time?\n- Activity log: what management-plane action happened, by whom, and when?\n- Log Analytics: what do the workload or platform logs say in Kusto?\n\n~~~bash\n# Metrics on a specific resource ID\naz monitor metrics list \\\n  --resource \"$RESOURCE_ID\" \\\n  --metric \"Percentage CPU\" \\\n  --interval PT1M\n\n# Activity log for the past hour in a resource group\naz monitor activity-log list -g rg-dojo --offset 1h --max-events 50\n\n# Kusto query against a Log Analytics workspace\naz monitor log-analytics query \\\n  --workspace \"$LOG_ANALYTICS_WORKSPACE_ID\" \\\n  --analytics-query \"AzureActivity | summarize count() by bin(TimeGenerated, 1h)\" \\\n  --timespan P1D\n~~~\n\nMetrics are best for trend and saturation signals. Activity log is best for create, update, delete, RBAC, and policy failures. Log Analytics is the deepest surface once data is already flowing into a workspace.\n\nUse this node immediately after deployments from [[azure/app-service]], [[azure/functions]], or [[azure/aks]], and pair it with application-layer telemetry like [[sentry]] when platform health and application exceptions need to be correlated.\n",
+  "sections": [
+    {
+      "id": "metrics",
+      "title": "Metrics queries",
+      "body": "`az monitor metrics list --resource ... --metric ...` queries time-series data for a specific resource. Use it for CPU, latency, transactions, saturation, and other numeric health signals. Tune the `--interval`, `--aggregation`, and `--filter` options when the default series is too coarse or too broad.",
+      "tags": [
+        "metrics",
+        "resource-id",
+        "aggregation",
+        "interval"
+      ]
+    },
+    {
+      "id": "activity-log",
+      "title": "Activity log queries",
+      "body": "`az monitor activity-log list` is the management-plane history: who deleted a resource, whether a deployment failed, when policy blocked an operation, or what RBAC change preceded an outage. Filter by resource group, resource ID, correlation ID, or time range. This is the first stop when Azure itself accepted or rejected an operation.",
+      "tags": [
+        "activity-log",
+        "control-plane",
+        "rbac",
+        "deployments"
+      ]
+    },
+    {
+      "id": "log-analytics",
+      "title": "Log Analytics and Kusto",
+      "body": "`az monitor log-analytics query --workspace ... --analytics-query ...` runs Kusto over workspace data. The workspace argument is the workspace GUID, not the display name. Use it when platform data, application logs, or diagnostic tables are already routed to Log Analytics and you need structured investigation over a specific timespan.",
+      "tags": [
+        "log-analytics",
+        "kusto",
+        "workspace",
+        "timespan"
+      ]
+    }
+  ],
+  "links": [
+    {
+      "uri": "azure/app-service",
+      "context": "Check web app health and deployment fallout after App Service changes"
+    },
+    {
+      "uri": "azure/functions",
+      "context": "Inspect serverless deployment and runtime issues after Function App changes"
+    },
+    {
+      "uri": "azure/aks",
+      "context": "Correlate AKS control-plane or cluster rollout issues with metrics and events"
+    },
+    {
+      "uri": "sentry",
+      "context": "Pair Azure platform signals with application exceptions and traces"
+    },
+    {
+      "uri": "kubernetes/troubleshooting",
+      "context": "Continue deeper into workload debugging after AKS-level health checks"
+    }
+  ],
+  "related": [
+    {
+      "uri": "sentry",
+      "relation": "see-also",
+      "note": "Sentry complements Azure Monitor with application-level errors and traces"
+    },
+    {
+      "uri": "azure/app-service",
+      "relation": "extends",
+      "note": "Platform monitoring is part of every App Service deployment loop"
+    },
+    {
+      "uri": "azure/functions",
+      "relation": "extends",
+      "note": "Function App operations should be followed by metric or log inspection"
+    },
+    {
+      "uri": "azure/aks",
+      "relation": "extends",
+      "note": "AKS create and change flows often hand off to Monitor for validation"
+    }
+  ],
+  "more": {
+    "metrics": "https://learn.microsoft.com/en-us/cli/azure/monitor/metrics?view=azure-cli-latest",
+    "activity_log": "https://learn.microsoft.com/en-us/cli/azure/monitor/activity-log",
+    "log_analytics": "https://learn.microsoft.com/en-us/cli/azure/monitor/log-analytics?view=azure-cli-latest"
+  },
+  "frontmatter": {
+    "created": "2026-04-12",
+    "updated": "2026-04-12",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "5 min",
+    "prerequisites": [
+      "azure/auth"
+    ],
+    "status": "living",
+    "confidence": "high"
+  },
+  "repository": "https://github.com/Azure/azure-cli",
+  "version": "1.0.0",
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-12T00:00:00Z",
+  "updated": "2026-04-12T00:00:00Z",
+  "status": "published"
+}

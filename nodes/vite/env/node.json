@@ -1,0 +1,129 @@
+{
+  "name": "env",
+  "version": "1.0.0",
+  "uri": "vite/env",
+  "type": "context",
+  "content_type": "guide",
+  "context": "Vite environment variables — .env files, VITE_ prefix for client exposure, import.meta.env built-ins, mode-based loading order, TypeScript IntelliSense via vite-env.d.ts",
+  "info": "Vite exposes environment variables to client code through the `import.meta.env` object, which includes built-in constants (MODE, BASE_URL, PROD, DEV, SSR) and any user-defined variables prefixed with `VITE_`. The VITE_ prefix is a security boundary — only variables starting with VITE_ are bundled into client code, so secrets like database credentials or API keys without the prefix stay server-side and are never shipped to the browser. Variables are loaded from .env files in a specific precedence order: `.env` (base, always loaded), `.env.local` (local overrides, git-ignored), `.env.[mode]` (mode-specific, e.g. .env.production), `.env.[mode].local` (mode-specific local overrides, git-ignored), where mode-specific files take precedence over generic ones. The default mode is `development` for `vite dev` and `production` for `vite build`, but custom modes like `staging` can be set via the `--mode` flag. In [[vite/config]], use the `loadEnv(mode, envDir, prefixes)` helper from Vite to access env variables since `import.meta.env` is not available in the config file itself. Variable expansion is supported via dotenv-expand syntax (`VITE_FULL_URL=$PROTOCOL://$HOST`). For TypeScript IntelliSense on custom VITE_ variables, augment the `ImportMetaEnv` interface in a `vite-env.d.ts` (or `env.d.ts`) file referenced by tsconfig. In HTML files served by Vite, env variables can be injected using `%VITE_MY_VAR%` syntax. Note that `mode` and `NODE_ENV` are distinct concepts — mode controls which .env file loads while NODE_ENV controls framework behavior, though Vite sets NODE_ENV from the mode by default. Env variables are statically replaced at [[vite/build]] time, not looked up at runtime.",
+  "parent": "vite",
+  "tags": ["env", "environment-variables", "dotenv", "env-files", "modes", "import-meta-env", "vite-prefix"],
+  "aliases": [
+    "vite env",
+    "vite environment variables",
+    ".env vite",
+    "import.meta.env",
+    "VITE_ prefix",
+    "vite modes",
+    "dotenv vite",
+    "vite-env.d.ts",
+    "vite env vars",
+    "vite .env files",
+    "loadEnv vite",
+    "import meta env",
+    "vite staging mode",
+    "vite custom mode"
+  ],
+  "triggers": [
+    "set up environment variables in vite",
+    "access env vars in vite",
+    "vite .env file",
+    "import.meta.env",
+    "custom vite mode",
+    "vite staging env",
+    "vite env not working",
+    "VITE_ prefix required",
+    "loadEnv in vite config",
+    "vite env typescript",
+    "vite environment variable undefined",
+    "vite mode vs NODE_ENV",
+    "use env in vite html",
+    "vite .env.local"
+  ],
+  "body": "# Vite Environment Variables & Modes\n\nVite provides a complete system for managing environment variables across development, production, and custom modes. Variables are loaded from `.env` files, filtered by the `VITE_` prefix for security, and exposed to client code via `import.meta.env`.\n\n## Built-in Environment Constants\n\nThese are always available on `import.meta.env` without any configuration:\n\n| Constant | Type | Description |\n|----------|------|-------------|\n| `import.meta.env.MODE` | `string` | The current mode: `'development'`, `'production'`, or a custom mode |\n| `import.meta.env.BASE_URL` | `string` | The base URL the app is served from, set by the `base` config option in [[vite/config]] |\n| `import.meta.env.PROD` | `boolean` | `true` when `MODE === 'production'` |\n| `import.meta.env.DEV` | `boolean` | `true` when `MODE !== 'production'` (always the inverse of PROD) |\n| `import.meta.env.SSR` | `boolean` | `true` when running in the server-side rendering context |\n\n```typescript\n// Usage in application code\nif (import.meta.env.DEV) {\n  console.log('Running in development mode');\n}\n\nconst apiBase = import.meta.env.PROD\n  ? 'https://api.example.com'\n  : 'http://localhost:3001';\n```\n\n## .env Files — Format and Loading Order\n\nVite uses [dotenv](https://github.com/motdotla/dotenv) to load environment variables from files in the project root (or the directory specified by `envDir` in [[vite/config]]).\n\n### File Format\n\n```bash\n# .env\n# Comments start with #\nVITE_APP_TITLE=My Application\nVITE_API_URL=https://api.example.com\n\n# Unquoted values are trimmed\nVITE_KEY=some-value\n\n# Quoted values preserve inner whitespace\nVITE_GREETING=\"Hello, World!\"\n\n# Single quotes are also supported\nVITE_MESSAGE='This is a message'\n\n# Multi-line values with double quotes\nVITE_MULTILINE=\"line1\nline2\"\n```\n\n### Loading Order (Highest to Lowest Priority)\n\nMode-specific files take precedence over generic ones. Local files take precedence over non-local ones:\n\n| Priority | File | Purpose | Git-ignored? |\n|----------|------|---------|-------------|\n| 1 (highest) | `.env.[mode].local` | Mode-specific local overrides | Yes |\n| 2 | `.env.[mode]` | Mode-specific variables | No |\n| 3 | `.env.local` | Local overrides for all modes | Yes |\n| 4 (lowest) | `.env` | Base variables for all modes | No |\n\nAll matching files are loaded and merged, with higher-priority files overriding lower ones. A variable defined in `.env.production.local` overrides the same variable in `.env`.\n\n```bash\n# .env — shared across all modes\nVITE_APP_TITLE=My App\nVITE_API_VERSION=v2\n\n# .env.development — dev-specific\nVITE_API_URL=http://localhost:3001\nVITE_DEBUG=true\n\n# .env.production — production-specific\nVITE_API_URL=https://api.example.com\nVITE_DEBUG=false\n\n# .env.local — personal overrides (git-ignored)\nVITE_API_URL=http://localhost:8080\n```\n\n**Important:** Files already existing at the time Vite starts are loaded. A variable that already exists in the environment (e.g., set via the shell) will NOT be overwritten by .env files. To reset all overrides, delete the `.env.local` file.\n\n## The VITE_ Prefix — Security Boundary\n\nOnly variables prefixed with `VITE_` are exposed to client-side code via `import.meta.env`. This is a critical security feature.\n\n```bash\n# .env\nVITE_PUBLIC_API_KEY=pk_live_abc123    # Exposed to client — import.meta.env.VITE_PUBLIC_API_KEY\nDATABASE_URL=postgresql://secret       # NOT exposed — only available server-side\nSECRET_API_KEY=sk_live_xyz789          # NOT exposed — stays server-side\nVITE_APP_NAME=MyApp                     # Exposed to client\n```\n\n```typescript\n// In application code\nconsole.log(import.meta.env.VITE_PUBLIC_API_KEY); // 'pk_live_abc123'\nconsole.log(import.meta.env.DATABASE_URL);         // undefined\nconsole.log(import.meta.env.SECRET_API_KEY);       // undefined\n```\n\n**Security rules:**\n- Never put secret keys, tokens, or credentials in `VITE_` variables — they are embedded in the JavaScript bundle and visible to anyone who inspects the page source\n- Use `VITE_` only for values that are safe to be public: public API keys, app names, feature flags, API base URLs\n- Access secrets only in server-side code ([[vite/dev-server]] middleware, API routes, SSR handlers) via `process.env`\n\nThe prefix can be customized via the `envPrefix` option in [[vite/config]]:\n\n```typescript\n// vite.config.ts\nexport default defineConfig({\n  envPrefix: ['VITE_', 'PUBLIC_'], // now PUBLIC_* vars are also exposed\n});\n```\n\n**Warning:** Never set `envPrefix` to `''` (empty string) — this would expose ALL environment variables including system secrets.\n\n## TypeScript IntelliSense for Custom Env Variables\n\nBy default, Vite provides type definitions for `import.meta.env` in `vite/client.d.ts`. To get IntelliSense for custom `VITE_` variables, augment the `ImportMetaEnv` interface:\n\n```typescript\n// src/vite-env.d.ts (or env.d.ts — any .d.ts file in your project)\n/// <reference types=\"vite/client\" />\n\ninterface ImportMetaEnv {\n  readonly VITE_APP_TITLE: string;\n  readonly VITE_API_URL: string;\n  readonly VITE_PUBLIC_API_KEY: string;\n  readonly VITE_DEBUG: string;  // env values are always strings\n  readonly VITE_FEATURE_FLAGS: string;\n}\n\ninterface ImportMeta {\n  readonly env: ImportMetaEnv;\n}\n```\n\nMake sure this file is included in your `tsconfig.json`:\n\n```json\n{\n  \"compilerOptions\": {\n    \"types\": [\"vite/client\"]\n  },\n  \"include\": [\"src\"]\n}\n```\n\n**Important:** All env values are strings at runtime. Even if you write `VITE_PORT=3000` in your `.env` file, `import.meta.env.VITE_PORT` is the string `\"3000\"`, not the number `3000`. Parse numbers and booleans explicitly:\n\n```typescript\nconst port = Number(import.meta.env.VITE_PORT);\nconst debug = import.meta.env.VITE_DEBUG === 'true';\n```\n\n## Using Env Variables in HTML\n\nVite supports replacing env variables in HTML files using the `%ENV_VAR_NAME%` syntax:\n\n```html\n<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n  <meta charset=\"UTF-8\" />\n  <title>%VITE_APP_TITLE%</title>\n  <link rel=\"icon\" href=\"/favicon.ico\" />\n</head>\n<body>\n  <div id=\"app\" data-version=\"%VITE_APP_VERSION%\"></div>\n  <script type=\"module\" src=\"/src/main.tsx\"></script>\n</body>\n</html>\n```\n\nThe replacement happens both in dev (on the fly) and during build (static replacement). If a variable is not defined, it is left as-is rather than replaced with an empty string. Only `VITE_`-prefixed variables and the built-in constants (`MODE`, `BASE_URL`, `PROD`, `DEV`, `SSR`) are available for HTML replacement.\n\n## Custom Modes\n\nThe default mode is `development` for `vite dev` and `production` for `vite build`. Custom modes allow you to target specific deployment environments:\n\n```bash\n# Start dev with staging mode\nvite --mode staging\n\n# Build for staging\nvite build --mode staging\n```\n\nThis loads `.env.staging` and `.env.staging.local` in addition to `.env` and `.env.local`.\n\n```bash\n# .env.staging\nVITE_APP_TITLE=My App (Staging)\nVITE_API_URL=https://staging-api.example.com\nNODE_ENV=production   # Can override NODE_ENV independently of mode\n```\n\n### Mode vs. NODE_ENV\n\nMode and `NODE_ENV` are related but distinct concepts:\n\n| Concept | Controlled By | Affects |\n|---------|--------------|--------|\n| **Mode** | `--mode` flag or default (`development`/`production`) | Which `.env.[mode]` files are loaded |\n| **NODE_ENV** | Set from mode by default, can be overridden in `.env` files | Framework behavior (React dev tools, Vue devtools), `process.env.NODE_ENV` in server code, `import.meta.env.PROD`/`DEV` |\n\nBy default, `vite dev` sets `NODE_ENV=development` and `vite build` sets `NODE_ENV=production`. But a custom mode like `staging` can explicitly set `NODE_ENV=production` in `.env.staging` to get production-optimized builds while still loading staging-specific config.\n\n```bash\n# .env.staging — staging mode with production NODE_ENV\nNODE_ENV=production\nVITE_API_URL=https://staging-api.example.com\nVITE_ANALYTICS_ID=UA-STAGING-1\n```\n\n```bash\n# Build for staging: mode=staging, NODE_ENV=production\nvite build --mode staging\n```\n\n**Important:** `import.meta.env.PROD` and `import.meta.env.DEV` derive from `NODE_ENV`, not from `mode`. So a staging build with `NODE_ENV=production` will have `PROD=true` and `DEV=false`.\n\n## loadEnv — Accessing Env Variables in vite.config\n\n`import.meta.env` is NOT available inside `vite.config.ts` because the config file is processed before env variables are resolved. Use the `loadEnv` helper instead:\n\n```typescript\nimport { defineConfig, loadEnv } from 'vite';\n\nexport default defineConfig(({ mode }) => {\n  // Load env variables for the current mode\n  // Third arg '' means load ALL env vars, not just VITE_-prefixed ones\n  const env = loadEnv(mode, process.cwd(), '');\n\n  return {\n    // Use env.VITE_API_URL, env.DATABASE_URL, etc.\n    define: {\n      __APP_VERSION__: JSON.stringify(env.VITE_APP_VERSION),\n    },\n    server: {\n      proxy: {\n        '/api': {\n          target: env.VITE_API_TARGET,\n          changeOrigin: true,\n        },\n      },\n    },\n  };\n});\n```\n\n### loadEnv Signature\n\n```typescript\nfunction loadEnv(\n  mode: string,       // Current mode ('development', 'production', 'staging', etc.)\n  envDir: string,     // Directory to search for .env files (usually process.cwd())\n  prefixes?: string | string[]  // Default: 'VITE_'. Use '' to load ALL variables.\n): Record<string, string>\n```\n\nThe `prefixes` parameter controls which variables are returned:\n- `'VITE_'` (default) — only `VITE_`-prefixed variables\n- `''` (empty string) — ALL variables from .env files\n- `['VITE_', 'PUBLIC_']` — variables matching any listed prefix\n\n**Security note:** When using `loadEnv` with `''` prefix in the config, be careful not to pass secrets into `define` or other options that embed values into client code.\n\n## Variable Expansion\n\nVite uses [dotenv-expand](https://github.com/motdotla/dotenv-expand) to expand variables within `.env` files:\n\n```bash\n# .env\nHOST=example.com\nPROTOCOL=https\nPORT=3000\n\n# Reference other variables with $VAR or ${VAR}\nVITE_BASE_URL=$PROTOCOL://$HOST\nVITE_FULL_URL=${PROTOCOL}://${HOST}:${PORT}/api\n\n# Escape with \\ to use literal $\nVITE_PRICE=\\$9.99\n```\n\nExpansion resolves across .env files in loading order, so a variable defined in `.env` can be referenced in `.env.development`.\n\n## Common Patterns\n\n### Feature Flags\n\n```bash\n# .env.development\nVITE_FEATURE_NEW_DASHBOARD=true\nVITE_FEATURE_BETA_API=true\n\n# .env.production\nVITE_FEATURE_NEW_DASHBOARD=true\nVITE_FEATURE_BETA_API=false\n```\n\n```typescript\nif (import.meta.env.VITE_FEATURE_NEW_DASHBOARD === 'true') {\n  // show new dashboard\n}\n```\n\n### Conditional Proxy in Dev\n\n```typescript\n// vite.config.ts — use loadEnv to configure proxy from .env\nimport { defineConfig, loadEnv } from 'vite';\n\nexport default defineConfig(({ mode }) => {\n  const env = loadEnv(mode, process.cwd(), '');\n  return {\n    server: {\n      proxy: {\n        '/api': env.VITE_API_TARGET || 'http://localhost:3001',\n      },\n    },\n  };\n});\n```\n\n### Validate Required Variables at Startup\n\n```typescript\n// src/env.ts — centralized env validation\nconst requiredVars = [\n  'VITE_API_URL',\n  'VITE_PUBLIC_API_KEY',\n] as const;\n\nfor (const key of requiredVars) {\n  if (!import.meta.env[key]) {\n    throw new Error(`Missing required environment variable: ${key}`);\n  }\n}\n\nexport const env = {\n  apiUrl: import.meta.env.VITE_API_URL,\n  publicApiKey: import.meta.env.VITE_PUBLIC_API_KEY,\n  isDev: import.meta.env.DEV,\n  mode: import.meta.env.MODE,\n} as const;\n```\n\n## Static Replacement at Build Time\n\nVite replaces `import.meta.env.*` references with static values at [[vite/build]] time using string substitution. This means:\n\n- Dead-code elimination works — `if (import.meta.env.PROD)` blocks are removed in development, and `if (import.meta.env.DEV)` blocks are removed in production builds\n- Dynamic access does NOT work — `const key = 'VITE_FOO'; import.meta.env[key]` will not resolve\n- Destructuring does NOT work — `const { VITE_FOO } = import.meta.env` will not resolve in the build output\n- Always use the full static string: `import.meta.env.VITE_FOO`\n\n```typescript\n// CORRECT — statically analyzable\nconst url = import.meta.env.VITE_API_URL;\n\n// WRONG — dynamic access, will be undefined in production build\nconst key = 'VITE_API_URL';\nconst url = import.meta.env[key];\n\n// WRONG — destructuring, will break in production\nconst { VITE_API_URL } = import.meta.env;\n```\n",
+  "sections": [
+    {
+      "id": "builtin-env",
+      "title": "Built-in env constants",
+      "body": "Vite exposes five built-in constants on `import.meta.env` without configuration: `MODE` (string — 'development', 'production', or custom), `BASE_URL` (string — from the `base` config in [[vite/config]]), `PROD` (boolean — true when NODE_ENV is 'production'), `DEV` (boolean — inverse of PROD), and `SSR` (boolean — true in server-side rendering). These are always available and do not require the VITE_ prefix. PROD and DEV derive from NODE_ENV, not from mode — so a custom mode like 'staging' with NODE_ENV=production will have PROD=true.",
+      "tags": ["import-meta-env", "mode", "base-url", "prod", "dev", "ssr"]
+    },
+    {
+      "id": "env-files",
+      "title": ".env file loading order and precedence",
+      "body": "Vite loads .env files using dotenv from the project root (or envDir). Loading order from highest to lowest priority: `.env.[mode].local` > `.env.[mode]` > `.env.local` > `.env`. All matching files are merged; higher-priority files override lower ones. Files ending in `.local` are git-ignored by convention and used for personal overrides. The mode defaults to 'development' for `vite dev` and 'production' for `vite build`. Variables already present in the shell environment are NOT overwritten by .env files. Format supports comments (#), quoted values (single/double), and multi-line values in double quotes.",
+      "tags": ["dotenv", "env-files", "loading-order", "precedence", "env-local"]
+    },
+    {
+      "id": "vite-prefix",
+      "title": "VITE_ prefix and client-side security",
+      "body": "Only environment variables prefixed with `VITE_` are exposed to client-side code via `import.meta.env`. This is a security boundary — variables without the prefix (DATABASE_URL, SECRET_KEY, etc.) remain server-side only and never appear in the JavaScript bundle. Never put secrets in VITE_ variables — they are embedded as plain text in the build output. The prefix can be customized via `envPrefix` in [[vite/config]] (e.g., `envPrefix: ['VITE_', 'PUBLIC_']`). Never set envPrefix to an empty string as that would expose all environment variables including system secrets.",
+      "tags": ["vite-prefix", "security", "client-side", "env-prefix", "secrets"]
+    },
+    {
+      "id": "typescript-intellisense",
+      "title": "TypeScript IntelliSense for env vars",
+      "body": "Vite ships type definitions for built-in `import.meta.env` constants in `vite/client.d.ts`. To add IntelliSense for custom VITE_ variables, create a `vite-env.d.ts` (or `env.d.ts`) file with `/// <reference types=\"vite/client\" />` and augment the `ImportMetaEnv` interface with your variable declarations. All env values are strings at runtime regardless of how they appear in .env files — declare them as `readonly VITE_MY_VAR: string`. Make sure the declaration file is included in your tsconfig.json `include` array. The `ImportMeta` interface can also be augmented to extend the `env` property.",
+      "tags": ["typescript", "intellisense", "vite-env-d-ts", "import-meta-env", "type-definitions"]
+    },
+    {
+      "id": "custom-modes",
+      "title": "Custom modes and the --mode flag",
+      "body": "Beyond the default 'development' and 'production' modes, Vite supports custom modes via `--mode <name>` (e.g., `vite build --mode staging`). A custom mode loads `.env.staging` and `.env.staging.local` files. Mode and NODE_ENV are distinct: mode controls which .env files load, while NODE_ENV controls framework optimizations and the PROD/DEV constants. A staging build can set `NODE_ENV=production` in `.env.staging` to get optimized output while still using staging-specific API URLs. This pattern is common for multi-environment deployments (dev, staging, QA, production).",
+      "tags": ["modes", "custom-mode", "staging", "node-env", "mode-flag"]
+    },
+    {
+      "id": "html-replacement",
+      "title": "Environment variable replacement in HTML",
+      "body": "Vite replaces `%VITE_MY_VAR%` placeholders in `index.html` with the corresponding env variable values. This works for all VITE_-prefixed variables and built-in constants (MODE, BASE_URL). Replacement occurs both during development (on the fly) and at build time (statically). If a referenced variable is not defined, the placeholder is left as-is. Use this for dynamic page titles (`<title>%VITE_APP_TITLE%</title>`), meta tags, data attributes, or any HTML content that varies by environment.",
+      "tags": ["html", "replacement", "placeholder", "index-html"]
+    },
+    {
+      "id": "loadenv-config",
+      "title": "loadEnv helper for vite.config",
+      "body": "`import.meta.env` is not available inside `vite.config.ts` because the config is processed before env resolution. Use Vite's `loadEnv(mode, envDir, prefixes)` helper instead. The function accepts the current mode (from the config function argument), the directory to search (usually `process.cwd()`), and an optional prefix filter (default 'VITE_', use '' for all variables). When using empty prefix, be careful not to pass secrets into `define` or other client-exposed config options. The config must use the function form of defineConfig (`defineConfig(({ mode }) => { ... })`) to access the mode parameter.",
+      "tags": ["loadenv", "vite-config", "define-config", "server-side", "config-env"]
+    },
+    {
+      "id": "variable-expansion",
+      "title": "Variable expansion with dotenv-expand",
+      "body": "Vite uses dotenv-expand to resolve variable references within .env files. Reference other variables with `$VAR` or `${VAR}` syntax. Escape literal dollar signs with `\\$`. Expansion resolves across .env files in loading order — a base variable in `.env` can be referenced in `.env.development`. This enables composition patterns like `VITE_FULL_URL=$PROTOCOL://$HOST:$PORT/api` where the components are defined separately and may vary by environment.",
+      "tags": ["dotenv-expand", "variable-expansion", "interpolation", "composition"]
+    },
+    {
+      "id": "static-replacement",
+      "title": "Static replacement at build time",
+      "body": "Vite replaces `import.meta.env.*` with static values at [[vite/build]] time via string substitution. This enables dead-code elimination — `if (import.meta.env.DEV) { ... }` is removed entirely in production builds. However, dynamic property access (`import.meta.env[key]`) and destructuring (`const { VITE_FOO } = import.meta.env`) do NOT work because the bundler cannot statically analyze them. Always use the full static form: `import.meta.env.VITE_FOO`. This also means env values are baked into the bundle and cannot be changed at runtime without rebuilding.",
+      "tags": ["static-replacement", "build-time", "dead-code-elimination", "tree-shaking"]
+    }
+  ],
+  "links": [
+    { "uri": "vite/config", "context": "defineConfig, envPrefix, envDir options, loadEnv usage in config" },
+    { "uri": "vite/build", "context": "Env vars are statically replaced at build time; --mode flag for build targets" },
+    { "uri": "vite/dev-server", "context": "Dev server mode defaults to 'development'; proxy config from env vars" },
+    { "uri": "vite/troubleshooting", "context": "Debug undefined env vars, missing VITE_ prefix, mode mismatches" }
+  ],
+  "related": [
+    { "uri": "vite/config", "relation": "prerequisite", "note": "loadEnv is used in vite.config.ts; envPrefix and envDir are config options" },
+    { "uri": "vite/build", "relation": "see-also", "note": "Env variables are statically replaced during production builds" },
+    { "uri": "vite/dev-server", "relation": "see-also", "note": "Dev server defaults to 'development' mode for env loading" },
+    { "uri": "typescript/config", "relation": "see-also", "note": "tsconfig.json must include the vite-env.d.ts declaration file" }
+  ],
+  "more": {
+    "docs": "https://vite.dev/guide/env-and-mode"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "8 min",
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

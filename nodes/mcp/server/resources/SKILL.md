@@ -1,64 +1,65 @@
 ---
-name: mcp-server-resources
-description: Expose contextual data via MCP resources — files, schemas, configs identified by URIs. Use when adding data sources to an MCP server or implementing resource subscriptions.
+name: resources
+description: Define MCP resources — data sources identified by URIs that provide contextual information to AI applications. Use when exposing files, schemas, configs, or other data via an MCP server.
 ---
 
-# MCP Server Resources
+# MCP Resources
 
-Expose contextual data sources that applications read to provide context to AI models.
+Expose data sources via URIs for AI applications to read as context.
 
 ## When to Use
 
-- Adding data sources to an MCP server
-- Exposing files, database schemas, or API data as resources
-- Implementing resource templates for parameterized access
-- Setting up resource subscriptions for real-time updates
+- Exposing database schemas, configs, or documentation as context
+- Providing file access through MCP
+- Creating parameterized data sources with URI templates
+- Enabling real-time data subscriptions
 
 ## Workflow
 
-### 1. Define Resources
+1. Define resource with a URI: `@mcp.resource("scheme://path")`
+2. Return text (string) or binary (bytes) content
+3. For parameterized access, use URI templates: `"file:///{path}"`
+4. Optionally enable subscriptions for change notifications
+5. Clients discover via `resources/list` and read via `resources/read`
+
+## Python
 
 ```python
-from mcp.server.fastmcp import FastMCP
-
-mcp = FastMCP("my-server")
-
 @mcp.resource("schema://database")
-def database_schema() -> str:
-    """Current database schema."""
-    return open("schema.sql").read()
+def get_schema() -> str:
+    """Database schema for AI context."""
+    return db.get_schema_ddl()
 
-@mcp.resource("config://app")
-def app_config() -> str:
-    """Application configuration."""
-    return json.dumps(config, indent=2)
+@mcp.resource("file:///{path}")
+def read_file(path: str) -> str:
+    """Read a project file by path."""
+    with open(path) as f:
+        return f.read()
 ```
 
-### 2. Choose URI Schemes
+## TypeScript
 
-- `file://` — Filesystem-like content
-- `https://` — Web resources clients can fetch directly
-- `db://`, `config://`, `schema://` — Custom application-specific schemes
-
-### 3. Handle Binary Content
-
-```python
-@mcp.resource("file://logo")
-def logo() -> bytes:
-    """Company logo."""
-    return open("logo.png", "rb").read()
+```typescript
+server.resource("schema", "schema://database", async (uri) => ({
+  contents: [{
+    uri: uri.href,
+    mimeType: "text/plain",
+    text: db.getSchema()
+  }]
+}));
 ```
 
-### 4. Test
+## URI Schemes
 
-```bash
-npx @modelcontextprotocol/inspector python server.py
-```
+- `file://` — filesystem resources
+- `https://` — web resources
+- `git://` — version control
+- Custom (`schema://`, `config://`, `db://`) — application-specific
 
-## Best Practices
+## Edge Cases
 
-1. Use meaningful URI schemes that describe the data domain
-2. Set appropriate MIME types for content
-3. Keep resources focused — one concept per resource
-4. Implement subscriptions for frequently changing data
-5. Validate URIs before processing reads
+- Resource URIs must be unique within a server
+- Text content uses `text` field; binary uses `blob` (base64)
+- URI templates use RFC 6570 syntax: `{param}`
+- Subscriptions require `subscribe: true` in capabilities
+- Resources not returned by `resources/list` may still exist (dynamic/template)

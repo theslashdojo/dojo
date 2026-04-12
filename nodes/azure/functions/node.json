@@ -1,0 +1,311 @@
+{
+  "name": "functions",
+  "uri": "azure/functions",
+  "type": "skill",
+  "context": "Provision and deploy Azure Function Apps with Azure CLI zip deployment and Core Tools publishing",
+  "info": "Azure Functions is the serverless execution surface for event-driven or HTTP-triggered workloads. Agents use this skill to create Function Apps backed by a storage account, deploy zip packages through Kudu, optionally publish directly with Azure Functions Core Tools when a local function project exists, and update app settings. Microsoft Learn's Azure CLI samples emphasize Flex Consumption as the recommended new serverless hosting plan, but the common CLI automation surface still includes classic Consumption and zip deployment flows that agents will regularly encounter.",
+  "parent": "azure",
+  "tags": [
+    "azure",
+    "functions",
+    "functionapp",
+    "serverless",
+    "zip-deploy",
+    "core-tools",
+    "storage",
+    "runtime"
+  ],
+  "aliases": [
+    "azure functions",
+    "function app",
+    "azure functionapp",
+    "deploy azure function",
+    "func azure functionapp publish",
+    "zip deploy function app",
+    "serverless on azure",
+    "az functionapp"
+  ],
+  "triggers": [
+    "create an azure function app",
+    "deploy a function app zip to azure",
+    "publish a function app with core tools",
+    "set azure function app settings",
+    "create serverless workload in azure",
+    "deploy python functions to azure",
+    "provision a function app from cli",
+    "update azure functions configuration"
+  ],
+  "body": "# Azure Functions\n\nFunction Apps combine a hosting plan, runtime configuration, and a required storage account. The Azure CLI is best at creating and configuring the Azure resources; Azure Functions Core Tools is best at creating local code projects and publishing source trees directly.\n\n~~~bash\n# Create the backing Function App on Linux Consumption\naz functionapp create \\\n  --resource-group rg-dojo-func \\\n  --consumption-plan-location eastus \\\n  --runtime python \\\n  --runtime-version 3.11 \\\n  --functions-version 4 \\\n  --name dojo-func-prod \\\n  --storage-account dojobuildstore \\\n  --os-type Linux\n\n# Deploy a built zip package\naz functionapp deployment source config-zip \\\n  --resource-group rg-dojo-func \\\n  --name dojo-func-prod \\\n  --src ./dist/functionapp.zip\n\n# Publish directly from a local function project\nfunc azure functionapp publish dojo-func-prod\n\n# Update app settings\naz functionapp config appsettings set \\\n  --resource-group rg-dojo-func \\\n  --name dojo-func-prod \\\n  --settings FUNCTIONS_WORKER_RUNTIME=python SCM_DO_BUILD_DURING_DEPLOYMENT=true\n~~~\n\nUse zip deploy when a CI pipeline has already produced an artifact. Use Core Tools publishing when the agent holds the function project directory and wants the Functions toolchain to package it. Either way, keep the storage account available and continue into [[azure/monitor]] for post-deploy validation.\n\nThis skill depends on [[azure/storage]] because every Function App needs a storage account, and it pairs well with [[azure/key-vault]] once secrets or connection strings must move out of plain app settings.\n",
+  "sections": [
+    {
+      "id": "provision",
+      "title": "Provision the Function App",
+      "body": "`az functionapp create` is the infrastructure step. It needs a resource group, region, runtime, function app name, and storage account. The agent should create or verify the storage account first, then create the Function App with the matching runtime and Functions version.",
+      "tags": [
+        "provision",
+        "create",
+        "runtime",
+        "storage-account"
+      ]
+    },
+    {
+      "id": "zip-deploy",
+      "title": "Zip deployment",
+      "body": "`az functionapp deployment source config-zip --src ...` pushes a prepared zip package through Kudu. By default, Kudu assumes the zip does not need build actions unless `.deployment` or relevant app settings enable them. This is the cleanest path when build and deploy are separate pipeline stages.",
+      "tags": [
+        "config-zip",
+        "kudu",
+        "artifact",
+        "deploy"
+      ]
+    },
+    {
+      "id": "core-tools",
+      "title": "Core Tools publishing",
+      "body": "Azure's CLI samples explicitly note that Azure Functions Core Tools is required to create local function code projects and publish code projects from the command line. Use `func azure functionapp publish <name>` when the source tree is local and the Functions toolchain should own packaging.",
+      "tags": [
+        "core-tools",
+        "func",
+        "publish",
+        "local-project"
+      ]
+    },
+    {
+      "id": "settings",
+      "title": "Settings and runtime behavior",
+      "body": "`az functionapp config appsettings set` updates application settings such as runtime flags, build behavior, and connection strings. Keep durable secrets in [[azure/key-vault]] when possible, and use managed identity or indirection patterns instead of hard-coding secrets directly into deployment manifests.",
+      "tags": [
+        "appsettings",
+        "runtime",
+        "build-remote",
+        "configuration"
+      ]
+    }
+  ],
+  "links": [
+    {
+      "uri": "azure/auth",
+      "context": "Authenticate and select the correct subscription before provisioning serverless resources"
+    },
+    {
+      "uri": "azure/resource-groups",
+      "context": "Create or verify the workload group first"
+    },
+    {
+      "uri": "azure/storage",
+      "context": "Provision the required storage account before the Function App"
+    },
+    {
+      "uri": "azure/key-vault",
+      "context": "Store secrets outside raw app settings when possible"
+    },
+    {
+      "uri": "azure/monitor",
+      "context": "Inspect deployment events and runtime health after publish"
+    }
+  ],
+  "related": [
+    {
+      "uri": "azure/storage",
+      "relation": "prerequisite",
+      "note": "Function Apps require a storage account for runtime state and triggers"
+    },
+    {
+      "uri": "aws/lambda",
+      "relation": "alternative",
+      "note": "AWS Lambda is the comparable serverless surface in another cloud ecosystem"
+    },
+    {
+      "uri": "gcp/functions",
+      "relation": "alternative",
+      "note": "Google Cloud Functions is another serverless execution target"
+    }
+  ],
+  "scripts": [
+    {
+      "id": "manage-functionapp",
+      "name": "Manage Function App",
+      "description": "Create a Function App, zip deploy an artifact, publish with Core Tools, or update app settings",
+      "lang": "bash",
+      "runtime": "bash>=4.0, azure-cli>=2.0",
+      "entry": "./scripts/manage-functionapp.sh",
+      "env": {
+        "AZURE_FUNCTIONAPP_ACTION": {
+          "required": true,
+          "description": "One of app-create, deploy-zip, publish-core-tools, settings-set, or show"
+        },
+        "AZURE_RESOURCE_GROUP": {
+          "required": false,
+          "description": "Target resource group"
+        },
+        "AZURE_LOCATION": {
+          "required": false,
+          "description": "Azure region for `app-create`"
+        },
+        "AZURE_FUNCTIONAPP_NAME": {
+          "required": false,
+          "description": "Function App name"
+        },
+        "AZURE_FUNCTIONS_RUNTIME": {
+          "required": false,
+          "default": "python",
+          "description": "Runtime value for `az functionapp create`"
+        },
+        "AZURE_FUNCTIONS_RUNTIME_VERSION": {
+          "required": false,
+          "description": "Runtime version such as 3.11 for Python"
+        },
+        "AZURE_FUNCTIONS_VERSION": {
+          "required": false,
+          "default": "4",
+          "description": "Functions host version"
+        },
+        "AZURE_STORAGE_ACCOUNT": {
+          "required": false,
+          "description": "Backing storage account name for `app-create`"
+        },
+        "AZURE_FUNCTIONAPP_ARTIFACT_PATH": {
+          "required": false,
+          "description": "Zip artifact path for `deploy-zip`"
+        },
+        "AZURE_FUNCTIONAPP_SRC_PATH": {
+          "required": false,
+          "description": "Local source directory for Core Tools publishing"
+        },
+        "AZURE_FUNCTIONAPP_SETTINGS": {
+          "required": false,
+          "description": "Space-separated KEY=VALUE settings for `settings-set`"
+        },
+        "AZURE_FUNCTIONAPP_BUILD_REMOTE": {
+          "required": false,
+          "default": "false",
+          "description": "Set to true to pass --build-remote during zip deploy"
+        },
+        "AZURE_SUBSCRIPTION_ID": {
+          "required": false,
+          "description": "Subscription ID or name to activate before the command"
+        }
+      }
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "action": {
+          "type": "string",
+          "enum": [
+            "app-create",
+            "deploy-zip",
+            "publish-core-tools",
+            "settings-set",
+            "show"
+          ]
+        },
+        "resourceGroup": {
+          "type": "string",
+          "description": "Resource group name"
+        },
+        "location": {
+          "type": "string",
+          "description": "Azure region for create"
+        },
+        "appName": {
+          "type": "string",
+          "description": "Function App name"
+        },
+        "runtime": {
+          "type": "string",
+          "description": "Runtime such as python or node"
+        },
+        "runtimeVersion": {
+          "type": "string",
+          "description": "Runtime version such as 3.11"
+        },
+        "storageAccount": {
+          "type": "string",
+          "description": "Backing storage account name"
+        },
+        "artifactPath": {
+          "type": "string",
+          "description": "Zip artifact to deploy"
+        },
+        "sourcePath": {
+          "type": "string",
+          "description": "Local Function project directory for Core Tools publish"
+        },
+        "settings": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "App settings as KEY=VALUE pairs"
+        }
+      },
+      "required": [
+        "action"
+      ]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "defaultHostName": {
+          "type": "string",
+          "description": "Function App hostname"
+        },
+        "state": {
+          "type": "string",
+          "description": "Operational state"
+        },
+        "kind": {
+          "type": "string",
+          "description": "Azure resource kind for the Function App"
+        }
+      }
+    }
+  },
+  "depends": [
+    {
+      "uri": "azure/auth",
+      "reason": "Provisioning and deployment require an authenticated Azure principal"
+    },
+    {
+      "uri": "azure/resource-groups",
+      "reason": "Function Apps deploy into a known resource group"
+    },
+    {
+      "uri": "azure/storage",
+      "reason": "Function Apps require a storage account"
+    },
+    {
+      "uri": "shell/bash",
+      "reason": "The executable wrapper is a Bash script"
+    }
+  ],
+  "more": {
+    "functionapp": "https://learn.microsoft.com/en-us/cli/azure/functionapp?view=azure-cli-latest",
+    "deployment": "https://learn.microsoft.com/en-us/cli/azure/functionapp/deployment/source?view=azure-cli-latest",
+    "samples": "https://learn.microsoft.com/en-us/azure/azure-functions/functions-cli-samples"
+  },
+  "frontmatter": {
+    "created": "2026-04-12",
+    "updated": "2026-04-12",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "7 min",
+    "prerequisites": [
+      "azure/auth",
+      "azure/resource-groups",
+      "azure/storage"
+    ],
+    "status": "living",
+    "confidence": "high"
+  },
+  "repository": "https://github.com/Azure/azure-cli",
+  "version": "1.0.0",
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-12T00:00:00Z",
+  "updated": "2026-04-12T00:00:00Z",
+  "status": "published"
+}

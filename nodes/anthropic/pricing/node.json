@@ -4,87 +4,86 @@
   "uri": "anthropic/pricing",
   "type": "context",
   "content_type": "reference",
-  "context": "Claude API token pricing — per-model rates, prompt caching multipliers, batch discounts, and tool use costs",
-  "info": "Anthropic charges per token for input and output. Prices vary by model: Opus 4.6 ($5/$25 per MTok), Sonnet 4.6 ($3/$15), Haiku 4.5 ($1/$5). Prompt caching adds multipliers: 5-minute cache writes at 1.25x, 1-hour at 2x, reads at 0.1x base input price. The Batch API gives a flat 50% discount on all tokens. Caching and batch discounts stack. Tool use is priced at standard token rates plus a system prompt overhead (~346 tokens). Server-side tools have additional costs: web search ($10/1000 searches), code execution (metered by time), web fetch (free). Legacy models like Opus 4.1/4 cost $15/$75 per MTok. Fast mode for Opus 4.6 costs 6x standard ($30/$150 per MTok). Data residency (US-only) adds 10% to Opus 4.6+ models.",
+  "context": "Per-model token pricing, batch discounts, prompt caching costs, tool pricing, and cost optimization strategies",
+  "info": "Anthropic bills per token — input and output tokens are priced separately for each model. Key pricing dimensions: base input/output rates, prompt caching (writes at 1.25x or 2x, reads at 0.1x), batch API (50% discount), fast mode (6x for Opus 4.6), data residency (1.1x for US-only inference), and tool-specific costs (web search at $10/1000 searches, web fetch free, code execution free with web tools). One token is approximately 4 characters or 0.75 words in English. Pricing discounts stack: batch + caching together provides maximum savings. Use the Anthropic Console Usage page to monitor spend.",
   "parent": "anthropic",
-  "tags": ["pricing", "tokens", "cost", "billing", "mtok"],
+  "tags": ["pricing", "cost", "tokens", "billing", "discount"],
   "aliases": [
-    "pricing",
+    "anthropic pricing",
     "claude pricing",
     "token cost",
     "api pricing",
+    "cost per token",
+    "claude api cost",
     "how much does claude cost",
-    "anthropic pricing",
-    "claude cost",
-    "per token price",
-    "input output price"
+    "pricing table",
+    "MTok pricing"
   ],
   "triggers": [
-    "how much does the claude api cost",
-    "what is the price per token for claude",
-    "compare claude model pricing",
-    "calculate claude api cost",
-    "how much does batch processing cost",
-    "what does prompt caching cost",
-    "claude pricing per million tokens"
+    "how much does claude api cost",
+    "what is the pricing for claude",
+    "calculate api costs",
+    "batch api pricing",
+    "prompt caching pricing",
+    "compare model costs",
+    "optimize api spend"
   ],
-  "body": "# Pricing Reference\n\nAll Claude API pricing in USD per million tokens (MTok).\n\n## Model Pricing\n\n| Model | Input | Output | Batch Input | Batch Output |\n|-------|-------|--------|-------------|---------------|\n| **Opus 4.6** | $5 | $25 | $2.50 | $12.50 |\n| **Sonnet 4.6** | $3 | $15 | $1.50 | $7.50 |\n| **Haiku 4.5** | $1 | $5 | $0.50 | $2.50 |\n| Opus 4.5 | $5 | $25 | $2.50 | $12.50 |\n| Sonnet 4.5 | $3 | $15 | $1.50 | $7.50 |\n| Opus 4.1 | $15 | $75 | $7.50 | $37.50 |\n| Opus 4 | $15 | $75 | $7.50 | $37.50 |\n| Sonnet 4 | $3 | $15 | $1.50 | $7.50 |\n| Haiku 3.5 | $0.80 | $4 | $0.40 | $2 |\n| Haiku 3 | $0.25 | $1.25 | $0.125 | $0.625 |\n\n## Prompt Caching Pricing\n\n| Operation | Multiplier | Opus 4.6 | Sonnet 4.6 | Haiku 4.5 |\n|-----------|-----------|----------|------------|------------|\n| Base input | 1x | $5 | $3 | $1 |\n| Cache write (5m) | 1.25x | $6.25 | $3.75 | $1.25 |\n| Cache write (1h) | 2x | $10 | $6 | $2 |\n| Cache read | 0.1x | $0.50 | $0.30 | $0.10 |\n\nCaching pays for itself after **one cache read** (5m TTL) or **two cache reads** (1h TTL).\n\n## Batch API Discount\n\nFlat 50% off both input and output tokens. Caching multipliers apply on top of batch pricing.\n\n## Fast Mode (Opus 4.6 only)\n\n| | Price |\n|--|-------|\n| Input | $30/MTok (6x standard) |\n| Output | $150/MTok (6x standard) |\n\n## Data Residency (US-only)\n\nSpecifying `inference_geo: \"us\"` adds 10% to all token pricing for Opus 4.6+ models.\n\n## Tool Use Pricing\n\nClient-side tools: standard token pricing. Tool definitions add input tokens:\n\n| Tool Choice | System Prompt Overhead |\n|-------------|------------------------|\n| `auto`, `none` | ~346 tokens |\n| `any`, `tool` | ~313 tokens |\n\nEach tool definition adds tokens proportional to its name + description + schema size.\n\n## Server-Side Tool Pricing\n\n| Tool | Cost |\n|------|------|\n| Web search | $10 per 1,000 searches |\n| Code execution | $0.05/hr per container (1,550 free hrs/month) |\n| Web fetch | Free (token costs only) |\n| Bash tool | 245 extra input tokens |\n| Text editor | 700 extra input tokens |\n\n## Cost Estimation Examples\n\n### Simple conversation (Sonnet 4.6)\n- Input: 1,000 tokens × $3/MTok = $0.003\n- Output: 500 tokens × $15/MTok = $0.0075\n- **Total: $0.0105**\n\n### Cached long document (Sonnet 4.6)\n- First request: 50k tokens cache write × $3.75/MTok = $0.1875\n- Second request: 50k tokens cache read × $0.30/MTok = $0.015\n- **90% savings on second request**\n\n### Batch of 10,000 requests (Haiku 4.5)\n- Average 3,700 tokens per conversation\n- Input: 37M tokens × $0.50/MTok = $18.50\n- Output: ~18.5M tokens × $2.50/MTok = $46.25\n- **Total: ~$64.75 for 10,000 requests**\n\n## Token Counting\n\n1 token ≈ 4 characters ≈ 0.75 words (English). Use `POST /v1/messages/count_tokens` to count tokens before sending.\n\n## Billing\n\n- Monthly billing based on actual usage\n- Credit card or invoicing\n- Spend limits configurable per workspace\n- Usage tracked in Console → Usage page\n",
+  "body": "# Pricing\n\nAll prices in USD per million tokens (MTok). One token ≈ 4 characters ≈ 0.75 words.\n\n## Model Pricing\n\n| Model | Input | Output | Batch Input | Batch Output |\n|-------|-------|--------|-------------|-------------|\n| **Opus 4.6** | $5/MTok | $25/MTok | $2.50/MTok | $12.50/MTok |\n| **Sonnet 4.6** | $3/MTok | $15/MTok | $1.50/MTok | $7.50/MTok |\n| **Haiku 4.5** | $1/MTok | $5/MTok | $0.50/MTok | $2.50/MTok |\n| Opus 4.5 | $5/MTok | $25/MTok | $2.50/MTok | $12.50/MTok |\n| Opus 4.1 | $15/MTok | $75/MTok | $7.50/MTok | $37.50/MTok |\n| Sonnet 4.5 | $3/MTok | $15/MTok | $1.50/MTok | $7.50/MTok |\n| Sonnet 4 | $3/MTok | $15/MTok | $1.50/MTok | $7.50/MTok |\n| Haiku 3.5 | $0.80/MTok | $4/MTok | $0.40/MTok | $2/MTok |\n\n## Prompt Caching Pricing\n\n| Model | Base Input | 5m Cache Write | 1h Cache Write | Cache Read |\n|-------|-----------|----------------|----------------|------------|\n| Opus 4.6 | $5/MTok | $6.25/MTok | $10/MTok | $0.50/MTok |\n| Sonnet 4.6 | $3/MTok | $3.75/MTok | $6/MTok | $0.30/MTok |\n| Haiku 4.5 | $1/MTok | $1.25/MTok | $2/MTok | $0.10/MTok |\n\n**Cache pricing multipliers:**\n- 5-minute cache write: 1.25x base input\n- 1-hour cache write: 2x base input\n- Cache read: 0.1x base input (90% discount)\n\nBreak-even: 1 read for 5m cache, 2 reads for 1h cache. See [[anthropic/prompt-caching]].\n\n## Discount Stacking\n\nDiscounts compose multiplicatively:\n\n| Scenario | Input Cost (Sonnet 4.6) |\n|----------|------------------------|\n| Standard | $3.00/MTok |\n| Batch only | $1.50/MTok |\n| Cache read only | $0.30/MTok |\n| Batch + cache read | $0.15/MTok |\n\n## Tool-Specific Pricing\n\n| Tool | Cost |\n|------|------|\n| **Web search** | $10 per 1,000 searches + standard token costs |\n| **Web fetch** | Free (standard token costs only) |\n| **Code execution** | Free with web tools; otherwise $0.05/hr/container after 1,550 free hours/month |\n| **Bash tool** | +245 input tokens per call |\n| **Text editor** | +700 input tokens per call |\n| **Tool use overhead** | 313-346 tokens system prompt per request (when tools provided) |\n\n## Fast Mode (Opus 4.6 Only)\n\n| | Input | Output |\n|--|-------|--------|\n| Fast mode | $30/MTok | $150/MTok |\n\n6x standard pricing. Stacks with caching and data residency multipliers. Not available with batch.\n\n## Data Residency\n\nUS-only inference (`inference_geo: \"us\"`) adds a 1.1x multiplier on all token categories for Opus 4.6+ models. Global routing (default) uses standard pricing.\n\n## Cost Estimation Examples\n\n### Chat Application (Sonnet 4.6)\n- Average conversation: 2K input tokens, 500 output tokens\n- Cost per conversation: (2000 × $3 + 500 × $15) / 1,000,000 = $0.0135\n- 10,000 conversations/day: ~$135/day\n\n### With Prompt Caching (80% cache hit)\n- 1,600 tokens cached read: 1600 × $0.30 / 1M = $0.00048\n- 400 tokens uncached: 400 × $3 / 1M = $0.0012\n- 500 output tokens: 500 × $15 / 1M = $0.0075\n- Total: $0.00918/conversation (32% savings)\n\n### Batch Processing (Sonnet 4.6)\n- 100K documents, 1K tokens each input, 500 tokens output\n- Input: 100M × $1.50 / 1M = $150\n- Output: 50M × $7.50 / 1M = $375\n- Total: $525 (vs $1,050 standard — 50% savings)\n\n## Monitoring Spend\n\n- **Console**: [console.anthropic.com/usage](https://console.anthropic.com/usage) for real-time usage\n- **API**: Token counts in every response's `usage` field\n- **Workspace limits**: Set per-workspace spend caps to prevent overuse\n\n## Cost Optimization Strategies\n\n1. **Choose the right model** — Haiku for simple tasks, Sonnet for most work, Opus for complex reasoning\n2. **Use prompt caching** — 90% discount on repeated content\n3. **Use batch API** — 50% discount for non-time-sensitive work\n4. **Stack discounts** — Batch + caching for maximum savings\n5. **Minimize tool overhead** — Cache tool definitions\n6. **Set workspace limits** — Prevent accidental overspend\n7. **Monitor usage** — Track cost per conversation/request\n",
   "sections": [
     {
       "id": "model-pricing",
-      "title": "Per-model token pricing",
-      "body": "Current flagship pricing: Opus 4.6 ($5 input, $25 output per MTok), Sonnet 4.6 ($3/$15), Haiku 4.5 ($1/$5). Legacy models: Opus 4.1/4 are expensive at $15/$75. Batch API halves all prices. See [[anthropic/models]] for which model to choose based on quality needs, then use this table for cost planning.",
-      "tags": ["model-pricing", "input", "output", "mtok", "per-token"]
+      "title": "Per-model pricing",
+      "body": "Current flagship models: Opus 4.6 ($5/$25 in/out), Sonnet 4.6 ($3/$15), Haiku 4.5 ($1/$5). All per million tokens. Legacy models vary. Opus 4.1 and Opus 4 are significantly more expensive at $15/$75. Use the cheapest model that meets your quality requirements.",
+      "tags": ["models", "per-token", "mtok", "input", "output"]
     },
     {
-      "id": "caching-pricing",
+      "id": "caching-costs",
       "title": "Prompt caching costs",
-      "body": "Cache writes cost 1.25x (5-minute TTL) or 2x (1-hour TTL) base input price. Cache reads cost 0.1x — 90% savings. Break-even: one cache read for 5m TTL, two for 1h. Best for repeated system prompts, tool definitions, and long documents. See [[anthropic/prompt-caching]] for implementation. Caching multipliers stack with batch discounts and data residency.",
-      "tags": ["caching", "cache-write", "cache-read", "savings", "multiplier"]
+      "body": "5-minute cache write: 1.25x base input. 1-hour write: 2x base. Cache reads: 0.1x base (90% off). Break-even after 1 read for 5m cache, 2 reads for 1h. Cache reads don't count toward ITPM rate limits, providing both cost and throughput benefits. See [[anthropic/prompt-caching]].",
+      "tags": ["caching", "write", "read", "discount", "break-even"]
     },
     {
-      "id": "batch-pricing",
-      "title": "Batch API pricing",
-      "body": "50% flat discount on both input and output tokens for all models. Opus 4.6: $2.50/$12.50. Sonnet 4.6: $1.50/$7.50. Haiku 4.5: $0.50/$2.50. Prompt caching discounts stack on top. Processing within 24 hours. See [[anthropic/batch]] for implementation.",
-      "tags": ["batch", "discount", "50-percent", "bulk"]
+      "id": "batch-discount",
+      "title": "Batch API discount",
+      "body": "50% discount on both input and output tokens for all models. Batch processing is asynchronous (up to 24h). Stacks with caching discounts. Example: Sonnet 4.6 batch + cache read = $0.15/MTok input (95% off standard). Best for non-time-sensitive bulk work. See [[anthropic/batch]].",
+      "tags": ["batch", "discount", "50-percent", "async", "bulk"]
     },
     {
-      "id": "tool-pricing",
-      "title": "Tool use and server tool costs",
-      "body": "Client-side tools: standard token pricing plus system prompt overhead (~346 tokens for auto/none, ~313 for any/tool). Web search: $10/1000 searches. Code execution: $0.05/hr per container with 1,550 free hours/month. Web fetch: free (tokens only). Bash: 245 extra tokens. Text editor: 700 extra tokens.",
-      "tags": ["tools", "web-search", "code-execution", "overhead"]
+      "id": "cost-optimization",
+      "title": "Cost optimization strategies",
+      "body": "1. Right-size model selection (Haiku for simple, Sonnet for most, Opus for complex). 2. Cache repeated content (system prompts, docs, tools). 3. Batch non-urgent work. 4. Stack discounts (batch + caching). 5. Monitor usage in the Console. 6. Set workspace spend limits. 7. Minimize prompt size by being concise.",
+      "tags": ["optimization", "cost-reduction", "strategy", "best-practices"]
     }
   ],
   "links": [
-    { "uri": "anthropic/models", "context": "Model capabilities and context windows" },
-    { "uri": "anthropic/prompt-caching", "context": "Implement caching for cost savings" },
+    { "uri": "anthropic/models", "context": "Model capabilities and selection guide" },
+    { "uri": "anthropic/prompt-caching", "context": "Caching implementation for cost savings" },
     { "uri": "anthropic/batch", "context": "Batch API for 50% discount" },
-    { "uri": "anthropic/rate-limits", "context": "Spend limits per usage tier" },
-    { "uri": "anthropic/tool-use", "context": "Tool use token costs" }
+    { "uri": "anthropic/rate-limits", "context": "Spend determines rate limit tier" },
+    { "uri": "anthropic/tool-use", "context": "Tool-specific pricing and overhead" }
   ],
   "related": [
-    { "uri": "anthropic/models", "relation": "see-also", "note": "Choose model based on capability needs, then check pricing" },
-    { "uri": "anthropic/prompt-caching", "relation": "see-also", "note": "Caching provides 90% savings on repeated input" },
-    { "uri": "anthropic/batch", "relation": "see-also", "note": "Batch gives flat 50% discount" },
-    { "uri": "anthropic/rate-limits", "relation": "see-also", "note": "Tier advancement requires credit purchases" }
+    { "uri": "anthropic/models", "relation": "see-also", "note": "Pricing varies significantly by model" },
+    { "uri": "anthropic/prompt-caching", "relation": "see-also", "note": "Caching provides 90% discount on cached reads" },
+    { "uri": "anthropic/batch", "relation": "see-also", "note": "Batch provides flat 50% discount" }
   ],
   "more": {
-    "docs": "https://docs.anthropic.com/en/docs/about-claude/pricing",
-    "pricing-page": "https://claude.com/pricing",
-    "console-usage": "https://console.anthropic.com/usage"
+    "docs": "https://docs.anthropic.com/en/about-claude/pricing",
+    "console": "https://console.anthropic.com/usage"
   },
   "frontmatter": {
-    "created": "2026-04-10",
-    "updated": "2026-04-10",
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
     "author": "dojo-community",
-    "audience": "developers, AI agents",
-    "estimated_reading_time": "4 min",
+    "audience": "developers, AI agents, engineering managers",
+    "estimated_reading_time": "5 min",
+    "prerequisites": [],
     "status": "living",
     "confidence": "high"
   },
   "author": "dojo-community",
   "license": "MIT",
-  "created": "2026-04-10T00:00:00Z",
-  "updated": "2026-04-10T00:00:00Z",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
   "status": "published"
 }

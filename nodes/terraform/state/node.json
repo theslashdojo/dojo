@@ -1,0 +1,144 @@
+{
+  "name": "state",
+  "version": "1.0.0",
+  "uri": "terraform/state",
+  "type": "skill",
+  "context": "Terraform state tracks the mapping between your configuration and real-world infrastructure resources",
+  "info": "Terraform state is a JSON file (terraform.tfstate) that records the binding between every resource block in your configuration and the real infrastructure object it manages. State stores resource metadata, dependency relationships, and cached attribute values so that Terraform can determine what changes need to be applied. Without state, Terraform has no way to know which cloud resources it controls. State is the source of truth for Terraform — it is consulted before every plan and apply to compute the diff between desired and actual infrastructure. For teams, state must be stored remotely (see [[terraform/state/backends]]) with locking (see [[terraform/state/locking]]) to prevent concurrent corruption. Existing infrastructure can be brought under management via [[terraform/state/import]].",
+  "parent": "terraform",
+  "sub": [
+    "terraform/state/backends",
+    "terraform/state/locking",
+    "terraform/state/import"
+  ],
+  "tags": ["terraform", "state", "tfstate", "infrastructure", "iac", "resource-tracking", "state-management"],
+  "aliases": [
+    "terraform state",
+    "tfstate",
+    "terraform.tfstate",
+    "tf state",
+    "terraform state file",
+    "state file",
+    "terraform resource state",
+    "infrastructure state"
+  ],
+  "triggers": [
+    "what is terraform state",
+    "how does terraform track resources",
+    "where does terraform store state",
+    "manage terraform state",
+    "terraform state commands",
+    "view terraform state",
+    "list resources in terraform state",
+    "move resource in terraform state",
+    "remove resource from state",
+    "terraform state security",
+    "sensitive data in terraform state"
+  ],
+  "body": "# Terraform State\n\nTerraform state is the backbone of how Terraform maps your HCL configuration to real infrastructure. Every time you run `terraform apply`, Terraform writes a state file that records which real-world object corresponds to each resource block. This state file — `terraform.tfstate` — is a JSON document that Terraform consults on every subsequent operation.\n\n## What State Tracks\n\nState records three categories of information for every managed resource:\n\n1. **Resource metadata** — the resource type, name, provider, and unique ID of the real-world object\n2. **Attribute cache** — the last-known attribute values (IP addresses, ARNs, IDs) so Terraform can compute diffs without querying every API\n3. **Dependency graph** — explicit and implicit dependencies between resources, used to determine creation and destruction order\n\n```json\n{\n  \"version\": 4,\n  \"terraform_version\": \"1.7.0\",\n  \"serial\": 42,\n  \"lineage\": \"a1b2c3d4-e5f6-7890-abcd-ef1234567890\",\n  \"outputs\": {\n    \"instance_ip\": {\n      \"value\": \"54.123.45.67\",\n      \"type\": \"string\"\n    }\n  },\n  \"resources\": [\n    {\n      \"mode\": \"managed\",\n      \"type\": \"aws_instance\",\n      \"name\": \"web\",\n      \"provider\": \"provider[\\\"registry.terraform.io/hashicorp/aws\\\"]\",\n      \"instances\": [\n        {\n          \"schema_version\": 1,\n          \"attributes\": {\n            \"id\": \"i-0abcdef1234567890\",\n            \"ami\": \"ami-0c55b159cbfafe1f0\",\n            \"instance_type\": \"t3.micro\",\n            \"public_ip\": \"54.123.45.67\"\n          }\n        }\n      ]\n    }\n  ]\n}\n```\n\nThe `serial` increments with every state change. The `lineage` is a UUID assigned at `terraform init` that prevents accidentally applying state from a different project.\n\n## State as Source of Truth\n\nTerraform treats state as the authoritative record of what it manages. During `terraform plan`:\n\n1. Terraform reads the current state file\n2. Terraform refreshes state by querying each provider API for actual resource attributes\n3. Terraform compares refreshed state against your configuration\n4. The diff becomes the execution plan\n\nIf a resource exists in state but not in your config, Terraform plans to destroy it. If a resource exists in your config but not in state, Terraform plans to create it. This is why accidentally deleting or corrupting your state file is dangerous — Terraform will attempt to recreate everything.\n\n## State CLI Commands\n\nTerraform provides the `terraform state` subcommand for direct state manipulation:\n\n```bash\n# List all resources tracked in state\nterraform state list\n\n# Show detailed attributes for a specific resource\nterraform state show aws_instance.web\n\n# Move a resource to a new address (refactoring)\nterraform state mv aws_instance.web aws_instance.app_server\n\n# Remove a resource from state without destroying it\nterraform state rm aws_instance.legacy\n\n# Pull remote state to stdout (useful for inspection)\nterraform state pull\n\n# Push a local state file to the remote backend\nterraform state push\n\n# Replace a provider in state (provider migration)\nterraform state replace-provider hashicorp/aws registry.terraform.io/hashicorp/aws\n```\n\n`terraform state mv` is essential when refactoring — renaming a resource block without `mv` would cause Terraform to destroy the old resource and create a new one.\n\n`terraform state rm` removes Terraform's knowledge of a resource without touching the real infrastructure. Use this when you want to stop managing a resource without destroying it.\n\n## State and Collaboration\n\nThe default local state file (`terraform.tfstate` on disk) breaks down in teams:\n\n- **No shared access** — teammates cannot see or update the same state\n- **No locking** — two people running `terraform apply` simultaneously can corrupt state\n- **No versioning** — accidental deletion or corruption has no recovery path\n\nRemote backends solve all three problems. See [[terraform/state/backends]] for configuring S3, GCS, Azure Blob, Consul, or Terraform Cloud as your state store, and [[terraform/state/locking]] for preventing concurrent modifications.\n\n## Sensitive Data in State\n\nState files contain **every attribute value** for every managed resource, including:\n\n- Database passwords passed via `password` arguments\n- Private keys generated by `tls_private_key`\n- Secret values from `random_password`\n- API tokens stored in resource attributes\n\nState is stored as **plain-text JSON**. Critical security measures:\n\n- **Encrypt at rest** — use backend encryption (S3 SSE, GCS encryption, Azure Storage encryption)\n- **Encrypt in transit** — backends should enforce TLS\n- **Restrict access** — limit state file access to authorized CI/CD pipelines and operators\n- **Never commit state to git** — add `*.tfstate` and `*.tfstate.backup` to `.gitignore`\n- **Use `sensitive = true`** — mark outputs as sensitive to prevent them from appearing in CLI output (but they are still in state)\n\n```hcl\n# .gitignore for Terraform projects\n*.tfstate\n*.tfstate.*\n.terraform/\n.terraform.lock.hcl\n```\n",
+  "sections": [
+    {
+      "id": "what-state-tracks",
+      "title": "What state tracks",
+      "body": "State records resource metadata (type, name, provider, real-world ID), cached attribute values (IPs, ARNs, computed fields), and the dependency graph between resources. The state file uses JSON format version 4 with a `serial` number that increments on every write and a `lineage` UUID that identifies the state's origin project. The `resources` array contains entries for each managed resource with full attribute snapshots.",
+      "tags": ["metadata", "attributes", "dependency-graph", "json", "serial", "lineage"]
+    },
+    {
+      "id": "source-of-truth",
+      "title": "State as source of truth",
+      "body": "Terraform treats state as the canonical record of managed infrastructure. During `terraform plan`, it refreshes state by querying provider APIs, then diffs refreshed state against configuration. Resources in state but not config are destroyed; resources in config but not state are created. Corrupted or deleted state causes Terraform to lose track of all managed resources, potentially leading to duplicate resource creation.",
+      "tags": ["source-of-truth", "plan", "refresh", "diff", "reconciliation"]
+    },
+    {
+      "id": "cli-commands",
+      "title": "State CLI commands",
+      "body": "`terraform state list` shows all tracked resources. `terraform state show <address>` displays attributes for one resource. `terraform state mv <src> <dst>` renames a resource in state to match refactored config. `terraform state rm <address>` stops managing a resource without destroying it. `terraform state pull` and `push` transfer state between local and remote. `terraform state replace-provider` updates provider references during migrations.",
+      "tags": ["cli", "state-list", "state-show", "state-mv", "state-rm", "state-pull", "state-push"]
+    },
+    {
+      "id": "collaboration",
+      "title": "State and team collaboration",
+      "body": "Local state files fail in teams because there is no shared access, no locking, and no versioning. Remote backends (see [[terraform/state/backends]]) store state in a shared location with encryption and access controls. State locking (see [[terraform/state/locking]]) prevents two operators from running concurrent apply operations. Terraform Cloud and Enterprise add state versioning with rollback capabilities.",
+      "tags": ["collaboration", "teams", "remote-state", "shared-access", "versioning"]
+    },
+    {
+      "id": "sensitive-data",
+      "title": "Sensitive data in state",
+      "body": "State files contain plaintext values for all resource attributes, including passwords, private keys, and API tokens. Encrypt state at rest using backend encryption (S3 SSE, GCS encryption). Restrict access to state files via IAM policies or backend access controls. Never commit `*.tfstate` files to version control. Mark outputs as `sensitive = true` to suppress CLI display, but note that values are still stored in state as plaintext.",
+      "tags": ["security", "sensitive", "encryption", "secrets", "gitignore", "access-control"]
+    }
+  ],
+  "links": [
+    { "uri": "terraform/state/backends", "context": "Configure remote storage for state files" },
+    { "uri": "terraform/state/locking", "context": "Prevent concurrent state modifications" },
+    { "uri": "terraform/state/import", "context": "Import existing infrastructure into state" },
+    { "uri": "aws/s3", "context": "S3 is a common backend for Terraform state storage" },
+    { "uri": "aws/iam", "context": "IAM policies control access to state files stored in AWS" }
+  ],
+  "related": [
+    { "uri": "terraform/state/backends", "relation": "extends", "note": "Backends define where and how state is stored" },
+    { "uri": "terraform/state/locking", "relation": "extends", "note": "Locking prevents concurrent state corruption" },
+    { "uri": "terraform/state/import", "relation": "extends", "note": "Import brings existing resources into state management" },
+    { "uri": "aws/cloudformation", "relation": "alternative", "note": "CloudFormation is AWS's native IaC tool with its own state management via stacks" }
+  ],
+  "scripts": [
+    {
+      "id": "manage-state",
+      "name": "Terraform State Manager",
+      "description": "Run terraform state operations: list, show, mv, rm, pull, push, import, replace-provider",
+      "lang": "bash",
+      "runtime": "terraform>=1.0",
+      "entry": "scripts/manage-state.sh",
+      "env": {
+        "TF_WORKING_DIR": { "required": false, "secret": false, "default": ".", "description": "Path to Terraform configuration directory" },
+        "TF_STATE_ACTION": { "required": true, "secret": false, "description": "State operation: list, show, mv, rm, pull, push, import, replace-provider" },
+        "TF_STATE_RESOURCE": { "required": false, "secret": false, "description": "Resource address (for show, mv, rm, import) or state file path (for push)" },
+        "TF_STATE_DESTINATION": { "required": false, "secret": false, "description": "Destination address (for mv) or new provider (for replace-provider)" },
+        "TF_IMPORT_ID": { "required": false, "secret": false, "description": "Real-world resource ID for import operations" }
+      }
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "action": { "type": "string", "enum": ["list", "show", "mv", "rm", "pull", "push", "import", "replace-provider"], "description": "State operation to perform" },
+        "resource": { "type": "string", "description": "Resource address in Terraform state" },
+        "destination": { "type": "string", "description": "Destination address for mv or new provider for replace-provider" },
+        "importId": { "type": "string", "description": "Real-world resource ID for import" }
+      },
+      "required": ["action"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "success": { "type": "boolean", "description": "Whether the operation completed successfully" },
+        "resources": { "type": "array", "items": { "type": "string" }, "description": "List of resource addresses (for list operation)" },
+        "attributes": { "type": "object", "description": "Resource attributes (for show operation)" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "terraform/init", "reason": "Working directory must be initialized to access state" }
+  ],
+  "more": {
+    "docs": "https://developer.hashicorp.com/terraform/language/state",
+    "spec": "https://developer.hashicorp.com/terraform/internals/json-format",
+    "wiki": "https://developer.hashicorp.com/terraform/cli/state"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "devops engineers, platform engineers, AI agents",
+    "estimated_reading_time": "8 min",
+    "prerequisites": ["terraform"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

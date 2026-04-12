@@ -3,73 +3,78 @@
   "version": "1.0.0",
   "uri": "mcp/server/prompts",
   "type": "sub",
-  "context": "Expose reusable prompt templates via MCP — structured message sequences with arguments, discovered via prompts/list",
-  "info": "MCP prompts are user-controlled reusable templates that servers expose to structure interactions with language models. Unlike tools (model-controlled) and resources (application-controlled), prompts are designed for explicit user selection — typically surfaced as slash commands or menu items. Each prompt has a name, optional description, and optional arguments for customization. Prompts return an array of messages with roles (user/assistant) and content (text, images, audio, embedded resources). Prompts are discovered via `prompts/list` and retrieved via `prompts/get`. Servers declare the `prompts` capability during initialization with optional `listChanged: true` for dynamic prompt lists.",
+  "context": "Define MCP prompts — reusable interaction templates that users select to structure conversations with language models",
+  "info": "This sub-skill covers MCP prompts — the user-controlled primitive. Prompts are reusable templates exposed by MCP servers that structure interactions with language models. They typically surface as slash commands or menu items in host applications. Each prompt has a name, optional description, and optional arguments for customization. When retrieved via prompts/get, they return an array of messages (user/assistant roles) with content blocks (text, images, embedded resources). Python: use @mcp.prompt() decorator. TypeScript: use server.prompt() with Zod schemas. Prompts complement tools and resources by providing pre-built interaction patterns.",
   "parent": "mcp/server",
-  "tags": ["mcp-prompts", "prompts", "templates", "slash-commands", "prompt-templates", "structured-prompts"],
+  "tags": ["prompts", "templates", "slash-commands", "interaction", "user-controlled", "messages"],
   "aliases": [
     "mcp prompts",
-    "MCP prompts",
-    "mcp prompt",
-    "prompt template",
+    "mcp server prompts",
+    "mcp prompt templates",
+    "mcp slash commands",
     "prompts/list",
     "prompts/get",
-    "slash command",
-    "server prompts",
-    "prompt definition",
-    "reusable prompts"
+    "mcp interaction templates",
+    "define mcp prompt"
   ],
   "triggers": [
-    "define an MCP prompt",
-    "add a prompt template to my MCP server",
-    "create a slash command",
-    "expose prompts via MCP",
-    "how do MCP prompts work",
-    "list available prompts",
-    "create a reusable prompt template",
-    "prompt with arguments"
+    "define mcp prompts",
+    "add prompts to mcp server",
+    "create mcp prompt template",
+    "mcp slash commands",
+    "expose prompt templates via mcp",
+    "mcp prompt arguments",
+    "create reusable prompts for mcp",
+    "mcp prompt with embedded resources"
   ],
-  "body": "# MCP Prompts\n\nPrompts are user-controlled reusable templates that MCP servers expose to structure interactions with language models. They provide pre-built message sequences that help users accomplish specific tasks — like code reviews, data analysis, or debugging workflows.\n\n## Prompt Definition\n\nEach prompt has:\n- **`name`** — Unique identifier (e.g., `code_review`, `sql_expert`)\n- **`title`** — Human-readable display name\n- **`description`** — What the prompt does\n- **`arguments`** — Optional parameters for customization\n\n## Python (FastMCP)\n\n```python\nfrom mcp.server.fastmcp import FastMCP\n\nmcp = FastMCP(\"prompts-example\")\n\n@mcp.prompt()\ndef code_review(code: str, language: str = \"python\") -> str:\n    \"\"\"Generate a thorough code review prompt.\"\"\"\n    return (\n        f\"Review this {language} code for bugs, security issues, \"\n        f\"performance problems, and style improvements:\\n\\n\"\n        f\"```{language}\\n{code}\\n```\"\n    )\n\n@mcp.prompt()\ndef sql_expert(table_name: str, task: str = \"query\") -> str:\n    \"\"\"Act as a SQL expert for a specific table.\"\"\"\n    return (\n        f\"You are a SQL expert. Help the user {task} the '{table_name}' table. \"\n        f\"Write efficient, safe SQL. Always use parameterized queries.\"\n    )\n\n@mcp.prompt()\ndef debug_error(error_message: str, stack_trace: str = \"\") -> str:\n    \"\"\"Help debug an error with context.\"\"\"\n    prompt = f\"Help debug this error:\\n\\n**Error:** {error_message}\"\n    if stack_trace:\n        prompt += f\"\\n\\n**Stack trace:**\\n```\\n{stack_trace}\\n```\"\n    return prompt + \"\\n\\nExplain the likely cause and suggest fixes.\"\n```\n\n## TypeScript (McpServer)\n\n```typescript\nimport { McpServer } from \"@modelcontextprotocol/sdk/server/mcp.js\";\nimport { z } from \"zod\";\n\nconst server = new McpServer({ name: \"prompts-example\", version: \"1.0.0\" });\n\nserver.prompt(\n  \"code_review\",\n  \"Generate a code review prompt\",\n  { code: z.string(), language: z.string().default(\"python\") },\n  ({ code, language }) => ({\n    messages: [{\n      role: \"user\",\n      content: {\n        type: \"text\",\n        text: `Review this ${language} code:\\n\\n\\`\\`\\`${language}\\n${code}\\n\\`\\`\\``\n      }\n    }]\n  })\n);\n```\n\n## Protocol Messages\n\n### List Prompts: `prompts/list`\n\n```json\n// Request\n{\"jsonrpc\": \"2.0\", \"id\": 1, \"method\": \"prompts/list\"}\n\n// Response\n{\n  \"jsonrpc\": \"2.0\", \"id\": 1,\n  \"result\": {\n    \"prompts\": [{\n      \"name\": \"code_review\",\n      \"description\": \"Generate a thorough code review prompt\",\n      \"arguments\": [\n        {\"name\": \"code\", \"description\": \"The code to review\", \"required\": true},\n        {\"name\": \"language\", \"description\": \"Programming language\", \"required\": false}\n      ]\n    }]\n  }\n}\n```\n\n### Get Prompt: `prompts/get`\n\n```json\n// Request\n{\n  \"jsonrpc\": \"2.0\", \"id\": 2,\n  \"method\": \"prompts/get\",\n  \"params\": {\n    \"name\": \"code_review\",\n    \"arguments\": {\"code\": \"def hello():\\n    print('world')\", \"language\": \"python\"}\n  }\n}\n\n// Response\n{\n  \"jsonrpc\": \"2.0\", \"id\": 2,\n  \"result\": {\n    \"description\": \"Code review prompt\",\n    \"messages\": [{\n      \"role\": \"user\",\n      \"content\": {\n        \"type\": \"text\",\n        \"text\": \"Review this python code...\\n\\n```python\\ndef hello():\\n    print('world')\\n```\"\n      }\n    }]\n  }\n}\n```\n\n## Message Content Types\n\nPrompt messages support the same content types as tool results:\n\n| Type | Use Case |\n|------|----------|\n| `text` | Text instructions and context |\n| `image` | Visual context (base64 + MIME type) |\n| `audio` | Audio context (base64 + MIME type) |\n| `resource` | Embedded server resources for context |\n\n## Multi-Turn Prompts\n\nPrompts can return multiple messages with different roles to set up a conversation:\n\n```python\n@mcp.prompt()\ndef few_shot_classifier(categories: str) -> list:\n    \"\"\"Set up a few-shot text classifier.\"\"\"\n    return [\n        {\"role\": \"user\", \"content\": f\"Classify text into: {categories}\"},\n        {\"role\": \"assistant\", \"content\": \"I'll classify text into those categories. Send me text to classify.\"},\n        {\"role\": \"user\", \"content\": \"Classify: 'The product arrived broken and customer service was unhelpful'\"},\n    ]\n```\n\n## User Interaction\n\nPrompts are typically exposed as:\n- **Slash commands** — `/code_review`, `/sql_expert`\n- **Menu items** — In a command palette or context menu\n- **Quick actions** — Buttons in a chat interface\n\nThe host application decides how to present prompts to users.\n\n## Error Handling\n\n- Invalid prompt name: JSON-RPC error `-32602` (Invalid params)\n- Missing required arguments: JSON-RPC error `-32602`\n- Internal errors: JSON-RPC error `-32603`\n",
+  "body": "# MCP Prompts\n\nPrompts are **user-controlled** primitives — they surface as slash commands or menu items that users explicitly select. They provide pre-built interaction patterns for common tasks.\n\n## Defining Prompts in Python\n\n```python\nfrom mcp.server.fastmcp import FastMCP\n\nmcp = FastMCP(\"my-server\")\n\n@mcp.prompt()\ndef review_code(code: str) -> str:\n    \"\"\"Review code for quality and suggest improvements.\"\"\"\n    return f\"Please review this code for quality, bugs, and improvements:\\n\\n```\\n{code}\\n```\"\n\n@mcp.prompt()\ndef explain_error(error: str, language: str = \"python\") -> str:\n    \"\"\"Explain an error message and suggest fixes.\"\"\"\n    return f\"Explain this {language} error and suggest how to fix it:\\n\\n{error}\"\n\n@mcp.prompt()\ndef summarize_document(document: str, style: str = \"brief\") -> str:\n    \"\"\"Summarize a document in the specified style.\"\"\"\n    return f\"Summarize the following document ({style} style):\\n\\n{document}\"\n```\n\nFastMCP generates prompt definitions from:\n- Function name becomes prompt `name`\n- Docstring becomes `description`\n- Parameters become `arguments` with types and defaults\n\n## Defining Prompts in TypeScript\n\n```typescript\nimport { McpServer } from \"@modelcontextprotocol/sdk/server/mcp.js\";\nimport { z } from \"zod\";\n\nconst server = new McpServer({ name: \"my-server\", version: \"1.0.0\" });\n\nserver.prompt(\n  \"review_code\",\n  \"Review code for quality and suggest improvements\",\n  { code: z.string().describe(\"Code to review\") },\n  async ({ code }) => ({\n    messages: [{\n      role: \"user\",\n      content: { type: \"text\", text: `Review this code:\\n\\n${code}` }\n    }]\n  })\n);\n\nserver.prompt(\n  \"explain_error\",\n  \"Explain an error and suggest fixes\",\n  {\n    error: z.string().describe(\"Error message\"),\n    language: z.string().default(\"python\").describe(\"Programming language\")\n  },\n  async ({ error, language }) => ({\n    messages: [{\n      role: \"user\",\n      content: { type: \"text\", text: `Explain this ${language} error:\\n\\n${error}` }\n    }]\n  })\n);\n```\n\n## Protocol Messages\n\n### prompts/list — Discovery\n\n```json\n// Request\n{\"jsonrpc\": \"2.0\", \"id\": 1, \"method\": \"prompts/list\"}\n\n// Response\n{\n  \"jsonrpc\": \"2.0\", \"id\": 1,\n  \"result\": {\n    \"prompts\": [{\n      \"name\": \"review_code\",\n      \"description\": \"Review code for quality and suggest improvements\",\n      \"arguments\": [{\n        \"name\": \"code\",\n        \"description\": \"Code to review\",\n        \"required\": true\n      }]\n    }]\n  }\n}\n```\n\n### prompts/get — Retrieval\n\n```json\n// Request\n{\n  \"jsonrpc\": \"2.0\", \"id\": 2,\n  \"method\": \"prompts/get\",\n  \"params\": {\n    \"name\": \"review_code\",\n    \"arguments\": { \"code\": \"def add(a, b): return a + b\" }\n  }\n}\n\n// Response\n{\n  \"jsonrpc\": \"2.0\", \"id\": 2,\n  \"result\": {\n    \"description\": \"Review code for quality and suggest improvements\",\n    \"messages\": [{\n      \"role\": \"user\",\n      \"content\": {\n        \"type\": \"text\",\n        \"text\": \"Please review this code for quality, bugs, and improvements:\\n\\n```\\ndef add(a, b): return a + b\\n```\"\n      }\n    }]\n  }\n}\n```\n\n## Message Content Types\n\nPrompt messages support multiple content types:\n\n### Text\n```json\n{ \"role\": \"user\", \"content\": { \"type\": \"text\", \"text\": \"Review this code...\" } }\n```\n\n### Images\n```json\n{ \"role\": \"user\", \"content\": { \"type\": \"image\", \"data\": \"base64...\", \"mimeType\": \"image/png\" } }\n```\n\n### Embedded Resources\n```json\n{\n  \"role\": \"user\",\n  \"content\": {\n    \"type\": \"resource\",\n    \"resource\": {\n      \"uri\": \"schema://database\",\n      \"mimeType\": \"text/plain\",\n      \"text\": \"CREATE TABLE users (...)\"\n    }\n  }\n}\n```\n\n## Multi-Turn Prompts\n\nPrompts can return multiple messages to set up a conversation:\n\n```python\n@mcp.prompt()\ndef debug_session(error: str, code: str) -> list:\n    \"\"\"Start a debugging session.\"\"\"\n    return [\n        {\"role\": \"user\", \"content\": f\"I have this code:\\n\\n{code}\"},\n        {\"role\": \"assistant\", \"content\": \"I see the code. What issue are you experiencing?\"},\n        {\"role\": \"user\", \"content\": f\"I'm getting this error:\\n\\n{error}\"}\n    ]\n```\n\n## Prompts with Dynamic Resources\n\n```python\n@mcp.prompt()\ndef analyze_schema() -> list:\n    \"\"\"Analyze the database schema.\"\"\"\n    schema = db.get_schema_ddl()\n    return [{\n        \"role\": \"user\",\n        \"content\": [\n            {\"type\": \"text\", \"text\": \"Analyze this database schema and suggest improvements:\"},\n            {\"type\": \"resource\", \"resource\": {\n                \"uri\": \"schema://database\",\n                \"mimeType\": \"text/plain\",\n                \"text\": schema\n            }}\n        ]\n    }]\n```\n\n## Server Capability\n\n```json\n{ \"capabilities\": { \"prompts\": { \"listChanged\": true } } }\n```\n\n`listChanged: true` enables `notifications/prompts/list_changed` when prompts are added or modified.\n\n## User Interaction Model\n\nPrompts typically surface as:\n- **Slash commands** — `/review`, `/explain`, `/summarize`\n- **Menu items** — Context menus, command palettes\n- **Quick actions** — Suggested actions in the UI\n\nThe host application controls how prompts are presented. The MCP protocol does not mandate a specific UI pattern.\n",
   "sections": [
     {
-      "id": "definition",
-      "title": "Prompt definition and arguments",
-      "body": "Each prompt requires a `name` and optionally has `title`, `description`, and `arguments`. Arguments have `name`, `description`, and `required` fields. In Python FastMCP, arguments are inferred from function parameters — required parameters become required arguments, parameters with defaults become optional. In TypeScript, use Zod schemas for argument validation.",
-      "tags": ["definition", "arguments", "schema", "parameters"]
+      "id": "defining",
+      "title": "Defining prompts",
+      "body": "Python: `@mcp.prompt()` decorator on a function returning string or list of messages. TypeScript: `server.prompt(name, description, zodSchema, handler)` returning `{messages: [...]}`. Arguments are defined by function parameters (Python) or Zod schema (TypeScript). Prompts can be parameterless or accept multiple arguments.",
+      "tags": ["define", "decorator", "zod", "arguments", "handler"]
     },
     {
-      "id": "message-structure",
-      "title": "Prompt message structure",
-      "body": "Prompts return an array of messages, each with a `role` (user or assistant) and `content`. Content can be text, images, audio, or embedded resources. Multi-turn prompts use alternating user/assistant messages to set up conversation context — useful for few-shot examples or establishing personas.",
-      "tags": ["messages", "roles", "multi-turn", "few-shot", "content-types"]
+      "id": "protocol",
+      "title": "Protocol messages",
+      "body": "`prompts/list` returns available prompts with name, description, and arguments array. `prompts/get` takes name and argument values, returns description and messages array. Arguments support auto-completion via the completion API. `notifications/prompts/list_changed` signals prompt list updates. Supports pagination via cursor.",
+      "tags": ["protocol", "list", "get", "notifications", "pagination"]
     },
     {
-      "id": "user-interaction",
-      "title": "User interaction patterns",
-      "body": "Prompts are user-controlled — they should be explicitly selected by users, not automatically invoked by the model. Common UI patterns: slash commands (e.g., `/code_review`), command palette entries, context menu items, or quick action buttons. The MCP protocol doesn't mandate a specific UI pattern — host applications choose how to present prompts.",
-      "tags": ["user-interaction", "slash-commands", "ui-patterns", "user-controlled"]
+      "id": "content-types",
+      "title": "Message content types",
+      "body": "Prompt messages can contain: text (plain text), image (base64 + mimeType), audio (base64 + mimeType), embedded resource (URI + content). Messages have a `role` field: `user` or `assistant`. Multi-turn prompts return multiple messages to set up conversation context. All content types support optional annotations.",
+      "tags": ["content", "text", "image", "audio", "resource", "multi-turn"]
+    },
+    {
+      "id": "patterns",
+      "title": "Prompt patterns",
+      "body": "Common patterns: code review prompts, error explanation, document summarization, data analysis, debugging sessions. Multi-turn prompts set up conversation history. Resource-embedded prompts include live data. Dynamic prompts fetch fresh data at retrieval time. Prompts surface as slash commands in most host UIs.",
+      "tags": ["patterns", "slash-commands", "multi-turn", "dynamic", "review"]
     }
   ],
   "links": [
-    { "uri": "mcp/server", "context": "Parent skill for building MCP servers" },
-    { "uri": "mcp/server/tools", "context": "Tools are model-controlled; prompts are user-controlled" },
-    { "uri": "mcp/server/resources", "context": "Prompts can embed resources for context" },
-    { "uri": "mcp/client", "context": "Clients list and get prompts for user selection" }
+    { "uri": "mcp/server", "context": "Parent skill — building MCP servers" },
+    { "uri": "mcp/server/tools", "context": "Tools perform actions; prompts structure interactions" },
+    { "uri": "mcp/server/resources", "context": "Resources can be embedded in prompt messages" },
+    { "uri": "mcp/client", "context": "Clients list and retrieve prompts" },
+    { "uri": "mcp/architecture", "context": "Prompts are user-controlled primitives" }
   ],
   "related": [
-    { "uri": "mcp/server", "relation": "extends", "note": "Prompts are one of three primitives servers expose" },
-    { "uri": "mcp/server/tools", "relation": "see-also", "note": "Tools are model-controlled, prompts are user-controlled" },
-    { "uri": "mcp/server/resources", "relation": "see-also", "note": "Prompts can embed resources for additional context" }
+    { "uri": "mcp/server", "relation": "extends", "note": "Prompts are a server primitive" },
+    { "uri": "mcp/server/tools", "relation": "see-also", "note": "Tools act; prompts guide interactions" },
+    { "uri": "mcp/server/resources", "relation": "see-also", "note": "Resources can be embedded in prompts" }
   ],
   "scripts": [
     {
-      "id": "prompt-server",
-      "name": "MCP Prompt Server Example",
-      "description": "Create and run an MCP server with example prompts for code review, debugging, and analysis",
+      "id": "add-prompt-python",
+      "name": "Add Prompt to Python Server",
+      "description": "Add a prompt definition to an existing FastMCP server",
       "lang": "python",
       "runtime": "python>=3.10",
-      "entry": "./scripts/prompt-server.py",
-      "env": {},
+      "entry": "./scripts/add-prompt.py",
+      "inline": "from mcp.server.fastmcp import FastMCP\n\nmcp = FastMCP(\"example\")\n\n@mcp.prompt()\ndef review_code(code: str, focus: str = \"quality\") -> str:\n    \"\"\"Review code with a specific focus area.\"\"\"\n    return f\"Review this code focusing on {focus}:\\n\\n```\\n{code}\\n```\\n\\nProvide specific suggestions for improvement.\"\n\n@mcp.prompt()\ndef explain_concept(concept: str, audience: str = \"developer\") -> str:\n    \"\"\"Explain a technical concept for a specific audience.\"\"\"\n    return f\"Explain '{concept}' for a {audience}. Include examples and analogies.\"\n\nif __name__ == \"__main__\":\n    mcp.run()",
       "packages": ["mcp[cli]"]
     }
   ],
@@ -78,7 +83,7 @@
       "type": "object",
       "properties": {
         "name": { "type": "string", "description": "Prompt name to retrieve" },
-        "arguments": { "type": "object", "description": "Arguments to customize the prompt" }
+        "arguments": { "type": "object", "description": "Key-value arguments for the prompt" }
       },
       "required": ["name"]
     },
@@ -100,25 +105,25 @@
     }
   },
   "depends": [
-    { "uri": "mcp/server", "reason": "Prompts are a primitive of MCP servers" }
+    { "uri": "mcp/server", "reason": "Prompts are defined within an MCP server" }
   ],
   "more": {
     "docs": "https://modelcontextprotocol.io/docs/concepts/prompts",
-    "spec": "https://spec.modelcontextprotocol.io/specification/2025-06-18/server/prompts"
+    "spec": "https://modelcontextprotocol.io/specification/2025-06-18/server/prompts"
   },
   "frontmatter": {
-    "created": "2026-04-10",
-    "updated": "2026-04-10",
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
     "author": "dojo-community",
     "audience": "developers, AI agents",
-    "estimated_reading_time": "4 min",
+    "estimated_reading_time": "6 min",
     "prerequisites": ["mcp/server"],
     "status": "living",
     "confidence": "high"
   },
   "author": "dojo-community",
   "license": "MIT",
-  "created": "2026-04-10T00:00:00Z",
-  "updated": "2026-04-10T00:00:00Z",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
   "status": "published"
 }

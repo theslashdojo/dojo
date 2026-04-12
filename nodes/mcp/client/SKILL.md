@@ -1,84 +1,85 @@
 ---
-name: mcp-client
-description: Build MCP clients that connect to servers, discover tools, and route LLM tool calls. Use when creating a host application that integrates with MCP servers.
+name: client
+description: Build MCP clients that connect to servers and invoke tools, resources, and prompts. Use when creating custom AI applications that need to integrate with MCP servers programmatically.
 ---
 
-# MCP Client Development
+# MCP Client
 
-Build client applications that connect to MCP servers and integrate their capabilities with LLMs.
+Build clients that connect to MCP servers and use their tools, resources, and prompts.
 
 ## When to Use
 
-- Building a chatbot or IDE that connects to MCP servers
-- Integrating MCP tools with Claude or another LLM
-- Managing connections to multiple MCP servers
-- Routing LLM tool calls to the appropriate MCP server
-
-## Prerequisites
-
-- Python 3.10+ with `mcp` and `anthropic` packages, OR
-- Node.js 18+ with `@modelcontextprotocol/sdk` package
+- Building a custom AI application that connects to MCP servers
+- Creating an agent framework with MCP integration
+- Programmatically invoking MCP tools from code
+- Testing MCP servers from a client perspective
 
 ## Workflow
 
-### 1. Set Up the Client
+1. Install SDK: `pip install mcp` or `npm install @modelcontextprotocol/sdk`
+2. Create transport: stdio for local, HTTP for remote
+3. Create client session and call `initialize()`
+4. Discover primitives: `list_tools()`, `list_resources()`, `list_prompts()`
+5. Use primitives: `call_tool()`, `read_resource()`, `get_prompt()`
+6. Handle notifications for dynamic updates
 
-```bash
-uv init mcp-client && cd mcp-client
-uv add mcp anthropic python-dotenv
-```
-
-### 2. Connect to a Server
+## Python Quick Reference
 
 ```python
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 
-server_params = StdioServerParameters(
-    command="python",
-    args=["path/to/server.py"]
-)
-
-async with stdio_client(server_params) as (read, write):
+async with stdio_client(StdioServerParameters(
+    command="python", args=["server.py"]
+)) as (read, write):
     async with ClientSession(read, write) as session:
         await session.initialize()
+
+        # Discover
         tools = await session.list_tools()
+        resources = await session.list_resources()
+
+        # Use
+        result = await session.call_tool("search", {"query": "test"})
+        data = await session.read_resource("schema://main")
 ```
 
-### 3. Integrate with LLM
+## TypeScript Quick Reference
 
-```python
-import anthropic
+```typescript
+import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 
-client = anthropic.Anthropic()
+const client = new Client({ name: "my-client", version: "1.0.0" });
+await client.connect(new StdioClientTransport({
+  command: "python", args: ["server.py"]
+}));
 
-# Convert MCP tools to Anthropic format
-anthropic_tools = [
-    {"name": t.name, "description": t.description, "input_schema": t.inputSchema}
-    for t in tools.tools
-]
-
-# Agentic tool-use loop
-response = client.messages.create(
-    model="claude-sonnet-4-6",
-    max_tokens=1024,
-    messages=messages,
-    tools=anthropic_tools
-)
+const tools = await client.listTools();
+const result = await client.callTool("search", { query: "test" });
 ```
 
-### 4. Route Tool Calls
+## LLM Integration Pattern
 
 ```python
+# Get tools and format for LLM
+tools = await session.list_tools()
+llm_tools = [{"name": t.name, "description": t.description,
+               "input_schema": t.inputSchema} for t in tools.tools]
+
+# LLM decides to call a tool
+response = anthropic.messages.create(model="claude-sonnet-4-6", tools=llm_tools, messages=msgs)
+
+# Execute tool calls from LLM response
 for block in response.content:
     if block.type == "tool_use":
         result = await session.call_tool(block.name, block.input)
 ```
 
-## Key Patterns
+## Edge Cases
 
-1. **Always initialize** — Call `session.initialize()` before any other operations
-2. **Aggregate tools** — Collect tools from all servers into one list for the LLM
-3. **Map tools to sessions** — Maintain a lookup from tool name to session for routing
-4. **Handle notifications** — Listen for `list_changed` to stay current
-5. **Graceful disconnection** — Use context managers to ensure clean shutdown
+- Always call `initialize()` before any other operations
+- Handle `tools/list_changed` notifications to refresh tool list
+- Remote servers may return 401 — implement OAuth flow (see mcp/auth)
+- Sessions are 1:1 with servers — create one client per server
+- Tool call results may contain multiple content blocks (text, image, resource)

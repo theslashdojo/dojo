@@ -1,0 +1,137 @@
+{
+  "name": "analyze",
+  "version": "1.0.0",
+  "uri": "systemd/analyze",
+  "type": "skill",
+  "context": "Verify unit files, parse timer expressions, inspect load paths, and debug manager behavior with systemd-analyze",
+  "info": "This skill covers `systemd-analyze`, the diagnostic and validation surface for systemd managers and unit files. The most important verbs for autonomous agents are `verify` to catch unit file errors before activation, `calendar`, `timestamp`, and `timespan` to validate scheduling syntax, `unit-paths` to understand where units and drop-ins can load from, and `security` to score an installed unit's hardening posture. It also covers `blame`, `critical-chain`, `dump`, and `dot` for boot and dependency debugging. Agents use this skill before `daemon-reload`, when timer expressions are ambiguous, and when services or the boot path behave unexpectedly.",
+  "parent": "systemd",
+  "tags": ["systemd-analyze", "verify", "calendar", "security", "critical-chain", "blame", "unit-paths", "dot", "debugging"],
+  "aliases": [
+    "systemd-analyze",
+    "verify unit file",
+    "validate timer expression",
+    "systemd security review",
+    "systemd blame",
+    "critical chain",
+    "unit paths",
+    "check systemd config"
+  ],
+  "triggers": [
+    "verify a systemd unit file",
+    "validate an oncalendar expression",
+    "inspect systemd unit paths",
+    "review service hardening with systemd",
+    "debug slow boot with systemd-analyze",
+    "show dependency chain for a unit"
+  ],
+  "body": "# systemd-analyze\n\n`systemd-analyze` is the safest place to validate unit files and timer syntax before activation. It also provides a second layer of observability when `systemctl` and logs tell you something is wrong but not why the manager behaved that way.\n\n```bash\nsystemd-analyze verify /etc/systemd/system/my-app.service\nsystemd-analyze calendar 'Mon..Fri 03:00'\nsystemd-analyze security my-app.service\nsystemd-analyze unit-paths\nsystemd-analyze critical-chain my-app.service\n```\n\nFor topology or performance work, it also exposes `blame`, `dump`, `dot`, and `plot`. The key operational pattern is simple: verify first, reload second, start third. That prevents a broken unit file from becoming a failed runtime event when it could have been caught offline.\n\nIf a file validates but the unit still fails at runtime, continue with [[systemd/systemctl]] and [[systemd/journalctl]].",
+  "sections": [
+    {
+      "id": "verify",
+      "title": "Verify unit files",
+      "body": "Use `systemd-analyze verify FILE...` on unit files before `systemctl daemon-reload`. This catches syntax problems, missing references, and many structural mistakes early. It is the right first step after writing a new service or timer file or when a drop-in may have broken a previously working unit.",
+      "tags": ["verify", "unit-files", "preflight", "validation"]
+    },
+    {
+      "id": "calendar",
+      "title": "Validate calendar and time syntax",
+      "body": "`systemd-analyze calendar`, `timestamp`, and `timespan` normalize the exact time syntax consumed by timer units. Use them before installing a timer when a schedule is expressed in natural language, when you want to preview the next elapse times, or when a string like `5h 30min` must be checked for correctness.",
+      "tags": ["calendar", "timestamp", "timespan", "oncalendar", "syntax"]
+    },
+    {
+      "id": "security",
+      "title": "Review service hardening",
+      "body": "`systemd-analyze security UNIT` scores the unit's sandboxing and isolation settings and highlights missing controls such as capability drops, filesystem restrictions, or service identity limits. Treat it as a fast feedback loop for hardening, not as a complete security proof.",
+      "tags": ["security", "hardening", "sandboxing", "capabilities"]
+    },
+    {
+      "id": "boot-debugging",
+      "title": "Boot and dependency debugging",
+      "body": "Use `blame` to see which units spent the most time activating, `critical-chain` to trace the time-critical dependency path, `dot` for graph output, and `dump` for a long human-readable snapshot of manager state. These commands are useful when a service waits on another unit, when boot is slower than expected, or when ordering relationships are unclear.",
+      "tags": ["blame", "critical-chain", "dot", "dump", "boot"]
+    }
+  ],
+  "links": [
+    { "uri": "systemd/services#install-flow", "context": "Verify services before daemon-reload and activation" },
+    { "uri": "systemd/timers#triggers", "context": "Validate `OnCalendar=` expressions before installing timers" },
+    { "uri": "systemd/unit-files#load-path", "context": "Use unit-paths alongside load-path rules and override precedence" },
+    { "uri": "systemd/systemctl#lifecycle", "context": "Move from offline verification into manager reload and activation" },
+    { "uri": "systemd/troubleshooting#boot-and-manager", "context": "Use analyze verbs inside a broader debugging runbook" }
+  ],
+  "related": [
+    { "uri": "systemd/services", "relation": "see-also", "note": "Service authoring should be followed by `systemd-analyze verify`" },
+    { "uri": "systemd/timers", "relation": "see-also", "note": "Timer expressions are easiest to validate with `calendar` and `timespan`" },
+    { "uri": "systemd/troubleshooting", "relation": "extends", "note": "Troubleshooting patterns use analyze verbs to confirm structural causes" }
+  ],
+  "scripts": [
+    {
+      "id": "analyze-systemd",
+      "name": "Analyze systemd",
+      "description": "Run the most useful `systemd-analyze` verbs for validation and debugging",
+      "lang": "bash",
+      "runtime": "bash>=4.0",
+      "entry": "./scripts/analyze-systemd.sh",
+      "env": {
+        "SYSTEMD_SCOPE": { "required": false, "default": "system", "description": "Manager scope: system, user, or global" },
+        "SYSTEMD_ANALYZE_ACTION": { "required": true, "description": "Action such as verify, calendar, security, unit-paths, blame, or critical-chain" },
+        "SYSTEMD_ANALYZE_FILES": { "required": false, "description": "Newline-separated file list for verify" },
+        "SYSTEMD_ANALYZE_SPECS": { "required": false, "description": "Newline-separated calendar expressions" },
+        "SYSTEMD_ANALYZE_TIMESTAMPS": { "required": false, "description": "Newline-separated timestamps" },
+        "SYSTEMD_ANALYZE_SPANS": { "required": false, "description": "Newline-separated time spans" },
+        "SYSTEMD_ANALYZE_UNITS": { "required": false, "description": "Newline-separated unit names for security or critical-chain" },
+        "SYSTEMD_ANALYZE_PATTERNS": { "required": false, "description": "Newline-separated patterns for dump or dot" },
+        "SYSTEMD_ANALYZE_ITERATIONS": { "required": false, "description": "Iteration count for calendar previews" }
+      }
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "operation": {
+          "type": "string",
+          "enum": ["verify", "calendar", "timestamp", "timespan", "security", "unit-paths", "blame", "critical-chain", "dump", "dot"],
+          "description": "systemd-analyze verb to execute"
+        },
+        "scope": { "type": "string", "enum": ["system", "user", "global"], "default": "system", "description": "Manager scope" },
+        "files": { "type": "array", "items": { "type": "string" }, "description": "Files for verify" },
+        "specs": { "type": "array", "items": { "type": "string" }, "description": "Calendar or time expressions" },
+        "units": { "type": "array", "items": { "type": "string" }, "description": "Units for security or critical-chain" },
+        "patterns": { "type": "array", "items": { "type": "string" }, "description": "Patterns for dump or dot" }
+      },
+      "required": ["operation"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "operation": { "type": "string" },
+        "scope": { "type": "string" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "shell/bash", "reason": "The wrapper is a bash script that invokes systemd-analyze" },
+    { "uri": "systemd/unit-files", "reason": "Understanding load paths and overrides improves interpretation of verify and unit-paths output", "optional": true }
+  ],
+  "more": {
+    "docs": "https://www.freedesktop.org/software/systemd/man/latest/systemd-analyze.html",
+    "overview": "https://systemd.io/"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "AI agents, linux operators",
+    "estimated_reading_time": "5 min",
+    "prerequisites": ["systemd/unit-files"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://github.com/systemd/systemd",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

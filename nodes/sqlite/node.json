@@ -1,0 +1,99 @@
+{
+  "name": "sqlite",
+  "version": "1.0.0",
+  "uri": "sqlite",
+  "type": "ecosystem",
+  "context": "SQLite embedded database — zero-config, serverless, single-file SQL engine for local-first apps, CLI tools, and agents",
+  "info": "SQLite is the most widely deployed database engine in the world. It is a self-contained, serverless, zero-configuration, transactional SQL database that stores an entire database in a single file. Unlike client-server databases (PostgreSQL, MySQL), SQLite runs in-process — the database engine is linked directly into the application. This makes it the default choice for local-first applications, CLI tools, mobile apps, embedded systems, and AI agent workflows that need structured data without infrastructure. SQLite supports most of SQL-92, plus modern features like CTEs, window functions, JSON operators, UPSERT, RETURNING clauses, full-text search (FTS5), and R-Tree spatial indexing. Agents use SQLite skills to create schemas, write queries, tune performance with WAL mode and PRAGMAs, and extend functionality with extensions like FTS5 and JSON. See [[sqlite/schema]] for table design, [[sqlite/queries]] for reading and writing data, [[sqlite/wal]] for concurrency via Write-Ahead Logging, [[sqlite/performance]] for tuning PRAGMAs, and [[sqlite/extensions]] for FTS5, JSON, and loadable modules.",
+  "parent": null,
+  "tags": ["sqlite", "database", "sql", "embedded", "serverless", "local-first", "single-file", "zero-config", "transactional"],
+  "aliases": [
+    "sqlite",
+    "sqlite3",
+    "sqlite database",
+    "sqlite db",
+    "embedded database",
+    "local database",
+    "file database",
+    "single-file database",
+    "in-process database",
+    "lite sql",
+    "sqllite",
+    "sq lite"
+  ],
+  "triggers": [
+    "create a sqlite database",
+    "use sqlite",
+    "set up sqlite",
+    "local database for my app",
+    "embedded database",
+    "store data in a file",
+    "single-file database",
+    "sqlite for cli tool",
+    "lightweight database",
+    "database without a server",
+    "serverless database",
+    "query a sqlite file"
+  ],
+  "body": "# SQLite\n\nSQLite is a C-language library that implements a small, fast, self-contained, high-reliability, full-featured, SQL database engine. It is the most used database engine in the world — every phone, browser, and operating system ships with it.\n\n## Why SQLite\n\n- **Zero configuration** — no server process, no setup, no administration\n- **Single file** — the entire database is a single cross-platform file on disk\n- **Serverless** — reads and writes directly to ordinary disk files\n- **Transactional** — ACID-compliant with full support for transactions, savepoints, and rollback\n- **Cross-platform** — the database file format is stable, cross-platform, and backwards compatible\n- **Small footprint** — ~600KB library, minimal memory usage\n\n## Core Skills\n\n1. **[[sqlite/schema]]** — Design tables, indexes, views, triggers, and constraints\n2. **[[sqlite/queries]]** — SELECT, INSERT, UPDATE, DELETE, CTEs, window functions, JSON, UPSERT\n3. **[[sqlite/wal]]** — Write-Ahead Logging for concurrent readers and writers\n4. **[[sqlite/performance]]** — PRAGMA tuning, indexing strategy, EXPLAIN QUERY PLAN\n5. **[[sqlite/extensions]]** — FTS5 full-text search, JSON functions, R-Tree, loadable modules\n\n## Quick Start\n\n```bash\n# Create or open a database\nsqlite3 myapp.db\n\n# Create a table\nsqlite3 myapp.db \"CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT NOT NULL, email TEXT UNIQUE, created_at TEXT DEFAULT (datetime('now')));\"\n\n# Insert data\nsqlite3 myapp.db \"INSERT INTO users (name, email) VALUES ('Alice', 'alice@example.com');\"\n\n# Query data\nsqlite3 myapp.db \"SELECT * FROM users;\"\n```\n\n## Using SQLite from Code\n\n### Python (built-in)\n```python\nimport sqlite3\n\nconn = sqlite3.connect('myapp.db')\nconn.execute('PRAGMA journal_mode=WAL')\nconn.execute('PRAGMA foreign_keys=ON')\n\ncursor = conn.execute('SELECT * FROM users WHERE name = ?', ('Alice',))\nrows = cursor.fetchall()\nconn.close()\n```\n\n### Node.js (better-sqlite3)\n```javascript\nimport Database from 'better-sqlite3';\n\nconst db = new Database('myapp.db');\ndb.pragma('journal_mode = WAL');\ndb.pragma('foreign_keys = ON');\n\nconst users = db.prepare('SELECT * FROM users WHERE name = ?').all('Alice');\ndb.close();\n```\n\n### Bash (sqlite3 CLI)\n```bash\nsqlite3 myapp.db <<'SQL'\n  .mode json\n  SELECT * FROM users;\nSQL\n```\n\n## Recommended Connection Setup\n\nAlways configure these PRAGMAs when opening a connection:\n\n```sql\nPRAGMA journal_mode = WAL;          -- concurrent readers + writers\nPRAGMA synchronous = NORMAL;        -- safe with WAL, much faster\nPRAGMA foreign_keys = ON;           -- enforce referential integrity\nPRAGMA busy_timeout = 5000;         -- wait 5s on lock instead of failing\nPRAGMA cache_size = -64000;         -- 64MB page cache\nPRAGMA temp_store = MEMORY;         -- keep temp tables in RAM\n```\n\n## File Format\n\nSQLite database files are self-describing, cross-platform, and stable. The file format has been backwards compatible since version 3.0.0 (2004). A database file created on one platform can be freely copied to and used on any other platform.\n\n## When to Use SQLite\n\n| Use Case | SQLite? |\n|----------|--------|\n| CLI tools and scripts | Yes |\n| Mobile/desktop apps | Yes |\n| Local-first web apps | Yes |\n| Agent data storage | Yes |\n| Embedded/IoT devices | Yes |\n| Test databases | Yes |\n| Medium-traffic websites | Yes |\n| High-write concurrency | Consider PostgreSQL |\n| Multi-server apps | Consider PostgreSQL |\n| Terabyte-scale data | Consider PostgreSQL |\n\n## Environment\n\n| Tool | Purpose |\n|------|--------|\n| `sqlite3` | CLI shell (ships with SQLite) |\n| `better-sqlite3` | Synchronous Node.js driver (fastest) |\n| `sqlite3` (Python) | Built-in Python module |\n| `@libsql/client` | Turso/libSQL driver |\n| `rusqlite` | Rust bindings |\n",
+  "sections": [
+    {
+      "id": "quickstart",
+      "title": "Quick start",
+      "body": "Install is usually unnecessary — `sqlite3` ships with macOS and most Linux distributions. On Debian/Ubuntu: `sudo apt install sqlite3`. On macOS: already installed. Create a database with `sqlite3 myapp.db`. The file is created on first write. Use `.tables`, `.schema`, and `.help` for interactive exploration.",
+      "tags": ["quickstart", "install", "setup", "cli"]
+    },
+    {
+      "id": "connection-setup",
+      "title": "Connection setup PRAGMAs",
+      "body": "Always set `PRAGMA journal_mode=WAL` for concurrent access (see [[sqlite/wal]]). Set `PRAGMA synchronous=NORMAL` for WAL mode (safe and fast). Enable `PRAGMA foreign_keys=ON` (off by default). Set `PRAGMA busy_timeout=5000` to retry on locks instead of failing immediately. Increase `PRAGMA cache_size=-64000` for better read performance. See [[sqlite/performance]] for full tuning guide.",
+      "tags": ["pragma", "configuration", "connection", "wal", "foreign-keys"]
+    },
+    {
+      "id": "drivers",
+      "title": "Language drivers",
+      "body": "Python: `import sqlite3` (built-in, synchronous). Node.js: `better-sqlite3` (synchronous, fastest), `sql.js` (WASM, browser-compatible), `@libsql/client` (Turso-compatible). Rust: `rusqlite`. Go: `modernc.org/sqlite` (pure Go) or `github.com/mattn/go-sqlite3` (CGo). All drivers support the same SQL and PRAGMA commands.",
+      "tags": ["python", "nodejs", "rust", "go", "drivers", "better-sqlite3"]
+    },
+    {
+      "id": "when-to-use",
+      "title": "When to use SQLite",
+      "body": "Use SQLite for: CLI tools, local-first apps, mobile/desktop apps, embedded systems, test databases, prototyping, agent data stores, medium-traffic websites (<100K hits/day), data analysis, and application file formats. Avoid when: you need high-write concurrency from multiple servers, multi-terabyte datasets, or network-accessible database services. SQLite is not a replacement for PostgreSQL — it's a replacement for `fopen()`.",
+      "tags": ["use-cases", "comparison", "when-to-use", "local-first"]
+    }
+  ],
+  "links": [
+    { "uri": "sqlite/schema", "context": "Design tables, indexes, views, and constraints" },
+    { "uri": "sqlite/queries", "context": "Read and write data with SQL queries" },
+    { "uri": "sqlite/wal", "context": "Enable concurrent readers and writers with WAL mode" },
+    { "uri": "sqlite/performance", "context": "PRAGMA tuning and query optimization" },
+    { "uri": "sqlite/extensions", "context": "FTS5, JSON, R-Tree, and loadable extensions" }
+  ],
+  "related": [
+    { "uri": "prisma", "relation": "see-also", "note": "Prisma supports SQLite as a database provider for Node.js/TypeScript ORMs" },
+    { "uri": "drizzle", "relation": "see-also", "note": "Drizzle ORM supports SQLite via better-sqlite3, bun:sqlite, and @libsql/client drivers" },
+    { "uri": "python", "relation": "see-also", "note": "Python includes sqlite3 as a built-in standard library module" },
+    { "uri": "shell/bash", "relation": "see-also", "note": "The sqlite3 CLI integrates naturally into shell scripts and pipelines" }
+  ],
+  "more": {
+    "docs": "https://www.sqlite.org/docs.html",
+    "repo": "https://www.sqlite.org/src/doc/trunk/README.md",
+    "wiki": "https://www.sqlite.org/about.html",
+    "spec": "https://www.sqlite.org/lang.html",
+    "examples": "https://www.sqlite.org/cli.html"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "4 min",
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

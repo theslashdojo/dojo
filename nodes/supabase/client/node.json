@@ -1,0 +1,125 @@
+{
+  "name": "client",
+  "version": "1.0.0",
+  "uri": "supabase/client",
+  "type": "context",
+  "content_type": "reference",
+  "context": "Initialize and configure @supabase/supabase-js — the typed SDK for auth, database, storage, realtime, and functions",
+  "info": "The @supabase/supabase-js SDK (v2) is the primary client for all Supabase services. A single `createClient()` call returns an object with `.auth`, `.from()`, `.storage`, `.channel()`, `.functions`, and `.rpc()` methods. Pass a `Database` generic from generated types for full type safety. For server-side rendering (Next.js, SvelteKit), use @supabase/ssr which manages cookies and provides `createServerClient()` and `createBrowserClient()` helpers. The client handles JWT refresh automatically, retries on transient failures, and multiplexes realtime subscriptions over a single WebSocket. Initialize once and reuse — do not create a new client per request.",
+  "parent": "supabase",
+  "tags": ["client", "sdk", "supabase-js", "javascript", "typescript", "ssr", "createclient"],
+  "aliases": [
+    "supabase client",
+    "supabase-js",
+    "@supabase/supabase-js",
+    "supabase sdk",
+    "supabase javascript",
+    "supabase typescript",
+    "createClient",
+    "supabase ssr",
+    "@supabase/ssr"
+  ],
+  "triggers": [
+    "initialize supabase client",
+    "set up supabase in my app",
+    "create supabase client",
+    "supabase with next.js",
+    "supabase server side rendering",
+    "typed supabase client",
+    "supabase client configuration",
+    "install supabase-js"
+  ],
+  "body": "# Supabase Client SDK\n\nThe @supabase/supabase-js SDK provides a unified interface to all Supabase services: auth, database, storage, realtime, and edge functions.\n\n## Installation\n\n```bash\nnpm install @supabase/supabase-js\n```\n\nFor server-side rendering frameworks:\n```bash\nnpm install @supabase/supabase-js @supabase/ssr\n```\n\n## Basic Initialization\n\n```typescript\nimport { createClient } from '@supabase/supabase-js';\n\nconst supabase = createClient(\n  process.env.NEXT_PUBLIC_SUPABASE_URL!,\n  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!\n);\n```\n\n## Typed Client\n\nGenerate types with [[supabase/cli]] and pass the `Database` generic:\n\n```typescript\nimport { createClient } from '@supabase/supabase-js';\nimport type { Database } from './types/supabase';\n\nconst supabase = createClient<Database>(\n  process.env.NEXT_PUBLIC_SUPABASE_URL!,\n  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!\n);\n\n// Queries are now fully typed\nconst { data, error } = await supabase\n  .from('posts')\n  .select('id, title, created_at')\n  .eq('published', true);\n// data: { id: string; title: string; created_at: string }[] | null\n```\n\n## Server-Side Client (Next.js App Router)\n\nUse @supabase/ssr for cookie-based auth in server components:\n\n```typescript\n// lib/supabase/server.ts\nimport { createServerClient } from '@supabase/ssr';\nimport { cookies } from 'next/headers';\nimport type { Database } from '@/types/supabase';\n\nexport async function createSupabaseServer() {\n  const cookieStore = await cookies();\n  return createServerClient<Database>(\n    process.env.NEXT_PUBLIC_SUPABASE_URL!,\n    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,\n    {\n      cookies: {\n        getAll() {\n          return cookieStore.getAll();\n        },\n        setAll(cookiesToSet) {\n          cookiesToSet.forEach(({ name, value, options }) => {\n            cookieStore.set(name, value, options);\n          });\n        },\n      },\n    }\n  );\n}\n```\n\n```typescript\n// app/posts/page.tsx\nimport { createSupabaseServer } from '@/lib/supabase/server';\n\nexport default async function PostsPage() {\n  const supabase = await createSupabaseServer();\n  const { data: posts } = await supabase\n    .from('posts')\n    .select('*')\n    .order('created_at', { ascending: false });\n\n  return <PostList posts={posts ?? []} />;\n}\n```\n\n## Browser Client (Next.js App Router)\n\n```typescript\n// lib/supabase/browser.ts\nimport { createBrowserClient } from '@supabase/ssr';\nimport type { Database } from '@/types/supabase';\n\nexport function createSupabaseBrowser() {\n  return createBrowserClient<Database>(\n    process.env.NEXT_PUBLIC_SUPABASE_URL!,\n    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!\n  );\n}\n```\n\n## Middleware (Next.js)\n\n```typescript\n// middleware.ts\nimport { createServerClient } from '@supabase/ssr';\nimport { NextResponse } from 'next/server';\nimport type { NextRequest } from 'next/server';\n\nexport async function middleware(request: NextRequest) {\n  let response = NextResponse.next({ request });\n\n  const supabase = createServerClient(\n    process.env.NEXT_PUBLIC_SUPABASE_URL!,\n    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,\n    {\n      cookies: {\n        getAll() {\n          return request.cookies.getAll();\n        },\n        setAll(cookiesToSet) {\n          cookiesToSet.forEach(({ name, value, options }) => {\n            request.cookies.set(name, value);\n            response.cookies.set(name, value, options);\n          });\n        },\n      },\n    }\n  );\n\n  // Refresh session if expired\n  const { data: { user } } = await supabase.auth.getUser();\n\n  // Redirect unauthenticated users\n  if (!user && request.nextUrl.pathname.startsWith('/dashboard')) {\n    return NextResponse.redirect(new URL('/login', request.url));\n  }\n\n  return response;\n}\n\nexport const config = {\n  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],\n};\n```\n\n## Service Role Client (Server Only)\n\nBypasses [[supabase/rls]] — use only in server-side code:\n\n```typescript\nimport { createClient } from '@supabase/supabase-js';\n\nconst supabaseAdmin = createClient(\n  process.env.SUPABASE_URL!,\n  process.env.SUPABASE_SERVICE_ROLE_KEY!,\n  { auth: { autoRefreshToken: false, persistSession: false } }\n);\n```\n\n## Client Options\n\n```typescript\nconst supabase = createClient(url, key, {\n  auth: {\n    autoRefreshToken: true,       // Auto-refresh JWT\n    persistSession: true,         // Persist to localStorage\n    detectSessionInUrl: true,     // Handle OAuth redirects\n    flowType: 'pkce',             // PKCE flow (recommended)\n    storage: customStorage,       // Custom storage adapter\n  },\n  global: {\n    headers: { 'x-custom': 'value' },  // Custom headers\n    fetch: customFetch,                  // Custom fetch implementation\n  },\n  db: {\n    schema: 'public',            // Default schema\n  },\n  realtime: {\n    params: { eventsPerSecond: 10 },  // Rate limit\n  },\n});\n```\n\n## Environment Variables\n\n| Variable | Side | Purpose |\n|----------|------|----------|\n| `NEXT_PUBLIC_SUPABASE_URL` | Client + Server | Project API URL |\n| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Client + Server | Public anon key (safe, guarded by RLS) |\n| `SUPABASE_SERVICE_ROLE_KEY` | Server only | Bypasses RLS |\n",
+  "sections": [
+    {
+      "id": "initialization",
+      "title": "Client initialization",
+      "body": "Call `createClient(url, anonKey)` once and reuse. Pass `Database` generic for type safety. For SSR frameworks, use `createServerClient()` from @supabase/ssr on the server and `createBrowserClient()` on the client. Never create a new client per request — the client manages JWT refresh and WebSocket connections internally.",
+      "tags": ["init", "createclient", "singleton", "setup"]
+    },
+    {
+      "id": "ssr",
+      "title": "Server-side rendering",
+      "body": "Install @supabase/ssr alongside @supabase/supabase-js. Use `createServerClient()` with cookie adapters for server components and API routes. In Next.js middleware, use it to refresh sessions and protect routes. The SSR package handles cookie serialization, token refresh, and session persistence across server and client boundaries.",
+      "tags": ["ssr", "nextjs", "cookies", "server-components", "middleware"]
+    },
+    {
+      "id": "service-role",
+      "title": "Service role client",
+      "body": "Create a service role client with `SUPABASE_SERVICE_ROLE_KEY` to bypass [[supabase/rls]]. Set `autoRefreshToken: false` and `persistSession: false`. Use only in server-side code: API routes, edge functions, cron jobs, scripts. Never expose the service role key to the browser.",
+      "tags": ["service-role", "admin", "bypass-rls", "server-only"]
+    }
+  ],
+  "links": [
+    { "uri": "supabase/cli", "context": "Generate TypeScript types for the typed client" },
+    { "uri": "supabase/auth", "context": "Authentication methods available via supabase.auth" },
+    { "uri": "supabase/database", "context": "Database queries via supabase.from()" },
+    { "uri": "supabase/storage", "context": "File operations via supabase.storage" },
+    { "uri": "supabase/realtime", "context": "Subscriptions via supabase.channel()" },
+    { "uri": "supabase/edge-functions", "context": "Invoke functions via supabase.functions.invoke()" },
+    { "uri": "supabase/rls", "context": "RLS policies determine what the anon key can access" },
+    { "uri": "nextjs", "context": "Most common framework used with @supabase/ssr" },
+    { "uri": "typescript", "context": "TypeScript types enable fully typed queries" }
+  ],
+  "related": [
+    { "uri": "supabase/cli", "relation": "see-also", "note": "CLI generates the Database type used by the typed client" },
+    { "uri": "supabase/rls", "relation": "see-also", "note": "RLS policies control what the anon key client can access" },
+    { "uri": "nextjs", "relation": "see-also", "note": "Next.js is the most common framework for @supabase/ssr" },
+    { "uri": "typescript", "relation": "prerequisite", "note": "TypeScript is required for typed client usage" }
+  ],
+  "scripts": [
+    {
+      "id": "create-client",
+      "name": "Create typed Supabase client",
+      "description": "Set up a typed Supabase client with @supabase/supabase-js",
+      "lang": "typescript",
+      "runtime": "node>=18",
+      "inline": "import { createClient } from '@supabase/supabase-js';\nimport type { Database } from './types/supabase';\n\nexport const supabase = createClient<Database>(\n  process.env.NEXT_PUBLIC_SUPABASE_URL!,\n  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!\n);",
+      "env": {
+        "NEXT_PUBLIC_SUPABASE_URL": { "required": true, "secret": false, "description": "Supabase project URL" },
+        "NEXT_PUBLIC_SUPABASE_ANON_KEY": { "required": true, "secret": false, "description": "Public anon key" }
+      },
+      "packages": ["@supabase/supabase-js"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "url": { "type": "string", "description": "Supabase project URL" },
+        "anonKey": { "type": "string", "description": "Supabase anon key" },
+        "framework": { "type": "string", "enum": ["vanilla", "nextjs", "sveltekit", "remix", "nuxt"], "description": "Target framework" }
+      },
+      "required": ["url", "anonKey"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "client": { "type": "string", "description": "Initialized Supabase client instance" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "typescript", "reason": "TypeScript is needed for full type safety with generated types", "optional": true }
+  ],
+  "more": {
+    "docs": "https://supabase.com/docs/reference/javascript",
+    "repo": "https://github.com/supabase/supabase-js",
+    "ssr": "https://supabase.com/docs/guides/auth/server-side-rendering"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "5 min",
+    "prerequisites": [],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

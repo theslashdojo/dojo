@@ -1,113 +1,86 @@
 ---
 name: agent-sdk
-description: Build autonomous agents with the Claude Agent SDK — use when you need programmatic agents that can use tools, edit files, run commands, and orchestrate complex workflows
+description: Build autonomous Claude agents that understand codebases, edit files, and run commands. Use when you need to embed Claude's agentic capabilities into your own application or workflow.
 ---
 
 # Claude Agent SDK
 
-Build autonomous agents powered by Claude Code.
+Build autonomous agents powered by Claude.
 
 ## When to Use
 
-- Building an autonomous coding agent
-- Creating a workflow that reads/writes files and runs commands
-- Connecting Claude to custom tools via MCP
-- Adding safety guardrails to an agent with hooks
-- Orchestrating multi-step tasks programmatically
+- Embedding Claude Code capabilities in your application
+- Building custom coding assistants
+- Automating multi-step development workflows
+- Creating agents that interact with file systems and terminals
 
-## Prerequisites
+## Installation
 
-- Python 3.10+
-- `pip install claude-agent-sdk`
-- `ANTHROPIC_API_KEY` set in environment
+```bash
+npm install @anthropic-ai/claude-agent-sdk
+```
+
+Requires Node.js 18+ and `ANTHROPIC_API_KEY`.
 
 ## Quick Start
 
-```python
-import anyio
-from claude_agent_sdk import query, AssistantMessage, TextBlock
+```typescript
+import { ClaudeAgent } from "@anthropic-ai/claude-agent-sdk";
 
-async def main():
-    async for message in query(prompt="Create a Python hello world"):
-        if isinstance(message, AssistantMessage):
-            for block in message.content:
-                if isinstance(block, TextBlock):
-                    print(block.text)
+const agent = new ClaudeAgent({
+  model: "claude-sonnet-4-6",
+  tools: ["bash", "text_editor", "file_reader"],
+});
 
-anyio.run(main)
+const stream = agent.message({
+  message: "Read package.json and explain the project",
+  workingDirectory: "/path/to/project",
+});
+
+for await (const event of stream) {
+  if (event.type === "text") process.stdout.write(event.text);
+}
 ```
 
-## Interactive Session
+## Core Concepts
 
-```python
-from claude_agent_sdk import ClaudeSDKClient, ClaudeAgentOptions
+### Sessions
+Agent maintains conversation context across `.message()` calls. No manual history management needed.
 
-options = ClaudeAgentOptions(
-    system_prompt="You are a senior developer.",
-    allowed_tools=["Read", "Write", "Edit", "Bash"],
-    permission_mode="acceptEdits",
-    max_turns=10,
-    cwd="/my/project",
-)
+### Tools
+Built-in: `bash`, `text_editor`, `file_reader`, `web_search`, `web_fetch`. Extend with custom tools using the standard tool_use format.
 
-async with ClaudeSDKClient(options=options) as client:
-    await client.query("Refactor the main module to use async/await")
-    async for msg in client.receive_response():
-        print(msg)
+### Permissions
+Control what the agent can do autonomously vs. what requires approval. Scope by command prefix (bash) or glob pattern (file writes).
+
+### Events
+Stream typed events: `text`, `tool_use`, `tool_result`, `error`. Build reactive UIs around the event stream.
+
+## Custom Tools
+
+```typescript
+const agent = new ClaudeAgent({
+  model: "claude-sonnet-4-6",
+  customTools: [{
+    name: "deploy",
+    description: "Deploy the application to staging",
+    input_schema: { type: "object", properties: { env: { type: "string" } } },
+    handler: async (input) => {
+      const result = await deployToStaging(input.env);
+      return { output: result };
+    }
+  }]
+});
 ```
 
-## Custom MCP Tools
+## vs. Messages API
 
-```python
-from claude_agent_sdk import tool, create_sdk_mcp_server
-
-@tool("get_user", "Look up user by ID", {"user_id": int})
-async def get_user(args):
-    user = db.get(args["user_id"])
-    return {"content": [{"type": "text", "text": f"User: {user.name}"}]}
-
-server = create_sdk_mcp_server(name="db-tools", version="1.0.0", tools=[get_user])
-
-options = ClaudeAgentOptions(
-    mcp_servers={"db": server},
-    allowed_tools=["mcp__db__get_user"],
-)
-```
-
-## Hooks (Safety Guardrails)
-
-```python
-from claude_agent_sdk import HookMatcher
-
-async def audit_bash(input_data, tool_use_id, context):
-    cmd = input_data["tool_input"].get("command", "")
-    if "rm -rf" in cmd:
-        return {"hookSpecificOutput": {
-            "hookEventName": "PreToolUse",
-            "permissionDecision": "deny",
-            "permissionDecisionReason": "Destructive command blocked"
-        }}
-    return {}
-
-options = ClaudeAgentOptions(
-    hooks={"PreToolUse": [HookMatcher(matcher="Bash", hooks=[audit_bash])]}
-)
-```
-
-## Permission Modes
-
-| Mode | Behavior |
-|------|----------|
-| `askUser` | Prompt for every tool use |
-| `acceptEdits` | Auto-approve file edits |
-| `denyEdits` | Deny all file modifications |
-
-Combine with `allowed_tools` for fine-grained control.
+Use **Messages API** when you want full control over the conversation loop, tool execution, and response handling. Use **Agent SDK** when you want batteries-included autonomous behavior with built-in file system and shell access.
 
 ## Edge Cases
 
-- **CLI not found**: Install Claude Code first or let the SDK bundle it
-- **Tool name format**: MCP tools use `mcp__servername__toolname` naming
-- **Max turns**: Set a reasonable limit to prevent infinite loops
-- **Working directory**: Always set `cwd` to scope file operations
-- **Async only**: All SDK operations are async — use `anyio.run()` or `asyncio.run()`
+- The SDK was previously called `claude-code-sdk` — migration guide in docs
+- Long-running agent sessions consume tokens for each turn in the loop
+- File permissions should be scoped to prevent unintended modifications
+- Network interruptions may terminate the agent session
+- Set `maxTurns` to prevent runaway loops

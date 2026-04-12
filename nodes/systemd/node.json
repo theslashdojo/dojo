@@ -1,0 +1,87 @@
+{
+  "name": "systemd",
+  "version": "1.0.0",
+  "uri": "systemd",
+  "type": "ecosystem",
+  "context": "Linux service manager ecosystem for supervised services, journals, timers, and unit debugging",
+  "info": "The systemd ecosystem covers the day-two operations an autonomous agent repeatedly performs on Linux hosts: turning commands into managed services, enabling or disabling them at boot or login, inspecting structured logs in journald, scheduling recurring work with timers, and validating or debugging unit behavior with systemd-analyze. systemd runs the system manager as PID 1 and also provides per-user managers, so the same model applies to machine-wide daemons and user-scoped background jobs. The core execution surfaces are `systemctl`, `journalctl`, unit files, timer units, and `systemd-analyze`.",
+  "parent": null,
+  "tags": ["systemd", "linux", "service-manager", "services", "journald", "timers", "systemctl", "journalctl", "unit-files", "pid1"],
+  "aliases": [
+    "systemd",
+    "linux service manager",
+    "system and service manager",
+    "systemctl",
+    "journald",
+    "linux services",
+    "user services",
+    "service supervision on linux"
+  ],
+  "triggers": [
+    "create a systemd service",
+    "manage a linux service",
+    "inspect systemd logs",
+    "schedule a systemd timer",
+    "restart a service on boot",
+    "debug a failed unit",
+    "work with journald"
+  ],
+  "body": "# systemd Ecosystem\n\nsystemd is the default service manager on most modern Linux distributions. An agent reaches for it whenever work must outlive a shell session, start automatically at boot or login, emit logs into a central journal, or run on a schedule.\n\n## Core Surfaces\n\n- [[systemd/systemctl]] manages unit state and enablement.\n- [[systemd/services]] authors and installs `.service` units.\n- [[systemd/journalctl]] retrieves structured logs from journald.\n- [[systemd/timers]] schedules recurring or delayed work with `.timer` units.\n- [[systemd/analyze]] verifies units and explains manager behavior.\n- [[systemd/unit-files]] explains load paths, drop-ins, aliases, and templates.\n- [[systemd/troubleshooting]] provides the runbook for the failures agents hit in production.\n\n## System vs User Managers\n\n`systemctl` talks either to the system manager (PID 1) or the per-user manager via `systemctl --user`. System units usually live under `/etc/systemd/system` and are commonly enabled into `multi-user.target`. User units usually live under `~/.config/systemd/user` and are commonly enabled into `default.target`.\n\n## Agent Loop\n\n```bash\nsystemd-analyze verify /etc/systemd/system/my-app.service\nsystemctl daemon-reload\nsystemctl enable --now my-app.service\njournalctl -u my-app.service -n 100 --no-pager\n```\n\nWhen that loop breaks, jump to [[systemd/troubleshooting#failed-service]].",
+  "sections": [
+    {
+      "id": "mental-model",
+      "title": "Mental model",
+      "body": "systemd is both a process supervisor and a dependency-aware manager for units such as services, timers, sockets, mounts, and targets. For autonomous agents, the highest-value units are `.service` and `.timer`, plus the control and introspection commands around them.",
+      "tags": ["mental-model", "units", "supervision", "dependency-graph"]
+    },
+    {
+      "id": "system-vs-user",
+      "title": "System and user managers",
+      "body": "System managers control machine-wide services and usually require administrative privileges. User managers control per-user background processes and are reached with `systemctl --user`. The same unit concepts apply, but load paths and default targets differ. See [[systemd/unit-files#load-path]] for the exact search paths.",
+      "tags": ["system-manager", "user-manager", "scope", "paths"]
+    },
+    {
+      "id": "agent-jobs",
+      "title": "Agent jobs",
+      "body": "Agents use systemd to install daemons, restart services after deploys, query logs after failures, create scheduled jobs, validate unit files before activation, and inspect why a service or timer did not behave as expected. The shortest path from intent to action is usually [[systemd/services]] or [[systemd/systemctl]], followed by [[systemd/journalctl]].",
+      "tags": ["automation", "deployments", "operations", "agents"]
+    }
+  ],
+  "links": [
+    { "uri": "systemd/systemctl", "context": "Manage unit state, enablement, and manager reloads" },
+    { "uri": "systemd/services", "context": "Author and install `.service` units" },
+    { "uri": "systemd/journalctl", "context": "Inspect structured logs from journald" },
+    { "uri": "systemd/timers", "context": "Schedule delayed or recurring work" },
+    { "uri": "systemd/analyze", "context": "Verify units and debug manager behavior" },
+    { "uri": "systemd/unit-files#load-path", "context": "Understand where unit files load from" },
+    { "uri": "systemd/troubleshooting#failed-service", "context": "Runbook for failed or flapping units" },
+    { "uri": "shell/processes", "context": "Raw process management outside the service manager" },
+    { "uri": "ssh/connect", "context": "Reach remote Linux hosts before operating on systemd" }
+  ],
+  "related": [
+    { "uri": "ssh/connect", "relation": "prerequisite", "note": "Remote administration usually starts with a shell on the host" },
+    { "uri": "shell/processes", "relation": "extends", "note": "systemd supervises long-running processes beyond a shell session" },
+    { "uri": "docker/containers", "relation": "alternative", "note": "Containers provide another runtime model when a process is not managed directly on the host" }
+  ],
+  "more": {
+    "docs": "https://systemd.io/",
+    "man-index": "https://www.freedesktop.org/software/systemd/man/latest/",
+    "repo": "https://github.com/systemd/systemd"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "AI agents, platform engineers, linux operators",
+    "estimated_reading_time": "4 min",
+    "prerequisites": ["ssh/connect", "shell/bash"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://github.com/systemd/systemd",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

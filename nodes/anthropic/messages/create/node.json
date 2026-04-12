@@ -3,61 +3,74 @@
   "version": "1.0.0",
   "uri": "anthropic/messages/create",
   "type": "sub",
-  "context": "Create a single synchronous message with Claude — send prompt, get full response back at once",
-  "info": "The synchronous Messages API call sends a prompt to Claude and returns the complete response in a single HTTP response. Use this when you need the full response before proceeding — batch processing, pipelines, or any flow where streaming isn't needed. The endpoint is `POST /v1/messages` with `stream: false` (default). The response includes the complete content blocks, stop_reason, and usage tokens. For real-time streaming, see [[anthropic/messages/stream]] instead.",
+  "context": "Create a single Claude message completion with full parameter control via POST /v1/messages",
+  "info": "The create sub-skill provides a focused reference for the synchronous (non-streaming) Messages API call. This is the most common operation: send a request, wait for the complete response. The endpoint is POST /v1/messages. You must provide model, max_tokens, and messages. The response arrives as a single JSON object with the complete content, stop_reason, and usage. For streaming, see [[anthropic/messages/stream]]. For batch processing, see [[anthropic/batch]]. The SDK methods are `client.messages.create()` in Python and `client.messages.create()` in TypeScript.",
   "parent": "anthropic/messages",
-  "tags": ["create", "synchronous", "message", "completion", "non-streaming"],
+  "tags": ["create", "message", "completion", "synchronous", "api-call"],
   "aliases": [
     "create message",
-    "sync message",
+    "messages create",
+    "message completion",
+    "synchronous message",
     "non-streaming message",
-    "messages.create",
     "single message",
-    "one-shot message"
+    "client.messages.create"
   ],
   "triggers": [
     "create a message with claude",
-    "send a synchronous request to claude",
-    "get a completion from claude without streaming",
-    "call messages.create"
+    "make a synchronous api call",
+    "get a completion from claude",
+    "call messages.create",
+    "send one message and get response"
   ],
-  "body": "# Create Message (Synchronous)\n\nThe default mode for the Messages API. Send a request, receive the complete response.\n\n## Python\n\n```python\nimport anthropic\n\nclient = anthropic.Anthropic()\n\nmessage = client.messages.create(\n    model=\"claude-sonnet-4-6\",\n    max_tokens=1024,\n    system=\"You are a helpful assistant.\",\n    messages=[\n        {\"role\": \"user\", \"content\": \"What are the three laws of thermodynamics?\"}\n    ]\n)\n\n# Access the response\nprint(message.content[0].text)\nprint(f\"Tokens: {message.usage.input_tokens} in, {message.usage.output_tokens} out\")\nprint(f\"Stop reason: {message.stop_reason}\")\n```\n\n## TypeScript\n\n```typescript\nimport Anthropic from \"@anthropic-ai/sdk\";\n\nconst client = new Anthropic();\n\nconst message = await client.messages.create({\n  model: \"claude-sonnet-4-6\",\n  max_tokens: 1024,\n  system: \"You are a helpful assistant.\",\n  messages: [\n    { role: \"user\", content: \"What are the three laws of thermodynamics?\" }\n  ]\n});\n\nconsole.log(message.content[0].text);\nconsole.log(`Tokens: ${message.usage.input_tokens} in, ${message.usage.output_tokens} out`);\n```\n\n## curl\n\n```bash\ncurl https://api.anthropic.com/v1/messages \\\n  -H \"x-api-key: $ANTHROPIC_API_KEY\" \\\n  -H \"anthropic-version: 2023-06-01\" \\\n  -H \"content-type: application/json\" \\\n  -d '{\n    \"model\": \"claude-sonnet-4-6\",\n    \"max_tokens\": 1024,\n    \"messages\": [\n      {\"role\": \"user\", \"content\": \"What are the three laws of thermodynamics?\"}\n    ]\n  }'\n```\n\n## With Vision\n\n```python\nimport base64\n\nwith open(\"diagram.png\", \"rb\") as f:\n    image_data = base64.standard_b64encode(f.read()).decode(\"utf-8\")\n\nmessage = client.messages.create(\n    model=\"claude-sonnet-4-6\",\n    max_tokens=1024,\n    messages=[{\n        \"role\": \"user\",\n        \"content\": [\n            {\"type\": \"image\", \"source\": {\"type\": \"base64\", \"media_type\": \"image/png\", \"data\": image_data}},\n            {\"type\": \"text\", \"text\": \"Explain this diagram\"}\n        ]\n    }]\n)\n```\n\n## With Extended Thinking\n\n```python\nmessage = client.messages.create(\n    model=\"claude-opus-4-6\",\n    max_tokens=16384,\n    thinking={\"type\": \"enabled\", \"budget_tokens\": 10000},\n    messages=[{\"role\": \"user\", \"content\": \"Prove that the square root of 2 is irrational\"}]\n)\n\nfor block in message.content:\n    if block.type == \"thinking\":\n        print(\"Thinking:\", block.thinking)\n    elif block.type == \"text\":\n        print(\"Answer:\", block.text)\n```\n\n## Error Handling\n\n```python\nimport anthropic\n\ntry:\n    message = client.messages.create(\n        model=\"claude-sonnet-4-6\",\n        max_tokens=1024,\n        messages=[{\"role\": \"user\", \"content\": \"Hello\"}]\n    )\nexcept anthropic.AuthenticationError:\n    print(\"Invalid API key\")\nexcept anthropic.RateLimitError as e:\n    print(f\"Rate limited. Retry after: {e.response.headers.get('retry-after')}\")\nexcept anthropic.APIError as e:\n    print(f\"API error: {e.status_code} {e.message}\")\n```\n\n## When to Use Sync vs Stream\n\n| Use sync (`create`) when | Use stream when |\n|--------------------------|------------------|\n| Processing in a pipeline | Displaying to a user in real-time |\n| Batch operations | Building a chatbot UI |\n| You need the full response before continuing | You want first-token latency |\n| Simpler error handling | Long responses where progress matters |\n",
+  "body": "# Create Message\n\n`POST /v1/messages` — Send a message and receive the complete response synchronously.\n\n## Python\n\n```python\nimport anthropic\n\nclient = anthropic.Anthropic()\n\nresponse = client.messages.create(\n    model=\"claude-sonnet-4-6\",\n    max_tokens=1024,\n    system=\"You are a helpful assistant.\",\n    messages=[\n        {\"role\": \"user\", \"content\": \"What is the factorial of 10?\"}\n    ],\n    temperature=0.0\n)\n\nprint(response.content[0].text)\nprint(f\"Stop reason: {response.stop_reason}\")\nprint(f\"Usage: {response.usage.input_tokens} input, {response.usage.output_tokens} output\")\n```\n\n## TypeScript\n\n```typescript\nimport Anthropic from \"@anthropic-ai/sdk\";\n\nconst client = new Anthropic();\n\nconst response = await client.messages.create({\n  model: \"claude-sonnet-4-6\",\n  max_tokens: 1024,\n  system: \"You are a helpful assistant.\",\n  messages: [\n    { role: \"user\", content: \"What is the factorial of 10?\" }\n  ],\n  temperature: 0.0\n});\n\nconsole.log(response.content[0].text);\nconsole.log(`Stop reason: ${response.stop_reason}`);\nconsole.log(`Usage: ${response.usage.input_tokens} input, ${response.usage.output_tokens} output`);\n```\n\n## cURL\n\n```bash\ncurl https://api.anthropic.com/v1/messages \\\n  -H \"x-api-key: $ANTHROPIC_API_KEY\" \\\n  -H \"anthropic-version: 2023-06-01\" \\\n  -H \"content-type: application/json\" \\\n  -d '{\n    \"model\": \"claude-sonnet-4-6\",\n    \"max_tokens\": 1024,\n    \"messages\": [\n      {\"role\": \"user\", \"content\": \"What is the factorial of 10?\"}\n    ]\n  }'\n```\n\n## With Vision (Image Input)\n\n```python\nimport base64\n\nwith open(\"image.png\", \"rb\") as f:\n    image_data = base64.standard_b64encode(f.read()).decode(\"utf-8\")\n\nresponse = client.messages.create(\n    model=\"claude-sonnet-4-6\",\n    max_tokens=1024,\n    messages=[{\n        \"role\": \"user\",\n        \"content\": [\n            {\n                \"type\": \"image\",\n                \"source\": {\n                    \"type\": \"base64\",\n                    \"media_type\": \"image/png\",\n                    \"data\": image_data\n                }\n            },\n            {\n                \"type\": \"text\",\n                \"text\": \"Describe this image.\"\n            }\n        ]\n    }]\n)\n```\n\n## With Structured Output\n\n```python\nresponse = client.messages.create(\n    model=\"claude-sonnet-4-6\",\n    max_tokens=1024,\n    output_config={\n        \"type\": \"json_schema\",\n        \"schema\": {\n            \"type\": \"object\",\n            \"properties\": {\n                \"sentiment\": {\"type\": \"string\", \"enum\": [\"positive\", \"negative\", \"neutral\"]},\n                \"confidence\": {\"type\": \"number\"}\n            },\n            \"required\": [\"sentiment\", \"confidence\"]\n        }\n    },\n    messages=[{\"role\": \"user\", \"content\": \"Analyze: I love this product!\"}]\n)\n```\n\n## Error Handling\n\n```python\nimport anthropic\n\ntry:\n    response = client.messages.create(\n        model=\"claude-sonnet-4-6\",\n        max_tokens=1024,\n        messages=[{\"role\": \"user\", \"content\": \"Hello\"}]\n    )\nexcept anthropic.AuthenticationError:\n    print(\"Invalid API key\")\nexcept anthropic.RateLimitError as e:\n    print(f\"Rate limited. Retry after: {e.response.headers.get('retry-after')}\")\nexcept anthropic.APIError as e:\n    print(f\"API error: {e.status_code} - {e.message}\")\n```\n",
   "sections": [
     {
       "id": "basic-usage",
-      "title": "Basic synchronous usage",
-      "body": "Call `client.messages.create()` with `model`, `max_tokens`, and `messages`. The method blocks until the full response is generated and returns a `Message` object with `content`, `stop_reason`, and `usage`. Content is an array of blocks — most commonly a single `TextBlock` with a `.text` property.",
-      "tags": ["basic", "synchronous", "create", "blocking"]
+      "title": "Basic usage",
+      "body": "Call `client.messages.create()` with `model`, `max_tokens`, and `messages`. The response is a `Message` object with `content` (array of blocks), `stop_reason`, and `usage`. Access text via `response.content[0].text`. This is synchronous — the call blocks until the full response is ready.",
+      "tags": ["basic", "usage", "create", "synchronous"]
+    },
+    {
+      "id": "vision",
+      "title": "Vision and image input",
+      "body": "Pass images as content blocks with type 'image'. Source can be base64 (with media_type and data) or URL. Supported formats: JPEG, PNG, GIF, WebP. Images are processed as input tokens. Combine image and text blocks in the same message for visual Q&A.",
+      "tags": ["vision", "image", "base64", "multimodal"]
     },
     {
       "id": "error-handling",
       "title": "Error handling",
-      "body": "The SDK raises typed exceptions: `AuthenticationError` (401), `RateLimitError` (429), `BadRequestError` (400), `NotFoundError` (404), and `APIError` (generic). For 429 errors, read the `retry-after` response header. The SDK has built-in retry logic with exponential backoff for transient errors (500, 529).",
-      "tags": ["errors", "retry", "429", "authentication", "exception"]
+      "body": "The SDK raises typed exceptions: `AuthenticationError` (401), `RateLimitError` (429), `BadRequestError` (400), `APIError` (generic). For 429s, read the `retry-after` header and back off. For 500s, retry with exponential backoff. The SDK includes automatic retries for transient errors.",
+      "tags": ["errors", "exceptions", "retry", "rate-limit"]
     }
   ],
   "links": [
     { "uri": "anthropic/messages", "context": "Parent skill with full parameter reference" },
-    { "uri": "anthropic/messages/stream", "context": "Streaming alternative for real-time responses" },
-    { "uri": "anthropic/tool-use", "context": "Add tools to create requests" },
-    { "uri": "anthropic/prompt-caching", "context": "Cache prompts for faster responses" },
-    { "uri": "anthropic/auth", "context": "API key setup" }
+    { "uri": "anthropic/messages/stream", "context": "Streaming alternative for real-time output" },
+    { "uri": "anthropic/tool-use", "context": "Add tool definitions to the create call" },
+    { "uri": "anthropic/prompt-caching", "context": "Add cache_control to reduce costs" },
+    { "uri": "anthropic/auth", "context": "API key setup" },
+    { "uri": "anthropic/models", "context": "Model IDs and capabilities" }
   ],
   "related": [
-    { "uri": "anthropic/messages", "relation": "prerequisite", "note": "Parent skill with full API reference" },
+    { "uri": "anthropic/messages", "relation": "implements", "note": "Implements the synchronous create path of the Messages API" },
     { "uri": "anthropic/messages/stream", "relation": "alternative", "note": "Use streaming for real-time token-by-token output" },
-    { "uri": "anthropic/batch", "relation": "see-also", "note": "For bulk synchronous processing at 50% discount" }
+    { "uri": "anthropic/batch", "relation": "alternative", "note": "Use batch for high-volume async processing at 50% discount" }
   ],
   "scripts": [
     {
-      "id": "create-sync-message",
-      "name": "Create Synchronous Message",
-      "description": "Send a synchronous message to Claude and get the full response",
+      "id": "create-message",
+      "name": "Create Message",
+      "description": "Create a synchronous message completion",
       "lang": "python",
-      "runtime": "python>=3.10",
-      "entry": "./scripts/create-sync-message.py",
+      "runtime": "python>=3.9",
+      "entry": "./scripts/create-message.py",
+      "inline": "import anthropic\nimport json\nimport os\nimport sys\n\nclient = anthropic.Anthropic()\n\nmodel = os.environ.get(\"ANTHROPIC_MODEL\", \"claude-sonnet-4-6\")\nmax_tokens = int(os.environ.get(\"MAX_TOKENS\", \"1024\"))\nuser_input = sys.argv[1] if len(sys.argv) > 1 else \"Hello, Claude\"\nsystem_prompt = os.environ.get(\"SYSTEM_PROMPT\", \"\")\n\nkwargs = {\n    \"model\": model,\n    \"max_tokens\": max_tokens,\n    \"messages\": [{\"role\": \"user\", \"content\": user_input}]\n}\nif system_prompt:\n    kwargs[\"system\"] = system_prompt\n\nresponse = client.messages.create(**kwargs)\n\nprint(response.content[0].text)\nprint(json.dumps({\"stop_reason\": response.stop_reason, \"input_tokens\": response.usage.input_tokens, \"output_tokens\": response.usage.output_tokens}, indent=2))\n",
       "env": {
-        "ANTHROPIC_API_KEY": { "required": true, "secret": true, "description": "Anthropic API key" }
+        "ANTHROPIC_API_KEY": { "required": true, "secret": true, "description": "Anthropic API key" },
+        "ANTHROPIC_MODEL": { "required": false, "default": "claude-sonnet-4-6", "description": "Model to use" },
+        "MAX_TOKENS": { "required": false, "default": "1024", "description": "Max output tokens" },
+        "SYSTEM_PROMPT": { "required": false, "default": "", "description": "Optional system prompt" }
       },
       "packages": ["anthropic"]
     }
@@ -67,9 +80,10 @@
       "type": "object",
       "properties": {
         "model": { "type": "string", "description": "Model ID" },
-        "max_tokens": { "type": "integer", "description": "Maximum output tokens" },
-        "messages": { "type": "array", "description": "Conversation messages" },
-        "system": { "type": "string", "description": "System prompt" }
+        "max_tokens": { "type": "integer", "description": "Max output tokens" },
+        "messages": { "type": "array", "description": "Conversation turns" },
+        "system": { "type": "string", "description": "System prompt" },
+        "temperature": { "type": "number", "description": "Sampling temperature 0-1" }
       },
       "required": ["model", "max_tokens", "messages"]
     },
@@ -84,25 +98,24 @@
     }
   },
   "depends": [
-    { "uri": "anthropic/auth", "reason": "API key required" },
-    { "uri": "anthropic/messages", "reason": "Sub-skill of the Messages API" }
+    { "uri": "anthropic/auth", "reason": "API key required" }
   ],
   "more": {
     "docs": "https://docs.anthropic.com/en/api/messages"
   },
   "frontmatter": {
-    "created": "2026-04-10",
-    "updated": "2026-04-10",
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
     "author": "dojo-community",
     "audience": "developers, AI agents",
-    "estimated_reading_time": "3 min",
+    "estimated_reading_time": "4 min",
     "prerequisites": ["anthropic/auth"],
     "status": "living",
     "confidence": "high"
   },
   "author": "dojo-community",
   "license": "MIT",
-  "created": "2026-04-10T00:00:00Z",
-  "updated": "2026-04-10T00:00:00Z",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
   "status": "published"
 }

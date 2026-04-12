@@ -1,0 +1,150 @@
+{
+  "name": "files",
+  "version": "1.0.0",
+  "uri": "shell/files",
+  "type": "skill",
+  "context": "Create, read, move, find, and manage files and directories with shell commands and permissions",
+  "info": "File operations are the most common shell task for agents. This skill covers the complete file and directory lifecycle: creating files and directories (touch, mkdir), reading content (cat, head, tail, less), copying and moving (cp, mv), removing (rm, rmdir), searching (find, locate), inspecting metadata (ls, stat, file, du, df), managing permissions (chmod, chown, chgrp), working with symbolic and hard links (ln, readlink, realpath), and handling temporary files (mktemp). Every agent workflow involves file I/O — reading configuration, writing output, organizing project structures. See [[shell/bash]] for command execution, [[shell/pipes]] for combining file commands with pipes, and [[shell/processes]] for commands that operate on open file handles.",
+  "parent": "shell",
+  "tags": ["files", "directories", "filesystem", "permissions", "find", "copy", "move", "delete", "chmod"],
+  "aliases": [
+    "file operations",
+    "file management",
+    "directory operations",
+    "filesystem",
+    "ls",
+    "cp",
+    "mv",
+    "rm",
+    "mkdir",
+    "find files",
+    "chmod",
+    "file permissions",
+    "create file",
+    "delete file",
+    "copy file",
+    "move file"
+  ],
+  "triggers": [
+    "create a file or directory",
+    "copy files",
+    "move or rename files",
+    "delete files",
+    "find files matching a pattern",
+    "list directory contents",
+    "change file permissions",
+    "check file size",
+    "create a temporary file",
+    "make a symbolic link",
+    "check disk usage"
+  ],
+  "body": "# File and Directory Operations\n\nFiles and directories are the foundation of agent work. Every codebase, configuration, log, and artifact lives on a filesystem.\n\n## Creating Files and Directories\n\n```bash\n# Create an empty file (or update timestamp)\ntouch newfile.txt\n\n# Create file with content\necho \"hello\" > newfile.txt\nprintf '%s\\n' \"line 1\" \"line 2\" > newfile.txt\n\n# Create with heredoc (multi-line content)\ncat > config.json <<'EOF'\n{\n  \"port\": 8080,\n  \"debug\": false\n}\nEOF\n\n# Create directory (and parents)\nmkdir -p src/components/ui\n\n# Create temporary file (auto-generates unique name)\ntmp=$(mktemp)             # /tmp/tmp.XXXXXXXXXX\ntmpdir=$(mktemp -d)       # /tmp/tmp.XXXXXXXXXX (directory)\n```\n\n## Reading Files\n\n```bash\n# Entire file\ncat file.txt\n\n# First/last N lines\nhead -n 20 file.txt\ntail -n 20 file.txt\n\n# Follow file updates in real time (logs)\ntail -f /var/log/app.log\n\n# Specific line range (lines 10-20)\nsed -n '10,20p' file.txt\n\n# Count lines, words, bytes\nwc -l file.txt            # Lines\nwc -w file.txt            # Words\nwc -c file.txt            # Bytes\n```\n\n## Copying, Moving, Removing\n\n```bash\n# Copy file\ncp source.txt dest.txt\ncp -r src_dir/ dest_dir/      # Recursive copy\ncp -a src_dir/ dest_dir/      # Archive (preserves permissions, timestamps, symlinks)\n\n# Move / rename\nmv old_name.txt new_name.txt\nmv file.txt /other/directory/\nmv *.log archive/              # Move multiple files\n\n# Remove files\nrm file.txt\nrm -f file.txt                # Force (no error if missing)\nrm -r directory/               # Recursive\nrm -rf build/                  # Recursive + force\n\n# Remove empty directory\nrmdir empty_dir/\n```\n\n## Finding Files\n\n```bash\n# Find by name\nfind . -name '*.py' -type f\nfind . -iname '*.JPG' -type f         # Case-insensitive\n\n# Find by modification time\nfind . -mtime -1 -type f              # Modified in last 24 hours\nfind . -mmin -30 -type f              # Modified in last 30 minutes\nfind . -newer reference.txt -type f   # Newer than reference file\n\n# Find by size\nfind . -size +10M -type f             # Larger than 10MB\nfind . -size 0 -type f                # Empty files\n\n# Find and execute\nfind . -name '*.tmp' -delete                          # Delete matches\nfind . -name '*.js' -exec grep -l 'TODO' {} \\;        # Search in matches\nfind . -name '*.log' -exec gzip {} +                   # Compress matches\n\n# Exclude directories\nfind . -path ./node_modules -prune -o -name '*.ts' -print\n```\n\n## File Metadata and Inspection\n\n```bash\n# Detailed listing\nls -la                     # Long format, all files including hidden\nls -lah                    # Human-readable sizes\nls -lt                     # Sort by modification time\nls -lS                     # Sort by size\n\n# File details\nstat file.txt              # Full metadata (size, permissions, timestamps)\nfile document.pdf          # Detect file type from content\ndu -sh directory/          # Directory size, human-readable\ndu -sh */ | sort -rh       # Subdirectory sizes, largest first\ndf -h                      # Filesystem disk usage\n```\n\n## Permissions\n\n```bash\n# chmod — change mode\nchmod 755 script.sh        # rwxr-xr-x (owner:rwx, group:rx, other:rx)\nchmod +x script.sh         # Add execute for all\nchmod u+w,g-w file.txt     # Owner: add write; Group: remove write\nchmod -R 644 docs/         # Recursive\n\n# Common permission patterns\n# 755 — executable scripts, directories\n# 644 — regular files (owner writes, others read)\n# 600 — private files (owner only)\n# 700 — private directories/executables\n\n# chown — change owner\nchown user:group file.txt\nchown -R user:group dir/\n\n# chgrp — change group\nchgrp developers file.txt\n```\n\n## Links\n\n```bash\n# Symbolic link (soft link) — pointer to a path\nln -s /real/path /link/path\nln -sf /real/path /link/path    # Force overwrite existing link\n\n# Hard link — additional directory entry for same inode\nln original.txt hardlink.txt\n\n# Resolve symlinks\nreadlink -f /link/path          # Full canonical path\nrealpath relative/path          # Absolute path resolving symlinks and ..\n```\n\n## Disk and Space\n\n```bash\n# Filesystem usage\ndf -h                           # All mounted filesystems\ndf -h .                         # Current filesystem\n\n# Directory sizes\ndu -sh *                        # Size of each item in current directory\ndu -sh --max-depth=1 .          # One level deep\ndu -h --max-depth=2 . | sort -rh | head -20   # Top 20 largest\n\n# Find large files\nfind / -type f -size +100M 2>/dev/null | head -20\n```\n\n## Safety Patterns for Agents\n\n```bash\n# Always check before destructive operations\n[[ -f \"$file\" ]] && rm \"$file\"\n[[ -d \"$dir\" ]] && rm -rf \"$dir\"\n\n# Use trash instead of rm when available\ntrash-put file.txt   # (trash-cli package)\n\n# Dry run with find -delete (list first, then delete)\nfind . -name '*.tmp' -type f       # Review matches\nfind . -name '*.tmp' -type f -delete  # Then delete\n\n# Backup before overwriting\ncp important.conf important.conf.bak\n\n# Atomic writes via temp file + mv\nresult=$(process_data)\necho \"$result\" > output.tmp && mv output.tmp output.txt\n```\n",
+  "sections": [
+    {
+      "id": "create",
+      "title": "Creating files and directories",
+      "body": "Use `touch` to create empty files or update timestamps. Use `mkdir -p` to create directories with parents. Use heredocs (`cat > file <<'EOF'`) for multi-line content. Use `mktemp` for temporary files — always pair with `trap 'rm -f $tmp' EXIT` for cleanup. Use `install -m 755 -d dir/` to create directories with specific permissions in one command.",
+      "tags": ["create", "touch", "mkdir", "mktemp", "heredoc"]
+    },
+    {
+      "id": "find",
+      "title": "Finding files",
+      "body": "The `find` command searches directory trees. Common predicates: `-name` (glob), `-iname` (case-insensitive), `-type f` (files), `-type d` (directories), `-mtime -N` (modified in last N days), `-size +NM` (larger than N megabytes), `-perm` (by permission). Actions: `-print` (default), `-delete`, `-exec cmd {} \\;` (per file), `-exec cmd {} +` (batched). Use `-prune` to skip directories like `node_modules`. For indexed searches, use `locate` (requires `updatedb`).",
+      "tags": ["find", "search", "locate", "glob", "name", "type", "mtime", "size"]
+    },
+    {
+      "id": "permissions",
+      "title": "File permissions and ownership",
+      "body": "UNIX permissions: read (4), write (2), execute (1). Three groups: owner, group, other. `chmod 755` = rwxr-xr-x. Symbolic mode: `chmod u+x` (owner +execute), `chmod g-w` (group -write), `chmod o=r` (other = read-only). `chown user:group file` changes ownership. Directories need execute permission to be traversed. Scripts need execute permission to run directly. The sticky bit (`chmod +t dir`) prevents deletion of files by non-owners. The setuid bit (`chmod u+s`) runs a program as its owner.",
+      "tags": ["permissions", "chmod", "chown", "chgrp", "rwx", "sticky-bit", "setuid"]
+    },
+    {
+      "id": "disk-usage",
+      "title": "Disk usage and filesystem info",
+      "body": "`df -h` shows mounted filesystem usage. `du -sh dir/` shows directory size. `du --max-depth=1` breaks down by subdirectory. `stat file` shows detailed metadata: size, blocks, inode, device, permissions, timestamps (access, modify, change). `file filename` detects content type via magic numbers. `lsblk` lists block devices. `/proc/mounts` or `mount` shows current mounts.",
+      "tags": ["disk", "du", "df", "stat", "file", "size", "space", "usage"]
+    }
+  ],
+  "links": [
+    { "uri": "shell", "context": "Parent shell ecosystem" },
+    { "uri": "shell/bash", "context": "Bash syntax for executing file commands" },
+    { "uri": "shell/pipes", "context": "Pipe find and file outputs to other commands" },
+    { "uri": "shell/processes", "context": "lsof shows which processes have files open" },
+    { "uri": "shell/environment", "context": "HOME, TMPDIR, and PATH affect file operations" },
+    { "uri": "shell/scripting", "context": "Script file operations with loops and error handling" }
+  ],
+  "related": [
+    { "uri": "shell/bash", "relation": "prerequisite", "note": "File commands are executed through bash" },
+    { "uri": "shell/pipes", "relation": "see-also", "note": "Pipes combine file commands — find | xargs, cat | grep" },
+    { "uri": "shell/processes", "relation": "see-also", "note": "lsof and fuser reveal process-file relationships" },
+    { "uri": "shell/environment", "relation": "see-also", "note": "TMPDIR, HOME, and umask affect file creation" },
+    { "uri": "git", "relation": "see-also", "note": "Git tracks file changes — .gitignore, git status, git diff" }
+  ],
+  "scripts": [
+    {
+      "id": "find-files",
+      "name": "Find Files",
+      "description": "Search for files by name pattern, type, size, or modification time",
+      "lang": "bash",
+      "runtime": "bash>=4.0",
+      "entry": "./scripts/find-files.sh",
+      "env": {}
+    },
+    {
+      "id": "safe-delete",
+      "name": "Safe Delete",
+      "description": "Delete files with confirmation prompt and optional backup",
+      "lang": "bash",
+      "runtime": "bash>=4.0",
+      "entry": "./scripts/safe-delete.sh",
+      "env": {}
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "operation": {
+          "type": "string",
+          "enum": ["create", "read", "copy", "move", "delete", "find", "chmod", "stat"],
+          "description": "File operation to perform"
+        },
+        "path": { "type": "string", "description": "Target file or directory path" },
+        "destination": { "type": "string", "description": "Destination path for copy/move operations" },
+        "pattern": { "type": "string", "description": "Glob pattern for find operations" },
+        "recursive": { "type": "boolean", "description": "Apply recursively to directories", "default": false },
+        "permissions": { "type": "string", "description": "Permission mode (e.g., '755', 'u+x')" }
+      },
+      "required": ["operation", "path"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "success": { "type": "boolean", "description": "Whether the operation succeeded" },
+        "result": { "type": "string", "description": "Output or matched files" },
+        "error": { "type": "string", "description": "Error message if operation failed" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "shell/bash", "reason": "File commands are executed through bash" }
+  ],
+  "more": {
+    "docs": "https://www.gnu.org/software/coreutils/manual/coreutils.html",
+    "find": "https://www.gnu.org/software/findutils/manual/html_mono/find.html"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "AI agents, developers",
+    "estimated_reading_time": "6 min",
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

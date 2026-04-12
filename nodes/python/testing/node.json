@@ -1,0 +1,133 @@
+{
+  "name": "testing",
+  "version": "1.0.0",
+  "uri": "python/testing",
+  "type": "skill",
+  "context": "Write and run Python tests with pytest — fixtures, parametrize, async testing, mocking, coverage, and configuration",
+  "info": "This skill covers Python testing with pytest as the primary framework and unittest from the standard library. pytest is the de facto standard for Python testing — it uses plain assert statements, powerful fixtures for setup/teardown, parametrize for data-driven tests, and a rich plugin ecosystem. Key plugins: pytest-asyncio for async/await tests, pytest-cov for coverage reports, pytest-xdist for parallel execution. The skill covers test structure and discovery, fixture scopes and dependency injection, async test patterns with pytest-asyncio, mocking with unittest.mock (patch, MagicMock, AsyncMock), conftest.py for shared fixtures, configuration via pyproject.toml, and coverage reporting. Also covers unittest.TestCase for codebases that use the stdlib approach.",
+  "parent": "python",
+  "tags": ["pytest", "unittest", "testing", "fixtures", "parametrize", "mocking", "coverage", "async-testing", "conftest", "test-discovery", "tdd"],
+  "aliases": [
+    "pytest",
+    "unittest",
+    "python tests",
+    "python testing",
+    "test python",
+    "pytest fixtures",
+    "pytest parametrize",
+    "python unit tests",
+    "python test framework"
+  ],
+  "triggers": [
+    "write python tests",
+    "run pytest",
+    "test async python code",
+    "mock python functions",
+    "set up pytest",
+    "add test coverage",
+    "create pytest fixtures",
+    "parametrize python tests",
+    "configure pytest in pyproject.toml",
+    "write conftest.py"
+  ],
+  "body": "# Python Testing with pytest\n\npytest is the standard Python testing framework. It uses plain `assert` statements, automatic test discovery, and a powerful fixture system for dependency injection.\n\n## Running Tests\n\n```bash\n# Run all tests\npytest\n\n# Run specific file\npytest tests/test_api.py\n\n# Run specific test by name pattern\npytest -k \"test_login or test_logout\"\n\n# Stop on first failure\npytest -x\n\n# Verbose output with short tracebacks\npytest -v --tb=short\n\n# Parallel execution (requires pytest-xdist)\npytest -n auto\n\n# With coverage (requires pytest-cov)\npytest --cov=src --cov-report=term-missing\n\n# Async test support (requires pytest-asyncio)\npytest --asyncio-mode=auto\n```\n\n## Test Structure\n\n```python\n# tests/test_example.py\nimport pytest\n\ndef test_basic():\n    assert 1 + 1 == 2\n\ndef test_exception():\n    with pytest.raises(ValueError, match=\"invalid\"):\n        raise ValueError(\"invalid input\")\n\n@pytest.mark.parametrize(\"input,expected\", [\n    (1, 2), (2, 4), (3, 6)\n])\ndef test_double(input, expected):\n    assert input * 2 == expected\n```\n\npytest discovers tests by convention:\n- Files named `test_*.py` or `*_test.py`\n- Functions and methods prefixed with `test_`\n- Classes prefixed with `Test` (no `__init__`)\n\n## Fixtures\n\nFixtures provide setup, teardown, and dependency injection.\n\n```python\nimport pytest\n\n@pytest.fixture\ndef client():\n    app = create_app()\n    with app.test_client() as client:\n        yield client\n\n@pytest.fixture(scope=\"session\")\ndef db():\n    engine = create_engine(\"sqlite:///:memory:\")\n    Base.metadata.create_all(engine)\n    yield engine\n    engine.dispose()\n\ndef test_endpoint(client):\n    response = client.get(\"/api/health\")\n    assert response.status_code == 200\n```\n\nFixture scopes: `function` (default), `class`, `module`, `package`, `session`.\n\n`yield` fixtures run teardown code after the yield point. Use `autouse=True` to apply a fixture to every test automatically.\n\n## conftest.py\n\nShared fixtures and configuration live in `conftest.py`. pytest loads it automatically — no imports needed.\n\n```python\n# tests/conftest.py\nimport pytest\n\n@pytest.fixture(autouse=True)\ndef reset_env(monkeypatch):\n    monkeypatch.setenv(\"ENV\", \"test\")\n    monkeypatch.delenv(\"API_KEY\", raising=False)\n\n@pytest.fixture\ndef sample_data():\n    return {\"users\": [{\"id\": 1, \"name\": \"Alice\"}]}\n```\n\nConftest files can exist at multiple directory levels — fixtures cascade from parent to child directories.\n\n## Async Testing\n\n```python\nimport pytest\nimport httpx\n\n@pytest.mark.asyncio\nasync def test_async_fetch():\n    async with httpx.AsyncClient() as client:\n        resp = await client.get(\"https://api.example.com\")\n        assert resp.status_code == 200\n```\n\nWith `asyncio_mode = \"auto\"` in config, the `@pytest.mark.asyncio` decorator is optional — async test functions are detected automatically.\n\n## Mocking\n\nUse `unittest.mock` (stdlib) with pytest. `patch` replaces objects during a test.\n\n```python\nfrom unittest.mock import patch, AsyncMock, MagicMock\n\ndef test_with_mock():\n    with patch(\"module.function\") as mock_fn:\n        mock_fn.return_value = {\"status\": \"ok\"}\n        result = call_function()\n        mock_fn.assert_called_once_with(\"arg\")\n\n@pytest.mark.asyncio\nasync def test_async_mock():\n    mock_client = AsyncMock()\n    mock_client.send.return_value = {\"response\": \"hello\"}\n    result = await process(mock_client)\n    assert result == \"hello\"\n```\n\nCommon mock patterns:\n- `MagicMock()` — general-purpose mock with magic method support\n- `AsyncMock()` — mock for async functions and context managers\n- `patch(\"module.name\")` — replace an attribute during a test\n- `patch.object(obj, \"attr\")` — patch an attribute on a specific object\n- `mock.side_effect = Exception(\"boom\")` — make a mock raise\n- `mock.side_effect = [1, 2, 3]` — return different values on successive calls\n\n## Configuration\n\nConfigure pytest in `pyproject.toml`:\n\n```toml\n[tool.pytest.ini_options]\ntestpaths = [\"tests\"]\nasyncio_mode = \"auto\"\naddopts = \"-v --tb=short --strict-markers\"\nmarkers = [\n    \"slow: marks tests as slow\",\n    \"integration: integration tests\",\n]\n```\n\nAlternatively use `pytest.ini` or `setup.cfg`.\n\n## Coverage\n\n```bash\npytest --cov=src --cov-report=html --cov-report=term-missing\n```\n\nConfigure in `pyproject.toml`:\n\n```toml\n[tool.coverage.run]\nsource = [\"src\"]\nomit = [\"*/tests/*\", \"*/migrations/*\"]\n\n[tool.coverage.report]\nfail_under = 80\nshow_missing = true\n```\n\n## unittest (stdlib)\n\n```python\nimport unittest\n\nclass TestMath(unittest.TestCase):\n    def setUp(self):\n        self.calc = Calculator()\n\n    def test_add(self):\n        self.assertEqual(self.calc.add(1, 2), 3)\n\n    def tearDown(self):\n        self.calc.reset()\n```\n\npytest can run `unittest.TestCase` subclasses without modification.\n\n## Markers\n\nMark tests for selective running:\n\n```python\n@pytest.mark.slow\ndef test_heavy_computation():\n    ...\n\n@pytest.mark.integration\ndef test_database_write():\n    ...\n```\n\n```bash\npytest -m \"not slow\"           # skip slow tests\npytest -m \"integration\"         # run only integration tests\n```\n",
+  "sections": [
+    {
+      "id": "pytest-basics",
+      "title": "pytest basics",
+      "body": "Run tests with `pytest`. It discovers files matching `test_*.py`, functions prefixed `test_`, and classes prefixed `Test`. Use `assert` for all checks — pytest rewrites assertions to show detailed failure info. Key flags: `-x` stop on first failure, `-v` verbose, `--tb=short` short tracebacks, `-k pattern` filter by name, `-n auto` parallel (xdist). Parametrize with `@pytest.mark.parametrize(\"args\", [...])` for data-driven tests.",
+      "tags": ["pytest", "test-discovery", "assert", "parametrize", "cli-flags"]
+    },
+    {
+      "id": "fixtures",
+      "title": "Fixtures and conftest.py",
+      "body": "Fixtures provide dependency injection for tests. Decorate functions with `@pytest.fixture` and reference them by name in test parameters. Use `yield` for teardown. Scopes: `function` (default, per-test), `class`, `module`, `package`, `session`. Shared fixtures go in `conftest.py` — pytest loads them automatically without imports. Built-in fixtures: `tmp_path`, `monkeypatch`, `capsys`, `request`. Use `autouse=True` for fixtures that apply to every test.",
+      "tags": ["fixtures", "conftest", "yield", "scope", "autouse", "tmp_path", "monkeypatch"]
+    },
+    {
+      "id": "async-testing",
+      "title": "Async testing with pytest-asyncio",
+      "body": "Install `pytest-asyncio` to test async functions. Mark tests with `@pytest.mark.asyncio` or set `asyncio_mode = \"auto\"` in config to auto-detect. Async fixtures use `async def` and `yield`. For async context managers, use `async with` inside fixtures. Combine with `httpx.AsyncClient` for testing async HTTP code and `AsyncMock` for mocking async dependencies.",
+      "tags": ["async", "asyncio", "pytest-asyncio", "await", "async-fixtures"]
+    },
+    {
+      "id": "mocking",
+      "title": "Mocking with unittest.mock",
+      "body": "Use `unittest.mock` from the stdlib with pytest. `patch('module.name')` replaces objects during a test. `MagicMock()` for sync mocks, `AsyncMock()` for async. Assertions: `assert_called_once()`, `assert_called_with(args)`, `call_count`, `call_args_list`. Use `side_effect` for exceptions or sequential return values. Patch targets where they are looked up, not where they are defined. `patch.object()` patches attributes on specific objects.",
+      "tags": ["mock", "patch", "MagicMock", "AsyncMock", "side_effect", "assert_called"]
+    },
+    {
+      "id": "configuration",
+      "title": "Configuration and coverage",
+      "body": "Configure pytest in `pyproject.toml` under `[tool.pytest.ini_options]`: set `testpaths`, `addopts`, `markers`, and `asyncio_mode`. Coverage via `pytest-cov`: run `pytest --cov=src --cov-report=term-missing`. Configure coverage thresholds in `[tool.coverage.report]` with `fail_under`. Define custom markers in config and use `--strict-markers` to catch typos. Use `.coveragerc` or `pyproject.toml` for coverage exclusions.",
+      "tags": ["pyproject-toml", "pytest-ini", "coverage", "pytest-cov", "markers", "addopts"]
+    }
+  ],
+  "links": [
+    { "uri": "python/async", "context": "Async patterns — test async code with pytest-asyncio" },
+    { "uri": "python/typing", "context": "Type annotations — write typed fixtures and test helpers" },
+    { "uri": "python/venv", "context": "Virtual environments — isolate test dependencies" },
+    { "uri": "python/pip", "context": "Install pytest and plugins from PyPI" }
+  ],
+  "related": [
+    { "uri": "python/async", "relation": "see-also", "note": "Async testing requires understanding asyncio patterns" },
+    { "uri": "python/typing", "relation": "see-also", "note": "Typed fixtures and test helpers improve test maintainability" },
+    { "uri": "python/venv", "relation": "prerequisite", "note": "Tests should run in an isolated virtual environment" }
+  ],
+  "scripts": [
+    {
+      "id": "run-tests",
+      "name": "Run pytest with common options",
+      "description": "Run pytest with verbose output, short tracebacks, and optional coverage and marker filtering",
+      "lang": "bash",
+      "runtime": "bash",
+      "entry": "./scripts/run-tests.sh",
+      "inline": "#!/usr/bin/env bash\nset -euo pipefail\n\nTEST_PATH=\"${1:-tests}\"\nMARKERS=\"${2:-}\"\nVERBOSE=\"${3:-true}\"\n\nARGS=(\"$TEST_PATH\")\n\nif [ \"$VERBOSE\" = \"true\" ]; then\n  ARGS+=(\"-v\" \"--tb=short\")\nfi\n\nif [ -n \"$MARKERS\" ]; then\n  ARGS+=(\"-m\" \"$MARKERS\")\nfi\n\nif python -c \"import pytest_cov\" 2>/dev/null; then\n  ARGS+=(\"--cov=src\" \"--cov-report=term-missing\")\nfi\n\necho \"Running: pytest ${ARGS[*]}\"\npytest \"${ARGS[@]}\"",
+      "packages": ["pytest", "pytest-cov", "pytest-asyncio"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "test_path": { "type": "string", "description": "Path to test file or directory", "default": "tests" },
+        "markers": { "type": "string", "description": "Marker expression for filtering tests (e.g. 'not slow')" },
+        "verbose": { "type": "boolean", "description": "Enable verbose output", "default": true }
+      }
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "passed": { "type": "integer", "description": "Number of tests passed" },
+        "failed": { "type": "integer", "description": "Number of tests failed" },
+        "errors": { "type": "integer", "description": "Number of tests with errors" },
+        "coverage": { "type": "number", "description": "Coverage percentage (if pytest-cov is installed)" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "python/venv", "reason": "Tests should run in an isolated virtual environment" },
+    { "uri": "python/pip", "optional": true, "reason": "Install pytest and plugins (pip, uv, or poetry)" }
+  ],
+  "more": {
+    "docs": "https://docs.pytest.org/en/stable/",
+    "plugins": "https://docs.pytest.org/en/stable/reference/plugin_list.html",
+    "unittest_docs": "https://docs.python.org/3/library/unittest.html",
+    "coverage_docs": "https://coverage.readthedocs.io/"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "8 min",
+    "prerequisites": ["python/venv"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

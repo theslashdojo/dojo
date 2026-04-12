@@ -1,0 +1,96 @@
+{
+  "name": "project-refs",
+  "version": "1.0.0",
+  "uri": "typescript/project-refs",
+  "type": "context",
+  "content_type": "guide",
+  "context": "TypeScript project references — composite builds, monorepo architecture, incremental compilation, and multi-project dependency graphs",
+  "info": "Project references let you split a TypeScript codebase into multiple sub-projects that are compiled independently and linked via declaration files. Each sub-project has its own tsconfig.json with `composite: true`, and a root tsconfig lists them in a `references` array. The TypeScript compiler's `--build` mode (`tsc -b`) compiles referenced projects in dependency order, using incremental caching to skip unchanged projects. This is essential for monorepo architectures where packages depend on each other: shared libraries, API layers, CLI tools, and frontend apps can all live in one repository with fast, correct builds. Project references enforce module boundaries (a project can only import from its declared references), enable parallel type checking, and produce declaration files that downstream projects consume. See [[typescript/compiler]] for build mode CLI usage and [[typescript/config]] for the composite and references options.",
+  "parent": "typescript",
+  "tags": ["project-references", "composite", "monorepo", "build-mode", "incremental", "multi-project", "workspace", "tsbuildinfo", "declaration"],
+  "aliases": [
+    "project references",
+    "typescript project references",
+    "ts project refs",
+    "composite project",
+    "composite build",
+    "monorepo typescript",
+    "typescript monorepo",
+    "tsc build mode",
+    "multi-project build",
+    "solution-style tsconfig"
+  ],
+  "triggers": [
+    "set up typescript project references",
+    "configure a typescript monorepo",
+    "use tsc build mode",
+    "split typescript into multiple projects",
+    "composite tsconfig",
+    "monorepo with typescript",
+    "incremental build typescript",
+    "reference another typescript project",
+    "solution style tsconfig",
+    "multiple tsconfig files"
+  ],
+  "body": "# TypeScript Project References\n\nProject references split a TypeScript codebase into independently compiled sub-projects with explicit dependencies between them. They enable fast, correct builds in monorepos and large codebases.\n\n## Why Project References?\n\n1. **Fast incremental builds** — only recompile changed projects\n2. **Enforce module boundaries** — projects can only import from declared references\n3. **Parallel compilation** — independent projects can be type-checked concurrently\n4. **Correct dependency ordering** — tsc -b builds projects in the right order\n5. **Scalable** — add projects without slowing down the whole build\n\n## Anatomy of a Composite Project\n\nEach sub-project needs `composite: true` and `declaration: true` in its tsconfig:\n\n```jsonc\n// packages/core/tsconfig.json\n{\n  \"compilerOptions\": {\n    \"composite\": true,         // REQUIRED — marks this as a referenced project\n    \"declaration\": true,       // REQUIRED — generates .d.ts for consumers\n    \"declarationMap\": true,    // Enables go-to-definition into source\n    \"outDir\": \"./dist\",\n    \"rootDir\": \"./src\",\n    \"target\": \"es2022\",\n    \"module\": \"nodenext\",\n    \"moduleResolution\": \"nodenext\",\n    \"strict\": true\n  },\n  \"include\": [\"src\"]\n}\n```\n\nThe `composite` flag enforces:\n- `declaration` must be `true` (downstream projects consume declarations)\n- `rootDir` defaults to the directory containing tsconfig.json\n- All input files must be matched by `include` or `files` (no implicit inclusion)\n- `incremental` is implicitly enabled\n\n## Root tsconfig with References\n\nThe root tsconfig links sub-projects:\n\n```jsonc\n// tsconfig.json (root)\n{\n  \"files\": [],               // No files to compile at root level\n  \"references\": [\n    { \"path\": \"./packages/core\" },\n    { \"path\": \"./packages/api\" },\n    { \"path\": \"./packages/cli\" },\n    { \"path\": \"./packages/web\" }\n  ]\n}\n```\n\nThis is called a **solution-style tsconfig** — it has no files of its own, only references.\n\n## Declaring Dependencies Between Projects\n\nA project that imports from another must declare it as a reference:\n\n```jsonc\n// packages/api/tsconfig.json\n{\n  \"compilerOptions\": {\n    \"composite\": true,\n    \"declaration\": true,\n    \"outDir\": \"./dist\",\n    \"rootDir\": \"./src\",\n    \"target\": \"es2022\",\n    \"module\": \"nodenext\",\n    \"moduleResolution\": \"nodenext\",\n    \"strict\": true\n  },\n  \"include\": [\"src\"],\n  \"references\": [\n    { \"path\": \"../core\" }     // api depends on core\n  ]\n}\n```\n\nNow `packages/api/src/` can import from `@myorg/core` (the core package), and tsc will build `core` first.\n\n## Building with tsc -b\n\n```bash\n# Build all projects from root\nnpx tsc --build\nnpx tsc -b\n\n# Build a specific project (and its dependencies)\nnpx tsc -b packages/api\n\n# Build multiple specific projects\nnpx tsc -b packages/core packages/api packages/cli\n\n# Verbose output — shows build order and what's skipped\nnpx tsc -b --verbose\n\n# Force rebuild — ignore incremental cache\nnpx tsc -b --force\n\n# Clean — delete all output files\nnpx tsc -b --clean\n\n# Dry run — show what would be built\nnpx tsc -b --dry\n\n# Watch mode — rebuild on changes\nnpx tsc -b --watch\n```\n\nBuild mode reads the dependency graph from `references` and builds in topological order. Incremental caching (`.tsbuildinfo` files) means only changed projects are rebuilt.\n\n## Complete Monorepo Example\n\nA typical monorepo structure:\n\n```\nmy-monorepo/\n  tsconfig.json                    # Solution-style root\n  package.json                     # Workspace root\n  packages/\n    core/\n      tsconfig.json                # composite: true\n      package.json                 # \"name\": \"@myorg/core\"\n      src/\n        index.ts\n        types.ts\n      dist/                        # Build output (git-ignored)\n    api/\n      tsconfig.json                # composite: true, references: [\"../core\"]\n      package.json                 # \"name\": \"@myorg/api\"\n      src/\n        index.ts\n        routes.ts\n      dist/\n    web/\n      tsconfig.json                # composite: true, references: [\"../core\"]\n      package.json                 # \"name\": \"@myorg/web\"\n      src/\n        App.tsx\n      dist/\n```\n\n### Root tsconfig.json\n\n```jsonc\n{\n  \"files\": [],\n  \"references\": [\n    { \"path\": \"packages/core\" },\n    { \"path\": \"packages/api\" },\n    { \"path\": \"packages/web\" }\n  ]\n}\n```\n\n### Shared base config\n\n```jsonc\n// tsconfig.base.json\n{\n  \"compilerOptions\": {\n    \"target\": \"es2022\",\n    \"module\": \"nodenext\",\n    \"moduleResolution\": \"nodenext\",\n    \"strict\": true,\n    \"esModuleInterop\": true,\n    \"skipLibCheck\": true,\n    \"forceConsistentCasingInFileNames\": true,\n    \"composite\": true,\n    \"declaration\": true,\n    \"declarationMap\": true,\n    \"sourceMap\": true,\n    \"incremental\": true\n  }\n}\n```\n\n### Package tsconfig extends base\n\n```jsonc\n// packages/core/tsconfig.json\n{\n  \"extends\": \"../../tsconfig.base.json\",\n  \"compilerOptions\": {\n    \"outDir\": \"./dist\",\n    \"rootDir\": \"./src\"\n  },\n  \"include\": [\"src\"]\n}\n```\n\n### Package.json for workspace packages\n\n```json\n{\n  \"name\": \"@myorg/core\",\n  \"version\": \"1.0.0\",\n  \"main\": \"./dist/index.js\",\n  \"types\": \"./dist/index.d.ts\",\n  \"exports\": {\n    \".\": {\n      \"types\": \"./dist/index.d.ts\",\n      \"import\": \"./dist/index.js\"\n    }\n  },\n  \"files\": [\"dist\"],\n  \"scripts\": {\n    \"build\": \"tsc -b\",\n    \"typecheck\": \"tsc --noEmit\"\n  }\n}\n```\n\n## Integrating with Package Managers\n\nProject references work with npm/pnpm/yarn workspaces:\n\n### npm workspaces\n\n```json\n{\n  \"workspaces\": [\"packages/*\"]\n}\n```\n\n### pnpm workspaces\n\n```yaml\n# pnpm-workspace.yaml\npackages:\n  - 'packages/*'\n```\n\n### yarn workspaces\n\n```json\n{\n  \"workspaces\": [\"packages/*\"]\n}\n```\n\nIn all cases, the package manager symlinks workspace packages so `import` statements resolve correctly at runtime. TypeScript project references ensure types resolve correctly at compile time.\n\n## Incremental Build Cache\n\nEach composite project generates a `.tsbuildinfo` file:\n\n```\npackages/core/dist/tsconfig.tsbuildinfo\n```\n\nThis file records:\n- Which files were compiled and their content hashes\n- The dependency graph between files\n- Compiler options that were used\n\nOn subsequent builds, tsc skips recompilation of unchanged projects. To control the cache location:\n\n```jsonc\n{\n  \"compilerOptions\": {\n    \"tsBuildInfoFile\": \"./.cache/tsconfig.tsbuildinfo\"\n  }\n}\n```\n\nIn CI, cache `.tsbuildinfo` files between runs for faster builds. In `package.json` clean scripts, delete them: `rm -rf dist tsconfig.tsbuildinfo`.\n\n## Integration with Turborepo/Nx\n\nMonorepo tools like Turborepo and Nx complement project references:\n\n```jsonc\n// turbo.json\n{\n  \"tasks\": {\n    \"build\": {\n      \"dependsOn\": [\"^build\"],\n      \"outputs\": [\"dist/**\"]\n    },\n    \"typecheck\": {\n      \"dependsOn\": [\"^build\"]\n    }\n  }\n}\n```\n\nTurborepo handles task orchestration, caching, and parallel execution. TypeScript project references handle type checking and declaration generation. Together, they provide fast, correct monorepo builds.\n\n## Common Pitfalls\n\n1. **Missing `composite: true`** — referenced projects must have `composite: true` or tsc -b won't work\n2. **Missing `declaration: true`** — downstream projects need `.d.ts` files to type-check\n3. **Circular references** — projects cannot form dependency cycles\n4. **Files not matched by include** — `composite` requires all files to be explicitly included\n5. **Stale builds** — if you edit a dependency and only rebuild the consumer, types may be stale. Always build from root or use `tsc -b` which handles ordering\n6. **rootDir misalignment** — if `rootDir` doesn't match your source layout, output paths break\n7. **Forgetting to build declarations first** — downstream projects import declarations, not source\n",
+  "sections": [
+    {
+      "id": "composite-flag",
+      "title": "The composite flag",
+      "body": "Setting `composite: true` in tsconfig.json marks a project as eligible for project references. It enables incremental compilation, requires `declaration: true` (so other projects can consume type information), defaults `rootDir` to the tsconfig directory, and requires all source files to be matched by `include` or `files` (no implicit inclusion via `import` statements). Every project that will be referenced by another project must set `composite: true`. The `incremental` flag is implicitly enabled. A `.tsbuildinfo` file is generated alongside outputs for caching.",
+      "tags": ["composite", "declaration", "rootDir", "incremental", "tsbuildinfo"]
+    },
+    {
+      "id": "solution-style",
+      "title": "Solution-style tsconfig",
+      "body": "A solution-style tsconfig has an empty `files: []` array and only contains `references`. It acts as the root entry point for `tsc -b`, defining all sub-projects in the workspace. Place it at the repo root. `tsc -b` reads the references, resolves the dependency graph (following nested references), and builds in topological order. This pattern is named after Visual Studio solutions. Multiple solution files can exist: `tsconfig.json` (all projects), `tsconfig.build.json` (only production projects, excluding tests).",
+      "tags": ["solution", "root-tsconfig", "files", "references", "entry-point"]
+    },
+    {
+      "id": "dependency-graph",
+      "title": "Dependency graph and build order",
+      "body": "When a project declares `references: [{ \"path\": \"../core\" }]`, it tells tsc that this project depends on `core`. Build mode (`tsc -b`) reads all references recursively and builds in topological order: leaf projects first, then projects that depend on them. If `core` changes, only `core` and projects that reference it are rebuilt. Circular references are not allowed — tsc will report an error. The `--verbose` flag shows the build order and which projects are skipped. The `--dry` flag shows what would be built without actually building.",
+      "tags": ["dependency-graph", "topological-order", "build-order", "circular", "verbose"]
+    },
+    {
+      "id": "monorepo-setup",
+      "title": "Monorepo setup patterns",
+      "body": "A TypeScript monorepo combines package manager workspaces (npm/pnpm/yarn) with TypeScript project references. The package manager handles runtime resolution (symlinks between packages) while project references handle compile-time resolution (declarations). Each package has its own tsconfig.json extending a shared base. A root solution-style tsconfig lists all packages. `tsc -b` from root builds everything in order. For faster builds, use Turborepo or Nx for task orchestration with output caching. The `exports` field in each package.json should point to both JS output and type declarations.",
+      "tags": ["monorepo", "workspaces", "pnpm", "npm", "yarn", "turborepo", "nx"]
+    },
+    {
+      "id": "incremental-cache",
+      "title": "Incremental compilation and caching",
+      "body": "Each composite project produces a `.tsbuildinfo` file containing file hashes, dependency graphs, and compiler options. On subsequent builds, tsc compares the current state against the cache and skips unchanged projects. This is the primary performance benefit of project references. Cache files should be git-ignored in most projects but cached in CI (e.g., via GitHub Actions cache or Turborepo remote cache). Use `tsBuildInfoFile` to control the cache location. Use `tsc -b --force` to ignore the cache and rebuild everything. Use `tsc -b --clean` to delete all outputs and cache files.",
+      "tags": ["incremental", "tsbuildinfo", "cache", "performance", "ci", "force", "clean"]
+    }
+  ],
+  "links": [
+    { "uri": "typescript/compiler", "context": "tsc --build mode compiles project references in dependency order" },
+    { "uri": "typescript/config", "context": "The composite, declaration, and references options in tsconfig.json" }
+  ],
+  "related": [
+    { "uri": "typescript/compiler", "relation": "prerequisite", "note": "Understanding tsc -b (build mode) is essential for working with project references" },
+    { "uri": "typescript/config", "relation": "prerequisite", "note": "Project references are configured via tsconfig.json options" }
+  ],
+  "more": {
+    "docs": "https://www.typescriptlang.org/docs/handbook/project-references.html",
+    "config": "https://www.typescriptlang.org/tsconfig/#references",
+    "monorepo-guide": "https://www.typescriptlang.org/docs/handbook/project-references.html#overall-structure"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents, platform engineers",
+    "estimated_reading_time": "8 min",
+    "prerequisites": ["typescript/compiler", "typescript/config"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

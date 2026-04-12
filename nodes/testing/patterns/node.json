@@ -1,0 +1,107 @@
+{
+  "name": "patterns",
+  "version": "1.0.0",
+  "uri": "testing/patterns",
+  "type": "context",
+  "content_type": "guide",
+  "context": "Structural testing patterns — Arrange-Act-Assert, Given-When-Then, test factories, parameterized tests, property-based testing",
+  "info": "Testing patterns are framework-agnostic structural approaches for organizing test code. They determine how tests are structured (Arrange-Act-Assert, Given-When-Then), how test data is created (factories, builders, fixtures), how edge cases are covered systematically (parameterized/data-driven tests, property-based testing), and how tests communicate intent (descriptive naming, nested describes). These patterns apply equally to [[testing/jest]], [[testing/vitest]], [[testing/pytest]], and [[testing/playwright]]. Agents use this node to learn how to structure tests that are readable, maintainable, and thorough — regardless of the framework being used.",
+  "parent": "testing",
+  "tags": ["patterns", "aaa", "arrange-act-assert", "given-when-then", "test-factory", "parameterized", "property-based", "test-structure"],
+  "aliases": [
+    "test patterns",
+    "testing patterns",
+    "arrange act assert",
+    "AAA pattern",
+    "given when then",
+    "GWT",
+    "test factory",
+    "test builder",
+    "parameterized tests",
+    "data-driven tests",
+    "property-based testing",
+    "test structure",
+    "test organization"
+  ],
+  "triggers": [
+    "how should I structure this test",
+    "what pattern should I use for tests",
+    "arrange act assert",
+    "test factory pattern",
+    "how to parameterize tests",
+    "property-based testing",
+    "how to organize test files",
+    "test naming conventions"
+  ],
+  "body": "# Testing Patterns\n\nPatterns determine how tests are structured, how data is created, and how intent is communicated. Good patterns make tests readable, maintainable, and thorough.\n\n## Arrange-Act-Assert (AAA)\n\nThe most common unit test pattern. Every test has three phases:\n\n```typescript\n// Arrange — set up preconditions\nconst calculator = new Calculator();\nconst a = 10, b = 5;\n\n// Act — execute the behavior under test\nconst result = calculator.add(a, b);\n\n// Assert — verify the outcome\nexpect(result).toBe(15);\n```\n\n```python\n# Arrange\ncalculator = Calculator()\na, b = 10, 5\n\n# Act\nresult = calculator.add(a, b)\n\n# Assert\nassert result == 15\n```\n\nRules:\n- **One Act per test** — if you have two Acts, split into two tests\n- **Arrange can be shared** via beforeEach/fixtures, but keep Act and Assert per-test\n- **No logic in Assert** — no if/else, no loops, just comparisons\n\n## Given-When-Then (GWT)\n\nBDD-style pattern, popular for integration and acceptance tests:\n\n```typescript\ndescribe('shopping cart', () => {\n  describe('given a cart with two items', () => {\n    const cart = createCart([itemA, itemB]);\n\n    describe('when applying a 10% discount', () => {\n      const discounted = cart.applyDiscount(0.1);\n\n      it('then the total is reduced by 10%', () => {\n        expect(discounted.total).toBe(cart.total * 0.9);\n      });\n\n      it('then the discount is recorded', () => {\n        expect(discounted.appliedDiscounts).toContain('10%');\n      });\n    });\n  });\n});\n```\n\nGWT maps naturally to nested describe blocks. Use it when tests describe business behavior rather than implementation.\n\n## Test Factories\n\nFactories create test data with sensible defaults, overridable for specific tests:\n\n```typescript\nfunction createUser(overrides: Partial<User> = {}): User {\n  return {\n    id: randomUUID(),\n    name: 'Test User',\n    email: 'test@example.com',\n    role: 'member',\n    createdAt: new Date(),\n    ...overrides,\n  };\n}\n\n// Usage\nconst admin = createUser({ role: 'admin' });\nconst recentUser = createUser({ createdAt: new Date('2026-01-01') });\n```\n\n```python\ndef create_user(**overrides) -> User:\n    defaults = {\n        \"id\": uuid4(),\n        \"name\": \"Test User\",\n        \"email\": \"test@example.com\",\n        \"role\": \"member\",\n    }\n    return User(**{**defaults, **overrides})\n\n# Usage\nadmin = create_user(role=\"admin\")\n```\n\nRules:\n- Defaults should produce a **valid** object — no required fields missing\n- Factory names: `createX`, `buildX`, or `makeX` — pick one convention\n- For complex objects, use the **builder pattern** with chaining\n\n## Builder Pattern\n\n```typescript\nclass OrderBuilder {\n  private order: Partial<Order> = {};\n\n  withCustomer(id: string) { this.order.customerId = id; return this; }\n  withItems(items: Item[]) { this.order.items = items; return this; }\n  withDiscount(pct: number) { this.order.discount = pct; return this; }\n\n  build(): Order {\n    return {\n      id: randomUUID(),\n      customerId: this.order.customerId ?? 'cust-1',\n      items: this.order.items ?? [createItem()],\n      discount: this.order.discount ?? 0,\n      createdAt: new Date(),\n    };\n  }\n}\n\nconst order = new OrderBuilder()\n  .withCustomer('cust-42')\n  .withDiscount(0.15)\n  .build();\n```\n\nUse builders when objects have many optional fields or complex construction.\n\n## Parameterized / Data-Driven Tests\n\nRun the same test logic with different inputs:\n\n```typescript\n// Jest / Vitest\ntest.each([\n  [1, 1, 2],\n  [0, 0, 0],\n  [-1, 1, 0],\n  [100, 200, 300],\n])('add(%i, %i) = %i', (a, b, expected) => {\n  expect(add(a, b)).toBe(expected);\n});\n```\n\n```python\n# pytest\nimport pytest\n\n@pytest.mark.parametrize(\"a,b,expected\", [\n    (1, 1, 2),\n    (0, 0, 0),\n    (-1, 1, 0),\n    (100, 200, 300),\n])\ndef test_add(a, b, expected):\n    assert add(a, b) == expected\n```\n\nUse parameterized tests when:\n- Testing the same logic with many input/output pairs\n- Testing boundary conditions (0, negative, max values)\n- Each case is independent and does not require unique setup\n\n## Property-Based Testing\n\nInstead of specifying exact inputs, describe properties that should always hold:\n\n```typescript\n// fast-check\nimport fc from 'fast-check';\n\ntest('sort is idempotent', () => {\n  fc.assert(\n    fc.property(fc.array(fc.integer()), (arr) => {\n      const sorted = sort(arr);\n      expect(sort(sorted)).toEqual(sorted);\n    })\n  );\n});\n\ntest('reverse of reverse is identity', () => {\n  fc.assert(\n    fc.property(fc.array(fc.integer()), (arr) => {\n      expect(reverse(reverse(arr))).toEqual(arr);\n    })\n  );\n});\n```\n\n```python\n# hypothesis\nfrom hypothesis import given\nimport hypothesis.strategies as st\n\n@given(st.lists(st.integers()))\ndef test_sort_idempotent(arr):\n    sorted_arr = sorted(arr)\n    assert sorted(sorted_arr) == sorted_arr\n```\n\nProperty-based testing excels at finding edge cases humans miss. Use it for:\n- Pure functions with well-defined invariants\n- Serialization/deserialization round-trips\n- Sorting, searching, data structure operations\n\n## Test Naming\n\nTest names should describe the behavior, not the implementation:\n\n```\n// Bad\ntest('test1')\ntest('it works')\ntest('handles edge case')\n\n// Good\ntest('returns empty array when input is empty')\ntest('throws ValidationError when email is missing @')\ntest('applies discount only to eligible items')\n```\n\nPattern: `[action] [expected result] when [condition]`\n\n## Test File Organization\n\n| Convention | Used By | Example |\n|------------|---------|----------|\n| `__tests__/` directory | Jest (default) | `src/__tests__/user.test.ts` |\n| Co-located `.test.` files | Vitest, Jest | `src/user.test.ts` |\n| `test_` prefix | pytest | `tests/test_user.py` |\n| `*.spec.ts` for E2E | Playwright | `e2e/login.spec.ts` |\n\nPick one convention per project. Co-located tests (next to source) are preferred for unit tests. Separate `tests/` or `e2e/` directories for integration and E2E tests.\n",
+  "sections": [
+    {
+      "id": "arrange-act-assert",
+      "title": "Arrange-Act-Assert (AAA)",
+      "body": "The three-phase pattern for structuring unit tests. Arrange sets up preconditions (create objects, prepare data). Act executes the single behavior under test. Assert verifies the outcome. One Act per test — multiple Acts means the test is doing too much. Arrange can be shared via beforeEach ([[testing/jest]], [[testing/vitest]]) or fixtures ([[testing/pytest]]), but Act and Assert stay per-test. No control flow in Assert — just direct comparisons.",
+      "tags": ["aaa", "arrange-act-assert", "unit-test", "structure"]
+    },
+    {
+      "id": "given-when-then",
+      "title": "Given-When-Then (GWT)",
+      "body": "BDD-style pattern that describes behavior from the user's perspective. Given = preconditions (context/state), When = action taken, Then = expected outcome. Maps naturally to nested describe blocks in [[testing/jest]] and [[testing/vitest]]. In [[testing/pytest]], use descriptive class nesting: class TestGivenCartWithItems > class TestWhenApplyingDiscount > def test_then_total_reduced. GWT is best for integration tests and business-logic tests where readability for non-developers matters.",
+      "tags": ["gwt", "given-when-then", "bdd", "behavior-driven"]
+    },
+    {
+      "id": "factories-builders",
+      "title": "Test factories and builders",
+      "body": "Factories are functions that create test objects with sensible defaults: `createUser({ role: 'admin' })`. They eliminate boilerplate and make tests focus on what's different, not what's the same. Builders add method chaining for complex objects: `new OrderBuilder().withCustomer(id).withDiscount(0.1).build()`. Rules: defaults produce valid objects, factory names are consistent (createX or buildX), and complex nested objects get their own factories. In [[testing/pytest]], fixtures serve a similar role via dependency injection.",
+      "tags": ["factory", "builder", "test-data", "fixtures"]
+    },
+    {
+      "id": "parameterized",
+      "title": "Parameterized and data-driven tests",
+      "body": "Run identical test logic with different inputs. In [[testing/jest]] and [[testing/vitest]]: `test.each([[1,1,2], [0,0,0]])('add(%i,%i)=%i', (a,b,expected) => ...)`. In [[testing/pytest]]: `@pytest.mark.parametrize('a,b,expected', [(1,1,2), (0,0,0)])`. Use parameterized tests for boundary conditions, equivalence classes, and combinatorial inputs. Each case runs as an independent test with its own pass/fail. Keep the test body simple — if cases need different setup, use separate tests instead.",
+      "tags": ["parameterized", "data-driven", "test-each", "parametrize", "boundary"]
+    },
+    {
+      "id": "property-based",
+      "title": "Property-based testing",
+      "body": "Instead of specifying inputs, describe invariants that hold for all valid inputs. The framework generates random inputs and checks the property. Libraries: fast-check (JS/TS), hypothesis (Python). Common properties: idempotence (f(f(x)) == f(x)), round-trip (decode(encode(x)) == x), commutativity, monotonicity. Property-based testing excels at finding edge cases humans miss — empty arrays, negative numbers, Unicode strings, large inputs. Use it alongside example-based tests, not as a replacement.",
+      "tags": ["property-based", "fast-check", "hypothesis", "generative", "invariant"]
+    },
+    {
+      "id": "naming-organization",
+      "title": "Test naming and file organization",
+      "body": "Test names describe behavior: `returns empty array when input is empty`. Pattern: [action] [expected result] when [condition]. File organization: co-located `.test.ts` files for unit tests, separate `tests/` or `e2e/` directories for integration and E2E. [[testing/jest]] defaults to `__tests__/` directories. [[testing/vitest]] prefers co-located files. [[testing/pytest]] uses `test_` prefix convention. [[testing/playwright]] uses `.spec.ts` suffix in an `e2e/` or `tests/` directory. Pick one convention per project and enforce it.",
+      "tags": ["naming", "organization", "file-structure", "conventions"]
+    }
+  ],
+  "links": [
+    { "uri": "testing/jest", "context": "Apply patterns in Jest tests" },
+    { "uri": "testing/vitest", "context": "Apply patterns in Vitest tests" },
+    { "uri": "testing/pytest", "context": "Apply patterns in pytest — fixtures replace factories" },
+    { "uri": "testing/playwright", "context": "E2E tests use GWT and page object patterns" },
+    { "uri": "testing/mocking", "context": "Mocking patterns complement structural patterns" },
+    { "uri": "testing/ci", "context": "Patterns affect CI performance — parameterized tests multiply test count" }
+  ],
+  "related": [
+    { "uri": "testing/mocking", "relation": "see-also", "note": "Mocking is a cross-cutting concern that interacts with all structural patterns" },
+    { "uri": "testing/jest", "relation": "see-also", "note": "Jest implements test.each for parameterized tests and describe for GWT" },
+    { "uri": "testing/pytest", "relation": "see-also", "note": "pytest's fixture system is itself a pattern for dependency injection in tests" }
+  ],
+  "more": {
+    "docs": "https://martinfowler.com/articles/practical-test-pyramid.html",
+    "wiki": "https://en.wikipedia.org/wiki/Arrange-act-assert",
+    "examples": "https://github.com/dubzzz/fast-check"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "6 min",
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

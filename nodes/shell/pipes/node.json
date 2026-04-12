@@ -1,0 +1,107 @@
+{
+  "name": "pipes",
+  "version": "1.0.0",
+  "uri": "shell/pipes",
+  "type": "context",
+  "content_type": "reference",
+  "context": "Chain commands with pipes, redirect stdin/stdout/stderr, and use tee, xargs, and process substitution",
+  "info": "Pipes and redirection are the UNIX composition model — small commands connected together to build powerful data pipelines. This context covers the pipe operator (|), all forms of I/O redirection (>, >>, <, 2>, &>, <<<), here-documents and here-strings, tee for splitting output, xargs for converting stdin to arguments, process substitution (<() and >()), and named pipes (FIFOs). Agents use pipes constantly: filtering log output, transforming data between formats, searching file contents, counting results, and chaining tools. Understanding pipes is essential for effective shell use. See [[shell/bash]] for command syntax, [[shell/files]] for file-based I/O, and [[shell/processes]] for the process model that underlies pipes.",
+  "parent": "shell",
+  "tags": ["pipes", "redirection", "stdin", "stdout", "stderr", "tee", "xargs", "io"],
+  "aliases": [
+    "pipes",
+    "pipe",
+    "redirection",
+    "redirect",
+    "stdin",
+    "stdout",
+    "stderr",
+    "tee",
+    "xargs",
+    "process substitution",
+    "here document",
+    "heredoc",
+    "file descriptor",
+    "|",
+    ">",
+    ">>",
+    "2>&1"
+  ],
+  "triggers": [
+    "pipe output to another command",
+    "redirect stdout to a file",
+    "redirect stderr",
+    "combine stdout and stderr",
+    "use tee to split output",
+    "use xargs",
+    "process substitution",
+    "write a heredoc",
+    "redirect to /dev/null",
+    "append to a file"
+  ],
+  "body": "# Pipes and Redirection\n\nThe pipe (`|`) is UNIX's composition operator. It connects the stdout of one command to the stdin of the next, allowing small tools to be chained into powerful pipelines.\n\n## Pipes\n\n```bash\n# Basic pipe — feed output of one command into another\nls -la | grep '.js'\ncat server.log | grep 'ERROR' | wc -l\nps aux | sort -k 4 -rn | head -10     # Top 10 by memory\n\n# Multi-stage pipeline\nfind . -name '*.py' -type f |\n  xargs grep -l 'import requests' |\n  sort |\n  uniq\n\n# Pipe to while loop\nfind . -name '*.log' | while IFS= read -r file; do\n  echo \"Processing: $file\"\n  gzip \"$file\"\ndone\n```\n\nEach pipe segment runs as a separate process. All processes in the pipeline start simultaneously — data flows through as it's produced (streaming, not buffered).\n\n## Output Redirection\n\n```bash\n# Redirect stdout to file (overwrite)\ncommand > output.txt\n\n# Redirect stdout to file (append)\ncommand >> output.txt\n\n# Redirect stderr to file\ncommand 2> errors.txt\n\n# Redirect both stdout and stderr to file\ncommand > all.log 2>&1         # Traditional (order matters!)\ncommand &> all.log              # Bash shorthand\n\n# Redirect stdout and stderr to different files\ncommand > output.txt 2> errors.txt\n\n# Discard output\ncommand > /dev/null             # Discard stdout\ncommand 2> /dev/null            # Discard stderr\ncommand &> /dev/null            # Discard everything\n\n# Redirect stderr to stdout (combine for piping)\ncommand 2>&1 | grep 'pattern'\n```\n\n### File Descriptor Numbers\n\n| FD | Name | Purpose |\n|----|------|---------|\n| 0 | stdin | Standard input |\n| 1 | stdout | Standard output |\n| 2 | stderr | Standard error |\n| 3+ | Custom | Opened by scripts for additional I/O |\n\n```bash\n# Open file on fd 3 for reading\nexec 3< input.txt\nread -r line <&3\nexec 3<&-                   # Close fd 3\n\n# Open file on fd 4 for writing\nexec 4> output.txt\necho \"hello\" >&4\nexec 4>&-                   # Close fd 4\n```\n\n## Input Redirection\n\n```bash\n# Read file as stdin\ncommand < input.txt\nwhile IFS= read -r line; do\n  echo \"$line\"\ndone < input.txt\n\n# Here-document (multi-line input)\ncat <<EOF\nHello $USER,\nToday is $(date).\nEOF\n\n# Here-document (no expansion — single-quoted delimiter)\ncat <<'EOF'\nLiteral $USER and $(date) are not expanded.\nEOF\n\n# Here-string (single-line input)\ngrep 'pattern' <<< \"$variable\"\nread -r first rest <<< \"hello world\"\n\n# Indented here-document (tabs stripped with <<-)\n\tcat <<-EOF\n\t\tIndented content.\n\t\tTabs before delimiter are stripped.\n\tEOF\n```\n\n## tee — Split Output\n\n`tee` copies stdin to both stdout AND one or more files. Essential for logging while also displaying output.\n\n```bash\n# Write to file AND display on screen\ncommand | tee output.log\n\n# Append to file\ncommand | tee -a output.log\n\n# Write to multiple files\ncommand | tee file1.log file2.log\n\n# Tee in a pipeline (log intermediate results)\ncommand1 | tee debug.log | command2\n\n# Tee stderr\ncommand 2>&1 | tee all.log\n\n# Write to file that requires sudo\necho 'content' | sudo tee /etc/config.conf > /dev/null\n```\n\n## xargs — Build Commands from stdin\n\n`xargs` converts stdin lines into arguments for a command. Essential when piping lists of items to commands that don't read stdin.\n\n```bash\n# Basic: pass stdin as arguments\nfind . -name '*.tmp' | xargs rm\n\n# Handle filenames with spaces/special chars\nfind . -name '*.tmp' -print0 | xargs -0 rm\n\n# Limit arguments per command invocation\necho \"a b c d e f\" | xargs -n 2 echo\n# Output: a b\n#         c d\n#         e f\n\n# Parallel execution\nfind . -name '*.jpg' -print0 | xargs -0 -P 4 -I{} convert {} {}.png\n\n# Use placeholder for argument position\nfind . -name '*.bak' | xargs -I{} mv {} /backup/\n\n# Confirm before each execution\nfind . -name '*.tmp' | xargs -p rm\n\n# Practical agent patterns\ngrep -rl 'old_function' src/ | xargs sed -i 's/old_function/new_function/g'\ngit diff --name-only | xargs wc -l\ncat urls.txt | xargs -P 8 -I{} curl -sO {}\n```\n\n## Process Substitution\n\nProcess substitution (`<()` and `>()`) creates a temporary file descriptor that acts as a file. Available in Bash and Zsh (not POSIX sh).\n\n```bash\n# Compare output of two commands\ndiff <(ls dir1/) <(ls dir2/)\n\n# Feed command output as a file argument\nwc -l <(find . -name '*.py')\n\n# Avoid subshell variable loss in while loops\nwhile IFS= read -r line; do\n  count=$((count + 1))\ndone < <(find . -name '*.txt')\n# $count is available here (unlike piping to while)\n\n# Write to multiple destinations\ncommand | tee >(gzip > archive.gz) >(wc -l > count.txt) > full.txt\n```\n\n## Named Pipes (FIFOs)\n\nNamed pipes are persistent pipe endpoints in the filesystem.\n\n```bash\n# Create named pipe\nmkfifo /tmp/mypipe\n\n# Writer (blocks until reader connects)\necho \"hello\" > /tmp/mypipe\n\n# Reader (in another shell)\ncat < /tmp/mypipe\n\n# Cleanup\nrm /tmp/mypipe\n```\n\n## Common Pipeline Patterns\n\n```bash\n# Count occurrences\ngrep -c 'ERROR' logfile.txt\ngrep 'ERROR' logfile.txt | wc -l        # Equivalent\n\n# Extract and transform\ncat data.csv | cut -d',' -f2 | sort | uniq -c | sort -rn\n\n# Top N results\ndu -sh */ | sort -rh | head -10\n\n# Filter, transform, and format\nps aux | awk '{print $1, $2, $11}' | sort | column -t\n\n# JSON processing with jq\ncurl -s 'https://api.example.com/data' | jq '.items[] | .name'\n\n# Watch pipeline output change over time\nwatch -n 2 'ps aux | grep node | grep -v grep'\n```\n\n## Pipeline Error Handling\n\n```bash\n# By default, pipe exit code = last command's exit code\nfalse | true\necho $?   # 0 (true succeeded, false failure is hidden)\n\n# set -o pipefail: pipe fails if ANY command fails\nset -o pipefail\nfalse | true\necho $?   # 1 (false failed)\n\n# PIPESTATUS array (Bash): exit codes of all pipeline commands\ncommand1 | command2 | command3\necho \"${PIPESTATUS[@]}\"   # e.g., \"0 1 0\"\n```\n",
+  "sections": [
+    {
+      "id": "pipes",
+      "title": "Pipe operator",
+      "body": "The `|` operator connects stdout of the left command to stdin of the right command. All commands in the pipeline start simultaneously — data streams through without buffering the entire output. Each pipe segment runs in its own subshell process. By default, the pipeline exit code is the exit code of the last command. Use `set -o pipefail` to make it fail if ANY command fails. Use `${PIPESTATUS[@]}` to inspect individual exit codes.",
+      "tags": ["pipe", "pipeline", "streaming", "pipefail", "pipestatus"]
+    },
+    {
+      "id": "redirection",
+      "title": "I/O redirection",
+      "body": "`>` overwrites a file with stdout. `>>` appends. `<` reads a file into stdin. `2>` redirects stderr. `2>&1` merges stderr into stdout. `&>` redirects both (Bash shorthand). `> /dev/null` discards output. File descriptors 0 (stdin), 1 (stdout), 2 (stderr). Custom FDs with `exec 3>file` / `exec 3<file`. Order matters: `command > file 2>&1` works, `command 2>&1 > file` does not (stderr goes to original stdout).",
+      "tags": ["redirection", "stdout", "stderr", "stdin", "file-descriptor", "dev-null", "append"]
+    },
+    {
+      "id": "xargs",
+      "title": "xargs — stdin to arguments",
+      "body": "`xargs` reads items from stdin and passes them as arguments to a command. Essential when piping to commands that don't read stdin (rm, mv, chmod). Use `-0` with `find -print0` for safe handling of filenames with spaces. Use `-I{}` for placement control. Use `-n N` to limit args per invocation. Use `-P N` for parallel execution. Use `-p` for interactive confirmation. Common: `find . -name '*.tmp' -print0 | xargs -0 rm`, `git diff --name-only | xargs wc -l`.",
+      "tags": ["xargs", "arguments", "parallel", "find", "batch", "stdin-to-args"]
+    },
+    {
+      "id": "process-substitution",
+      "title": "Process substitution",
+      "body": "`<(command)` creates a file descriptor containing command's output — usable wherever a filename is expected. `>(command)` creates a file descriptor that writes to command's stdin. Bash/Zsh only (not POSIX). Key use: `diff <(cmd1) <(cmd2)` to compare outputs. Also avoids subshell variable loss: `while read line; do ...; done < <(find ...)` preserves variables (unlike `find | while`). Uses /dev/fd/ internally.",
+      "tags": ["process-substitution", "file-descriptor", "diff", "subshell", "variable-scope"]
+    },
+    {
+      "id": "heredocs",
+      "title": "Here-documents and here-strings",
+      "body": "Here-document (`<<DELIM`): multi-line input block. Variables and command substitutions are expanded. Quote the delimiter (`<<'DELIM'`) to prevent all expansion. Indent with `<<-DELIM` (strips leading tabs only). Here-string (`<<<`): single-line input from a variable or literal — `grep pattern <<< \"$text\"`. Heredocs are essential for writing multi-line content to files, passing structured input to commands, and creating config files from scripts.",
+      "tags": ["heredoc", "here-string", "multi-line", "template", "expansion", "literal"]
+    }
+  ],
+  "links": [
+    { "uri": "shell", "context": "Parent shell ecosystem" },
+    { "uri": "shell/bash", "context": "Bash syntax for pipes and redirection" },
+    { "uri": "shell/files", "context": "Redirection targets files on disk" },
+    { "uri": "shell/processes", "context": "Each pipe segment is a process" },
+    { "uri": "shell/scripting", "context": "Scripts use pipes for data processing" },
+    { "uri": "shell/environment", "context": "Environment variables in heredoc expansion" }
+  ],
+  "related": [
+    { "uri": "shell/bash", "relation": "prerequisite", "note": "Pipe and redirection are Bash syntax fundamentals" },
+    { "uri": "shell/processes", "relation": "see-also", "note": "Pipes create connected processes" },
+    { "uri": "shell/files", "relation": "see-also", "note": "Redirection writes to and reads from files" },
+    { "uri": "shell/scripting", "relation": "see-also", "note": "Scripts compose pipes into reusable data workflows" }
+  ],
+  "more": {
+    "docs": "https://www.gnu.org/software/bash/manual/bash.html#Redirections",
+    "wiki": "https://wiki.bash-hackers.org/howto/redirection_tutorial"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "AI agents, developers",
+    "estimated_reading_time": "6 min",
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

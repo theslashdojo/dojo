@@ -1,0 +1,158 @@
+{
+  "name": "auth",
+  "version": "1.0.0",
+  "uri": "gitlab/auth",
+  "type": "context",
+  "context": "Authenticate GitLab API and CLI access with personal, project, group, OAuth, and CI job tokens",
+  "info": "GitLab authentication affects every automated action in this ecosystem. Agents need to know which token type to use, which header to send, how self-managed hostnames alter requests, and how the official `glab` CLI resolves environment variables and stored credentials. This node covers personal, project, and group access tokens, OAuth bearer tokens, CI job tokens, `glab auth login`, and the environment variables that make automation portable across GitLab.com and self-managed instances.",
+  "parent": "gitlab",
+  "tags": [
+    "gitlab",
+    "auth",
+    "tokens",
+    "oauth",
+    "private-token",
+    "job-token",
+    "glab",
+    "hostname"
+  ],
+  "aliases": [
+    "gitlab auth",
+    "gitlab token",
+    "private-token header",
+    "personal access token",
+    "project access token",
+    "group access token",
+    "oauth token",
+    "ci job token",
+    "glab auth login"
+  ],
+  "triggers": [
+    "authenticate to gitlab",
+    "set up a gitlab token",
+    "call the gitlab api",
+    "use glab with a self-managed host",
+    "authenticate from gitlab ci",
+    "pick the right gitlab token type"
+  ],
+  "content_type": "guide",
+  "body": "# GitLab Authentication\n\nGitLab supports several token types, and the correct one depends on where automation runs and how much scope it needs. The REST authentication guide recommends personal, project, or group access tokens in the `PRIVATE-TOKEN` header for most API calls, OAuth tokens in `Authorization: Bearer`, and `JOB-TOKEN` for CI jobs that should stay short-lived.\n\n```bash\ncurl --header 'PRIVATE-TOKEN: $GITLAB_TOKEN' \\\n  'https://gitlab.example.com/api/v4/projects'\n\ncurl --header 'Authorization: Bearer $OAUTH_TOKEN' \\\n  'https://gitlab.example.com/api/v4/projects'\n```\n\nFor the official CLI, `glab auth login` stores credentials and respects `GITLAB_TOKEN`, `GITLAB_ACCESS_TOKEN`, or `OAUTH_TOKEN` if they are already set. `GITLAB_HOST` or `GL_HOST` selects the instance for self-managed automation. Load [[gitlab/projects]] or another executable node after authentication is settled.",
+  "sections": [
+    {
+      "id": "tokens",
+      "title": "Token types and headers",
+      "body": "Use personal, project, or group access tokens for most REST automation and send them as `PRIVATE-TOKEN: <token>`. OAuth 2.0 access tokens use the standard `Authorization: Bearer <token>` header. Project and group access tokens are useful when the automation should belong to the resource instead of a human account. For least surprise, standardize on `GITLAB_TOKEN` for scripts that send the `PRIVATE-TOKEN` header.",
+      "tags": [
+        "personal-access-token",
+        "project-access-token",
+        "group-access-token",
+        "bearer"
+      ]
+    },
+    {
+      "id": "job-tokens",
+      "title": "CI job tokens",
+      "body": "GitLab generates `CI_JOB_TOKEN` for each running job. The token is short-lived, revoked when the job finishes, and intentionally narrower than a personal access token. Use the `JOB-TOKEN` header when calling endpoints that job tokens can access. Cross-project access is usually restricted by the target project's allowlist, so job-token-based automation fails until the target project explicitly trusts the source project or group.",
+      "tags": [
+        "ci-job-token",
+        "allowlist",
+        "job-token",
+        "ci"
+      ]
+    },
+    {
+      "id": "glab",
+      "title": "glab login and environment variables",
+      "body": "Use `glab auth login --hostname gitlab.example.org --token <token>` for non-interactive setup, or `glab auth login --hostname $CI_SERVER_HOST --job-token $CI_JOB_TOKEN` inside CI. `glab` respects `GITLAB_TOKEN`, `GITLAB_ACCESS_TOKEN`, and `OAUTH_TOKEN` before stored credentials. `GITLAB_HOST` or `GL_HOST` points the CLI at self-managed instances; if omitted, `glab` defaults to `https://gitlab.com`.",
+      "tags": [
+        "glab",
+        "gitlab-host",
+        "gl-host",
+        "environment-variables"
+      ]
+    },
+    {
+      "id": "oauth",
+      "title": "OAuth and delegated access",
+      "body": "Use OAuth when an agent acts on behalf of a user and should participate in browser-based authorization or token refresh. The API accepts OAuth bearer tokens in the `Authorization` header. This is the right fit for user-facing integrations, while access tokens are simpler for service automation and repository maintenance scripts.",
+      "tags": [
+        "oauth",
+        "delegated-access",
+        "bearer-token"
+      ]
+    }
+  ],
+  "links": [
+    {
+      "uri": "gitlab/projects",
+      "context": "Most API workflows start with project lookup or creation"
+    },
+    {
+      "uri": "gitlab/projects#identifiers",
+      "context": "Project path encoding matters as soon as token-backed API calls begin"
+    },
+    {
+      "uri": "gitlab/issues",
+      "context": "Issue automation needs authenticated project access"
+    },
+    {
+      "uri": "gitlab/merge-requests",
+      "context": "Merge request APIs require the correct scope and permissions"
+    },
+    {
+      "uri": "gitlab/pipelines",
+      "context": "Pipelines can be triggered with PATs or CI job tokens depending on the flow"
+    },
+    {
+      "uri": "gitlab/pipelines#create",
+      "context": "Pipeline creation is a common place where PATs, OAuth, and job tokens differ"
+    },
+    {
+      "uri": "gitlab/variables",
+      "context": "Project variables are sensitive and should only be changed with the right token scope"
+    },
+    {
+      "uri": "curl/auth",
+      "context": "General HTTP auth patterns for scripting and debugging"
+    }
+  ],
+  "related": [
+    {
+      "uri": "curl/auth",
+      "relation": "see-also",
+      "note": "Useful when debugging headers or reproducing GitLab API calls manually"
+    },
+    {
+      "uri": "gitlab/pipelines",
+      "relation": "see-also",
+      "note": "CI job tokens are primarily encountered while automating pipeline and artifact workflows"
+    },
+    {
+      "uri": "gitlab/projects#identifiers",
+      "relation": "see-also",
+      "note": "Many auth-debugging sessions are actually about calling the right encoded project path"
+    }
+  ],
+  "more": {
+    "docs": "https://docs.gitlab.com/auth/",
+    "rest-auth": "https://docs.gitlab.com/api/rest/authentication/",
+    "job-token": "https://docs.gitlab.com/ci/jobs/ci_job_token/",
+    "glab-auth": "https://docs.gitlab.com/cli/auth/login/"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents, platform engineers",
+    "estimated_reading_time": "4 min",
+    "prerequisites": [],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://gitlab.com/gitlab-org/gitlab",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

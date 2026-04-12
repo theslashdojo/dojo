@@ -1,0 +1,171 @@
+{
+  "name": "queries",
+  "version": "1.0.0",
+  "uri": "drizzle/queries",
+  "type": "skill",
+  "context": "Select, insert, update, delete with Drizzle's type-safe SQL-like query builder and relational query API",
+  "info": "Drizzle provides two query APIs: the SQL-like query builder (db.select().from().where()) that maps 1:1 to SQL with full type inference, and the relational query API (db.query.*.findMany/findFirst) for nested data with `with` clauses. The builder supports all standard SQL operations: select (partial, distinct, computed columns), insert (single, batch, upsert, returning), update (set, where, from, returning), delete (where, returning), joins (inner, left, right, full), subqueries, CTEs (WITH), aggregations (count, sum, avg, min, max, groupBy, having), and raw SQL via the sql template tag. Filter operators: eq, ne, gt, lt, gte, lte, like, ilike, inArray, notInArray, isNull, isNotNull, between, and, or, not. Pagination via limit/offset or cursor-based. Prepared statements for performance. See [[drizzle/schema]] for table definitions and [[drizzle/relations]] for enabling the relational API.",
+  "parent": "drizzle",
+  "tags": ["queries", "select", "insert", "update", "delete", "where", "join", "query-builder", "drizzle-queries", "crud", "sql", "aggregation"],
+  "aliases": [
+    "drizzle queries",
+    "drizzle query",
+    "drizzle select",
+    "drizzle insert",
+    "drizzle update",
+    "drizzle delete",
+    "drizzle crud",
+    "drizzle where",
+    "drizzle join",
+    "drizzle find",
+    "drizzle findMany",
+    "drizzle findFirst",
+    "db.select",
+    "db.insert",
+    "db.update",
+    "db.delete",
+    "db.query",
+    "drizzle query builder"
+  ],
+  "triggers": [
+    "query with drizzle",
+    "select from drizzle table",
+    "insert into drizzle table",
+    "update a drizzle record",
+    "delete from drizzle table",
+    "join tables in drizzle",
+    "filter drizzle query",
+    "drizzle findMany",
+    "drizzle findFirst",
+    "write a drizzle query",
+    "aggregate with drizzle",
+    "upsert in drizzle",
+    "paginate drizzle results"
+  ],
+  "body": "# Drizzle Queries\n\nDrizzle has two query APIs: a SQL-like builder that maps directly to SQL, and a relational API for nested data loading.\n\n## SQL-Like Query Builder\n\n### Select\n\n```typescript\nimport { eq, and, or, gt, lt, like, ilike, inArray, isNull, desc, asc, sql, count, sum, avg } from 'drizzle-orm';\nimport { users, posts } from './schema';\n\n// Select all\nconst allUsers = await db.select().from(users);\n\n// Select specific columns\nconst names = await db.select({ id: users.id, name: users.name }).from(users);\n\n// Where clause\nconst admins = await db.select().from(users).where(eq(users.role, 'admin'));\n\n// Multiple conditions\nconst results = await db.select().from(users).where(\n  and(\n    eq(users.role, 'admin'),\n    gt(users.createdAt, new Date('2024-01-01'))\n  )\n);\n\n// OR conditions\nconst mixed = await db.select().from(users).where(\n  or(eq(users.role, 'admin'), eq(users.role, 'moderator'))\n);\n\n// LIKE / ILIKE\nconst search = await db.select().from(users).where(ilike(users.name, '%dan%'));\n\n// IN array\nconst specific = await db.select().from(users).where(inArray(users.id, [1, 2, 3]));\n\n// NULL check\nconst noBio = await db.select().from(users).where(isNull(users.bio));\n\n// Order, limit, offset\nconst paginated = await db.select().from(users)\n  .orderBy(desc(users.createdAt))\n  .limit(10)\n  .offset(20);\n\n// Distinct\nconst uniqueRoles = await db.selectDistinct({ role: users.role }).from(users);\n```\n\n### Insert\n\n```typescript\n// Single insert\nawait db.insert(users).values({ name: 'Dan', email: 'dan@example.com' });\n\n// Batch insert\nawait db.insert(users).values([\n  { name: 'Dan', email: 'dan@example.com' },\n  { name: 'Alice', email: 'alice@example.com' },\n]);\n\n// Insert with returning (PostgreSQL/SQLite)\nconst [newUser] = await db.insert(users)\n  .values({ name: 'Dan', email: 'dan@example.com' })\n  .returning();\n\n// Return specific columns\nconst [{ id }] = await db.insert(users)\n  .values({ name: 'Dan', email: 'dan@example.com' })\n  .returning({ id: users.id });\n\n// Upsert — on conflict do update\nawait db.insert(users)\n  .values({ id: 1, name: 'Dan', email: 'dan@example.com' })\n  .onConflictDoUpdate({\n    target: users.email,\n    set: { name: 'Dan Updated' },\n  });\n\n// On conflict do nothing\nawait db.insert(users)\n  .values({ email: 'dan@example.com', name: 'Dan' })\n  .onConflictDoNothing({ target: users.email });\n\n// MySQL: on duplicate key update\nawait db.insert(users)\n  .values({ id: 1, name: 'Dan' })\n  .onDuplicateKeyUpdate({ set: { name: 'Dan' } });\n```\n\n### Update\n\n```typescript\n// Basic update\nawait db.update(users)\n  .set({ name: 'Mr. Dan' })\n  .where(eq(users.id, 1));\n\n// Update with SQL expression\nawait db.update(users)\n  .set({ updatedAt: sql`NOW()` })\n  .where(eq(users.id, 1));\n\n// Update with returning (PostgreSQL/SQLite)\nconst [updated] = await db.update(users)\n  .set({ name: 'Mr. Dan' })\n  .where(eq(users.id, 1))\n  .returning();\n\n// Update from another table (PostgreSQL)\nawait db.update(users)\n  .set({ cityId: cities.id })\n  .from(cities)\n  .where(and(eq(cities.name, 'Seattle'), eq(users.name, 'Dan')));\n```\n\n### Delete\n\n```typescript\n// Delete with condition\nawait db.delete(users).where(eq(users.id, 1));\n\n// Delete with returning (PostgreSQL/SQLite)\nconst [deleted] = await db.delete(users)\n  .where(eq(users.id, 1))\n  .returning();\n\n// Delete all rows (careful!)\nawait db.delete(users);\n```\n\n## Joins\n\n```typescript\n// Inner join\nconst result = await db.select({\n  userId: users.id,\n  userName: users.name,\n  postTitle: posts.title,\n}).from(users)\n  .innerJoin(posts, eq(users.id, posts.authorId));\n\n// Left join\nconst result = await db.select().from(users)\n  .leftJoin(posts, eq(users.id, posts.authorId));\n\n// Multiple joins\nconst result = await db.select().from(users)\n  .leftJoin(posts, eq(users.id, posts.authorId))\n  .leftJoin(comments, eq(posts.id, comments.postId));\n```\n\n## Aggregations\n\n```typescript\nimport { count, sum, avg, min, max } from 'drizzle-orm';\n\n// Count\nconst [{ total }] = await db.select({ total: count() }).from(users);\n\n// Count with $count helper\nconst total = await db.$count(users);\nconst activeCount = await db.$count(users, eq(users.active, true));\n\n// Group by with having\nconst stats = await db.select({\n  role: users.role,\n  userCount: count(),\n}).from(users)\n  .groupBy(users.role)\n  .having(({ userCount }) => gt(userCount, 5));\n\n// Sum, avg, min, max\nconst [{ totalViews }] = await db.select({ totalViews: sum(posts.views) }).from(posts);\n```\n\n## Subqueries and CTEs\n\n```typescript\n// Subquery\nconst sq = db.select({ authorId: posts.authorId, postCount: count().as('count') })\n  .from(posts)\n  .groupBy(posts.authorId)\n  .as('post_counts');\n\nconst usersWithCounts = await db.select({\n  name: users.name,\n  postCount: sq.postCount,\n}).from(users)\n  .leftJoin(sq, eq(users.id, sq.authorId));\n\n// CTE (WITH clause)\nconst activePosts = db.$with('active_posts').as(\n  db.select().from(posts).where(eq(posts.published, true))\n);\n\nconst result = await db.with(activePosts)\n  .select().from(activePosts);\n```\n\n## Relational Query API\n\nRequires [[drizzle/relations]] to be defined and schema passed to `drizzle()`.\n\n```typescript\nimport { drizzle } from 'drizzle-orm/postgres-js';\nimport * as schema from './schema';\n\nconst db = drizzle(client, { schema });\n\n// Find many with relations\nconst usersWithPosts = await db.query.users.findMany({\n  with: {\n    posts: true,\n  },\n});\n// Returns: [{ id, name, email, posts: [{ id, title, ... }] }]\n\n// Find first\nconst user = await db.query.users.findFirst({\n  where: eq(users.id, 1),\n  with: {\n    posts: {\n      where: eq(posts.published, true),\n      limit: 5,\n      orderBy: desc(posts.createdAt),\n      with: {\n        comments: true,\n      },\n    },\n  },\n});\n\n// Select specific columns\nconst result = await db.query.users.findMany({\n  columns: {\n    id: true,\n    name: true,\n  },\n  with: {\n    posts: {\n      columns: {\n        title: true,\n      },\n    },\n  },\n});\n```\n\n## Raw SQL\n\n```typescript\nimport { sql } from 'drizzle-orm';\n\n// In where clauses\nawait db.select().from(users).where(sql`${users.name} ILIKE ${'%dan%'}`);\n\n// Computed columns\nconst result = await db.select({\n  name: users.name,\n  nameLength: sql<number>`length(${users.name})`,\n}).from(users);\n\n// Full raw query\nconst rows = await db.execute(sql`SELECT * FROM users WHERE id = ${userId}`);\n```\n\n## Prepared Statements\n\n```typescript\nimport { placeholder } from 'drizzle-orm';\n\nconst prepared = db.select().from(users)\n  .where(eq(users.id, placeholder('id')))\n  .prepare('get_user');\n\n// Execute with parameters\nconst user = await prepared.execute({ id: 1 });\n```\n\n## Transactions\n\n```typescript\nawait db.transaction(async (tx) => {\n  const [user] = await tx.insert(users)\n    .values({ name: 'Dan', email: 'dan@example.com' })\n    .returning();\n\n  await tx.insert(posts)\n    .values({ title: 'First post', authorId: user.id });\n});\n\n// Nested transactions (savepoints)\nawait db.transaction(async (tx) => {\n  await tx.insert(users).values({ name: 'Outer' });\n  await tx.transaction(async (tx2) => {\n    await tx2.insert(users).values({ name: 'Inner' });\n  });\n});\n```\n\n## Type Inference\n\n```typescript\n// Infer result types\ntype User = typeof users.$inferSelect;\ntype NewUser = typeof users.$inferInsert;\n\n// Use in functions\nconst createUser = async (data: NewUser): Promise<User> => {\n  const [user] = await db.insert(users).values(data).returning();\n  return user;\n};\n```\n\n## Filter Operators Reference\n\n| Operator | SQL | Example |\n|----------|-----|---------|\n| `eq` | `=` | `eq(users.id, 1)` |\n| `ne` | `<>` | `ne(users.role, 'admin')` |\n| `gt` | `>` | `gt(users.age, 18)` |\n| `gte` | `>=` | `gte(users.age, 18)` |\n| `lt` | `<` | `lt(users.age, 65)` |\n| `lte` | `<=` | `lte(users.age, 65)` |\n| `like` | `LIKE` | `like(users.name, '%dan%')` |\n| `ilike` | `ILIKE` | `ilike(users.name, '%dan%')` |\n| `inArray` | `IN` | `inArray(users.id, [1, 2, 3])` |\n| `notInArray` | `NOT IN` | `notInArray(users.id, [1, 2])` |\n| `isNull` | `IS NULL` | `isNull(users.bio)` |\n| `isNotNull` | `IS NOT NULL` | `isNotNull(users.bio)` |\n| `between` | `BETWEEN` | `between(users.age, 18, 65)` |\n| `and` | `AND` | `and(cond1, cond2)` |\n| `or` | `OR` | `or(cond1, cond2)` |\n| `not` | `NOT` | `not(eq(users.role, 'admin'))` |\n| `sql` | raw | `sql\\`custom expression\\`` |\n",
+  "sections": [
+    {
+      "id": "select",
+      "title": "Select queries",
+      "body": "`db.select().from(table)` returns all rows. Pass a column map for partial select: `db.select({ id: users.id }).from(users)`. Chain `.where()`, `.orderBy()`, `.limit()`, `.offset()`. Use `selectDistinct()` for DISTINCT. Computed columns via `sql<type>\\`expression\\``. See [[drizzle/schema]] for table definitions.",
+      "tags": ["select", "partial", "distinct", "orderBy", "limit", "offset"]
+    },
+    {
+      "id": "insert",
+      "title": "Insert operations",
+      "body": "`db.insert(table).values(data)` inserts one row, `.values([...])` inserts many. Chain `.returning()` (PostgreSQL/SQLite) to get inserted rows. Upsert with `.onConflictDoUpdate({ target, set })` or `.onConflictDoNothing()`. MySQL uses `.onDuplicateKeyUpdate({ set })`. Type safety via `typeof table.$inferInsert`.",
+      "tags": ["insert", "batch", "returning", "upsert", "onConflict", "onDuplicateKey"]
+    },
+    {
+      "id": "update-delete",
+      "title": "Update and delete",
+      "body": "`db.update(table).set(values).where(condition)` updates rows. `db.delete(table).where(condition)` deletes rows. Both support `.returning()` on PostgreSQL/SQLite. Pass `null` to set a column to NULL, `undefined` is ignored. Use `sql\\`NOW()\\`` for SQL expressions in set values.",
+      "tags": ["update", "delete", "set", "returning", "null"]
+    },
+    {
+      "id": "joins",
+      "title": "Joins",
+      "body": "Chain `.innerJoin(table, condition)`, `.leftJoin()`, `.rightJoin()`, `.fullJoin()` after `.from()`. The condition is typically `eq(table1.col, table2.col)`. Select specific columns from joined tables in the select map. For complex joins, use the sql template tag. For nested data loading, prefer the relational query API via [[drizzle/relations]].",
+      "tags": ["join", "innerJoin", "leftJoin", "rightJoin", "fullJoin"]
+    },
+    {
+      "id": "aggregations",
+      "title": "Aggregations",
+      "body": "Import `count`, `sum`, `avg`, `min`, `max` from `drizzle-orm`. Use in select: `db.select({ total: count() }).from(table)`. Chain `.groupBy(column)` and `.having(condition)` for grouped aggregations. The `db.$count(table, filter?)` helper returns a plain number. For complex aggregations, use `sql<number>\\`expression\\``.",
+      "tags": ["count", "sum", "avg", "min", "max", "groupBy", "having", "aggregation"]
+    },
+    {
+      "id": "relational",
+      "title": "Relational query API",
+      "body": "`db.query.tableName.findMany({ with: { relation: true } })` loads nested related data. Requires relations defined via [[drizzle/relations]] and schema passed to `drizzle()`. Supports nested `with`, `where`, `columns`, `limit`, `orderBy` at each level. `findFirst` returns one result. This replaces manual JOIN construction for common nested data patterns.",
+      "tags": ["relational", "findMany", "findFirst", "with", "nested", "db.query"]
+    },
+    {
+      "id": "transactions",
+      "title": "Transactions",
+      "body": "`db.transaction(async (tx) => { ... })` wraps operations in a transaction. Use `tx` instead of `db` inside the callback. Nested `tx.transaction()` creates savepoints. If the callback throws, the transaction is rolled back. All CRUD operations work on the transaction object.",
+      "tags": ["transaction", "tx", "savepoint", "rollback", "atomic"]
+    },
+    {
+      "id": "raw-sql",
+      "title": "Raw SQL and prepared statements",
+      "body": "The `sql` template tag from `drizzle-orm` allows raw SQL in where clauses, computed columns, and full queries. `sql<Type>\\`expression\\`` provides type inference. `db.execute(sql\\`...\\`)` runs raw queries. Prepared statements via `.prepare('name')` + `.execute(params)` with `placeholder('name')` for parameters — improves performance for repeated queries.",
+      "tags": ["raw-sql", "sql-tag", "prepared", "placeholder", "execute"]
+    }
+  ],
+  "sub": [],
+  "links": [
+    { "uri": "drizzle/schema", "context": "Table definitions used in from() and insert()" },
+    { "uri": "drizzle/relations", "context": "Define relations to enable the relational query API" },
+    { "uri": "drizzle/migrate", "context": "Apply schema before querying" }
+  ],
+  "related": [
+    { "uri": "drizzle/schema", "relation": "prerequisite", "note": "Tables must be defined before they can be queried" },
+    { "uri": "drizzle/relations", "relation": "see-also", "note": "Relations enable the db.query.*.findMany API with nested with clauses" },
+    { "uri": "prisma/client", "relation": "alternative", "note": "Prisma uses an object-based query API; Drizzle uses SQL-like chaining" }
+  ],
+  "scripts": [
+    {
+      "id": "query-examples",
+      "name": "Drizzle Query Examples",
+      "description": "Run common Drizzle ORM query patterns: CRUD, joins, aggregations, transactions",
+      "lang": "typescript",
+      "runtime": "node>=18",
+      "entry": "./scripts/query-examples.ts",
+      "env": {
+        "DATABASE_URL": { "required": true, "secret": true, "description": "Database connection string" }
+      },
+      "packages": ["drizzle-orm", "postgres"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "operation": { "type": "string", "enum": ["select", "insert", "update", "delete"], "description": "CRUD operation" },
+        "table": { "type": "string", "description": "Table name to query" },
+        "where": { "type": "object", "description": "Filter conditions" },
+        "data": { "type": "object", "description": "Data for insert/update" },
+        "with": { "type": "object", "description": "Relations to include (relational API)" },
+        "limit": { "type": "integer", "description": "Max rows to return" },
+        "offset": { "type": "integer", "description": "Rows to skip" },
+        "orderBy": { "type": "string", "description": "Column and direction for ordering" }
+      },
+      "required": ["operation", "table"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "rows": { "type": "array", "description": "Result rows" },
+        "rowCount": { "type": "integer", "description": "Number of affected/returned rows" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "drizzle/schema", "reason": "Tables must be defined to query them" },
+    { "uri": "drizzle/relations", "reason": "Relations are needed for the relational query API (db.query)", "optional": true }
+  ],
+  "more": {
+    "docs": "https://orm.drizzle.team/docs/select",
+    "insert": "https://orm.drizzle.team/docs/insert",
+    "update": "https://orm.drizzle.team/docs/update",
+    "delete": "https://orm.drizzle.team/docs/delete",
+    "joins": "https://orm.drizzle.team/docs/joins",
+    "filters": "https://orm.drizzle.team/docs/operators"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "6 min",
+    "prerequisites": ["drizzle/schema"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

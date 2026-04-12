@@ -1,0 +1,139 @@
+{
+  "name": "migrate",
+  "version": "1.0.0",
+  "uri": "drizzle/migrate",
+  "type": "skill",
+  "context": "Generate, apply, push, and pull database migrations using drizzle-kit CLI",
+  "info": "drizzle-kit provides multiple migration strategies: `generate` diffs your TypeScript schema against the last snapshot and produces SQL migration files, `migrate` applies those files to the database, `push` applies schema changes directly without SQL files (ideal for prototyping), `pull` introspects an existing database into TypeScript schema, and `export` outputs raw SQL for external tools. Migrations are stored in a configurable output directory (default: `drizzle/`) with timestamped folders containing `migration.sql` and `snapshot.json`. drizzle-kit detects renames (vs drop+create) interactively. For production, use generate+migrate for auditable SQL files. For rapid dev, use push. All commands read from [[drizzle/config]] (`drizzle.config.ts`). Programmatic migration at runtime is also supported via `migrate()` from `drizzle-orm/*/migrator`.",
+  "parent": "drizzle",
+  "tags": ["migrate", "migrations", "drizzle-kit", "generate", "push", "pull", "schema-changes", "sql", "database-migration"],
+  "aliases": [
+    "drizzle migrate",
+    "drizzle migrations",
+    "drizzle-kit migrate",
+    "drizzle-kit generate",
+    "drizzle-kit push",
+    "drizzle-kit pull",
+    "drizzle kit",
+    "drizzle migration",
+    "drizzle db push",
+    "drizzle generate migration",
+    "drizzle schema migration"
+  ],
+  "triggers": [
+    "run drizzle migrations",
+    "generate drizzle migration",
+    "push drizzle schema",
+    "pull database schema into drizzle",
+    "apply drizzle migrations",
+    "create a drizzle migration",
+    "drizzle-kit generate",
+    "drizzle-kit push",
+    "drizzle-kit pull",
+    "migrate my drizzle database",
+    "introspect database with drizzle"
+  ],
+  "body": "# Drizzle Migrations\n\ndrizzle-kit manages your database schema evolution. It compares your TypeScript schema to the previous snapshot and generates precise SQL migrations.\n\n## Migration Strategies\n\n### Strategy 1: Generate + Migrate (production)\n\nGenerate SQL files from schema changes, review them, then apply:\n\n```bash\n# Generate SQL migration from schema diff\nnpx drizzle-kit generate\n\n# Apply pending migrations to the database\nnpx drizzle-kit migrate\n```\n\nThis creates files in `drizzle/`:\n```\ndrizzle/\n  0000_initial/\n    migration.sql\n    snapshot.json\n  0001_add_posts/\n    migration.sql\n    snapshot.json\n  meta/\n    _journal.json\n```\n\n### Strategy 2: Push (rapid prototyping)\n\nApply schema changes directly to the database — no SQL files:\n\n```bash\nnpx drizzle-kit push\n```\n\nBest for early development. Switch to generate+migrate before production.\n\n### Strategy 3: Pull (database-first)\n\nIntrospect an existing database into TypeScript schema:\n\n```bash\nnpx drizzle-kit pull\n```\n\nGenerates schema files from your existing tables. Good for adopting Drizzle on existing projects.\n\n### Strategy 4: Export (external tools)\n\nOutput SQL representation for tools like Atlas, Liquibase, Flyway:\n\n```bash\nnpx drizzle-kit export\n```\n\n## CLI Commands Reference\n\n| Command | Purpose | Creates Files |\n|---------|---------|---------------|\n| `drizzle-kit generate` | Diff schema → SQL migration files | Yes: `migration.sql` + `snapshot.json` |\n| `drizzle-kit migrate` | Apply pending migration files to DB | No (reads existing) |\n| `drizzle-kit push` | Apply schema directly to DB | No |\n| `drizzle-kit pull` | Introspect DB → TypeScript schema | Yes: schema file |\n| `drizzle-kit export` | Output SQL to console | No |\n| `drizzle-kit studio` | Open visual schema browser | No |\n| `drizzle-kit check` | Validate migration consistency | No |\n| `drizzle-kit up` | Upgrade migration format | Yes (updates snapshots) |\n\n## CLI Flags\n\n```bash\n# Use a specific config file\nnpx drizzle-kit generate --config=drizzle-prod.config.ts\n\n# Name your migration\nnpx drizzle-kit generate --name=add-users-table\n\n# Use custom schema path (overrides config)\nnpx drizzle-kit generate --schema=./src/db/schema.ts\n\n# Use custom output directory\nnpx drizzle-kit generate --out=./migrations\n\n# Strict mode — require confirmation for destructive changes\nnpx drizzle-kit push --strict\n\n# Verbose — print generated SQL\nnpx drizzle-kit push --verbose\n```\n\n## Programmatic Migration (Runtime)\n\nApply migrations at app startup — useful for serverless or monolithic deploys:\n\n```typescript\n// PostgreSQL with postgres.js\nimport { drizzle } from 'drizzle-orm/postgres-js';\nimport { migrate } from 'drizzle-orm/postgres-js/migrator';\nimport postgres from 'postgres';\n\nconst client = postgres(process.env.DATABASE_URL!);\nconst db = drizzle(client);\n\nawait migrate(db, { migrationsFolder: './drizzle' });\nawait client.end();\n```\n\n```typescript\n// MySQL with mysql2\nimport { drizzle } from 'drizzle-orm/mysql2';\nimport { migrate } from 'drizzle-orm/mysql2/migrator';\nimport mysql from 'mysql2/promise';\n\nconst connection = await mysql.createConnection(process.env.DATABASE_URL!);\nconst db = drizzle(connection);\n\nawait migrate(db, { migrationsFolder: './drizzle' });\nawait connection.end();\n```\n\n```typescript\n// SQLite with better-sqlite3\nimport { drizzle } from 'drizzle-orm/better-sqlite3';\nimport { migrate } from 'drizzle-orm/better-sqlite3/migrator';\nimport Database from 'better-sqlite3';\n\nconst sqlite = new Database('sqlite.db');\nconst db = drizzle(sqlite);\n\nmigrate(db, { migrationsFolder: './drizzle' });\n```\n\n## Rename Detection\n\nWhen `drizzle-kit generate` detects a column drop + add, it prompts:\n\n```\nIs posts.title renamed to posts.heading? [y/N]\n```\n\nThis prevents accidental data loss. The generated SQL uses `ALTER TABLE ... RENAME COLUMN` instead of drop+create.\n\n## Migration File Format\n\n```sql\n-- drizzle/0001_add_posts/migration.sql\nCREATE TABLE IF NOT EXISTS \"posts\" (\n  \"id\" serial PRIMARY KEY NOT NULL,\n  \"title\" varchar(256) NOT NULL,\n  \"content\" text,\n  \"author_id\" integer NOT NULL REFERENCES \"users\"(\"id\") ON DELETE CASCADE\n);\n--> statement-breakpoint\nCREATE INDEX IF NOT EXISTS \"author_idx\" ON \"posts\" (\"author_id\");\n```\n\nThe `--> statement-breakpoint` marker separates DDL statements for databases that require individual execution.\n\n## Configuration\n\nAll commands read from `drizzle.config.ts`. See [[drizzle/config]] for full reference.\n\n```typescript\nimport { defineConfig } from 'drizzle-kit';\n\nexport default defineConfig({\n  dialect: 'postgresql',\n  schema: './src/db/schema.ts',\n  out: './drizzle',\n  dbCredentials: {\n    url: process.env.DATABASE_URL!,\n  },\n});\n```\n\n## Environment Variables\n\n| Variable | Purpose |\n|----------|--------|\n| `DATABASE_URL` | Connection string used by drizzle-kit commands and runtime migrator |\n\n## Best Practices\n\n- **Commit migration files** to version control — they are your schema history\n- **Review generated SQL** before applying to production\n- **Use `push` for prototyping**, switch to `generate`+`migrate` for production\n- **Run `drizzle-kit check`** in CI to catch migration inconsistencies\n- **Name migrations** with `--name` for readable history\n- **Test migrations** in staging before production\n",
+  "sections": [
+    {
+      "id": "generate",
+      "title": "Generating migrations",
+      "body": "Run `npx drizzle-kit generate` to diff your TypeScript schema against the last snapshot. This creates a new folder in your output directory with `migration.sql` (the SQL to apply) and `snapshot.json` (the schema state). Use `--name=descriptive-name` for readable file names. drizzle-kit detects renames interactively. See [[drizzle/config]] for configuring the schema path and output directory.",
+      "tags": ["generate", "diff", "sql", "snapshot", "rename-detection"]
+    },
+    {
+      "id": "migrate",
+      "title": "Applying migrations",
+      "body": "Run `npx drizzle-kit migrate` to apply all pending SQL migration files to your database. drizzle-kit tracks applied migrations in a `__drizzle_migrations` table. For runtime migration (serverless, startup), use the programmatic `migrate()` function from `drizzle-orm/*/migrator` — it reads the migration folder and applies pending files.",
+      "tags": ["migrate", "apply", "runtime", "migrator", "pending"]
+    },
+    {
+      "id": "push",
+      "title": "Push for prototyping",
+      "body": "`npx drizzle-kit push` applies your TypeScript schema directly to the database without creating SQL files. It diffs the live database against your schema and applies changes immediately. Use `--strict` to require confirmation for destructive operations (drops). Ideal for rapid iteration during development — switch to generate+migrate before shipping.",
+      "tags": ["push", "prototyping", "direct", "no-files", "rapid"]
+    },
+    {
+      "id": "pull",
+      "title": "Introspecting existing databases",
+      "body": "`npx drizzle-kit pull` reads your database structure and generates TypeScript schema files. Use this when adopting Drizzle on an existing project. The `introspect.casing` config option controls whether column names are preserved as-is or converted to camelCase. After pulling, you can switch to the standard generate+migrate workflow.",
+      "tags": ["pull", "introspect", "database-first", "existing-db", "reverse-engineer"]
+    },
+    {
+      "id": "programmatic",
+      "title": "Runtime migration",
+      "body": "Import `migrate` from `drizzle-orm/<driver>/migrator` and call it with your drizzle instance and migrations folder path. This runs pending migrations at application startup. Useful for serverless functions that need to ensure the database is up to date, or monolithic apps with zero-downtime deploys. Always close the connection after migration in scripts.",
+      "tags": ["runtime", "programmatic", "serverless", "startup", "migrator"]
+    }
+  ],
+  "sub": [],
+  "links": [
+    { "uri": "drizzle/schema", "context": "Define the tables that migrations are generated from" },
+    { "uri": "drizzle/config", "context": "Configure drizzle-kit schema path, output directory, and database credentials" },
+    { "uri": "drizzle/queries", "context": "Query the database after migrations are applied" }
+  ],
+  "related": [
+    { "uri": "drizzle/schema", "relation": "prerequisite", "note": "Migrations are generated by diffing the TypeScript schema" },
+    { "uri": "drizzle/config", "relation": "prerequisite", "note": "drizzle-kit commands read from drizzle.config.ts" },
+    { "uri": "prisma/migrate", "relation": "alternative", "note": "Prisma uses `prisma migrate dev` for development and `prisma migrate deploy` for production" }
+  ],
+  "scripts": [
+    {
+      "id": "run-migration",
+      "name": "Run Drizzle Migration",
+      "description": "Generate and apply Drizzle migrations using drizzle-kit CLI",
+      "lang": "bash",
+      "runtime": "bash",
+      "entry": "./scripts/run-migration.sh",
+      "env": {
+        "DATABASE_URL": { "required": true, "secret": true, "description": "Database connection string" },
+        "MIGRATION_COMMAND": { "required": false, "default": "generate", "description": "Command to run: generate, migrate, push, pull" }
+      },
+      "packages": ["drizzle-orm", "drizzle-kit"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "command": { "type": "string", "enum": ["generate", "migrate", "push", "pull", "export"], "default": "generate", "description": "Migration command to run" },
+        "name": { "type": "string", "description": "Migration name (for generate)" },
+        "config": { "type": "string", "description": "Path to drizzle config file" },
+        "strict": { "type": "boolean", "default": false, "description": "Require confirmation for destructive changes" }
+      },
+      "required": ["command"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "migrationPath": { "type": "string", "description": "Path to generated migration folder" },
+        "sqlStatements": { "type": "integer", "description": "Number of SQL statements generated" },
+        "applied": { "type": "boolean", "description": "Whether migration was applied to database" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "drizzle/schema", "reason": "Migrations are generated from the TypeScript schema" },
+    { "uri": "drizzle/config", "reason": "drizzle-kit reads configuration from drizzle.config.ts" }
+  ],
+  "more": {
+    "docs": "https://orm.drizzle.team/docs/migrations",
+    "kit-overview": "https://orm.drizzle.team/docs/kit-overview",
+    "kit-config": "https://orm.drizzle.team/docs/drizzle-config-file"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "5 min",
+    "prerequisites": ["drizzle/schema", "drizzle/config"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

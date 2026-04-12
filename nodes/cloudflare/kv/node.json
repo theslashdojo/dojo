@@ -1,0 +1,135 @@
+{
+  "name": "kv",
+  "version": "1.0.0",
+  "uri": "cloudflare/kv",
+  "type": "skill",
+  "context": "Read, write, list, and delete key-value data in Cloudflare Workers KV — globally distributed eventual-consistency store",
+  "info": "Workers KV is a globally distributed, eventually consistent key-value store optimized for high-read, low-write workloads. Data is replicated to all 300+ Cloudflare edge locations. Reads are fast (< 60ms globally) but writes take up to 60 seconds to propagate globally. Keys are strings up to 512 bytes, values are up to 25MB (text, JSON, ArrayBuffer, or ReadableStream). KV supports optional metadata (up to 1KB JSON) per key and TTL-based expiration. Access KV from Workers via bindings or from external systems via the REST API. Common uses: configuration storage, feature flags, caching, session data, and static asset serving.",
+  "parent": "cloudflare",
+  "tags": ["kv", "key-value", "storage", "cache", "workers-kv", "eventually-consistent"],
+  "aliases": [
+    "cloudflare kv",
+    "workers kv",
+    "cf kv",
+    "kv namespace",
+    "key value store",
+    "cloudflare key value",
+    "kv storage",
+    "workers key-value"
+  ],
+  "triggers": [
+    "store data in cloudflare kv",
+    "read from kv",
+    "write to kv",
+    "create a kv namespace",
+    "use workers kv",
+    "set up kv storage",
+    "cache data in cloudflare"
+  ],
+  "body": "# Workers KV\n\nKV is a globally distributed key-value store for Cloudflare Workers. It's optimized for read-heavy workloads — reads are fast everywhere, writes are eventually consistent (up to 60s propagation).\n\n## Setup\n\n### Create a KV Namespace\n\n```bash\n# Create namespace\nwrangler kv namespace create MY_KV\n# Output: Add the following to wrangler.toml:\n# [[kv_namespaces]]\n# binding = \"MY_KV\"\n# id = \"abc123...\"\n\n# Create preview namespace (for wrangler dev)\nwrangler kv namespace create MY_KV --preview\n```\n\n### wrangler.toml\n\n```toml\n[[kv_namespaces]]\nbinding = \"MY_KV\"\nid = \"abc123def456\"           # production namespace ID\npreview_id = \"789ghi012\"      # preview namespace ID (for wrangler dev)\n```\n\n## Worker API\n\n```typescript\nexport interface Env {\n  MY_KV: KVNamespace;\n}\n\nexport default {\n  async fetch(request: Request, env: Env): Promise<Response> {\n    // PUT — write a value\n    await env.MY_KV.put('user:123', JSON.stringify({ name: 'Alice', role: 'admin' }));\n\n    // PUT with TTL (seconds) — auto-expires\n    await env.MY_KV.put('session:abc', 'token-data', { expirationTtl: 3600 });\n\n    // PUT with expiration (unix timestamp)\n    await env.MY_KV.put('temp:xyz', 'data', { expiration: 1735689600 });\n\n    // PUT with metadata\n    await env.MY_KV.put('doc:1', 'content', {\n      metadata: { author: 'agent', version: 2 },\n    });\n\n    // GET — read a value\n    const value = await env.MY_KV.get('user:123');           // string | null\n    const json = await env.MY_KV.get('user:123', 'json');    // parsed JSON\n    const buf = await env.MY_KV.get('binary:1', 'arrayBuffer');\n    const stream = await env.MY_KV.get('large:1', 'stream'); // ReadableStream\n\n    // GET with metadata\n    const { value: val, metadata } = await env.MY_KV.getWithMetadata('doc:1', 'text');\n\n    // DELETE\n    await env.MY_KV.delete('session:abc');\n\n    // LIST — enumerate keys\n    const listed = await env.MY_KV.list({ prefix: 'user:', limit: 100 });\n    // listed.keys = [{ name: 'user:123', expiration?, metadata? }, ...]\n    // listed.list_complete = true/false\n    // listed.cursor = '...' (for pagination)\n\n    // Paginated listing\n    let cursor: string | undefined;\n    const allKeys: string[] = [];\n    do {\n      const result = await env.MY_KV.list({ prefix: 'user:', limit: 1000, cursor });\n      allKeys.push(...result.keys.map(k => k.name));\n      cursor = result.list_complete ? undefined : result.cursor;\n    } while (cursor);\n\n    return Response.json({ keys: allKeys });\n  },\n};\n```\n\n## CLI Operations\n\n```bash\n# Write a value\nwrangler kv key put --namespace-id abc123 \"my-key\" \"my-value\"\n\n# Read a value\nwrangler kv key get --namespace-id abc123 \"my-key\"\n\n# Delete a value\nwrangler kv key delete --namespace-id abc123 \"my-key\"\n\n# List keys\nwrangler kv key list --namespace-id abc123 --prefix \"user:\"\n\n# Bulk put from JSON file\nwrangler kv bulk put --namespace-id abc123 data.json\n# data.json: [{\"key\":\"k1\",\"value\":\"v1\"},{\"key\":\"k2\",\"value\":\"v2\"}]\n\n# Bulk delete\nwrangler kv bulk delete --namespace-id abc123 keys.json\n# keys.json: [\"k1\", \"k2\"]\n```\n\n## REST API\n\n```bash\n# List namespaces\ncurl \"https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/storage/kv/namespaces\" \\\n  -H \"Authorization: Bearer $CLOUDFLARE_API_TOKEN\"\n\n# Write a value\ncurl -X PUT \"https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/storage/kv/namespaces/$NAMESPACE_ID/values/my-key\" \\\n  -H \"Authorization: Bearer $CLOUDFLARE_API_TOKEN\" \\\n  --data \"my-value\"\n\n# Read a value\ncurl \"https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/storage/kv/namespaces/$NAMESPACE_ID/values/my-key\" \\\n  -H \"Authorization: Bearer $CLOUDFLARE_API_TOKEN\"\n```\n\n## Consistency Model\n\nKV is **eventually consistent**. After a write, the new value propagates to all edge locations within 60 seconds. Reads from the same location that performed the write are immediately consistent. This makes KV ideal for:\n- Configuration that changes infrequently\n- Feature flags\n- Cached API responses\n- Static content\n\nKV is **not** suitable for:\n- Counters or incrementing values (use Durable Objects instead)\n- Real-time collaboration state\n- Financial transactions\n",
+  "sections": [
+    {
+      "id": "setup",
+      "title": "Creating and binding KV namespaces",
+      "body": "Create a namespace with `wrangler kv namespace create MY_KV`. Add the output binding to `wrangler.toml` under `[[kv_namespaces]]` with `binding`, `id`, and optionally `preview_id`. The binding name becomes the property name on the Worker's `env` object. Create a separate preview namespace for local development with `--preview`.",
+      "tags": ["setup", "namespace", "binding", "wrangler-toml"]
+    },
+    {
+      "id": "read-write",
+      "title": "Reading and writing values",
+      "body": "`env.MY_KV.put(key, value, options?)` writes a value. Options: `expirationTtl` (seconds), `expiration` (unix timestamp), `metadata` (JSON up to 1KB). `env.MY_KV.get(key, type?)` reads a value — type can be 'text' (default), 'json', 'arrayBuffer', or 'stream'. `env.MY_KV.getWithMetadata(key, type?)` returns both value and metadata. `env.MY_KV.delete(key)` removes a key.",
+      "tags": ["put", "get", "delete", "ttl", "expiration", "metadata"]
+    },
+    {
+      "id": "list-paginate",
+      "title": "Listing and pagination",
+      "body": "`env.MY_KV.list({ prefix?, limit?, cursor? })` lists keys. Returns `keys` array with `name`, optional `expiration` and `metadata`. `list_complete` indicates if all results are returned. If false, use `cursor` for the next page. Maximum 1000 keys per list call. Always paginate with cursor for complete enumeration.",
+      "tags": ["list", "pagination", "cursor", "prefix", "enumerate"]
+    },
+    {
+      "id": "consistency",
+      "title": "Consistency model",
+      "body": "KV is eventually consistent with up to 60-second propagation delay after writes. Same-location reads are immediately consistent after writes. KV is optimized for read-heavy workloads (millions of reads, infrequent writes). Not suitable for counters, real-time state, or strong consistency requirements — use Durable Objects for those use cases.",
+      "tags": ["consistency", "eventual", "propagation", "read-heavy"]
+    }
+  ],
+  "links": [
+    { "uri": "cloudflare/workers", "context": "Workers consume KV through bindings" },
+    { "uri": "cloudflare/workers/bindings", "context": "How to configure KV bindings in wrangler.toml" },
+    { "uri": "cloudflare/wrangler", "context": "CLI commands for KV operations" },
+    { "uri": "cloudflare/auth", "context": "API token with Workers KV Storage:Edit permission" },
+    { "uri": "cloudflare/troubleshooting#limits", "context": "KV size and rate limits" },
+    { "uri": "cloudflare/r2", "context": "Use R2 for large objects (> 25MB)" },
+    { "uri": "cloudflare/d1", "context": "Use D1 for relational data with SQL queries" }
+  ],
+  "related": [
+    { "uri": "cloudflare/workers", "relation": "prerequisite", "note": "KV is accessed through Worker bindings" },
+    { "uri": "cloudflare/auth", "relation": "prerequisite", "note": "API token required for KV API and deployment" },
+    { "uri": "cloudflare/r2", "relation": "see-also", "note": "R2 for objects > 25MB; KV for smaller key-value data" },
+    { "uri": "cloudflare/d1", "relation": "see-also", "note": "D1 for relational data; KV for simple key-value lookups" },
+    { "uri": "redis/caching", "relation": "similar", "note": "Redis provides similar key-value semantics with strong consistency" }
+  ],
+  "scripts": [
+    {
+      "id": "kv-ops",
+      "name": "KV Operations",
+      "description": "Create KV namespaces, read, write, list, and delete keys via Wrangler CLI",
+      "lang": "bash",
+      "runtime": "node>=18",
+      "entry": "./scripts/kv-ops.sh",
+      "env": {
+        "CLOUDFLARE_API_TOKEN": { "required": true, "secret": true, "description": "API token with Workers KV Storage:Edit permission" },
+        "CLOUDFLARE_ACCOUNT_ID": { "required": true, "secret": false, "description": "Cloudflare account identifier" }
+      },
+      "packages": ["wrangler"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "action": { "type": "string", "enum": ["create-namespace", "put", "get", "delete", "list"], "description": "KV operation to perform" },
+        "namespaceName": { "type": "string", "description": "KV namespace name (for create)" },
+        "namespaceId": { "type": "string", "description": "KV namespace ID (for CRUD operations)" },
+        "key": { "type": "string", "description": "Key to read/write/delete" },
+        "value": { "type": "string", "description": "Value to write" },
+        "expirationTtl": { "type": "integer", "description": "TTL in seconds for auto-expiration" },
+        "prefix": { "type": "string", "description": "Key prefix for listing" }
+      },
+      "required": ["action"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "namespaceId": { "type": "string", "description": "Created namespace ID" },
+        "value": { "type": "string", "description": "Retrieved value" },
+        "keys": { "type": "array", "items": { "type": "string" }, "description": "Listed keys" },
+        "success": { "type": "boolean", "description": "Operation success" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "cloudflare/auth", "reason": "API token required for KV operations" },
+    { "uri": "cloudflare/wrangler", "reason": "Wrangler CLI used for namespace management" }
+  ],
+  "more": {
+    "docs": "https://developers.cloudflare.com/kv/",
+    "api": "https://developers.cloudflare.com/api/resources/kv/",
+    "examples": "https://developers.cloudflare.com/kv/examples/"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "5 min",
+    "prerequisites": ["cloudflare/auth", "cloudflare/workers"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

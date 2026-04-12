@@ -1,0 +1,144 @@
+{
+  "name": "troubleshooting",
+  "version": "1.0.0",
+  "uri": "ansible/troubleshooting",
+  "type": "context",
+  "content_type": "guide",
+  "context": "Debug Ansible failures by checking inventory, transport, privilege, Python, modules, and templating in order",
+  "info": "Most Ansible failures are not mysterious if you debug them in the right order: inventory resolution first, connectivity second, privilege and interpreter discovery third, then module availability, templating, and task logic. This node provides the practical triage ladder an autonomous agent should follow before editing playbooks blindly: inspect the resolved inventory, ping the exact host subset, increase verbosity, inspect active config, confirm collection and module availability, and isolate the failing task or host. It is designed to reduce random trial-and-error during production incidents.",
+  "parent": "ansible",
+  "tags": [
+    "ansible",
+    "troubleshooting",
+    "debugging",
+    "unreachable",
+    "verbosity",
+    "python-interpreter",
+    "sudo",
+    "module-not-found",
+    "templating"
+  ],
+  "aliases": [
+    "ansible troubleshooting",
+    "ansible debug",
+    "ansible unreachable",
+    "ansible failed",
+    "ansible module not found",
+    "ansible permission denied",
+    "ansible template error"
+  ],
+  "triggers": [
+    "debug an ansible failure",
+    "why is ansible unreachable",
+    "fix ansible permission denied",
+    "ansible module not found error",
+    "ansible python interpreter error",
+    "ansible template undefined variable",
+    "what commands should i run to debug ansible"
+  ],
+  "body": "# Troubleshooting Ansible\n\nDebug in layers. Do not rewrite the playbook until you know which layer is actually failing.\n\n## First-Responder Commands\n\n```bash\nansible-inventory -i inventory --graph\nansible all -i inventory -m ansible.builtin.ping -o\nansible-playbook -i inventory site.yml --syntax-check\nansible-playbook -i inventory site.yml -vvv\nansible-config dump --only-changed\nansible-doc ansible.builtin.package\n```\n\n## Recommended Triage Order\n\n1. Confirm the correct inventory source and host pattern.\n2. Verify basic connectivity with `ansible ... -m ansible.builtin.ping`.\n3. Check SSH, sudo, and remote user behavior.\n4. Confirm Python interpreter and module requirements on the target.\n5. Verify the required collection or module is installed on the control node.\n6. Isolate the failing task with tags, limits, or `--start-at-task`.\n7. Inspect templating, vars precedence, and undefined variable behavior.\n\n## Common Failure Classes\n\n- `UNREACHABLE!` usually means inventory or SSH problems.\n- `MODULE FAILURE` often means missing packages, wrong Python, or bad module args.\n- `permission denied` usually means wrong remote user or missing become privileges.\n- `template error while templating string` usually means a vars or precedence problem.\n- `couldn't resolve module/action` usually means a missing collection or wrong fully qualified collection name.\n",
+  "sections": [
+    {
+      "id": "triage-order",
+      "title": "Follow a fixed triage order",
+      "body": "Start with inventory, then connectivity, then privilege and interpreter checks, then module and collection resolution, then template or task logic. This order prevents expensive guesswork because each higher layer depends on the one below it already being correct.",
+      "tags": ["triage", "workflow", "layered-debugging"]
+    },
+    {
+      "id": "connectivity",
+      "title": "Inventory and connectivity checks",
+      "body": "Run `ansible-inventory --graph` to confirm the target set, then `ansible PATTERN -i SOURCE -m ansible.builtin.ping -o` to test end-to-end connectivity. If hosts are unreachable, inspect SSH user, key, host key checking, bastions, and inventory variables before touching task logic.",
+      "tags": ["inventory", "ping", "ssh", "unreachable", "bastion"]
+    },
+    {
+      "id": "privilege-python",
+      "title": "Privilege escalation and interpreter issues",
+      "body": "If connectivity works but tasks fail, check `become`, `become_user`, and the remote Python path such as `ansible_python_interpreter`. Minimal or old systems often fail because Python is absent or installed in a non-default location. Use host or group vars to set the interpreter explicitly when needed.",
+      "tags": ["become", "sudo", "python", "interpreter", "privilege"]
+    },
+    {
+      "id": "modules-templates",
+      "title": "Module resolution and templating errors",
+      "body": "Use `ansible-doc` to confirm the module name and expected parameters, especially when using collections. If Ansible cannot resolve a module, install or verify the collection in [[ansible/collections]] and use the fully qualified collection name. For template errors, inspect variable names, `-e` overrides, and the settings in [[ansible/config]] such as `error_on_undefined_vars`.",
+      "tags": ["ansible-doc", "module-not-found", "collections", "templates", "undefined-vars"]
+    }
+  ],
+  "links": [
+    {
+      "uri": "ansible/inventory",
+      "context": "Start by confirming the resolved inventory and pattern selection"
+    },
+    {
+      "uri": "ansible/inventory#inspection",
+      "context": "Use the resolved inventory view before debugging unreachable hosts"
+    },
+    {
+      "uri": "ansible/ad-hoc",
+      "context": "Use ad-hoc ping or setup runs as the fastest connectivity check"
+    },
+    {
+      "uri": "ansible/playbooks",
+      "context": "Use syntax checks, tags, and limits to isolate playbook failures"
+    },
+    {
+      "uri": "ansible/config",
+      "context": "Unexpected behavior often comes from config or precedence issues"
+    },
+    {
+      "uri": "ansible/config#precedence",
+      "context": "Inspect precedence rules when a setting or variable seems ignored"
+    },
+    {
+      "uri": "ansible/collections",
+      "context": "Resolve missing module and plugin errors by inspecting installed collections"
+    },
+    {
+      "uri": "ansible/collections#verify-list",
+      "context": "Check installed collection state before debugging module resolution further"
+    },
+    {
+      "uri": "ssh/troubleshooting",
+      "context": "Deeper SSH debugging for transport-level failures"
+    }
+  ],
+  "related": [
+    {
+      "uri": "ssh/troubleshooting",
+      "relation": "see-also",
+      "note": "Many unreachable errors are plain SSH problems underneath"
+    },
+    {
+      "uri": "ansible/config",
+      "relation": "see-also",
+      "note": "Config precedence often explains surprising runtime behavior"
+    },
+    {
+      "uri": "ansible/collections",
+      "relation": "see-also",
+      "note": "Collection installation drift causes module and plugin resolution failures"
+    }
+  ],
+  "more": {
+    "docs": "https://docs.ansible.com/projects/ansible/latest/reference_appendices/faq.html",
+    "command-guide": "https://docs.ansible.com/projects/ansible/latest/command_guide/index.html",
+    "config": "https://docs.ansible.com/projects/ansible/latest/reference_appendices/config.html"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, SREs, AI agents",
+    "estimated_reading_time": "6 min",
+    "prerequisites": [
+      "ansible"
+    ],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://github.com/ansible/ansible",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

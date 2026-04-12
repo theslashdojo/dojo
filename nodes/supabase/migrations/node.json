@@ -1,0 +1,123 @@
+{
+  "name": "migrations",
+  "version": "1.0.0",
+  "uri": "supabase/migrations",
+  "type": "skill",
+  "context": "Supabase database migrations — create tables, manage schema changes, seed data, and sync with remote",
+  "info": "Supabase migrations are timestamped SQL files in `supabase/migrations/` that define your database schema. The CLI manages the migration lifecycle: `supabase migration new` creates a blank file, `supabase db diff` auto-generates SQL from schema changes made in Studio, `supabase db push` applies pending migrations to the remote database, `supabase db pull` pulls remote schema into local migrations, and `supabase db reset` drops and recreates the local database from migrations + seed.sql. Migrations run in order by timestamp. They are idempotent — each runs exactly once, tracked in the `supabase_migrations.schema_migrations` table. Use migrations for all schema changes: tables, columns, indexes, RLS policies, functions, triggers, and extensions. Never modify production schemas manually.",
+  "parent": "supabase",
+  "tags": ["migrations", "schema", "sql", "tables", "columns", "indexes", "seed", "db-push", "db-pull"],
+  "aliases": [
+    "supabase migrations",
+    "supabase schema",
+    "supabase db push",
+    "supabase db pull",
+    "supabase db diff",
+    "supabase migration new",
+    "supabase db reset",
+    "database schema",
+    "schema migration"
+  ],
+  "triggers": [
+    "create a supabase migration",
+    "add a table to supabase",
+    "change supabase schema",
+    "push migrations to supabase",
+    "pull schema from supabase",
+    "seed supabase database",
+    "reset supabase database",
+    "create database table",
+    "add column to table"
+  ],
+  "body": "# Supabase Migrations\n\nMigrations are timestamped SQL files that define your database schema. They're the source of truth for your Postgres schema.\n\n## Creating Migrations\n\n### Manual (blank file)\n```bash\nsupabase migration new create_posts_table\n# Creates: supabase/migrations/20260411120000_create_posts_table.sql\n```\n\nThen write the SQL:\n```sql\n-- supabase/migrations/20260411120000_create_posts_table.sql\n\nCREATE TABLE posts (\n  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),\n  user_id uuid REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,\n  title text NOT NULL,\n  body text,\n  published boolean DEFAULT false,\n  created_at timestamptz DEFAULT now() NOT NULL,\n  updated_at timestamptz DEFAULT now() NOT NULL\n);\n\n-- Enable RLS\nALTER TABLE posts ENABLE ROW LEVEL SECURITY;\n\n-- Policies\nCREATE POLICY \"Users can read own posts\"\n  ON posts FOR SELECT\n  USING (auth.uid() = user_id);\n\nCREATE POLICY \"Users can insert own posts\"\n  ON posts FOR INSERT\n  WITH CHECK (auth.uid() = user_id);\n\nCREATE POLICY \"Users can update own posts\"\n  ON posts FOR UPDATE\n  USING (auth.uid() = user_id)\n  WITH CHECK (auth.uid() = user_id);\n\nCREATE POLICY \"Users can delete own posts\"\n  ON posts FOR DELETE\n  USING (auth.uid() = user_id);\n\n-- Public read for published posts\nCREATE POLICY \"Anyone can read published posts\"\n  ON posts FOR SELECT\n  USING (published = true);\n\n-- Indexes\nCREATE INDEX idx_posts_user_id ON posts(user_id);\nCREATE INDEX idx_posts_created_at ON posts(created_at DESC);\n\n-- Updated_at trigger\nCREATE OR REPLACE FUNCTION update_updated_at()\nRETURNS TRIGGER AS $$\nBEGIN\n  NEW.updated_at = now();\n  RETURN NEW;\nEND;\n$$ LANGUAGE plpgsql;\n\nCREATE TRIGGER posts_updated_at\n  BEFORE UPDATE ON posts\n  FOR EACH ROW EXECUTE FUNCTION update_updated_at();\n```\n\n### Auto-generated (diff from Studio changes)\n```bash\n# Make changes in Studio (http://localhost:54323)\n# Then generate migration from the diff\nsupabase db diff --use-migra -f add_comments_table\n```\n\n## Applying Migrations\n\n```bash\n# Apply to remote database\nsupabase db push\n\n# Apply to local database (reset and re-run all)\nsupabase db reset\n```\n\n## Pulling Remote Schema\n\n```bash\n# Pull remote schema into a new migration\nsupabase db pull\n# Creates a migration file with the current remote schema\n```\n\n## Seeding Data\n\nCreate `supabase/seed.sql` for test data:\n\n```sql\n-- supabase/seed.sql\n\n-- Insert test user (only works locally with service role)\nINSERT INTO auth.users (id, email)\nVALUES ('d0fc4c64-a3d6-4f27-a427-1bca77f5b768', 'test@example.com');\n\n-- Insert test posts\nINSERT INTO posts (user_id, title, body, published)\nVALUES\n  ('d0fc4c64-a3d6-4f27-a427-1bca77f5b768', 'First Post', 'Hello world!', true),\n  ('d0fc4c64-a3d6-4f27-a427-1bca77f5b768', 'Draft Post', 'Work in progress', false);\n```\n\nSeed runs automatically after migrations during `supabase db reset`.\n\n## Common Table Patterns\n\n### User profiles (extends auth.users)\n```sql\nCREATE TABLE profiles (\n  id uuid PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,\n  full_name text,\n  avatar_url text,\n  bio text,\n  created_at timestamptz DEFAULT now() NOT NULL\n);\n\n-- Auto-create profile on signup\nCREATE OR REPLACE FUNCTION create_profile_on_signup()\nRETURNS TRIGGER AS $$\nBEGIN\n  INSERT INTO public.profiles (id, full_name)\n  VALUES (NEW.id, NEW.raw_user_meta_data ->> 'full_name');\n  RETURN NEW;\nEND;\n$$ LANGUAGE plpgsql SECURITY DEFINER;\n\nCREATE TRIGGER on_auth_user_created\n  AFTER INSERT ON auth.users\n  FOR EACH ROW EXECUTE FUNCTION create_profile_on_signup();\n```\n\n### Many-to-many (tags)\n```sql\nCREATE TABLE tags (\n  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),\n  name text UNIQUE NOT NULL\n);\n\nCREATE TABLE post_tags (\n  post_id uuid REFERENCES posts(id) ON DELETE CASCADE,\n  tag_id uuid REFERENCES tags(id) ON DELETE CASCADE,\n  PRIMARY KEY (post_id, tag_id)\n);\n```\n\n### Soft delete\n```sql\nALTER TABLE posts ADD COLUMN deleted_at timestamptz;\n\n-- RLS policy to hide soft-deleted rows\nCREATE POLICY \"Hide soft-deleted posts\"\n  ON posts FOR SELECT\n  USING (deleted_at IS NULL AND auth.uid() = user_id);\n```\n\n## Migration Best Practices\n\n1. **One concern per migration** — don't mix table creation with data backfill\n2. **Include RLS policies** with table creation — don't leave tables unprotected\n3. **Add indexes** on foreign keys and columns used in RLS policies\n4. **Use `gen_random_uuid()`** for primary keys (built into Postgres 14+)\n5. **Reference `auth.users(id)`** for user-owned tables with `ON DELETE CASCADE`\n6. **Never edit applied migrations** — create a new migration for changes\n7. **Test with `supabase db reset`** before pushing to production\n\n## Environment Variables\n\n| Variable | Purpose |\n|----------|----------|\n| `SUPABASE_DB_URL` | Direct Postgres connection for remote operations |\n| `SUPABASE_ACCESS_TOKEN` | CLI authentication for `supabase db push` |\n",
+  "sections": [
+    {
+      "id": "create",
+      "title": "Creating migrations",
+      "body": "`supabase migration new <name>` creates a timestamped SQL file. Write DDL statements: CREATE TABLE, ALTER TABLE, CREATE INDEX, CREATE POLICY, CREATE FUNCTION. For auto-generation, make changes in Studio then run `supabase db diff --use-migra -f <name>` to capture the diff as a migration.",
+      "tags": ["create", "new", "diff", "auto-generate", "ddl"]
+    },
+    {
+      "id": "apply",
+      "title": "Applying and syncing",
+      "body": "`supabase db push` applies pending migrations to the linked remote project. `supabase db reset` drops and recreates the local database from all migrations + seed.sql. `supabase db pull` generates a migration from the remote schema. Migrations are tracked in `supabase_migrations.schema_migrations` — each runs exactly once.",
+      "tags": ["push", "reset", "pull", "apply", "sync"]
+    },
+    {
+      "id": "seed",
+      "title": "Seeding data",
+      "body": "Create `supabase/seed.sql` with INSERT statements for test data. Seed runs after all migrations during `supabase db reset`. You can insert into `auth.users` for test accounts (only locally). Seed data should be idempotent — use `ON CONFLICT DO NOTHING` or check existence.",
+      "tags": ["seed", "test-data", "fixtures", "reset"]
+    },
+    {
+      "id": "patterns",
+      "title": "Common schema patterns",
+      "body": "**User profiles**: table with `id uuid REFERENCES auth.users(id)` + trigger to auto-create on signup. **Timestamps**: `created_at timestamptz DEFAULT now()` + trigger for `updated_at`. **Soft delete**: `deleted_at timestamptz` column with RLS policy filtering nulls. **Many-to-many**: junction table with composite primary key. **Enums**: `CREATE TYPE status AS ENUM ('draft', 'published', 'archived')`.",
+      "tags": ["patterns", "profiles", "timestamps", "soft-delete", "enums", "many-to-many"]
+    }
+  ],
+  "links": [
+    { "uri": "supabase/cli", "context": "CLI commands for migration management" },
+    { "uri": "supabase/rls", "context": "Include RLS policies in migration files" },
+    { "uri": "supabase/database", "context": "Queries operate on the schema defined by migrations" },
+    { "uri": "supabase/vectors", "context": "Enable pgvector extension via migrations" },
+    { "uri": "postgres", "context": "Migrations are standard Postgres SQL" },
+    { "uri": "database/migrations", "context": "General migration concepts and strategies" }
+  ],
+  "related": [
+    { "uri": "supabase/cli", "relation": "see-also", "note": "CLI is the primary tool for running migrations" },
+    { "uri": "supabase/rls", "relation": "see-also", "note": "RLS policies should be included in migration files" },
+    { "uri": "database/migrations", "relation": "see-also", "note": "General database migration patterns" },
+    { "uri": "prisma/migrate", "relation": "alternative", "note": "Prisma Migrate is an alternative that generates SQL from a schema file" }
+  ],
+  "scripts": [
+    {
+      "id": "create-table-migration",
+      "name": "Create table migration",
+      "description": "Generate a migration file with a table definition, RLS, and indexes",
+      "lang": "bash",
+      "runtime": "bash",
+      "entry": "./scripts/create-table-migration.sh",
+      "env": {},
+      "packages": ["supabase"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "description": "Migration name (e.g., create_posts_table)" },
+        "sql": { "type": "string", "description": "SQL content for the migration" }
+      },
+      "required": ["name"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "filePath": { "type": "string", "description": "Path to the created migration file" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "supabase/cli", "reason": "CLI is required for migration commands" }
+  ],
+  "more": {
+    "docs": "https://supabase.com/docs/guides/cli/local-development#database-migrations",
+    "api": "https://supabase.com/docs/reference/cli/supabase-migration-new"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "6 min",
+    "prerequisites": ["supabase/cli"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

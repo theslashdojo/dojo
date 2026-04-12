@@ -1,0 +1,147 @@
+{
+  "name": "helm",
+  "version": "1.0.0",
+  "uri": "kubernetes/helm",
+  "type": "skill",
+  "context": "Package, template, and deploy Kubernetes applications with Helm charts — the Kubernetes package manager",
+  "info": "Helm is the package manager for Kubernetes. A Helm chart is a bundle of templated Kubernetes manifests that can be installed as a release with configurable values. Agents use Helm to install third-party software (nginx-ingress, cert-manager, Prometheus, PostgreSQL), deploy custom applications with environment-specific configuration, upgrade releases with rollback capability, and manage chart repositories. This skill covers chart structure, values files, templating with Go templates, repository management, release lifecycle (install, upgrade, rollback, uninstall), and creating custom charts.",
+  "parent": "kubernetes",
+  "tags": ["helm", "charts", "releases", "values", "templates", "package-manager", "helm-repo"],
+  "aliases": [
+    "helm",
+    "helm chart",
+    "helm charts",
+    "kubernetes helm",
+    "k8s helm",
+    "helm install",
+    "helm upgrade",
+    "helm values",
+    "helm template",
+    "helm repo",
+    "helm package manager"
+  ],
+  "triggers": [
+    "install a helm chart",
+    "deploy with helm",
+    "create a helm chart",
+    "upgrade a helm release",
+    "rollback a helm release",
+    "add a helm repository",
+    "customize helm values",
+    "template a helm chart",
+    "list helm releases"
+  ],
+  "body": "# Helm\n\nHelm is the Kubernetes package manager. It packages Kubernetes manifests into reusable, versioned charts with configurable values. Think of it as `npm` or `apt` for Kubernetes.\n\n## Core Concepts\n\n| Concept | Description |\n|---------|-------------|\n| **Chart** | A package of templated Kubernetes manifests |\n| **Release** | An installed instance of a chart in a cluster |\n| **Values** | Configuration that customizes a chart for a specific environment |\n| **Repository** | A collection of charts hosted over HTTP |\n| **Revision** | A versioned snapshot of a release (enables rollback) |\n\n## Installing Charts\n\n```bash\n# Add a repository\nhelm repo add bitnami https://charts.bitnami.com/bitnami\nhelm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx\nhelm repo update\n\n# Search for charts\nhelm search repo postgresql\nhelm search hub prometheus  # search Artifact Hub\n\n# Install a chart\nhelm install my-postgres bitnami/postgresql \\\n  --namespace databases \\\n  --create-namespace \\\n  --set auth.postgresPassword=secretpassword \\\n  --set primary.persistence.size=50Gi\n\n# Install with a values file\nhelm install my-app ./my-chart \\\n  -f values-production.yaml \\\n  --namespace production\n\n# Install specific version\nhelm install my-redis bitnami/redis --version 18.6.1\n```\n\n## Managing Releases\n\n```bash\n# List releases\nhelm list -n production\nhelm list --all-namespaces\n\n# Check release status\nhelm status my-postgres -n databases\n\n# Get release values (current configuration)\nhelm get values my-postgres -n databases\nhelm get values my-postgres -n databases --all  # includes defaults\n\n# Get rendered manifests\nhelm get manifest my-postgres -n databases\n\n# Upgrade a release\nhelm upgrade my-postgres bitnami/postgresql \\\n  --namespace databases \\\n  --set auth.postgresPassword=secretpassword \\\n  --set primary.persistence.size=100Gi \\\n  --set primary.resources.requests.memory=1Gi\n\n# Upgrade with reuse of existing values\nhelm upgrade my-app ./my-chart \\\n  -f values-production.yaml \\\n  --reuse-values \\\n  --set image.tag=v2.0.0\n\n# Rollback to previous revision\nhelm rollback my-postgres 1 -n databases\n\n# View release history\nhelm history my-postgres -n databases\n\n# Uninstall a release\nhelm uninstall my-postgres -n databases\n```\n\n## Chart Structure\n\n```\nmy-chart/\n├── Chart.yaml          # Chart metadata (name, version, dependencies)\n├── values.yaml         # Default configuration values\n├── templates/          # Kubernetes manifest templates\n│   ├── _helpers.tpl    # Template helper functions\n│   ├── deployment.yaml\n│   ├── service.yaml\n│   ├── ingress.yaml\n│   ├── configmap.yaml\n│   ├── secret.yaml\n│   ├── hpa.yaml\n│   ├── serviceaccount.yaml\n│   └── NOTES.txt       # Post-install instructions\n├── charts/             # Dependency charts\n└── .helmignore         # Files to exclude from packaging\n```\n\n### Chart.yaml\n\n```yaml\napiVersion: v2\nname: my-app\ndescription: My web application\ntype: application\nversion: 0.1.0       # Chart version\nappVersion: \"1.2.0\"  # Application version\n\ndependencies:\n  - name: postgresql\n    version: \"13.x.x\"\n    repository: https://charts.bitnami.com/bitnami\n    condition: postgresql.enabled\n  - name: redis\n    version: \"18.x.x\"\n    repository: https://charts.bitnami.com/bitnami\n    condition: redis.enabled\n```\n\n### values.yaml\n\n```yaml\nreplicaCount: 3\n\nimage:\n  repository: myregistry/my-app\n  tag: \"v1.2.0\"\n  pullPolicy: IfNotPresent\n\nservice:\n  type: ClusterIP\n  port: 80\n\ningress:\n  enabled: true\n  className: nginx\n  hosts:\n    - host: app.example.com\n      paths:\n        - path: /\n          pathType: Prefix\n  tls:\n    - secretName: app-tls\n      hosts:\n        - app.example.com\n\nresources:\n  requests:\n    cpu: 200m\n    memory: 256Mi\n  limits:\n    cpu: 1000m\n    memory: 1Gi\n\nautoscaling:\n  enabled: true\n  minReplicas: 3\n  maxReplicas: 10\n  targetCPUUtilizationPercentage: 70\n\npostgresql:\n  enabled: true\n\nredis:\n  enabled: false\n```\n\n### Template Example (deployment.yaml)\n\n```yaml\napiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: {{ include \"my-app.fullname\" . }}\n  labels:\n    {{- include \"my-app.labels\" . | nindent 4 }}\nspec:\n  {{- if not .Values.autoscaling.enabled }}\n  replicas: {{ .Values.replicaCount }}\n  {{- end }}\n  selector:\n    matchLabels:\n      {{- include \"my-app.selectorLabels\" . | nindent 6 }}\n  template:\n    metadata:\n      labels:\n        {{- include \"my-app.selectorLabels\" . | nindent 8 }}\n    spec:\n      containers:\n        - name: {{ .Chart.Name }}\n          image: \"{{ .Values.image.repository }}:{{ .Values.image.tag }}\"\n          imagePullPolicy: {{ .Values.image.pullPolicy }}\n          ports:\n            - containerPort: 8080\n          resources:\n            {{- toYaml .Values.resources | nindent 12 }}\n```\n\n## Creating a Chart\n\n```bash\n# Scaffold a new chart\nhelm create my-chart\n\n# Lint (validate chart structure and templates)\nhelm lint ./my-chart\nhelm lint ./my-chart -f values-production.yaml\n\n# Template locally (render without installing)\nhelm template my-release ./my-chart -f values-production.yaml\n\n# Dry-run against cluster (validates against API server)\nhelm install my-release ./my-chart --dry-run --debug\n\n# Package chart for distribution\nhelm package ./my-chart\n\n# Update dependency charts\nhelm dependency update ./my-chart\nhelm dependency build ./my-chart\n```\n\n## Templating Functions\n\nHelm uses Go templates with Sprig functions:\n\n```yaml\n# Conditionals\n{{- if .Values.ingress.enabled }}\n  # ... ingress manifest\n{{- end }}\n\n# Loops\n{{- range .Values.ingress.hosts }}\n  - host: {{ .host | quote }}\n{{- end }}\n\n# Default values\n{{ .Values.image.tag | default .Chart.AppVersion }}\n\n# Include helper templates\n{{ include \"my-app.fullname\" . }}\n\n# toYaml for complex objects\nresources:\n  {{- toYaml .Values.resources | nindent 4 }}\n\n# Quote strings\nvalue: {{ .Values.config.logLevel | quote }}\n```\n\n## Environment Variables\n\n| Variable | Purpose |\n|----------|----------|\n| `HELM_CACHE_HOME` | Helm cache directory |\n| `HELM_CONFIG_HOME` | Helm config directory |\n| `HELM_DATA_HOME` | Helm data directory |\n| `HELM_NAMESPACE` | Default namespace for Helm commands |\n| `KUBECONFIG` | Path to kubeconfig file |\n",
+  "sections": [
+    {
+      "id": "install-upgrade",
+      "title": "Installing and upgrading releases",
+      "body": "Install with `helm install <release> <chart> [--set key=val] [-f values.yaml] [-n namespace]`. Upgrade with `helm upgrade <release> <chart>` — add `--reuse-values` to keep existing config and only override specified values. Use `--atomic` to auto-rollback on failure. Use `--wait` to block until all resources are Ready. Use `--timeout 10m` for slow deployments. Install-or-upgrade in one command: `helm upgrade --install`.",
+      "tags": ["install", "upgrade", "reuse-values", "atomic", "wait", "timeout"]
+    },
+    {
+      "id": "rollback",
+      "title": "Rollback and history",
+      "body": "Every `helm upgrade` creates a new revision. View history with `helm history <release>`. Rollback with `helm rollback <release> <revision>`. Revision 0 means the previous revision. Helm stores release metadata as Secrets in the release namespace. Max history is controlled by `--history-max` (default 10).",
+      "tags": ["rollback", "history", "revision", "undo", "release-metadata"]
+    },
+    {
+      "id": "chart-development",
+      "title": "Creating and developing charts",
+      "body": "Scaffold with `helm create <name>`. Structure: Chart.yaml (metadata), values.yaml (defaults), templates/ (Go-templated manifests), charts/ (dependencies). Use `helm template` to render locally. Use `helm lint` to validate. Use `helm install --dry-run --debug` to validate against the API server. Package with `helm package`. Publish to a chart repository or OCI registry.",
+      "tags": ["create", "scaffold", "template", "lint", "package", "develop", "oci"]
+    },
+    {
+      "id": "repositories",
+      "title": "Chart repositories",
+      "body": "Add repos with `helm repo add <name> <url>`. Update with `helm repo update`. Search with `helm search repo <keyword>`. Common repos: bitnami (https://charts.bitnami.com/bitnami), ingress-nginx, jetstack (cert-manager), prometheus-community. Helm 3 also supports OCI registries: `helm push my-chart-0.1.0.tgz oci://registry.example.com/charts` and `helm install my-release oci://registry.example.com/charts/my-chart`.",
+      "tags": ["repo", "repository", "add", "update", "search", "oci", "artifact-hub"]
+    }
+  ],
+  "links": [
+    { "uri": "kubernetes/deployments", "context": "Helm charts typically contain Deployment templates" },
+    { "uri": "kubernetes/services", "context": "Charts include Service templates for networking" },
+    { "uri": "kubernetes/ingress", "context": "Charts include Ingress templates, ingress controllers are installed via Helm" },
+    { "uri": "kubernetes/configmaps", "context": "Charts template ConfigMaps and Secrets from values" },
+    { "uri": "kubernetes/namespaces", "context": "Releases are installed into namespaces" },
+    { "uri": "kubernetes/hpa", "context": "Charts can include HPA templates" }
+  ],
+  "related": [
+    { "uri": "kubernetes/deployments", "relation": "see-also", "note": "Deployments are the most common resource templated in Helm charts" },
+    { "uri": "kubernetes/ingress", "relation": "see-also", "note": "Ingress controllers are typically installed via Helm" },
+    { "uri": "docker/registry", "relation": "see-also", "note": "Helm 3 supports OCI registries for chart storage" }
+  ],
+  "scripts": [
+    {
+      "id": "helm-install",
+      "name": "Install Helm Chart",
+      "description": "Install or upgrade a Helm chart with optional values file",
+      "lang": "bash",
+      "runtime": "helm>=3.0",
+      "entry": "./scripts/helm-install.sh",
+      "inline": "#!/bin/bash\nset -euo pipefail\nRELEASE=${1:?Usage: helm-install.sh <release> <chart> [values-file] [namespace]}\nCHART=${2:?Usage: helm-install.sh <release> <chart> [values-file] [namespace]}\nVALUES_FILE=${3:-}\nNS=${4:-${HELM_NAMESPACE:-default}}\n\nARGS=(upgrade --install \"$RELEASE\" \"$CHART\" --namespace \"$NS\" --create-namespace --wait --timeout 5m)\n\nif [ -n \"$VALUES_FILE\" ]; then\n  ARGS+=(-f \"$VALUES_FILE\")\nfi\n\necho \"Installing/upgrading $RELEASE from $CHART in namespace $NS\"\nhelm \"${ARGS[@]}\"\n\necho \"\"\necho \"Release status:\"\nhelm status \"$RELEASE\" -n \"$NS\"",
+      "env": {
+        "KUBECONFIG": { "required": false, "secret": false, "default": "~/.kube/config", "description": "Path to kubeconfig file" },
+        "HELM_NAMESPACE": { "required": false, "secret": false, "default": "default", "description": "Default Helm namespace" }
+      },
+      "packages": []
+    },
+    {
+      "id": "helm-create",
+      "name": "Create Helm Chart",
+      "description": "Scaffold a new Helm chart with standard structure",
+      "lang": "bash",
+      "runtime": "helm>=3.0",
+      "entry": "./scripts/helm-create.sh",
+      "inline": "#!/bin/bash\nset -euo pipefail\nNAME=${1:?Usage: helm-create.sh <chart-name>}\n\necho \"Creating Helm chart: $NAME\"\nhelm create \"$NAME\"\n\necho \"\"\necho \"Chart structure:\"\nfind \"$NAME\" -type f | head -20\n\necho \"\"\necho \"Linting chart...\"\nhelm lint \"$NAME\"\n\necho \"\"\necho \"Chart created. Next steps:\"\necho \"  1. Edit $NAME/values.yaml with your configuration\"\necho \"  2. Edit templates in $NAME/templates/\"\necho \"  3. Test with: helm template my-release ./$NAME\"\necho \"  4. Install with: helm install my-release ./$NAME\"",
+      "env": {},
+      "packages": []
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "release": { "type": "string", "description": "Release name" },
+        "chart": { "type": "string", "description": "Chart reference (repo/chart or local path)" },
+        "namespace": { "type": "string", "default": "default" },
+        "valuesFile": { "type": "string", "description": "Path to values YAML file" },
+        "setValues": { "type": "object", "description": "Key-value overrides (--set)" }
+      },
+      "required": ["release", "chart"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "releaseName": { "type": "string" },
+        "revision": { "type": "integer" },
+        "status": { "type": "string", "enum": ["deployed", "failed", "pending-install", "pending-upgrade"] },
+        "namespace": { "type": "string" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "kubernetes/namespaces", "reason": "Helm releases are installed into namespaces" }
+  ],
+  "more": {
+    "docs": "https://helm.sh/docs/",
+    "repo": "https://github.com/helm/helm",
+    "hub": "https://artifacthub.io/",
+    "best-practices": "https://helm.sh/docs/chart_best_practices/"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, DevOps engineers, SREs, AI agents",
+    "estimated_reading_time": "6 min",
+    "prerequisites": ["kubernetes/deployments", "kubernetes/services"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

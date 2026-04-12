@@ -1,0 +1,124 @@
+{
+  "name": "create",
+  "version": "1.0.0",
+  "uri": "linear/issues/create",
+  "type": "sub",
+  "context": "Create new Linear issues with title, description, priority, labels, and team assignment",
+  "info": "Creates issues in Linear via the `issueCreate` GraphQL mutation or the `client.createIssue()` SDK method. A title and teamId are required. Optional fields include description (markdown), priority (0-4), assigneeId, labelIds, projectId, cycleId, stateId, estimate, dueDate, and parentId for sub-issues. The mutation returns a success boolean and the created issue object with its identifier (e.g., ENG-42) and URL. Agents use this to file bugs from CI failures, create tasks from natural language, or automate issue intake from external sources. See [[linear/teams]] to find the target teamId.",
+  "parent": "linear/issues",
+  "tags": ["create", "new-issue", "file-bug", "create-task", "issue-create"],
+  "aliases": [
+    "create linear issue",
+    "new linear issue",
+    "file linear bug",
+    "linear issue create",
+    "open linear ticket",
+    "linear new task",
+    "issueCreate"
+  ],
+  "triggers": [
+    "create an issue in linear",
+    "file a bug in linear",
+    "open a new linear ticket",
+    "create a task in linear",
+    "submit a linear issue",
+    "log an issue in linear"
+  ],
+  "body": "# Create Linear Issue\n\nCreate issues via the GraphQL mutation or SDK.\n\n## GraphQL Mutation\n\n```graphql\nmutation CreateIssue($input: IssueCreateInput!) {\n  issueCreate(input: $input) {\n    success\n    issue {\n      id\n      identifier\n      title\n      url\n      state {\n        name\n      }\n    }\n  }\n}\n```\n\nVariables:\n\n```json\n{\n  \"input\": {\n    \"teamId\": \"uuid-of-team\",\n    \"title\": \"Bug: login fails on Safari\",\n    \"description\": \"## Steps\\n1. Open Safari\\n2. Navigate to /login\\n\\n## Expected\\nRedirect to dashboard\\n\\n## Actual\\n500 error page\",\n    \"priority\": 2,\n    \"assigneeId\": \"uuid-of-user\",\n    \"labelIds\": [\"uuid-of-label\"],\n    \"projectId\": \"uuid-of-project\",\n    \"stateId\": \"uuid-of-state\",\n    \"estimate\": 3,\n    \"dueDate\": \"2026-05-01\"\n  }\n}\n```\n\n## SDK Usage\n\n```typescript\nimport { LinearClient } from \"@linear/sdk\";\n\nconst client = new LinearClient({ apiKey: process.env.LINEAR_API_KEY });\n\n// Find the target team\nconst teams = await client.teams();\nconst team = teams.nodes.find(t => t.key === \"ENG\");\nif (!team) throw new Error(\"Team ENG not found\");\n\n// Create the issue\nconst result = await client.createIssue({\n  teamId: team.id,\n  title: \"Bug: login fails on Safari\",\n  description: \"Steps to reproduce...\\n\\nExpected: redirect\\nActual: 500 error\",\n  priority: 2,\n});\n\nif (result.success) {\n  const issue = await result.issue;\n  console.log(`Created: ${issue.identifier} — ${issue.url}`);\n} else {\n  console.error(\"Failed to create issue\");\n}\n```\n\n## Create with Labels\n\n```typescript\n// Find label IDs first\nconst labels = await client.issueLabels();\nconst bugLabel = labels.nodes.find(l => l.name === \"bug\");\n\nconst result = await client.createIssue({\n  teamId: team.id,\n  title: \"Fix broken API endpoint\",\n  labelIds: bugLabel ? [bugLabel.id] : [],\n  priority: 1,\n});\n```\n\n## Create Sub-Issue\n\n```typescript\nconst result = await client.createIssue({\n  teamId: team.id,\n  title: \"Sub-task: write unit tests\",\n  parentId: \"uuid-of-parent-issue\",\n});\n```\n\n## Create from cURL\n\n```bash\ncurl -X POST https://api.linear.app/graphql \\\n  -H \"Content-Type: application/json\" \\\n  -H \"Authorization: $LINEAR_API_KEY\" \\\n  -d '{\n    \"query\": \"mutation { issueCreate(input: { teamId: \\\"TEAM_UUID\\\", title: \\\"New issue from CLI\\\" }) { success issue { identifier url } } }\"\n  }'\n```\n\n## Required vs Optional Fields\n\n| Field | Required | Type | Notes |\n|-------|----------|------|-------|\n| `teamId` | Yes | UUID | Team the issue belongs to |\n| `title` | Yes | string | Issue title |\n| `description` | No | string | Markdown body |\n| `priority` | No | int | 0=none, 1=urgent, 2=high, 3=medium, 4=low |\n| `assigneeId` | No | UUID | User to assign |\n| `stateId` | No | UUID | Workflow state (defaults to team's default) |\n| `labelIds` | No | UUID[] | Labels to apply |\n| `projectId` | No | UUID | Associate with a project |\n| `cycleId` | No | UUID | Add to a cycle/sprint |\n| `estimate` | No | number | Story points or hours |\n| `dueDate` | No | string | YYYY-MM-DD format |\n| `parentId` | No | UUID | Parent issue for sub-issues |\n\n## Notes\n\n- Omitting `stateId` places the issue in the team's default workflow state (usually Backlog or Triage)\n- The `description` field supports full Markdown including images, code blocks, and task lists\n- The response's `issue.identifier` gives the human-readable key like `ENG-42`\n- Changes within 3 minutes of creation don't appear in Linear's activity feed",
+  "sections": [
+    {
+      "id": "graphql",
+      "title": "GraphQL mutation",
+      "body": "Use `issueCreate(input: IssueCreateInput!)` mutation. The input requires `teamId` and `title`. Returns `{ success, issue { id, identifier, url } }`. All UUIDs must reference existing entities. Invalid IDs return GraphQL errors.",
+      "tags": ["graphql", "mutation", "issuecreate"]
+    },
+    {
+      "id": "sdk",
+      "title": "SDK method",
+      "body": "Call `client.createIssue({ teamId, title, ... })`. Returns a payload with `success` boolean and `issue` accessor. The issue accessor is a promise — use `await result.issue` to get the full issue object with `identifier`, `url`, `id`.",
+      "tags": ["sdk", "createissue", "typescript"]
+    },
+    {
+      "id": "sub-issues",
+      "title": "Sub-issues",
+      "body": "Create sub-issues by setting `parentId` to an existing issue's UUID. Sub-issues inherit the parent's team but can have different assignees, priorities, and states. They appear nested under the parent in Linear's UI.",
+      "tags": ["sub-issues", "parent", "nested", "hierarchy"]
+    }
+  ],
+  "links": [
+    { "uri": "linear/issues", "context": "Parent skill for issue management" },
+    { "uri": "linear/issues/update", "context": "Update issues after creation" },
+    { "uri": "linear/teams", "context": "Find the teamId required for issue creation" },
+    { "uri": "linear/auth", "context": "Authentication is required" },
+    { "uri": "linear/projects", "context": "Associate issues with projects via projectId" }
+  ],
+  "related": [
+    { "uri": "linear/teams", "relation": "prerequisite", "note": "Must know teamId before creating issues" },
+    { "uri": "linear/auth", "relation": "prerequisite", "note": "Must authenticate before creating issues" },
+    { "uri": "linear/issues/update", "relation": "see-also", "note": "Update issue fields after creation" },
+    { "uri": "github/issues", "relation": "alternative", "note": "GitHub Issues provides similar create functionality" }
+  ],
+  "scripts": [
+    {
+      "id": "create-issue",
+      "name": "Create Linear Issue",
+      "description": "Create a new issue in Linear with title, description, priority, and team",
+      "lang": "typescript",
+      "runtime": "node>=18",
+      "entry": "./scripts/create-issue.ts",
+      "env": {
+        "LINEAR_API_KEY": { "required": true, "secret": true, "description": "Linear personal API key" },
+        "LINEAR_TEAM_KEY": { "required": false, "default": "ENG", "description": "Team key (e.g., ENG)" }
+      },
+      "packages": ["@linear/sdk"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "teamId": { "type": "string", "description": "UUID of the team" },
+        "teamKey": { "type": "string", "description": "Team key (e.g., ENG) — resolved to teamId" },
+        "title": { "type": "string", "description": "Issue title" },
+        "description": { "type": "string", "description": "Markdown description" },
+        "priority": { "type": "integer", "minimum": 0, "maximum": 4, "description": "0=none, 1=urgent, 2=high, 3=medium, 4=low" },
+        "assigneeId": { "type": "string", "description": "UUID of user to assign" },
+        "labelIds": { "type": "array", "items": { "type": "string" }, "description": "Label UUIDs" },
+        "projectId": { "type": "string", "description": "UUID of project to associate" },
+        "stateId": { "type": "string", "description": "UUID of workflow state" }
+      },
+      "required": ["title"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "success": { "type": "boolean" },
+        "identifier": { "type": "string", "description": "Issue identifier (e.g., ENG-42)" },
+        "url": { "type": "string", "description": "Issue URL in Linear" },
+        "id": { "type": "string", "description": "Issue UUID" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "linear/auth", "reason": "Authentication required to create issues" },
+    { "uri": "linear/teams", "reason": "Need teamId to create issues", "optional": false }
+  ],
+  "more": {
+    "docs": "https://linear.app/developers"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "3 min",
+    "prerequisites": ["linear/auth", "linear/teams"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

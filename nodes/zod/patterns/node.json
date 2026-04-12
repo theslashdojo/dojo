@@ -1,0 +1,108 @@
+{
+  "name": "patterns",
+  "version": "1.0.0",
+  "uri": "zod/patterns",
+  "type": "context",
+  "content_type": "guide",
+  "context": "Common Zod patterns: env validation, API schemas, form validation, discriminated unions, recursive types, and framework integrations",
+  "info": "This node collects the most common real-world Zod patterns that agents encounter. Environment variable validation with z.coerce and .default(). API request/response schemas with .strip() and .transform(). Form validation schemas with React Hook Form via @hookform/resolvers/zod. Discriminated unions for event systems, API responses, and state machines. Recursive schemas for tree structures with z.lazy(). Config file parsing with nested objects and defaults. Error response normalization. Integration patterns with tRPC, Express middleware, Astro content collections, and t3-env. Each pattern includes complete, executable code. See [[zod/schemas]] for schema fundamentals, [[zod/validation]] for constraints, and [[zod/transform]] for data reshaping.",
+  "parent": "zod",
+  "tags": ["zod", "patterns", "env-validation", "api-schema", "form-validation", "discriminated-union", "trpc", "react-hook-form", "recipes"],
+  "aliases": [
+    "zod patterns",
+    "zod recipes",
+    "zod examples",
+    "zod best practices",
+    "zod env validation",
+    "zod form validation",
+    "zod api validation",
+    "zod trpc",
+    "zod react hook form",
+    "zod express",
+    "zod middleware",
+    "zod config",
+    "common zod patterns"
+  ],
+  "triggers": [
+    "validate environment variables with zod",
+    "zod form validation with react hook form",
+    "validate api response with zod",
+    "zod discriminated union example",
+    "zod with trpc",
+    "zod express middleware",
+    "parse config file with zod",
+    "zod best practices",
+    "validate env vars typescript"
+  ],
+  "body": "# Common Zod Patterns\n\nBattle-tested patterns for real-world Zod usage.\n\n## Environment Variable Validation\n\n```typescript\nimport { z } from \"zod\";\n\nconst EnvSchema = z.object({\n  NODE_ENV: z.enum([\"development\", \"production\", \"test\"]).default(\"development\"),\n  PORT: z.coerce.number().int().positive().default(3000),\n  DATABASE_URL: z.string().url(),\n  REDIS_URL: z.string().url().optional(),\n  API_KEY: z.string().min(1),\n  DEBUG: z.coerce.boolean().default(false),\n  LOG_LEVEL: z.enum([\"debug\", \"info\", \"warn\", \"error\"]).default(\"info\"),\n  MAX_CONNECTIONS: z.coerce.number().int().positive().default(10),\n});\n\n// Parse and validate — fails fast with clear errors on missing/invalid vars\nconst env = EnvSchema.parse(process.env);\n\n// Export typed env for the rest of the app\nexport type Env = z.infer<typeof EnvSchema>;\nexport default env;\n\n// Usage:\n// import env from \"./env\";\n// env.PORT  — number, fully typed\n// env.DATABASE_URL — string, guaranteed to be a valid URL\n```\n\n## API Request/Response Schemas\n\n```typescript\n// Request validation in Express\nconst CreateUserRequest = z.object({\n  name: z.string().min(1).max(100),\n  email: z.string().email(),\n  password: z.string().min(8).max(128),\n  role: z.enum([\"user\", \"admin\"]).default(\"user\"),\n});\n\n// Response schema — normalize API responses\nconst ApiResponse = <T extends z.ZodTypeAny>(dataSchema: T) =>\n  z.object({\n    success: z.boolean(),\n    data: dataSchema.optional(),\n    error: z.object({\n      code: z.string(),\n      message: z.string(),\n    }).optional(),\n  });\n\n// Validate external API responses\nconst GitHubUser = z.object({\n  login: z.string(),\n  id: z.number(),\n  avatar_url: z.string().url(),\n  html_url: z.string().url(),\n  name: z.string().nullable(),\n  bio: z.string().nullable(),\n}).strip(); // ignore extra fields from API\n\nasync function fetchGitHubUser(username: string) {\n  const res = await fetch(`https://api.github.com/users/${username}`);\n  const json = await res.json();\n  return GitHubUser.parse(json); // validated and typed\n}\n```\n\n## Express/Fastify Middleware\n\n```typescript\nimport { z, ZodSchema } from \"zod\";\nimport { Request, Response, NextFunction } from \"express\";\n\nfunction validateBody<T extends ZodSchema>(schema: T) {\n  return (req: Request, res: Response, next: NextFunction) => {\n    const result = schema.safeParse(req.body);\n    if (!result.success) {\n      return res.status(400).json({\n        error: \"Validation failed\",\n        details: result.error.flatten(),\n      });\n    }\n    req.body = result.data;\n    next();\n  };\n}\n\n// Usage\napp.post(\"/users\", validateBody(CreateUserRequest), (req, res) => {\n  // req.body is validated CreateUserRequest\n});\n```\n\n## Form Validation with React Hook Form\n\n```typescript\nimport { z } from \"zod\";\nimport { useForm } from \"react-hook-form\";\nimport { zodResolver } from \"@hookform/resolvers/zod\";\n\nconst SignupSchema = z.object({\n  email: z.string().email(\"Invalid email\"),\n  password: z.string().min(8, \"Password must be at least 8 characters\"),\n  confirmPassword: z.string(),\n}).refine((data) => data.password === data.confirmPassword, {\n  message: \"Passwords don't match\",\n  path: [\"confirmPassword\"],\n});\n\ntype SignupForm = z.infer<typeof SignupSchema>;\n\nfunction SignupPage() {\n  const { register, handleSubmit, formState: { errors } } = useForm<SignupForm>({\n    resolver: zodResolver(SignupSchema),\n  });\n\n  return (\n    <form onSubmit={handleSubmit((data) => console.log(data))}>\n      <input {...register(\"email\")} />\n      {errors.email && <span>{errors.email.message}</span>}\n      <input type=\"password\" {...register(\"password\")} />\n      {errors.password && <span>{errors.password.message}</span>}\n      <input type=\"password\" {...register(\"confirmPassword\")} />\n      {errors.confirmPassword && <span>{errors.confirmPassword.message}</span>}\n      <button type=\"submit\">Sign up</button>\n    </form>\n  );\n}\n```\n\n## Discriminated Unions for Event Systems\n\n```typescript\nconst WebhookEvent = z.discriminatedUnion(\"event\", [\n  z.object({\n    event: z.literal(\"user.created\"),\n    data: z.object({ userId: z.string(), email: z.string().email() }),\n  }),\n  z.object({\n    event: z.literal(\"user.deleted\"),\n    data: z.object({ userId: z.string(), reason: z.string().optional() }),\n  }),\n  z.object({\n    event: z.literal(\"payment.completed\"),\n    data: z.object({ orderId: z.string(), amount: z.number(), currency: z.string() }),\n  }),\n]);\n\ntype WebhookEvent = z.infer<typeof WebhookEvent>;\n\nfunction handleWebhook(payload: unknown) {\n  const event = WebhookEvent.parse(payload);\n  switch (event.event) {\n    case \"user.created\":\n      // event.data is { userId: string; email: string } — narrowed!\n      break;\n    case \"payment.completed\":\n      // event.data is { orderId: string; amount: number; currency: string }\n      break;\n  }\n}\n```\n\n## Recursive Types (Trees, JSON)\n\n```typescript\n// File system tree\ninterface FsNode {\n  name: string;\n  type: \"file\" | \"directory\";\n  children?: FsNode[];\n}\n\nconst FsNodeSchema: z.ZodType<FsNode> = z.object({\n  name: z.string(),\n  type: z.enum([\"file\", \"directory\"]),\n  children: z.lazy(() => FsNodeSchema.array()).optional(),\n});\n\n// JSON value (self-referential)\ntype JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };\n\nconst JsonValueSchema: z.ZodType<JsonValue> = z.lazy(() =>\n  z.union([\n    z.string(),\n    z.number(),\n    z.boolean(),\n    z.null(),\n    z.array(JsonValueSchema),\n    z.record(JsonValueSchema),\n  ])\n);\n```\n\n## tRPC Integration\n\n```typescript\nimport { initTRPC } from \"@trpc/server\";\nimport { z } from \"zod\";\n\nconst t = initTRPC.create();\n\nconst appRouter = t.router({\n  getUser: t.procedure\n    .input(z.object({ id: z.string().uuid() }))\n    .query(async ({ input }) => {\n      // input is { id: string } — validated by Zod\n      return db.users.findUnique({ where: { id: input.id } });\n    }),\n\n  createUser: t.procedure\n    .input(CreateUserRequest)\n    .mutation(async ({ input }) => {\n      // input matches CreateUserRequest schema\n      return db.users.create({ data: input });\n    }),\n});\n```\n\n## Config File Parsing\n\n```typescript\nconst AppConfig = z.object({\n  server: z.object({\n    host: z.string().default(\"0.0.0.0\"),\n    port: z.number().int().positive().default(3000),\n    cors: z.object({\n      origins: z.array(z.string().url()).default([\"http://localhost:3000\"]),\n      credentials: z.boolean().default(true),\n    }).default({}),\n  }).default({}),\n  database: z.object({\n    url: z.string().url(),\n    pool: z.object({\n      min: z.number().int().nonnegative().default(2),\n      max: z.number().int().positive().default(10),\n    }).default({}),\n  }),\n  features: z.object({\n    darkMode: z.boolean().default(false),\n    betaFeatures: z.boolean().default(false),\n  }).default({}),\n});\n\n// Parse config file with full defaults\nconst config = AppConfig.parse(JSON.parse(fs.readFileSync(\"config.json\", \"utf8\")));\n```\n\n## API Key / Secret Validation\n\n```typescript\nconst ApiKey = z.string()\n  .min(32, \"API key too short\")\n  .regex(/^[a-zA-Z0-9_-]+$/, \"Invalid API key format\")\n  .brand<\"ApiKey\">();\n\ntype ApiKey = z.infer<typeof ApiKey>;\n\n// Functions that require a validated API key\nfunction callApi(key: ApiKey, endpoint: string) { /* ... */ }\n\n// Must parse first — prevents passing raw strings\nconst key = ApiKey.parse(process.env.API_KEY);\ncallApi(key, \"/data\"); // ✓\n// callApi(process.env.API_KEY!, \"/data\"); // ✗ TypeScript error\n```\n",
+  "sections": [
+    {
+      "id": "env-validation",
+      "title": "Environment variable validation",
+      "body": "Define a schema with `z.coerce` for type conversion (env vars are always strings) and `.default()` for fallbacks. Parse `process.env` at startup — fails fast with clear errors. Export the typed result for the entire app. Use `z.coerce.number()` for ports, `z.coerce.boolean()` for flags, `z.enum()` for constrained values. Libraries like `@t3-oss/env-core` and `znv` build on this pattern with framework-specific ergonomics.",
+      "tags": ["env", "environment", "process-env", "coerce", "startup", "config"]
+    },
+    {
+      "id": "api-validation",
+      "title": "API request and response validation",
+      "body": "Validate incoming request bodies with `.safeParse()` and return 400 with `.flatten()` on failure. Validate external API responses with `.strip()` to ignore unexpected fields. Create generic response wrappers with parameterized schemas. Use `.transform()` to normalize snake_case API responses into camelCase. Build reusable middleware with `validateBody(schema)` for Express/Fastify.",
+      "tags": ["api", "request", "response", "middleware", "express", "fetch", "strip"]
+    },
+    {
+      "id": "form-validation",
+      "title": "Form validation with React Hook Form",
+      "body": "Use `@hookform/resolvers/zod` to connect Zod schemas to React Hook Form. Define the schema, infer the type with `z.infer`, pass the schema as `resolver: zodResolver(schema)`. Cross-field validation (like password confirmation) uses `.refine()` or `.superRefine()` with explicit `path` to target the right field's error display. This pattern works with any form library that supports resolver plugins.",
+      "tags": ["form", "react-hook-form", "zodResolver", "frontend", "cross-field"]
+    },
+    {
+      "id": "discriminated-unions",
+      "title": "Discriminated unions for events and state",
+      "body": "Use `z.discriminatedUnion(\"key\", [...])` for webhook events, API responses with different shapes, and state machines. The discriminant field (a literal) lets Zod pick the right branch immediately — better errors and performance than plain `.union()`. After parsing, TypeScript narrows the type in switch/case blocks. This is the standard pattern for typed event handlers, message protocols, and polymorphic API responses.",
+      "tags": ["discriminated-union", "events", "webhooks", "state-machine", "narrowing"]
+    },
+    {
+      "id": "recursive-types",
+      "title": "Recursive schemas for trees and JSON",
+      "body": "Use `z.lazy(() => schema)` for self-referential types like file trees, comment threads, and JSON values. You MUST provide an explicit TypeScript interface and annotate the schema as `z.ZodType<YourInterface>` — TypeScript cannot infer recursive types. The lazy callback is called at parse time, not definition time, so circular references work. Combine with `.optional()` for optional recursion (leaf nodes).",
+      "tags": ["recursive", "lazy", "tree", "json", "self-referential", "circular"]
+    },
+    {
+      "id": "framework-integrations",
+      "title": "Framework integrations: tRPC, Astro, Remix",
+      "body": "**tRPC**: Pass Zod schemas to `.input()` on procedures — tRPC validates and infers types end-to-end. **Astro**: Content collections use `z.object()` for frontmatter schemas in `content.config.ts`. **Remix**: Validate form data in actions with `schema.safeParse(Object.fromEntries(formData))`. **Next.js Server Actions**: Parse form data or JSON payloads with Zod before processing. Each framework leverages Zod's type inference for end-to-end type safety.",
+      "tags": ["trpc", "astro", "remix", "nextjs", "server-actions", "content-collections"]
+    }
+  ],
+  "links": [
+    { "uri": "zod/schemas", "context": "Schema fundamentals used in all patterns" },
+    { "uri": "zod/validation", "context": "Validation techniques used across patterns" },
+    { "uri": "zod/transform", "context": "Transforms for env coercion and API normalization" },
+    { "uri": "zod/inference", "context": "Type inference powers schema-first design" },
+    { "uri": "zod", "context": "Zod ecosystem overview" }
+  ],
+  "related": [
+    { "uri": "zod/schemas", "relation": "prerequisite", "note": "All patterns build on schema definitions" },
+    { "uri": "zod/validation", "relation": "prerequisite", "note": "Validation is the core of every pattern" },
+    { "uri": "zod/transform", "relation": "see-also", "note": "Env and API patterns rely heavily on transforms" },
+    { "uri": "zod/inference", "relation": "see-also", "note": "Schema-first design depends on type inference" }
+  ],
+  "more": {
+    "docs": "https://zod.dev",
+    "repo": "https://github.com/colinhacks/zod"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "TypeScript developers, AI agents",
+    "estimated_reading_time": "8 min",
+    "prerequisites": ["zod/schemas", "zod/validation", "zod/transform"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

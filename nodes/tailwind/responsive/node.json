@@ -1,0 +1,96 @@
+{
+  "name": "responsive",
+  "version": "1.0.0",
+  "uri": "tailwind/responsive",
+  "type": "context",
+  "content_type": "reference",
+  "context": "Tailwind responsive design — breakpoints, mobile-first, max-width variants, container queries, and custom breakpoints",
+  "info": "Tailwind uses a mobile-first breakpoint system where unprefixed utilities apply to all screen sizes and prefixed utilities apply at that breakpoint and above. The default breakpoints are sm (640px), md (768px), lg (1024px), xl (1280px), and 2xl (1536px). Agents must understand mobile-first to avoid the common mistake of using sm: for mobile styles — sm: means 640px and up, not small screens. v4 adds built-in container queries (@container) and max-width variants (max-sm:, max-md:) as first-class features. This node teaches agents how to build responsive layouts, use breakpoint ranges, customize breakpoints via @theme, and leverage container queries for component-level responsiveness.",
+  "parent": "tailwind",
+  "tags": ["responsive", "breakpoints", "mobile-first", "container-queries", "media-queries", "viewport"],
+  "aliases": [
+    "tailwind responsive",
+    "tailwind breakpoints",
+    "tailwind media queries",
+    "tailwind mobile first",
+    "responsive tailwind",
+    "tailwind screen sizes",
+    "tw responsive",
+    "tailwind container queries",
+    "tailwind sm md lg xl"
+  ],
+  "triggers": [
+    "make this responsive with tailwind",
+    "tailwind breakpoint sizes",
+    "what does sm: mean in tailwind",
+    "tailwind mobile first",
+    "hide on mobile show on desktop tailwind",
+    "tailwind container query",
+    "custom breakpoints tailwind",
+    "responsive grid tailwind",
+    "tailwind max-width variant"
+  ],
+  "body": "# Responsive Design in Tailwind\n\nTailwind is mobile-first: unprefixed utilities apply to all sizes, prefixed utilities apply at that breakpoint **and above**.\n\n## Default Breakpoints\n\n| Prefix | Min Width | CSS | Common devices |\n|--------|-----------|-----|----------------|\n| *(none)* | 0px | (no media query) | All screens |\n| `sm:` | 640px (40rem) | `@media (width >= 40rem)` | Large phones landscape |\n| `md:` | 768px (48rem) | `@media (width >= 48rem)` | Tablets |\n| `lg:` | 1024px (64rem) | `@media (width >= 64rem)` | Laptops |\n| `xl:` | 1280px (80rem) | `@media (width >= 80rem)` | Desktops |\n| `2xl:` | 1536px (96rem) | `@media (width >= 96rem)` | Large monitors |\n\n## Mobile-First Pattern\n\n**Always design for mobile first, then add breakpoints for larger screens.**\n\n```html\n<!-- CORRECT: Stack on mobile, side-by-side on md+ -->\n<div class=\"flex flex-col md:flex-row gap-4\">\n  <div class=\"w-full md:w-1/2\">Left</div>\n  <div class=\"w-full md:w-1/2\">Right</div>\n</div>\n\n<!-- WRONG: sm: doesn't mean \"small screens\" — it means 640px+ -->\n<!-- This makes text small ONLY on screens >= 640px -->\n<p class=\"sm:text-sm\">Wrong approach</p>\n\n<!-- CORRECT: small text by default, larger on bigger screens -->\n<p class=\"text-sm md:text-base lg:text-lg\">Right approach</p>\n```\n\n## Common Responsive Patterns\n\n### Responsive Grid\n```html\n<!-- 1 col mobile, 2 cols tablet, 3 cols desktop -->\n<div class=\"grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6\">\n  <div>Card 1</div>\n  <div>Card 2</div>\n  <div>Card 3</div>\n</div>\n```\n\n### Responsive Navigation\n```html\n<nav class=\"flex flex-col md:flex-row md:items-center md:gap-8\">\n  <a href=\"/\" class=\"font-bold text-xl\">Logo</a>\n  <div class=\"hidden md:flex gap-6\">\n    <a href=\"/about\">About</a>\n    <a href=\"/contact\">Contact</a>\n  </div>\n  <button class=\"md:hidden\">Menu</button>\n</nav>\n```\n\n### Show/Hide by Screen Size\n```html\n<div class=\"hidden md:block\">Desktop only</div>\n<div class=\"md:hidden\">Mobile only</div>\n<div class=\"hidden lg:block\">Large screens only</div>\n```\n\n### Responsive Spacing\n```html\n<section class=\"px-4 py-8 md:px-8 md:py-16 lg:px-16 lg:py-24\">\n  <div class=\"mx-auto max-w-sm md:max-w-2xl lg:max-w-6xl\">\n    Content with responsive padding and max-width\n  </div>\n</section>\n```\n\n## Max-Width Variants (v4)\n\nApply styles *below* a breakpoint:\n\n```html\n<!-- Stack below md, row at md+ -->\n<div class=\"flex flex-row max-md:flex-col\">\n  <div>Item</div>\n  <div>Item</div>\n</div>\n```\n\n| Variant | Media Query |\n|---------|-------------|\n| `max-sm:` | `@media (width < 40rem)` |\n| `max-md:` | `@media (width < 48rem)` |\n| `max-lg:` | `@media (width < 64rem)` |\n| `max-xl:` | `@media (width < 80rem)` |\n| `max-2xl:` | `@media (width < 96rem)` |\n\n### Target a Single Breakpoint Range\n```html\n<!-- Only between md and lg -->\n<div class=\"md:max-lg:text-center\">Centered only on tablets</div>\n```\n\n## Container Queries (v4)\n\nStyle based on **parent container size** instead of viewport:\n\n```html\n<div class=\"@container\">\n  <div class=\"flex flex-col @md:flex-row @lg:grid @lg:grid-cols-3\">\n    <div>Responds to container width, not viewport</div>\n  </div>\n</div>\n```\n\n### Default Container Sizes\n| Variant | Min Width |\n|---------|-----------|\n| `@3xs:` | 256px (16rem) |\n| `@2xs:` | 288px (18rem) |\n| `@xs:` | 320px (20rem) |\n| `@sm:` | 384px (24rem) |\n| `@md:` | 448px (28rem) |\n| `@lg:` | 512px (32rem) |\n| `@xl:` | 576px (36rem) |\n| `@2xl:` | 672px (42rem) |\n| `@7xl:` | 1280px (80rem) |\n\n### Named Containers\n```html\n<div class=\"@container/sidebar\">\n  <nav class=\"@sm/sidebar:flex-col\">\n    Responds to the sidebar container specifically\n  </nav>\n</div>\n```\n\n## Custom Breakpoints\n\n### v4 (CSS @theme)\n```css\n@import \"tailwindcss\";\n\n@theme {\n  --breakpoint-xs: 30rem;     /* Add new breakpoint */\n  --breakpoint-3xl: 120rem;   /* Add new breakpoint */\n  --breakpoint-sm: 36rem;     /* Override existing */\n}\n```\n\n### Replace All Breakpoints\n```css\n@theme {\n  --breakpoint-*: initial;         /* Remove defaults */\n  --breakpoint-tablet: 40rem;\n  --breakpoint-laptop: 64rem;\n  --breakpoint-desktop: 80rem;\n}\n```\nUse as: `tablet:flex-row`, `laptop:grid-cols-3`\n\n### Arbitrary Breakpoints (One-Off)\n```html\n<div class=\"min-[320px]:text-center max-[600px]:bg-sky-300\">\n  One-off breakpoint without theme configuration\n</div>\n```\n\n## Viewport Meta Tag\n\nAlways include in `<head>` for responsive design to work:\n```html\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\" />\n```\n",
+  "sections": [
+    {
+      "id": "breakpoints",
+      "title": "Default breakpoint values",
+      "body": "sm: 640px (40rem), md: 768px (48rem), lg: 1024px (64rem), xl: 1280px (80rem), 2xl: 1536px (96rem). These are min-width breakpoints — `md:flex` means `@media (width >= 48rem) { display: flex }`. Unprefixed utilities have no media query and apply at all sizes.",
+      "tags": ["breakpoints", "sm", "md", "lg", "xl", "2xl", "values"]
+    },
+    {
+      "id": "mobile-first",
+      "title": "Mobile-first methodology",
+      "body": "Design for mobile first with unprefixed classes, then progressively enhance for larger screens with breakpoint prefixes. Common mistake: using `sm:` for mobile styles — `sm:` is 640px+, not small screens. The mobile style is the unprefixed version. Example: `text-sm md:text-base lg:text-lg` starts small and grows.",
+      "tags": ["mobile-first", "progressive-enhancement", "methodology"]
+    },
+    {
+      "id": "max-width",
+      "title": "Max-width and range variants",
+      "body": "v4 adds `max-sm:`, `max-md:`, `max-lg:`, `max-xl:`, `max-2xl:` for styles below a breakpoint. Combine for ranges: `md:max-lg:text-center` applies only between 768px and 1024px. Useful for mobile-only overrides without restructuring the mobile-first cascade.",
+      "tags": ["max-width", "range", "below-breakpoint"]
+    },
+    {
+      "id": "container-queries",
+      "title": "Container queries",
+      "body": "Add `@container` to a parent element. Children use `@sm:`, `@md:`, `@lg:` etc. to style based on container width instead of viewport. Named containers with `@container/name` and `@sm/name:` target specific ancestors. Custom sizes via `@theme { --container-8xl: 96rem; }`. Container query units available: `w-[50cqw]` for 50% of container width. Container queries are built-in to v4 — no plugin required.",
+      "tags": ["container-queries", "container", "component-responsive"]
+    },
+    {
+      "id": "custom-breakpoints",
+      "title": "Customizing breakpoints",
+      "body": "v4: add `--breakpoint-name: value;` in `@theme`. Use `--breakpoint-*: initial;` to remove all defaults. v3: set in `theme.screens` of `tailwind.config.js`. Arbitrary one-off breakpoints: `min-[320px]:text-center`, `max-[600px]:hidden`. Named breakpoints generate prefixed variants automatically.",
+      "tags": ["custom-breakpoints", "theme", "screens", "arbitrary"]
+    }
+  ],
+  "links": [
+    { "uri": "tailwind/classes", "context": "Utility classes that responsive prefixes modify" },
+    { "uri": "tailwind/config", "context": "Customize breakpoints via @theme or tailwind.config.js" },
+    { "uri": "tailwind/dark-mode", "context": "Combine responsive and dark mode: dark:md:bg-gray-900" },
+    { "uri": "tailwind/v4", "context": "v4 added max-width variants and built-in container queries" }
+  ],
+  "related": [
+    { "uri": "tailwind/classes", "relation": "prerequisite", "note": "Understanding utility classes is needed before adding responsive prefixes" },
+    { "uri": "tailwind/config", "relation": "see-also", "note": "Breakpoints are customized in theme configuration" },
+    { "uri": "tailwind/v4", "relation": "see-also", "note": "v4 made container queries and max-width variants first-class" }
+  ],
+  "more": {
+    "docs": "https://tailwindcss.com/docs/responsive-design",
+    "examples": "https://tailwindcss.com/docs/responsive-design#container-queries"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "frontend developers, AI agents",
+    "estimated_reading_time": "5 min",
+    "prerequisites": ["tailwind/classes"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

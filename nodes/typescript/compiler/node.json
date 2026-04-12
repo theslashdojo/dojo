@@ -1,0 +1,179 @@
+{
+  "name": "compiler",
+  "version": "1.0.0",
+  "uri": "typescript/compiler",
+  "type": "skill",
+  "context": "Compile, type-check, and build TypeScript projects with tsc — watch mode, build mode, diagnostics, and emit control",
+  "info": "The TypeScript compiler (tsc) is the official CLI tool for type-checking and compiling TypeScript to JavaScript. It reads tsconfig.json for configuration, supports watch mode for development, build mode for multi-project workspaces, and incremental compilation for fast rebuilds. tsc performs three phases: parsing source files into an AST, running the type checker to validate types and infer missing annotations, and emitting JavaScript output plus optional declaration files (.d.ts) and source maps. Agents use tsc to validate code correctness (--noEmit), generate distributable JavaScript (--outDir), manage multi-project builds (--build), and diagnose type errors. See [[typescript/config]] for tsconfig.json options and [[typescript/project-refs]] for composite project builds.",
+  "parent": "typescript",
+  "tags": ["tsc", "compiler", "type-check", "emit", "watch", "build", "incremental", "diagnostics", "transpile", "declaration"],
+  "aliases": [
+    "tsc",
+    "typescript compiler",
+    "ts compiler",
+    "npx tsc",
+    "type checker",
+    "type-check",
+    "typecheck",
+    "compile ts",
+    "compile typescript",
+    "tsc build",
+    "tsc watch"
+  ],
+  "triggers": [
+    "compile typescript",
+    "run tsc",
+    "type check my project",
+    "fix type errors",
+    "watch for typescript changes",
+    "build typescript project",
+    "generate declaration files",
+    "incremental typescript build",
+    "emit javascript from typescript",
+    "tsc is showing errors",
+    "typescript compilation fails"
+  ],
+  "body": "# TypeScript Compiler (tsc)\n\nThe `tsc` CLI is the official TypeScript compiler. It type-checks `.ts` and `.tsx` files, reports errors, and emits JavaScript output.\n\n## Installation\n\n```bash\n# Install as a dev dependency (recommended)\nnpm install -D typescript\n\n# Run via npx\nnpx tsc --version\n\n# Or install globally\nnpm install -g typescript\ntsc --version\n```\n\n## Core Commands\n\n```bash\n# Initialize tsconfig.json with defaults\nnpx tsc --init\n\n# Type-check only (no JavaScript output)\nnpx tsc --noEmit\n\n# Compile using tsconfig.json\nnpx tsc\n\n# Compile specific files (ignores tsconfig)\nnpx tsc src/index.ts src/utils.ts\n\n# Compile with inline options\nnpx tsc --target es2022 --module esnext --outDir dist src/index.ts\n\n# Compile with a specific tsconfig\nnpx tsc --project tsconfig.build.json\nnpx tsc -p tsconfig.build.json\n```\n\n## Watch Mode\n\nWatch mode recompiles on file changes. Use during development.\n\n```bash\n# Watch mode with default tsconfig\nnpx tsc --watch\nnpx tsc -w\n\n# Watch with type-check only\nnpx tsc --watch --noEmit\n\n# Watch with a specific config\nnpx tsc -w -p tsconfig.dev.json\n```\n\nWatch mode uses file system events by default. On systems without reliable fs events, set `TSC_WATCHFILE=DynamicPriorityPolling` for polling.\n\n## Build Mode (--build)\n\nBuild mode compiles project references — multiple tsconfig files linked as a dependency graph. Essential for monorepos.\n\n```bash\n# Build the current project and all its references\nnpx tsc --build\nnpx tsc -b\n\n# Build a specific tsconfig\nnpx tsc -b tsconfig.build.json\n\n# Build multiple projects\nnpx tsc -b packages/core packages/cli packages/web\n\n# Build in verbose mode\nnpx tsc -b --verbose\n\n# Force rebuild (ignore incremental cache)\nnpx tsc -b --force\n\n# Clean build outputs\nnpx tsc -b --clean\n\n# Dry run (show what would be built)\nnpx tsc -b --dry\n\n# Watch mode with build\nnpx tsc -b --watch\n```\n\nSee [[typescript/project-refs]] for configuring composite projects.\n\n## Emit Control\n\nControl what tsc outputs:\n\n```bash\n# Emit to a specific directory\nnpx tsc --outDir dist\n\n# Generate declaration files (.d.ts)\nnpx tsc --declaration\n\n# Generate declaration maps (for go-to-definition into .ts source)\nnpx tsc --declaration --declarationMap\n\n# Generate source maps\nnpx tsc --sourceMap\n\n# Inline source maps in the JS output\nnpx tsc --inlineSourceMap\n\n# Skip emit on errors\nnpx tsc --noEmitOnError\n\n# Type-check only, no output files\nnpx tsc --noEmit\n\n# Skip type checking, only emit (5.6+)\nnpx tsc --noCheck\n\n# Remove comments from output\nnpx tsc --removeComments\n\n# Emit only declaration files\nnpx tsc --emitDeclarationOnly\n```\n\n## Incremental Compilation\n\nIncremental mode caches type-checking results for faster rebuilds:\n\n```bash\n# Enable incremental compilation\nnpx tsc --incremental\n\n# Specify the cache file location\nnpx tsc --incremental --tsBuildInfoFile .cache/tsconfig.tsbuildinfo\n```\n\nThis writes a `.tsbuildinfo` file. On subsequent runs, tsc skips re-checking files that haven't changed.\n\n## Diagnostics and Debugging\n\n```bash\n# Show all compiler options\nnpx tsc --all\n\n# Show effective configuration\nnpx tsc --showConfig\n\n# Explain why a file is included\nnpx tsc --explainFiles\n\n# Generate a trace for performance analysis\nnpx tsc --generateTrace ./trace\n\n# Extended diagnostics\nnpx tsc --extendedDiagnostics\n\n# List files that would be compiled\nnpx tsc --listFiles\n\n# List emitted files\nnpx tsc --listEmittedFiles\n\n# Pretty-print errors (default on TTY)\nnpx tsc --pretty\n```\n\n## Common Error Patterns and Fixes\n\n| Error Code | Message | Fix |\n|------------|---------|-----|\n| TS2307 | Cannot find module 'X' | Install `@types/X` or add module declaration |\n| TS2339 | Property 'X' does not exist on type 'Y' | Check spelling, add to interface, or narrow the type |\n| TS2345 | Argument of type 'X' is not assignable to parameter of type 'Y' | Fix the type mismatch or use a type assertion |\n| TS2322 | Type 'X' is not assignable to type 'Y' | Ensure shapes match or widen the target type |\n| TS7006 | Parameter 'X' implicitly has an 'any' type | Add a type annotation or set `noImplicitAny: false` |\n| TS1259 | Module 'X' can only be default-imported using esModuleInterop | Set `esModuleInterop: true` in tsconfig |\n| TS6133 | 'X' is declared but its value is never read | Remove unused variable or prefix with `_` |\n| TS18046 | 'X' is of type 'unknown' | Narrow with `typeof`, `instanceof`, or type guard |\n\n## Integration with Other Tools\n\ntsc is often used for type-checking only, while faster tools handle transpilation:\n\n```bash\n# esbuild — fast bundler, strips types, no type checking\nnpx esbuild src/index.ts --bundle --outdir=dist --platform=node\n\n# swc — Rust-based transpiler, no type checking\nnpx swc src -d dist\n\n# Vite — uses esbuild in dev, rollup in prod\nnpm create vite@latest my-app -- --template react-ts\n\n# tsx — run .ts files directly (uses esbuild)\nnpx tsx src/index.ts\n\n# Typical CI pipeline: tsc for checking, esbuild for building\nnpx tsc --noEmit && npx esbuild src/index.ts --bundle --outdir=dist\n```\n\n## package.json Scripts\n\n```json\n{\n  \"scripts\": {\n    \"typecheck\": \"tsc --noEmit\",\n    \"build\": \"tsc\",\n    \"build:watch\": \"tsc --watch\",\n    \"build:clean\": \"rm -rf dist && tsc\",\n    \"dev\": \"tsx watch src/index.ts\",\n    \"lint\": \"tsc --noEmit && eslint src\"\n  }\n}\n```\n\n## Environment Variables\n\n| Variable | Purpose |\n|----------|----------|\n| `TSC_WATCHFILE` | File watching strategy: `UseFsEvents`, `UseFsEventsOnParentDirectory`, `DynamicPriorityPolling` |\n| `TSC_NONPOLLING_WATCHER` | Set to `1` to use native file watchers |\n| `TS_NODE_PROJECT` | Path to tsconfig.json for ts-node |\n| `TS_NODE_COMPILER_OPTIONS` | Override compiler options for ts-node |\n",
+  "sections": [
+    {
+      "id": "type-check-only",
+      "title": "Type-check only workflow",
+      "body": "Use `tsc --noEmit` to type-check without producing output files. This is the most common CI usage — let tsc validate types while a faster tool (esbuild, swc, Vite) handles the actual build. Add `\"typecheck\": \"tsc --noEmit\"` to package.json scripts. Combine with `--incremental` for faster re-checks: `tsc --noEmit --incremental`. In monorepos, use `tsc -b --noEmit` to check all referenced projects. The `--noCheck` flag (5.6+) does the opposite — emit without type checking, useful when type checking runs separately.",
+      "tags": ["noEmit", "type-check", "ci", "validation", "noCheck"]
+    },
+    {
+      "id": "watch-mode",
+      "title": "Watch mode",
+      "body": "Run `tsc --watch` or `tsc -w` for continuous compilation during development. tsc watches all files matched by `include` in tsconfig.json and recompiles on changes. Watch mode uses file system events by default (efficient on macOS/Linux). If fs events are unreliable (networked drives, Docker volumes), set `TSC_WATCHFILE=DynamicPriorityPolling`. Combine with `--preserveWatchOutput` to keep previous output on screen. For build mode projects, use `tsc -b --watch` to watch across project references.",
+      "tags": ["watch", "development", "live-reload", "fs-events", "polling"]
+    },
+    {
+      "id": "build-mode",
+      "title": "Build mode for project references",
+      "body": "Build mode (`tsc -b` or `tsc --build`) compiles composite projects and their dependencies in the correct order. It reads the `references` array in tsconfig.json and builds the dependency graph. Key flags: `--verbose` (show build steps), `--force` (ignore incremental cache), `--clean` (delete outputs), `--dry` (show what would be built). Build mode requires `composite: true` and `declaration: true` in each referenced project's tsconfig. See [[typescript/project-refs]] for setup patterns.",
+      "tags": ["build", "project-references", "composite", "monorepo", "dependency-graph"]
+    },
+    {
+      "id": "declaration-files",
+      "title": "Generating declaration files",
+      "body": "Declaration files (`.d.ts`) expose type information without implementation code. Generate them with `--declaration`. Add `--declarationMap` so consumers can navigate to your TypeScript source via go-to-definition. Use `--emitDeclarationOnly` when a bundler handles JS emit and you only need types. The `--declarationDir` option specifies where `.d.ts` files are written (defaults to alongside JS output). In `package.json`, point `\"types\"` or `\"typings\"` to your main declaration file. For `isolatedDeclarations` (5.5+), each file's exported types must be explicitly annotated — no inference from function bodies.",
+      "tags": ["declaration", "d-ts", "declarationMap", "emitDeclarationOnly", "isolatedDeclarations"]
+    },
+    {
+      "id": "diagnostics",
+      "title": "Diagnostics and troubleshooting",
+      "body": "When tsc behavior is confusing, use diagnostic flags. `--showConfig` prints the effective merged configuration (after extends and defaults). `--explainFiles` shows why each file is included in compilation (useful for debugging unexpected includes). `--listFiles` lists all files that will be compiled. `--extendedDiagnostics` shows timing and memory usage for each compilation phase. `--generateTrace ./trace` produces a Chrome-compatible trace file for profiling slow compilations — open it in `chrome://tracing` or `edge://tracing`.",
+      "tags": ["diagnostics", "showConfig", "explainFiles", "generateTrace", "performance"]
+    }
+  ],
+  "links": [
+    { "uri": "typescript/config", "context": "tsconfig.json options that control compiler behavior" },
+    { "uri": "typescript/project-refs", "context": "Setting up composite projects for build mode" },
+    { "uri": "typescript/types", "context": "Understanding type errors reported by the compiler" },
+    { "uri": "typescript/generics", "context": "Generic type errors and constraint violations" }
+  ],
+  "related": [
+    { "uri": "typescript/config", "relation": "see-also", "note": "tsc reads all its options from tsconfig.json — the config node documents every option" },
+    { "uri": "typescript/project-refs", "relation": "see-also", "note": "Build mode (tsc -b) operates on project references defined in tsconfig" }
+  ],
+  "scripts": [
+    {
+      "id": "typecheck",
+      "name": "Type-check project",
+      "description": "Run tsc --noEmit to type-check the project without emitting output. Returns exit code 0 on success, non-zero with error details on failure.",
+      "lang": "bash",
+      "runtime": "node>=18",
+      "entry": "./scripts/typecheck.sh",
+      "packages": ["typescript"]
+    },
+    {
+      "id": "init-tsconfig",
+      "name": "Initialize tsconfig.json",
+      "description": "Generate a tsconfig.json with recommended defaults for a modern TypeScript project",
+      "lang": "bash",
+      "runtime": "node>=18",
+      "entry": "./scripts/init-tsconfig.sh",
+      "packages": ["typescript"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "project": {
+          "type": "string",
+          "description": "Path to tsconfig.json (default: ./tsconfig.json)"
+        },
+        "noEmit": {
+          "type": "boolean",
+          "default": true,
+          "description": "Type-check only without emitting files"
+        },
+        "watch": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable watch mode for continuous compilation"
+        },
+        "build": {
+          "type": "boolean",
+          "default": false,
+          "description": "Use build mode for project references"
+        },
+        "incremental": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable incremental compilation"
+        }
+      }
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "success": {
+          "type": "boolean",
+          "description": "Whether compilation succeeded with no errors"
+        },
+        "errorCount": {
+          "type": "integer",
+          "description": "Number of type errors found"
+        },
+        "errors": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "file": { "type": "string" },
+              "line": { "type": "integer" },
+              "code": { "type": "string" },
+              "message": { "type": "string" }
+            }
+          },
+          "description": "List of type errors"
+        }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "typescript/config", "reason": "tsc reads compiler options from tsconfig.json" }
+  ],
+  "more": {
+    "docs": "https://www.typescriptlang.org/docs/handbook/compiler-options.html",
+    "cli-reference": "https://www.typescriptlang.org/docs/handbook/compiler-options-in-msbuild.html",
+    "repo": "https://github.com/microsoft/TypeScript"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "6 min",
+    "prerequisites": ["typescript/config"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

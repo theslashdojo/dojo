@@ -1,0 +1,125 @@
+{
+  "name": "agent",
+  "version": "1.0.0",
+  "uri": "ssh/agent",
+  "type": "skill",
+  "context": "Start ssh-agent, add or remove keys with ssh-add, and manage agent-backed authentication safely",
+  "info": "This skill covers the OpenSSH authentication agent workflow: starting `ssh-agent`, exporting `SSH_AUTH_SOCK` and `SSH_AGENT_PID`, loading keys with `ssh-add`, setting key lifetimes, requiring confirmation, listing and clearing loaded identities, and understanding the security tradeoffs of agent forwarding. Agents use it when private keys are passphrase-protected, when many SSH operations should reuse one unlocked key, or when a bastion hop needs temporary delegated authentication.",
+  "parent": "ssh",
+  "tags": ["ssh", "agent", "ssh-agent", "ssh-add", "ssh-auth-sock", "key-lifetime", "agent-forwarding"],
+  "aliases": [
+    "ssh agent",
+    "ssh-agent",
+    "ssh-add",
+    "load ssh key",
+    "ssh auth sock",
+    "agent forwarding"
+  ],
+  "triggers": [
+    "start ssh-agent",
+    "add a key to ssh-agent",
+    "list loaded ssh keys",
+    "clear keys from the agent",
+    "lock or unlock ssh-agent",
+    "use agent forwarding"
+  ],
+  "body": "# ssh-agent and ssh-add\n\n`ssh-agent` keeps private keys available for repeated authentication without exposing them to every script as raw files and passphrases. `ssh-add` loads, lists, removes, locks, and constrains the identities stored in that agent.\n\n## Start an Agent\n\n```bash\neval \"$(ssh-agent -s)\"\n```\n\nThis exports `SSH_AUTH_SOCK` and `SSH_AGENT_PID` into the current shell. Without `SSH_AUTH_SOCK`, `ssh-add` cannot talk to the agent.\n\n## Add and Inspect Keys\n\n```bash\nssh-add ~/.ssh/id_ed25519\nssh-add -t 1h -c ~/.ssh/id_ed25519\nssh-add -l\nssh-add -D\n```\n\n- `-t 1h` sets a lifetime.\n- `-c` requires confirmation before each use.\n- `-l` lists fingerprints of loaded identities.\n- `-D` removes all loaded identities.\n\n## Agent Forwarding Caution\n\n```bash\nssh -A bastion.example.com\n```\n\nAgent forwarding is convenient but high-trust. A remote host that can reach your forwarded agent socket may request signatures with your loaded key. Use it only on trusted hops, consider destination constraints when supported, and prefer `ProxyJump` over `-A` when forwarding is unnecessary.\n",
+  "sections": [
+    {
+      "id": "start-agent",
+      "title": "Start ssh-agent and export environment",
+      "body": "Run `ssh-agent -s` and `eval` its output in the current shell so `SSH_AUTH_SOCK` and `SSH_AGENT_PID` are set. These variables tell OpenSSH and `ssh-add` where the agent socket lives. The wrapper script prints the agent startup output directly so callers can `eval` it.",
+      "tags": ["ssh-agent", "ssh-auth-sock", "ssh-agent-pid", "eval"]
+    },
+    {
+      "id": "add-list-clear",
+      "title": "Load, inspect, and clear identities",
+      "body": "Use `ssh-add keyfile` to load a key, `ssh-add -l` to list fingerprints, `ssh-add -L` to list public keys, `ssh-add -d keyfile` to remove one key, and `ssh-add -D` to remove all keys. `ssh-add` ignores identity files that are accessible by others, so check file permissions if a key is unexpectedly skipped.",
+      "tags": ["ssh-add", "list", "remove", "permissions", "fingerprints"]
+    },
+    {
+      "id": "forwarding-risk",
+      "title": "Forwarding and constraints",
+      "body": "Forward agent access with `ssh -A` only when the remote hop is trusted. Newer OpenSSH releases support destination constraints with `ssh-add -h`, which limit where a forwarded key may be used, but forwarding still increases exposure compared with plain `ProxyJump`. Prefer no forwarding when the jump host only needs to pass traffic onward.",
+      "tags": ["forwardagent", "agent-forwarding", "constraints", "proxyjump"]
+    }
+  ],
+  "links": [
+    { "uri": "ssh/keys", "context": "Generate keys before loading them into the agent" },
+    { "uri": "ssh/connect", "context": "Use agent-backed identities for SSH sessions and remote commands" },
+    { "uri": "ssh/config", "context": "AddKeysToAgent and IdentityAgent shape agent behavior" },
+    { "uri": "ssh/troubleshooting", "context": "Debug missing SSH_AUTH_SOCK and ignored key files" }
+  ],
+  "related": [
+    { "uri": "ssh/keys", "relation": "prerequisite", "note": "The agent is only useful once a private key already exists" },
+    { "uri": "ssh/connect", "relation": "extends", "note": "The agent makes repeated SSH sessions and transfers less interactive" },
+    { "uri": "ssh/config", "relation": "see-also", "note": "Client config can auto-add keys and choose the agent socket" }
+  ],
+  "scripts": [
+    {
+      "id": "manage-agent",
+      "name": "Manage ssh-agent",
+      "description": "Start ssh-agent or manage loaded identities with ssh-add",
+      "lang": "bash",
+      "runtime": "bash",
+      "entry": "./scripts/manage-agent.sh",
+      "env": {
+        "SSH_AGENT_ACTION": { "required": false, "default": "start", "description": "Action: start, add, list, clear, remove, lock, or unlock" },
+        "SSH_AGENT_SOCKET": { "required": false, "description": "Custom socket path for ssh-agent -a" },
+        "SSH_AGENT_LIFETIME": { "required": false, "description": "Default lifetime for ssh-agent -t when starting the agent" },
+        "SSH_KEY_PATH": { "required": false, "description": "Key path for add or remove actions" },
+        "SSH_ADD_LIFETIME": { "required": false, "description": "Lifetime for ssh-add -t when loading a key" },
+        "SSH_ADD_CONFIRM": { "required": false, "default": "false", "description": "Set to true to require confirmation before key use" },
+        "SSH_DESTINATION_CONSTRAINT": { "required": false, "description": "Destination constraint passed to ssh-add -h" },
+        "SSH_AUTH_SOCK": { "required": false, "description": "Agent socket used by non-start actions" }
+      },
+      "packages": ["openssh-client"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "action": { "type": "string", "enum": ["start", "add", "list", "clear", "remove", "lock", "unlock"], "default": "start", "description": "Agent action to perform" },
+        "keyPath": { "type": "string", "description": "Private key path for add or remove" },
+        "agentSocket": { "type": "string", "description": "Custom socket path when starting the agent" },
+        "agentLifetime": { "type": "string", "description": "Default agent lifetime, for example 1h" },
+        "addLifetime": { "type": "string", "description": "Lifetime for a specific loaded key" },
+        "confirm": { "type": "boolean", "default": false, "description": "Require confirmation before each key use" },
+        "destinationConstraint": { "type": "string", "description": "Destination constraint for ssh-add -h" }
+      }
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "action": { "type": "string", "description": "Action performed" },
+        "sshAuthSock": { "type": "string", "description": "Agent socket path when available" },
+        "sshAgentPid": { "type": "string", "description": "Agent PID when available" },
+        "exitCode": { "type": "integer", "description": "Exit code from ssh-agent or ssh-add" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "ssh/keys", "reason": "ssh-agent manages existing keys; it does not create them" }
+  ],
+  "more": {
+    "agent": "https://man.openbsd.org/ssh-agent",
+    "add": "https://man.openbsd.org/ssh-add",
+    "manual": "https://www.openssh.com/manual.html"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, SREs, AI agents",
+    "estimated_reading_time": "4 min",
+    "prerequisites": ["ssh/keys"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

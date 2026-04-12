@@ -1,0 +1,134 @@
+{
+  "name": "config",
+  "version": "1.0.0",
+  "uri": "ansible/config",
+  "type": "context",
+  "content_type": "guide",
+  "context": "Understand ansible.cfg search order, high-value settings, and precedence rules before debugging odd behavior",
+  "info": "Ansible configuration is powerful precisely because it can come from several places at once: `ansible.cfg`, environment variables, command-line options, playbook keywords, and variables. This node explains the search order for `ansible.cfg`, the precedence ladder between configuration categories, and the high-value settings agents routinely need to inspect in real environments such as inventory path, forks, host key checking, stdout callback, interpreter discovery, and undefined variable behavior. Load this node whenever Ansible seems to ignore an expected setting or behave differently between shells, CI, and local runs.",
+  "parent": "ansible",
+  "tags": [
+    "ansible",
+    "config",
+    "ansible-cfg",
+    "precedence",
+    "environment-variables",
+    "ansible-config",
+    "host-key-checking",
+    "forks"
+  ],
+  "aliases": [
+    "ansible config",
+    "ansible.cfg",
+    "ansible precedence",
+    "ansible settings",
+    "ansible-config",
+    "ANSIBLE_CONFIG",
+    "ansible environment variables"
+  ],
+  "triggers": [
+    "which ansible config file is being used",
+    "why is ansible ignoring my setting",
+    "show changed ansible config",
+    "understand ansible precedence rules",
+    "disable or inspect host key checking in ansible",
+    "find ansible environment variables"
+  ],
+  "body": "# Ansible Configuration and Precedence\n\nWhen Ansible behaves strangely, configuration precedence is usually part of the answer. Settings can come from `ansible.cfg`, environment variables, CLI flags, playbook keywords, and variables, and those categories do not all win equally. Load this node alongside [[ansible/playbooks]], [[ansible/inventory]], and [[ansible/troubleshooting]] whenever a run behaves differently between local shells, CI, and production.\n\n## ansible.cfg Search Order\n\nAnsible uses the first config file it finds and ignores the rest:\n\n1. `ANSIBLE_CONFIG`\n2. `./ansible.cfg`\n3. `~/.ansible.cfg`\n4. `/etc/ansible/ansible.cfg`\n\nInspect what changed with:\n\n```bash\nansible --version\nansible-config dump --only-changed\n```\n\n## Precedence Ladder\n\nFrom lowest to highest, the main categories are:\n\n1. Configuration settings\n2. Command-line options\n3. Playbook keywords\n4. Variables\n5. Direct assignment\n\nExtra vars passed with `-e` are especially strong because they are variables, not mere CLI options.\n\n## High-Value Settings\n\n- `inventory`\n- `forks`\n- `host_key_checking`\n- `stdout_callback`\n- `interpreter_python`\n- `error_on_undefined_vars`\n\nThese settings frequently explain why the same playbook behaves differently across machines or CI jobs.\n",
+  "sections": [
+    {
+      "id": "search-order",
+      "title": "ansible.cfg search order",
+      "body": "Ansible searches for configuration in this order: `ANSIBLE_CONFIG`, `ansible.cfg` in the current directory, `~/.ansible.cfg`, then `/etc/ansible/ansible.cfg`. It uses the first file it finds and ignores the rest. This is the first thing to verify when a setting seems to come from nowhere or fails to match the repository's checked-in config.",
+      "tags": ["search-order", "ansible-cfg", "ANSIBLE_CONFIG"]
+    },
+    {
+      "id": "precedence",
+      "title": "Configuration, CLI, playbook keywords, and variables",
+      "body": "Configuration settings are the lowest layer. CLI options override configuration, playbook keywords override both, and variables override nearly everything. `-e` extra vars are powerful because they enter the run as variables, not just flags. Within a category, last defined usually wins. This is why an inventory variable can overrule what looked like a clear CLI choice.",
+      "tags": ["precedence", "variables", "extra-vars", "cli", "keywords"]
+    },
+    {
+      "id": "high-value-settings",
+      "title": "Settings worth checking first",
+      "body": "The most diagnostic settings on a real control node are `inventory` for source selection, `forks` for concurrency, `host_key_checking` for SSH trust behavior, `stdout_callback` for readable output, `interpreter_python` for Python discovery, and `error_on_undefined_vars` for template strictness. Use `ansible-config dump --only-changed` to see active overrides quickly.",
+      "tags": ["inventory", "forks", "stdout-callback", "interpreter-python", "undefined-vars"]
+    },
+    {
+      "id": "env-vars",
+      "title": "Useful environment variables",
+      "body": "Important environment variables include `ANSIBLE_CONFIG`, `ANSIBLE_INVENTORY`, `ANSIBLE_HOST_KEY_CHECKING`, `ANSIBLE_STDOUT_CALLBACK`, `ANSIBLE_FORKS`, and `ANSIBLE_ERROR_ON_UNDEFINED_VARS`. Environment variables sit above config-file entries within the configuration category, so they can quietly override values committed in `ansible.cfg`.",
+      "tags": ["environment", "ANSIBLE_INVENTORY", "ANSIBLE_FORKS", "ANSIBLE_HOST_KEY_CHECKING"]
+    }
+  ],
+  "links": [
+    {
+      "uri": "ansible/inventory",
+      "context": "Config settings often change which inventory source gets loaded"
+    },
+    {
+      "uri": "ansible/inventory#inspection",
+      "context": "Confirm the resolved inventory after any config or env override changes"
+    },
+    {
+      "uri": "ansible/playbooks",
+      "context": "Playbook keywords and extra vars interact directly with config precedence"
+    },
+    {
+      "uri": "ansible/playbooks#execution-flags",
+      "context": "Review execution flags whose effect depends on the precedence stack"
+    },
+    {
+      "uri": "ansible/vault",
+      "context": "Vault handling is affected by config search order and environment"
+    },
+    {
+      "uri": "ansible/troubleshooting",
+      "context": "Config drift and precedence confusion are common root causes during debugging"
+    },
+    {
+      "uri": "ssh/config",
+      "context": "SSH behavior is split between OpenSSH config and Ansible connection settings"
+    }
+  ],
+  "related": [
+    {
+      "uri": "ansible/playbooks",
+      "relation": "see-also",
+      "note": "Playbook keywords and vars are central parts of the precedence stack"
+    },
+    {
+      "uri": "ssh/config",
+      "relation": "see-also",
+      "note": "SSH host behavior often depends on both OpenSSH and Ansible settings"
+    },
+    {
+      "uri": "shell/environment",
+      "relation": "see-also",
+      "note": "Shell environment variables can silently override repo-local config"
+    }
+  ],
+  "more": {
+    "docs": "https://docs.ansible.com/projects/ansible/latest/reference_appendices/config.html",
+    "precedence": "https://docs.ansible.com/projects/ansible/latest/reference_appendices/general_precedence.html",
+    "cli": "https://docs.ansible.com/projects/ansible/latest/command_guide/index.html"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, SREs, AI agents",
+    "estimated_reading_time": "6 min",
+    "prerequisites": [
+      "ansible"
+    ],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://github.com/ansible/ansible",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

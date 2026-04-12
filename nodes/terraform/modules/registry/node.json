@@ -1,0 +1,142 @@
+{
+  "name": "registry",
+  "version": "1.0.0",
+  "uri": "terraform/modules/registry",
+  "type": "skill",
+  "context": "Discover, use, and publish Terraform modules via the public registry and private registries",
+  "info": "The Terraform Registry is the primary distribution mechanism for reusable modules. The public registry at registry.terraform.io hosts thousands of community and partner modules. Private registries (Terraform Cloud, HCP Terraform, self-hosted) enable organizations to share modules internally. This skill covers finding modules, using them with version constraints, evaluating module quality, publishing to the public registry, and configuring private registries. See [[terraform/modules]] for module fundamentals and [[terraform/modules/authoring]] for writing publishable modules.",
+  "parent": "terraform/modules",
+  "tags": ["terraform", "registry", "modules", "terraform-cloud", "version-constraints", "community", "terraform-aws-modules", "publishing"],
+  "aliases": [
+    "terraform registry",
+    "terraform module registry",
+    "registry.terraform.io",
+    "terraform cloud registry",
+    "terraform private registry",
+    "terraform public registry",
+    "tf registry",
+    "hashicorp registry"
+  ],
+  "triggers": [
+    "find a terraform module",
+    "use a module from the registry",
+    "terraform registry search",
+    "publish a terraform module",
+    "terraform version constraints",
+    "terraform-aws-modules",
+    "private terraform registry",
+    "terraform cloud modules",
+    "pin terraform module version",
+    "terraform module version constraint"
+  ],
+  "body": "# Terraform Registry\n\nThe Terraform Registry is the central hub for discovering and distributing Terraform modules and providers. The public registry at registry.terraform.io hosts thousands of modules maintained by HashiCorp, cloud providers, and the community.\n\n## Using Registry Modules\n\nRegistry modules use a three-part source format: `<NAMESPACE>/<NAME>/<PROVIDER>`:\n\n```hcl\nmodule \"vpc\" {\n  source  = \"terraform-aws-modules/vpc/aws\"\n  version = \"~> 5.0\"\n\n  name = \"my-vpc\"\n  cidr = \"10.0.0.0/16\"\n\n  azs             = [\"us-east-1a\", \"us-east-1b\", \"us-east-1c\"]\n  private_subnets = [\"10.0.1.0/24\", \"10.0.2.0/24\", \"10.0.3.0/24\"]\n  public_subnets  = [\"10.0.101.0/24\", \"10.0.102.0/24\", \"10.0.103.0/24\"]\n\n  enable_nat_gateway = true\n  single_nat_gateway = true\n\n  tags = {\n    Environment = \"production\"\n    ManagedBy   = \"terraform\"\n  }\n}\n```\n\nAfter adding a registry module, run `terraform init` to download it.\n\n## Version Constraints\n\nAlways pin module versions to prevent unexpected breaking changes:\n\n```hcl\n# Exact version\nmodule \"vpc\" {\n  source  = \"terraform-aws-modules/vpc/aws\"\n  version = \"5.1.2\"\n}\n\n# Pessimistic constraint (recommended) -- allows 5.x but not 6.0\nmodule \"vpc\" {\n  source  = \"terraform-aws-modules/vpc/aws\"\n  version = \"~> 5.0\"\n}\n\n# Range constraint\nmodule \"vpc\" {\n  source  = \"terraform-aws-modules/vpc/aws\"\n  version = \">= 5.0.0, < 6.0.0\"\n}\n```\n\n| Operator | Meaning | Example | Matches |\n|----------|---------|---------|--------|\n| `=` | Exact | `= 5.1.2` | Only 5.1.2 |\n| `!=` | Not equal | `!= 5.1.0` | Any except 5.1.0 |\n| `>` | Greater than | `> 5.0` | 5.0.1, 5.1.0, 6.0.0 |\n| `>=` | Greater or equal | `>= 5.0` | 5.0.0, 5.1.0, 6.0.0 |\n| `<` | Less than | `< 6.0` | 5.9.9, 5.0.0 |\n| `<=` | Less or equal | `<= 5.9` | 5.9.0, 5.0.0 |\n| `~>` | Pessimistic | `~> 5.0` | >= 5.0.0, < 6.0.0 |\n| `~>` | Pessimistic (patch) | `~> 5.1.0` | >= 5.1.0, < 5.2.0 |\n\nThe `~>` operator is recommended for most use cases. `~> 5.0` allows any 5.x release. `~> 5.1.0` is more restrictive, allowing only 5.1.x patches.\n\n## Public Registry\n\nThe public registry at [registry.terraform.io](https://registry.terraform.io/) offers:\n\n- **Module search** -- browse by provider, category, or keyword\n- **Documentation** -- auto-rendered from README.md, variables, and outputs\n- **Version history** -- all published versions with changelogs\n- **Verified badge** -- modules reviewed by HashiCorp partners\n- **Download counts** -- popularity indicator\n- **Dependency info** -- required providers and Terraform version\n\n### Evaluating Module Quality\n\nBefore adopting a registry module, check:\n\n1. **Downloads and stars** -- high usage indicates community trust\n2. **Last updated** -- stale modules may not support current provider versions\n3. **Open issues and PRs** -- active maintenance signals\n4. **Verified badge** -- HashiCorp has reviewed the module\n5. **Examples directory** -- working examples show real usage\n6. **Test coverage** -- automated tests indicate reliability\n7. **Variable validation** -- input validation catches misconfigurations early\n\n## Publishing to the Public Registry\n\nTo publish a module to the public registry:\n\n1. **GitHub repository** -- must be public, named `terraform-<PROVIDER>-<NAME>` (e.g. `terraform-aws-vpc`)\n2. **Standard structure** -- `main.tf`, `variables.tf`, `outputs.tf`, `README.md`\n3. **Semantic version tags** -- git tags like `v1.0.0`\n4. **Sign in** -- authenticate with GitHub at registry.terraform.io\n5. **Publish** -- select the repository from the publish wizard\n\n```bash\n# Repository naming convention\n# terraform-<PROVIDER>-<NAME>\n# Examples:\nterraform-aws-vpc\nterraform-aws-eks\nterraform-azurerm-network\nterraform-google-project\n\n# Tag a release for the registry\ngit tag -a v1.0.0 -m \"Initial release\"\ngit push origin v1.0.0\n```\n\nThe registry automatically detects new tags and publishes new versions.\n\n## Private Registries\n\nFor internal module sharing without public exposure:\n\n### Terraform Cloud / HCP Terraform\n\n```hcl\n# Use a private module from Terraform Cloud\nmodule \"vpc\" {\n  source  = \"app.terraform.io/my-org/vpc/aws\"\n  version = \"~> 2.0\"\n}\n```\n\nRequires a Terraform Cloud token in `~/.terraformrc`:\n\n```hcl\ncredentials \"app.terraform.io\" {\n  token = \"your-terraform-cloud-token\"\n}\n```\n\n### Self-Hosted Registry\n\nOrganizations can run their own module registry implementing the [Terraform Registry Protocol](https://developer.hashicorp.com/terraform/internals/module-registry-protocol). Options include:\n\n- **Terraform Enterprise** -- HashiCorp's self-hosted Terraform Cloud\n- **Artifactory** -- JFrog Artifactory with Terraform module support\n- **citizen** -- open-source private registry\n- **GitLab** -- built-in Terraform module registry\n\n## Popular Community Modules\n\nThe `terraform-aws-modules` organization maintains the most widely-used AWS modules:\n\n| Module | Source | Purpose |\n|--------|--------|----------|\n| VPC | `terraform-aws-modules/vpc/aws` | VPC with subnets, NAT, route tables |\n| EKS | `terraform-aws-modules/eks/aws` | Managed Kubernetes cluster |\n| RDS | `terraform-aws-modules/rds/aws` | Managed relational database |\n| S3 Bucket | `terraform-aws-modules/s3-bucket/aws` | S3 bucket with policies |\n| Lambda | `terraform-aws-modules/lambda/aws` | Lambda function with IAM |\n| Security Group | `terraform-aws-modules/security-group/aws` | Security group rules |\n| ALB | `terraform-aws-modules/alb/aws` | Application Load Balancer |\n| IAM | `terraform-aws-modules/iam/aws` | IAM roles, policies, users |\n\nThese modules are well-tested, actively maintained, and cover the most common AWS infrastructure patterns.\n",
+  "sections": [
+    {
+      "id": "public-registry",
+      "title": "Public Terraform Registry",
+      "body": "The public registry at registry.terraform.io is the default source for community modules. Modules use a three-part source format: `<NAMESPACE>/<NAME>/<PROVIDER>`. The registry provides documentation auto-rendered from README.md, version history, download counts, and a verified badge for partner modules. Evaluate modules by popularity, recency of updates, open issues, test coverage, and examples. Publishing requires a public GitHub repo named `terraform-<PROVIDER>-<NAME>` with semantic version git tags.",
+      "tags": ["public-registry", "registry-terraform-io", "verified", "publishing", "github", "module-search"]
+    },
+    {
+      "id": "private-registry",
+      "title": "Private registries",
+      "body": "Private registries enable internal module sharing. Terraform Cloud (HCP Terraform) has a built-in private registry accessed via `app.terraform.io/<ORG>/<NAME>/<PROVIDER>`. Requires a token in `~/.terraformrc`. Self-hosted options include Terraform Enterprise, JFrog Artifactory, GitLab's built-in registry, and the open-source `citizen` project. Private registries support the same version constraints as the public registry. Use private registries to enforce organizational standards and prevent external dependency on community modules.",
+      "tags": ["private-registry", "terraform-cloud", "terraform-enterprise", "artifactory", "gitlab", "self-hosted"]
+    },
+    {
+      "id": "version-constraints",
+      "title": "Version constraint operators",
+      "body": "Registry modules support version constraints: `=` (exact), `!=` (exclude), `>`, `>=`, `<`, `<=`, `~>` (pessimistic). The pessimistic operator `~>` is most common: `~> 5.0` allows any 5.x release, while `~> 5.1.0` allows only 5.1.x patches. Combine constraints with commas: `>= 5.0.0, < 6.0.0`. Always pin versions in production. Use `terraform init -upgrade` to update within constraints. Lock files (`.terraform.lock.hcl`) record exact versions for reproducibility.",
+      "tags": ["version-constraints", "semver", "pessimistic", "pin", "lock-file", "terraform-init"]
+    },
+    {
+      "id": "popular-modules",
+      "title": "Popular community modules",
+      "body": "The `terraform-aws-modules` organization is the most prolific source of community AWS modules, including VPC, EKS, RDS, Lambda, S3 Bucket, Security Group, ALB, and IAM. These modules are verified by HashiCorp, actively maintained, and used by thousands of organizations. For Azure, see `Azure/` modules. For GCP, see `terraform-google-modules/`. Evaluate any community module for active maintenance, test coverage, and alignment with your requirements before adoption.",
+      "tags": ["terraform-aws-modules", "community", "vpc", "eks", "rds", "lambda", "s3", "popular"]
+    }
+  ],
+  "links": [
+    { "uri": "terraform/modules", "context": "Module fundamentals: sources, variables, outputs" },
+    { "uri": "terraform/modules/authoring", "context": "Author modules that meet registry publishing requirements" },
+    { "uri": "terraform/modules/composition", "context": "Compose registry modules into infrastructure stacks" },
+    { "uri": "terraform/modules#versioning", "context": "Module versioning fundamentals" },
+    { "uri": "terraform/modules/authoring#structure", "context": "Standard structure required for registry publishing" },
+    { "uri": "terraform/modules/authoring#documentation", "context": "Documentation generation with terraform-docs" },
+    { "uri": "terraform/providers", "context": "Provider requirements for registry modules" },
+    { "uri": "terraform/workspaces", "context": "Workspaces for running registry modules across environments" }
+  ],
+  "related": [
+    { "uri": "terraform/modules", "relation": "prerequisite", "note": "Module fundamentals are needed before working with the registry" },
+    { "uri": "terraform/modules/authoring", "relation": "prerequisite", "note": "Module authoring skills are needed to publish to the registry" },
+    { "uri": "terraform/modules/composition", "relation": "see-also", "note": "Registry modules are commonly composed together" },
+    { "uri": "terraform/workspaces", "relation": "see-also", "note": "Workspaces enable running the same registry modules in multiple environments" }
+  ],
+  "scripts": [
+    {
+      "id": "search-registry",
+      "name": "Search Terraform Registry",
+      "description": "Search the Terraform Registry API for modules matching a query",
+      "lang": "bash",
+      "runtime": "bash>=4",
+      "inline": "#!/usr/bin/env bash\nset -euo pipefail\n\n# Search the Terraform Registry for modules\n# Usage: QUERY=vpc PROVIDER=aws bash search-registry.sh\n\nQUERY=\"${QUERY:?QUERY is required (e.g. vpc, eks, rds)}\"\nPROVIDER=\"${PROVIDER:-}\"\nLIMIT=\"${LIMIT:-10}\"\n\nBASE_URL=\"https://registry.terraform.io/v1/modules\"\n\nif [[ -n \"${PROVIDER}\" ]]; then\n  URL=\"${BASE_URL}/search?q=${QUERY}&provider=${PROVIDER}&limit=${LIMIT}\"\nelse\n  URL=\"${BASE_URL}/search?q=${QUERY}&limit=${LIMIT}\"\nfi\n\necho \"Searching Terraform Registry: ${QUERY} (provider: ${PROVIDER:-any})\"\necho \"---\"\n\ncurl -s \"${URL}\" | python3 -c \"\nimport sys, json\ndata = json.load(sys.stdin)\nmodules = data.get('modules', [])\nif not modules:\n    print('No modules found.')\n    sys.exit(0)\nfor m in modules:\n    print(f\\\"  {m['namespace']}/{m['name']}/{m['provider']}\\\")\n    print(f\\\"    Version:   {m.get('version', 'N/A')}\\\")\n    print(f\\\"    Downloads: {m.get('downloads', 'N/A')}\\\")\n    desc = m.get('description', 'No description')\n    print(f\\\"    {desc[:100]}\\\")\n    print()\nprint(f\\\"Found {len(modules)} module(s).\\\")\n\"",
+      "env": {
+        "QUERY": { "required": true, "secret": false, "description": "Search query (e.g. vpc, eks, rds)" },
+        "PROVIDER": { "required": false, "secret": false, "default": "", "description": "Filter by provider (e.g. aws, azurerm, google)" },
+        "LIMIT": { "required": false, "secret": false, "default": "10", "description": "Maximum number of results to return" }
+      }
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "query": { "type": "string", "description": "Search query for the registry" },
+        "provider": { "type": "string", "description": "Filter by provider (aws, azurerm, google)" },
+        "limit": { "type": "integer", "default": 10, "description": "Maximum results to return" }
+      },
+      "required": ["query"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "modules": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "source": { "type": "string", "description": "Module source (namespace/name/provider)" },
+              "version": { "type": "string", "description": "Latest version" },
+              "downloads": { "type": "integer", "description": "Total download count" },
+              "description": { "type": "string", "description": "Module description" }
+            }
+          }
+        }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "terraform/modules", "reason": "Module fundamentals are prerequisite" }
+  ],
+  "more": {
+    "docs": "https://developer.hashicorp.com/terraform/language/modules/sources",
+    "registry": "https://registry.terraform.io/",
+    "api": "https://developer.hashicorp.com/terraform/registry/api-docs",
+    "publishing": "https://developer.hashicorp.com/terraform/registry/modules/publish"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "DevOps engineers, platform engineers, AI agents",
+    "estimated_reading_time": "8 min",
+    "prerequisites": ["terraform/modules"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

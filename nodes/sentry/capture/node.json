@@ -1,0 +1,145 @@
+{
+  "name": "capture",
+  "version": "1.0.0",
+  "uri": "sentry/capture",
+  "type": "skill",
+  "context": "Capture errors, messages, and breadcrumbs and enrich Sentry events with user context, tags, and scopes",
+  "info": "This skill covers Sentry's event capture and enrichment API: captureException for caught errors, captureMessage for textual events, addBreadcrumb for contextual trails, setUser for identifying users, setTag/setContext/setExtra for structured metadata, and withScope for scoped overrides. Every error Sentry receives is enriched with breadcrumbs (a timeline of user actions, network requests, and console logs), tags (indexed key-value pairs for search/filter), context (structured data like device info or feature flags), and user identity. Agents use this skill to add manual error reporting to catch blocks, annotate events with business context, create breadcrumb trails for debugging, and identify which user hit an error. The SDK must already be initialized via [[sentry/setup]] before any capture methods are called. See [[sentry/config]] for filtering events with beforeSend and ignoreErrors.",
+  "parent": "sentry",
+  "tags": ["sentry", "capture", "error", "exception", "message", "breadcrumb", "scope", "context", "tags", "user"],
+  "aliases": [
+    "sentry capture",
+    "sentry captureException",
+    "sentry captureMessage",
+    "sentry error reporting",
+    "sentry breadcrumbs",
+    "sentry setUser",
+    "sentry setTag",
+    "sentry withScope",
+    "sentry context",
+    "sentry enrich events",
+    "report error to sentry",
+    "log error sentry"
+  ],
+  "triggers": [
+    "capture an error with sentry",
+    "report an exception to sentry",
+    "send error to sentry",
+    "add breadcrumbs to sentry",
+    "set user context in sentry",
+    "add tags to sentry events",
+    "enrich sentry events",
+    "manually report error",
+    "log exception to sentry",
+    "sentry captureException example"
+  ],
+  "body": "# Capturing Errors & Enriching Events\n\nSentry automatically captures unhandled exceptions and promise rejections. For caught errors, network failures, and business logic violations, use the manual capture API.\n\n## captureException\n\nCapture caught errors with full stack traces:\n\n```javascript\nimport * as Sentry from \"@sentry/browser\";\n\ntry {\n  await processPayment(order);\n} catch (err) {\n  Sentry.captureException(err);\n  showErrorToast(\"Payment failed\");\n}\n```\n\nAttach extra context inline:\n\n```javascript\nSentry.captureException(err, {\n  tags: { payment_provider: \"stripe\", order_id: order.id },\n  extra: { amount: order.total, currency: order.currency },\n  level: \"fatal\",\n});\n```\n\n## captureMessage\n\nCapture textual events when there is no exception object:\n\n```javascript\nSentry.captureMessage(\"User exceeded rate limit\", \"warning\");\n\n// With context\nSentry.captureMessage(\"Config migration completed\", {\n  level: \"info\",\n  tags: { migration: \"v2-to-v3\" },\n});\n```\n\nSeverity levels: `fatal`, `error`, `warning`, `log`, `info`, `debug`.\n\n## Breadcrumbs\n\nBreadcrumbs are a trail of events leading up to an error. The SDK auto-records DOM clicks, XHR/fetch requests, console logs, and navigation. Add custom breadcrumbs:\n\n```javascript\nSentry.addBreadcrumb({\n  category: \"auth\",\n  message: `User ${user.email} logged in`,\n  level: \"info\",\n  data: { method: \"oauth\", provider: \"google\" },\n});\n\nSentry.addBreadcrumb({\n  category: \"cart\",\n  message: \"Item added to cart\",\n  level: \"info\",\n  data: { sku: \"WIDGET-42\", quantity: 2, price: 29.99 },\n});\n```\n\n## User Identification\n\nIdentify the current user so errors are grouped by user:\n\n```javascript\n// After login\nSentry.setUser({\n  id: user.id,\n  email: user.email,\n  username: user.username,\n  ip_address: \"{{auto}}\",\n});\n\n// On logout — clear the user\nSentry.setUser(null);\n```\n\n## Tags\n\nTags are indexed key-value pairs you can search and filter on in the Sentry UI:\n\n```javascript\nSentry.setTag(\"feature_flag\", \"new-checkout-v2\");\nSentry.setTag(\"tenant\", customer.tenantId);\nSentry.setTag(\"subscription_tier\", \"enterprise\");\n```\n\n## Context\n\nStructured context is not indexed but appears in the event detail view:\n\n```javascript\nSentry.setContext(\"order\", {\n  id: order.id,\n  total: order.total,\n  items: order.items.length,\n  coupon: order.couponCode || \"none\",\n});\n\nSentry.setContext(\"device\", {\n  battery: navigator.getBattery ? await navigator.getBattery().then(b => b.level) : \"unknown\",\n  memory: navigator.deviceMemory || \"unknown\",\n  cores: navigator.hardwareConcurrency || \"unknown\",\n});\n```\n\n## Scoped Capture with withScope\n\nUse `withScope` to attach context to a single event without polluting the global scope:\n\n```javascript\nSentry.withScope((scope) => {\n  scope.setTag(\"transaction\", \"checkout\");\n  scope.setLevel(\"warning\");\n  scope.setUser({ id: user.id, email: user.email });\n  scope.setContext(\"cart\", { items: cart.items, total: cart.total });\n  Sentry.captureException(new Error(\"Checkout validation failed\"));\n});\n// Global scope is unaffected after this block\n```\n\n## Global, Isolation, and Current Scopes\n\nSentry has three scope layers:\n\n```javascript\n// Global scope — applies to ALL events\nSentry.getGlobalScope().setTag(\"app_version\", \"2.1.0\");\n\n// Isolation scope — per-request in servers (setUser, setTag write here)\nSentry.getIsolationScope().setUser({ id: request.userId });\n\n// Current scope — local to withScope callbacks\nSentry.getCurrentScope().setExtra(\"debug_data\", payload);\n```\n\n## Extras\n\nAttach arbitrary key-value data (not indexed, appears in event details):\n\n```javascript\nSentry.setExtra(\"response_body\", JSON.stringify(apiResponse));\nSentry.setExtra(\"retry_count\", retryCount);\n```\n",
+  "sections": [
+    {
+      "id": "capture-exception",
+      "title": "captureException",
+      "body": "Use `Sentry.captureException(error)` to capture caught errors. Pass an `Error` object for full stack traces. Optionally pass a second argument with `{ tags, extra, level, contexts, user, fingerprint }` to enrich the event inline. Non-Error values (strings, objects) are accepted but produce lower-quality events without stack traces — always prefer wrapping in `new Error()`. Returns an event ID string you can display to users for support reference.",
+      "tags": ["capture-exception", "error", "try-catch", "stack-trace"]
+    },
+    {
+      "id": "capture-message",
+      "title": "captureMessage",
+      "body": "Use `Sentry.captureMessage(message, level?)` to send textual events when there is no exception. The second argument is a severity level string: `fatal`, `error`, `warning`, `log`, `info`, or `debug`. Alternatively, pass a context object as the second argument: `{ level, tags, extra }`. Use for business logic warnings, audit events, and threshold violations.",
+      "tags": ["capture-message", "log", "warning", "audit"]
+    },
+    {
+      "id": "breadcrumbs",
+      "title": "Breadcrumbs",
+      "body": "Breadcrumbs record a timeline of actions leading up to an error. The SDK auto-captures: DOM clicks, XHR/fetch requests, console.log/warn/error calls, and URL navigations. Add custom breadcrumbs with `Sentry.addBreadcrumb({ category, message, level, data })`. Categories are freeform strings for grouping (e.g., `auth`, `cart`, `api`). The SDK keeps up to `maxBreadcrumbs` (default 100) and attaches them to the next captured event. Use `beforeBreadcrumb` in [[sentry/config]] to filter or redact sensitive breadcrumbs.",
+      "tags": ["breadcrumbs", "timeline", "debugging", "dom", "xhr"]
+    },
+    {
+      "id": "user-context",
+      "title": "User identification and context",
+      "body": "Call `Sentry.setUser({ id, email, username, ip_address })` after authentication to attach user identity to all subsequent events. Use `ip_address: '{{auto}}'` for automatic IP capture. Call `Sentry.setUser(null)` on logout. Use `Sentry.setTag(key, value)` for indexed searchable data and `Sentry.setContext(name, data)` for structured non-indexed data. Use `Sentry.setExtra(key, value)` for one-off debug data. Tags are the primary filter mechanism in Sentry's issue search.",
+      "tags": ["user", "identity", "tags", "context", "extra", "pii"]
+    },
+    {
+      "id": "scopes",
+      "title": "Scopes and withScope",
+      "body": "Sentry has three scope levels: global (all events), isolation (per-request in servers), and current (local). `Sentry.setTag()` and `Sentry.setUser()` write to the isolation scope by default. Use `Sentry.withScope(callback)` to create a temporary scope that applies only to events captured inside the callback — useful for attaching context to a single error without affecting other events. Access scopes directly with `Sentry.getGlobalScope()`, `Sentry.getIsolationScope()`, and `Sentry.getCurrentScope()`.",
+      "tags": ["scope", "withScope", "isolation", "global", "current"]
+    }
+  ],
+  "links": [
+    { "uri": "sentry/setup", "context": "SDK must be initialized before capture methods work" },
+    { "uri": "sentry/config", "context": "Filter events with beforeSend, ignoreErrors, and beforeBreadcrumb" },
+    { "uri": "sentry/alerts", "context": "Alert rules trigger on captured events" },
+    { "uri": "sentry/source-maps", "context": "Source maps make captured stack traces readable" }
+  ],
+  "related": [
+    { "uri": "sentry/setup", "relation": "prerequisite", "note": "Sentry.init() must be called before any capture methods" },
+    { "uri": "sentry/config", "relation": "see-also", "note": "beforeSend and ignoreErrors filter events before they are sent" },
+    { "uri": "sentry/alerts", "relation": "see-also", "note": "Captured events trigger alert rules configured in Sentry" }
+  ],
+  "scripts": [
+    {
+      "id": "capture-errors",
+      "name": "Capture Errors",
+      "description": "Demonstrate Sentry error capture, breadcrumbs, user context, tags, and scoped capture",
+      "lang": "typescript",
+      "runtime": "node>=18",
+      "entry": "./scripts/capture-errors.ts",
+      "env": {
+        "SENTRY_DSN": { "required": true, "secret": false, "description": "Sentry project DSN" }
+      },
+      "packages": ["@sentry/node"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "error": { "type": "object", "description": "Error object or string to capture" },
+        "level": { "type": "string", "enum": ["fatal", "error", "warning", "log", "info", "debug"], "description": "Severity level" },
+        "tags": { "type": "object", "additionalProperties": { "type": "string" }, "description": "Key-value tags for indexing" },
+        "user": {
+          "type": "object",
+          "properties": {
+            "id": { "type": "string" },
+            "email": { "type": "string" },
+            "username": { "type": "string" }
+          },
+          "description": "User identity to attach"
+        },
+        "extra": { "type": "object", "description": "Arbitrary extra data" }
+      },
+      "required": ["error"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "eventId": { "type": "string", "description": "Sentry event ID for the captured event" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "sentry/setup", "reason": "Sentry.init() must be called before any capture methods" }
+  ],
+  "more": {
+    "docs": "https://docs.sentry.io/platforms/javascript/usage/",
+    "scopes": "https://docs.sentry.io/platforms/javascript/enriching-events/scopes/",
+    "breadcrumbs": "https://docs.sentry.io/platforms/javascript/enriching-events/breadcrumbs/",
+    "context": "https://docs.sentry.io/platforms/javascript/enriching-events/context/"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "5 min",
+    "prerequisites": ["sentry/setup"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

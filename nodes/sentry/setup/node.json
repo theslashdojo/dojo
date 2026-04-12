@@ -1,0 +1,136 @@
+{
+  "name": "setup",
+  "version": "1.0.0",
+  "uri": "sentry/setup",
+  "type": "skill",
+  "context": "Install and initialize the Sentry SDK for error tracking in browser or Node.js applications",
+  "info": "This skill covers end-to-end Sentry SDK setup: installing the correct package for your platform (@sentry/browser, @sentry/node, @sentry/react, @sentry/nextjs), calling Sentry.init() with DSN, release, environment, and sample rates, wiring framework-specific integrations (browserTracingIntegration, replayIntegration, Express/Koa middleware), and verifying that errors flow to your Sentry dashboard. The SDK must be initialized as early as possible in your application lifecycle — before any other imports in Node.js (via an instrument.js file) and before React renders in the browser. For Node.js, CommonJS projects require() the instrument file first; ESM projects use the --import flag. See [[sentry/config]] for the full options reference and [[sentry/capture]] for reporting errors after setup.",
+  "parent": "sentry",
+  "tags": ["sentry", "setup", "install", "init", "sdk", "dsn", "browser", "node", "react", "nextjs"],
+  "aliases": [
+    "sentry setup",
+    "sentry install",
+    "sentry init",
+    "initialize sentry",
+    "add sentry",
+    "sentry sdk setup",
+    "install sentry sdk",
+    "sentry getting started",
+    "sentry onboarding",
+    "configure sentry dsn"
+  ],
+  "triggers": [
+    "set up sentry in my project",
+    "install sentry",
+    "add sentry error tracking",
+    "initialize sentry sdk",
+    "configure sentry dsn",
+    "add sentry to react app",
+    "add sentry to node server",
+    "add sentry to next.js",
+    "sentry getting started",
+    "instrument my app with sentry"
+  ],
+  "body": "# Sentry SDK Setup\n\nSentry must be initialized before any other application code runs. The SDK hooks into global error handlers, promise rejections, and framework lifecycle events to automatically capture errors.\n\n## Browser Setup\n\n```bash\nnpm install @sentry/browser\n```\n\n```javascript\n// src/instrument.js — import this FIRST in your entry point\nimport * as Sentry from \"@sentry/browser\";\n\nSentry.init({\n  dsn: process.env.SENTRY_DSN,\n  release: process.env.SENTRY_RELEASE || \"my-app@1.0.0\",\n  environment: process.env.SENTRY_ENVIRONMENT || \"production\",\n  tracesSampleRate: 0.2,\n  replaysSessionSampleRate: 0.1,\n  replaysOnErrorSampleRate: 1.0,\n  integrations: [\n    Sentry.browserTracingIntegration(),\n    Sentry.replayIntegration(),\n  ],\n});\n```\n\n## Node.js Setup\n\n```bash\nnpm install @sentry/node\n```\n\n```javascript\n// instrument.js — must be required/imported BEFORE all other modules\nconst Sentry = require(\"@sentry/node\");\n\nSentry.init({\n  dsn: process.env.SENTRY_DSN,\n  release: process.env.SENTRY_RELEASE,\n  environment: process.env.SENTRY_ENVIRONMENT || \"production\",\n  tracesSampleRate: 0.2,\n  sendDefaultPii: true,\n});\n```\n\n### CommonJS\n```javascript\n// app.js\nrequire(\"./instrument\"); // MUST be first\nconst express = require(\"express\");\nconst app = express();\n```\n\n### ESM (Node 18.19.0+)\n```bash\nnode --import ./instrument.mjs app.mjs\n```\n\n## React Setup\n\n```bash\nnpm install @sentry/react\n```\n\n```javascript\nimport * as Sentry from \"@sentry/react\";\n\nSentry.init({\n  dsn: process.env.REACT_APP_SENTRY_DSN,\n  release: process.env.REACT_APP_SENTRY_RELEASE,\n  environment: process.env.NODE_ENV,\n  integrations: [\n    Sentry.browserTracingIntegration(),\n    Sentry.replayIntegration(),\n  ],\n  tracesSampleRate: 0.2,\n  replaysOnErrorSampleRate: 1.0,\n});\n```\n\n```jsx\n// Wrap your app with Sentry Error Boundary\nimport * as Sentry from \"@sentry/react\";\n\nfunction App() {\n  return (\n    <Sentry.ErrorBoundary fallback={<p>Something went wrong</p>}>\n      <MyApp />\n    </Sentry.ErrorBoundary>\n  );\n}\n```\n\n## Next.js Setup\n\nThe easiest method uses the Sentry wizard:\n\n```bash\nnpx @sentry/wizard@latest -i nextjs\n```\n\nThis creates `sentry.client.config.ts`, `sentry.server.config.ts`, `sentry.edge.config.ts`, updates `next.config.js` with `withSentryConfig()`, and configures source map uploads.\n\nManual setup:\n\n```bash\nnpm install @sentry/nextjs\n```\n\n```javascript\n// sentry.client.config.ts\nimport * as Sentry from \"@sentry/nextjs\";\n\nSentry.init({\n  dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,\n  tracesSampleRate: 0.2,\n  replaysOnErrorSampleRate: 1.0,\n  integrations: [Sentry.replayIntegration()],\n});\n```\n\n## Verification\n\nAfter setup, trigger a test error to verify events reach Sentry:\n\n```javascript\n// Add to any route or page temporarily\nSentry.captureException(new Error(\"Sentry setup verification\"));\n```\n\nOr throw in the browser console:\n```javascript\nthrow new Error(\"Sentry test\");\n```\n\nCheck your Sentry dashboard Issues page within 30 seconds — the error should appear.\n\n## Environment Variables\n\n| Variable | Purpose | Required |\n|----------|---------|----------|\n| `SENTRY_DSN` | Data Source Name for your project | Yes |\n| `SENTRY_RELEASE` | Release version (e.g., `my-app@1.2.3`) | Recommended |\n| `SENTRY_ENVIRONMENT` | Environment name (production, staging) | Recommended |\n",
+  "sections": [
+    {
+      "id": "browser",
+      "title": "Browser SDK setup",
+      "body": "Install `@sentry/browser` and call `Sentry.init()` at the top of your entry point. Pass `dsn`, `release`, `environment`, and `tracesSampleRate`. Add `browserTracingIntegration()` for performance monitoring and `replayIntegration()` for session replay. The DSN is safe to include in client-side bundles — it only permits event submission, not data access.",
+      "tags": ["browser", "client-side", "spa", "tracing", "replay"]
+    },
+    {
+      "id": "node",
+      "title": "Node.js SDK setup",
+      "body": "Install `@sentry/node` and create an `instrument.js` file that calls `Sentry.init()`. This file must be required/imported before any other application code. For CommonJS: `require('./instrument')` as the first line of your entry point. For ESM (Node 18.19.0+): use `node --import ./instrument.mjs app.mjs`. The Node SDK auto-instruments HTTP, `fs`, and database modules via Node's diagnostic channel API. Set `sendDefaultPii: true` to capture IP addresses and request data.",
+      "tags": ["node", "server", "express", "commonjs", "esm", "instrument"]
+    },
+    {
+      "id": "react",
+      "title": "React SDK setup",
+      "body": "Install `@sentry/react` which extends `@sentry/browser` with React-specific integrations. Wrap your component tree in `<Sentry.ErrorBoundary>` to catch render errors. The SDK provides `Sentry.withProfiler()` HOC for component render profiling and `createRoutesFromChildren` integration for React Router tracing. For React environment variables, prefix with `REACT_APP_` (Create React App) or `VITE_` (Vite).",
+      "tags": ["react", "error-boundary", "profiler", "jsx", "component"]
+    },
+    {
+      "id": "nextjs",
+      "title": "Next.js SDK setup",
+      "body": "Run `npx @sentry/wizard@latest -i nextjs` for automated setup. The wizard creates three config files: `sentry.client.config.ts` (browser), `sentry.server.config.ts` (Node.js server), and `sentry.edge.config.ts` (edge runtime). It wraps `next.config.js` with `withSentryConfig()` which handles source map uploads automatically. For the App Router, the wizard creates `app/global-error.tsx` to capture root layout errors. Use `NEXT_PUBLIC_SENTRY_DSN` for client-side DSN exposure.",
+      "tags": ["nextjs", "app-router", "pages-router", "wizard", "ssr"]
+    },
+    {
+      "id": "verify",
+      "title": "Verifying the setup",
+      "body": "After initialization, call `Sentry.captureException(new Error('test'))` or throw an unhandled error. Check the Sentry dashboard Issues page within 30 seconds. If no event appears: verify the DSN is correct, check the browser network tab for requests to `ingest.sentry.io`, ensure `Sentry.init()` runs before the error, and check that `sampleRate` is not set to `0`. Enable `debug: true` in init options for verbose console output.",
+      "tags": ["verify", "test", "debug", "troubleshoot"]
+    }
+  ],
+  "links": [
+    { "uri": "sentry/config", "context": "Full reference of all SDK configuration options" },
+    { "uri": "sentry/capture", "context": "Capture errors, messages, and breadcrumbs after setup" },
+    { "uri": "sentry/source-maps", "context": "Upload source maps for readable stack traces" },
+    { "uri": "sentry/alerts", "context": "Set up alert rules after errors start flowing" }
+  ],
+  "related": [
+    { "uri": "sentry/config", "relation": "see-also", "note": "Full options reference for Sentry.init()" },
+    { "uri": "sentry/capture", "relation": "see-also", "note": "After setup, use capture methods to report errors manually" },
+    { "uri": "sentry/source-maps", "relation": "see-also", "note": "Source maps require a release identifier set during setup" }
+  ],
+  "scripts": [
+    {
+      "id": "setup-sentry",
+      "name": "Setup Sentry",
+      "description": "Install the Sentry SDK and create an initialization file for browser or Node.js",
+      "lang": "bash",
+      "runtime": "bash",
+      "entry": "./scripts/setup-sentry.sh",
+      "env": {
+        "SENTRY_DSN": { "required": true, "secret": false, "description": "Sentry project DSN from Settings → Client Keys" },
+        "SENTRY_PLATFORM": { "required": false, "secret": false, "default": "node", "description": "Target platform: browser, node, react, or nextjs" },
+        "SENTRY_RELEASE": { "required": false, "secret": false, "description": "Release version identifier (e.g., my-app@1.0.0)" }
+      },
+      "packages": ["@sentry/node", "@sentry/browser", "@sentry/react", "@sentry/nextjs"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "dsn": { "type": "string", "description": "Sentry project DSN" },
+        "platform": { "type": "string", "enum": ["browser", "node", "react", "nextjs"], "description": "Target platform" },
+        "release": { "type": "string", "description": "Release version identifier" },
+        "environment": { "type": "string", "description": "Environment name (production, staging)" },
+        "tracesSampleRate": { "type": "number", "minimum": 0, "maximum": 1, "description": "Transaction sampling rate" }
+      },
+      "required": ["dsn", "platform"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "instrumentFile": { "type": "string", "description": "Path to the created instrument file" },
+        "packageInstalled": { "type": "string", "description": "Name of the installed Sentry package" }
+      }
+    }
+  },
+  "depends": [],
+  "more": {
+    "docs": "https://docs.sentry.io/platforms/javascript/",
+    "node": "https://docs.sentry.io/platforms/javascript/guides/node/",
+    "react": "https://docs.sentry.io/platforms/javascript/guides/react/",
+    "nextjs": "https://docs.sentry.io/platforms/javascript/guides/nextjs/"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "4 min",
+    "prerequisites": [],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

@@ -1,0 +1,82 @@
+{
+  "name": "relations",
+  "version": "1.0.0",
+  "uri": "prisma/client/relations",
+  "type": "sub",
+  "context": "Query, create, update, and filter across Prisma model relations — include, connect, nested writes, and relation filters",
+  "info": "This sub-skill covers how to work with relations in Prisma Client queries. It covers loading related data with `include` and `select`, creating related records with nested `create`, connecting to existing records with `connect` and `connectOrCreate`, updating related records with nested `update`, and filtering on relations with `some`, `every`, `none`, `is`, and `isNot`. Understanding relation queries is essential for building real applications where data spans multiple models. The schema side of relations is defined in [[prisma/schema]] with `@relation`. See [[prisma/client/queries]] for non-relational CRUD patterns.",
+  "parent": "prisma/client",
+  "tags": ["relations", "include", "select", "nested-writes", "connect", "relation-filters"],
+  "aliases": [
+    "prisma relations",
+    "prisma include",
+    "prisma nested create",
+    "prisma connect",
+    "prisma connectOrCreate",
+    "prisma nested write",
+    "prisma relation filter",
+    "prisma eager loading",
+    "prisma join",
+    "prisma some every none"
+  ],
+  "triggers": [
+    "include related records in prisma",
+    "create with nested relations",
+    "connect existing record in prisma",
+    "filter by relation in prisma",
+    "load user with posts",
+    "nested create in prisma",
+    "prisma eager loading",
+    "query across relations"
+  ],
+  "body": "# Prisma Relation Queries\n\nWork with related data in [[prisma/client]] — loading, creating, connecting, and filtering across relations defined in [[prisma/schema]].\n\n## Loading Relations\n\n### include — Load full related records\n\n```typescript\n// Load user with all their posts\nconst user = await prisma.user.findUnique({\n  where: { id: 1 },\n  include: { posts: true },\n});\n// user.posts is Post[]\n\n// Nested include — user with posts and each post's comments\nconst user = await prisma.user.findUnique({\n  where: { id: 1 },\n  include: {\n    posts: {\n      include: { comments: true },\n    },\n  },\n});\n\n// Filter included relations\nconst user = await prisma.user.findUnique({\n  where: { id: 1 },\n  include: {\n    posts: {\n      where: { published: true },\n      orderBy: { createdAt: 'desc' },\n      take: 5,\n    },\n  },\n});\n```\n\n### select — Return specific fields from relations\n\n```typescript\nconst user = await prisma.user.findUnique({\n  where: { id: 1 },\n  select: {\n    name: true,\n    email: true,\n    posts: {\n      select: { id: true, title: true },\n      where: { published: true },\n    },\n  },\n});\n// Type: { name: string; email: string; posts: { id: number; title: string }[] }\n```\n\n**Important:** `select` and `include` cannot be used together at the same level. Use `select` with nested `select` for full control.\n\n### _count — Count related records\n\n```typescript\nconst user = await prisma.user.findUnique({\n  where: { id: 1 },\n  include: {\n    _count: { select: { posts: true, comments: true } },\n  },\n});\n// user._count.posts, user._count.comments\n```\n\n## Nested Writes\n\n### create — Create related records inline\n\n```typescript\n// Create user with posts in one query\nconst user = await prisma.user.create({\n  data: {\n    email: 'alice@example.com',\n    name: 'Alice',\n    posts: {\n      create: [\n        { title: 'First Post', content: 'Hello world' },\n        { title: 'Second Post', content: 'More content' },\n      ],\n    },\n    profile: {\n      create: { bio: 'Developer' },\n    },\n  },\n  include: { posts: true, profile: true },\n});\n```\n\n### connect — Link to existing records\n\n```typescript\n// Create a post connected to an existing user\nconst post = await prisma.post.create({\n  data: {\n    title: 'New Post',\n    author: { connect: { id: 1 } },\n  },\n});\n\n// Connect multiple existing tags to a post\nconst post = await prisma.post.update({\n  where: { id: 1 },\n  data: {\n    tags: {\n      connect: [{ id: 1 }, { id: 2 }, { id: 3 }],\n    },\n  },\n});\n```\n\n### connectOrCreate — Connect if exists, create if not\n\n```typescript\nconst post = await prisma.post.create({\n  data: {\n    title: 'Tagged Post',\n    tags: {\n      connectOrCreate: [\n        {\n          where: { name: 'typescript' },\n          create: { name: 'typescript' },\n        },\n        {\n          where: { name: 'prisma' },\n          create: { name: 'prisma' },\n        },\n      ],\n    },\n  },\n});\n```\n\n### set — Replace all connected records\n\n```typescript\n// Replace all tags on a post\nconst post = await prisma.post.update({\n  where: { id: 1 },\n  data: {\n    tags: { set: [{ id: 1 }, { id: 5 }] },\n  },\n});\n```\n\n### disconnect — Remove relation link\n\n```typescript\n// Disconnect a tag from a post (many-to-many)\nconst post = await prisma.post.update({\n  where: { id: 1 },\n  data: {\n    tags: { disconnect: [{ id: 3 }] },\n  },\n});\n\n// Disconnect optional one-to-one\nconst user = await prisma.user.update({\n  where: { id: 1 },\n  data: { profile: { disconnect: true } },\n});\n```\n\n### Nested update and delete\n\n```typescript\nconst user = await prisma.user.update({\n  where: { id: 1 },\n  data: {\n    posts: {\n      update: {\n        where: { id: 5 },\n        data: { published: true },\n      },\n      deleteMany: { published: false },\n    },\n  },\n});\n```\n\n## Relation Filters\n\nFilter parent records based on properties of their related records.\n\n### List relations: some, every, none\n\n```typescript\n// Users who have at least one published post\nawait prisma.user.findMany({\n  where: {\n    posts: { some: { published: true } },\n  },\n});\n\n// Users where ALL posts are published\nawait prisma.user.findMany({\n  where: {\n    posts: { every: { published: true } },\n  },\n});\n\n// Users with NO published posts\nawait prisma.user.findMany({\n  where: {\n    posts: { none: { published: true } },\n  },\n});\n```\n\n### Single relations: is, isNot\n\n```typescript\n// Posts where the author is an admin\nawait prisma.post.findMany({\n  where: {\n    author: { is: { role: 'ADMIN' } },\n  },\n});\n\n// Posts where the author is NOT banned\nawait prisma.post.findMany({\n  where: {\n    author: { isNot: { status: 'BANNED' } },\n  },\n});\n```\n\n## Relation Patterns in Schema\n\nSee [[prisma/schema]] for how to define relations. Summary:\n\n| Pattern | Schema | Notes |\n|---------|--------|-------|\n| One-to-many | `Post[] / @relation(fields:, references:)` | FK on \"many\" side |\n| One-to-one | `Profile? / @relation(fields:, references:) + @unique` | `@unique` on FK |\n| Many-to-many (implicit) | `Tag[] / Post[]` | Prisma manages join table |\n| Many-to-many (explicit) | Define join model with `@@id` | Full control over join table |\n| Self-relation | Named `@relation(\"Name\")` | For trees, hierarchies |\n",
+  "sections": [
+    {
+      "id": "loading",
+      "title": "Loading relations",
+      "body": "Use `include: { relation: true }` to eagerly load related records. Use `select` with nested `select` for specific fields. Filter, sort, and paginate included relations with `where`, `orderBy`, `take`, `skip`. Use `_count: { select: { relation: true } }` to count related records without loading them. Relations are lazy by default — they are not loaded unless explicitly requested.",
+      "tags": ["include", "select", "eager-loading", "count", "lazy"]
+    },
+    {
+      "id": "nested-writes",
+      "title": "Nested writes",
+      "body": "Nested write operations in `create` and `update`: `create` — create new related records. `connect` — link to existing records by unique field. `connectOrCreate` — connect if found, create if not. `set` — replace all connected records (many-to-many). `disconnect` — remove link without deleting the record. `update` / `updateMany` — update related records inline. `delete` / `deleteMany` — delete related records inline. All nested writes execute in an implicit transaction.",
+      "tags": ["nested-writes", "create", "connect", "connectOrCreate", "set", "disconnect"]
+    },
+    {
+      "id": "relation-filters",
+      "title": "Relation filters",
+      "body": "Filter parent records based on related data. List relations: `some` (at least one match), `every` (all match), `none` (no matches). Single relations: `is` (matches condition), `isNot` (does not match). These filters generate efficient SQL JOINs and subqueries. Combine with standard filters using `AND`, `OR`, `NOT`.",
+      "tags": ["some", "every", "none", "is", "isNot", "relation-filter", "join"]
+    }
+  ],
+  "links": [
+    { "uri": "prisma/client", "context": "Parent skill with client setup and transactions" },
+    { "uri": "prisma/client/queries", "context": "Non-relational CRUD queries and filter operators" },
+    { "uri": "prisma/schema", "context": "Define relation fields and referential actions" }
+  ],
+  "related": [
+    { "uri": "prisma/client", "relation": "extends", "note": "Relation queries extend the base client operations" },
+    { "uri": "prisma/client/queries", "relation": "see-also", "note": "CRUD patterns that complement relation queries" },
+    { "uri": "prisma/schema", "relation": "prerequisite", "note": "Relations must be defined in the schema before querying" }
+  ],
+  "more": {
+    "docs": "https://www.prisma.io/docs/orm/prisma-client/queries/relation-queries",
+    "spec": "https://www.prisma.io/docs/orm/prisma-schema/data-model/relations"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "6 min",
+    "prerequisites": ["prisma/client", "prisma/schema"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

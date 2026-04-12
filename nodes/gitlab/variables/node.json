@@ -1,0 +1,284 @@
+{
+  "name": "variables",
+  "version": "1.0.0",
+  "uri": "gitlab/variables",
+  "type": "skill",
+  "context": "List, inspect, set, and delete GitLab project-level CI/CD variables, including scoped and protected variables",
+  "info": "This skill covers project-level CI/CD variables in GitLab: list every variable configured for a project, retrieve a specific key, create or update a variable with scope, masking, protection, hidden behavior, and variable type, and delete a variable precisely when multiple scoped copies share the same key. Agents use it to manage deploy secrets, API credentials, environment-specific flags, and other project-scoped configuration that should not live in the repository.",
+  "parent": "gitlab",
+  "tags": [
+    "gitlab",
+    "variables",
+    "ci-cd",
+    "secrets",
+    "environment-scope",
+    "protected",
+    "masked",
+    "file-variable"
+  ],
+  "aliases": [
+    "gitlab variables",
+    "gitlab ci variable",
+    "project variable",
+    "protected variable",
+    "masked variable",
+    "scoped variable",
+    "file variable"
+  ],
+  "triggers": [
+    "set a gitlab ci variable",
+    "list project variables in gitlab",
+    "delete a gitlab variable",
+    "update a scoped gitlab variable",
+    "store a secret in gitlab ci"
+  ],
+  "body": "# GitLab Project Variables\n\nProject-level CI/CD variables are the durable configuration layer for pipelines. They are the right place for environment-specific secrets, deploy credentials, and configuration values that should not be committed to `.gitlab-ci.yml`.\n\n```bash\npython ./scripts/manage-variables.py set group/project AWS_ROLE_ARN arn:aws:iam::123456789012:role/deploy \\\n  --environment-scope production \\\n  --protected\n\npython ./scripts/manage-variables.py list group/project\n```\n\nThe Variables API allows multiple variables with the same key when `environment_scope` differs, so retrieval, update, and deletion may require a filter. This is the most common source of automation bugs: the agent updates `FOO` but touches the wildcard version instead of the `production` version. Use [[gitlab/ci]] to understand when a pipeline can actually consume the variable and [[gitlab/pipelines]] when you need to compare a stored variable with the values used by a specific run.",
+  "sections": [
+    {
+      "id": "list-and-get",
+      "title": "List variables and retrieve a single key",
+      "body": "`GET /projects/:id/variables` returns all project variables and exposes metadata such as `protected`, `masked`, `hidden`, `raw`, `environment_scope`, and `variable_type`. `GET /projects/:id/variables/:key` retrieves one variable; if multiple entries share the key, you must pass `filter[environment_scope]` to select the intended one.",
+      "tags": [
+        "list",
+        "get",
+        "environment-scope",
+        "metadata"
+      ]
+    },
+    {
+      "id": "set",
+      "title": "Create or update variables",
+      "body": "`POST /projects/:id/variables` creates a variable and `PUT /projects/:id/variables/:key` updates it. Key fields are `value`, `environment_scope`, `protected`, `masked`, `hidden`, `masked_and_hidden`, `raw`, and `variable_type` (`env_var` or `file`). `raw=false` means variable expansion is allowed; `raw=true` treats the value as a literal string.",
+      "tags": [
+        "create",
+        "update",
+        "protected",
+        "masked",
+        "raw",
+        "file"
+      ]
+    },
+    {
+      "id": "scopes",
+      "title": "Scoped variables and collisions",
+      "body": "GitLab allows the same key to exist multiple times with different `environment_scope` values such as `*`, `staging`, and `production`. Automation should always decide whether it wants a wildcard value or an environment-specific value before writing. When deleting or updating a duplicated key, pass the same scope in both the main request and the `filter[environment_scope]` selector to avoid mutating the wrong row.",
+      "tags": [
+        "scope",
+        "wildcard",
+        "production",
+        "collision"
+      ]
+    },
+    {
+      "id": "security",
+      "title": "Protection and secrecy",
+      "body": "Use protected variables for protected branches and tags, masked variables for values that should not appear in logs, and hidden or masked-and-hidden modes when the value should not be exposed back through the UI. YAML-defined variables are not a substitute for secrets. Store secrets here and keep repository variables limited to non-sensitive defaults or descriptions.",
+      "tags": [
+        "security",
+        "secrets",
+        "protected",
+        "masked",
+        "hidden"
+      ]
+    }
+  ],
+  "links": [
+    {
+      "uri": "gitlab/auth",
+      "context": "Use the correct token before changing project variables"
+    },
+    {
+      "uri": "gitlab/auth#tokens",
+      "context": "Variable changes should run with the narrowest token that can still manage the project"
+    },
+    {
+      "uri": "gitlab/projects",
+      "context": "Variables are always attached to a specific project"
+    },
+    {
+      "uri": "gitlab/projects#identifiers",
+      "context": "Project-path encoding bugs are common when scripting variable management"
+    },
+    {
+      "uri": "gitlab/ci",
+      "context": "Understand how project variables interact with YAML variables and inputs"
+    },
+    {
+      "uri": "gitlab/ci#variables",
+      "context": "Variable precedence in `.gitlab-ci.yml` determines how project variables are consumed"
+    },
+    {
+      "uri": "gitlab/pipelines",
+      "context": "Compare stored project variables with the variables attached to a pipeline run"
+    },
+    {
+      "uri": "gitlab/pipelines#pipeline-variables",
+      "context": "Pipeline-level variable inspection helps verify what was actually attached to a run"
+    },
+    {
+      "uri": "shell/environment",
+      "context": "General environment-variable handling patterns when building wrappers around CI variables"
+    }
+  ],
+  "related": [
+    {
+      "uri": "gitlab/auth",
+      "relation": "prerequisite",
+      "note": "Variable management requires authenticated project access and should be tightly permissioned"
+    },
+    {
+      "uri": "gitlab/ci",
+      "relation": "prerequisite",
+      "note": "The value of a project variable only matters in the context of pipeline execution rules and precedence"
+    },
+    {
+      "uri": "gitlab/pipelines#pipeline-variables",
+      "relation": "see-also",
+      "note": "Comparing stored project variables to pipeline-attached values is a common debugging workflow"
+    },
+    {
+      "uri": "shell/environment",
+      "relation": "see-also",
+      "note": "Useful when translating CI/CD variables into local command execution"
+    }
+  ],
+  "scripts": [
+    {
+      "id": "manage-variables",
+      "name": "Manage GitLab Project Variables",
+      "description": "List, retrieve, create, update, and delete GitLab project-level CI/CD variables",
+      "lang": "python",
+      "runtime": "python>=3.10",
+      "entry": "./scripts/manage-variables.py",
+      "env": {
+        "GITLAB_TOKEN": {
+          "required": false,
+          "secret": true,
+          "description": "Preferred API token; use unless OAUTH_TOKEN or CI_JOB_TOKEN is provided instead"
+        },
+        "OAUTH_TOKEN": {
+          "required": false,
+          "secret": true,
+          "description": "Optional OAuth bearer token"
+        },
+        "CI_JOB_TOKEN": {
+          "required": false,
+          "secret": true,
+          "description": "Optional CI job token for in-pipeline automation"
+        },
+        "GITLAB_HOST": {
+          "required": false,
+          "default": "https://gitlab.com",
+          "description": "GitLab host, including scheme"
+        },
+        "GITLAB_HTTP_DEBUG": {
+          "required": false,
+          "default": "0",
+          "description": "Set to 1 to print request details to stderr"
+        }
+      }
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "action": {
+          "type": "string",
+          "enum": [
+            "list",
+            "get",
+            "set",
+            "delete"
+          ]
+        },
+        "project": {
+          "type": "string"
+        },
+        "key": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        },
+        "environmentScope": {
+          "type": "string"
+        },
+        "variableType": {
+          "type": "string",
+          "enum": [
+            "env_var",
+            "file"
+          ]
+        },
+        "protected": {
+          "type": "boolean"
+        },
+        "masked": {
+          "type": "boolean"
+        },
+        "hidden": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "action",
+        "project"
+      ]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string"
+        },
+        "environmentScope": {
+          "type": "string"
+        },
+        "protected": {
+          "type": "boolean"
+        },
+        "masked": {
+          "type": "boolean"
+        },
+        "variableType": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "depends": [
+    {
+      "uri": "gitlab/auth",
+      "reason": "Variable management should only run with an authenticated token that can update the target project"
+    },
+    {
+      "uri": "gitlab/ci",
+      "reason": "Variable usage and precedence only make sense in the context of GitLab CI execution"
+    }
+  ],
+  "more": {
+    "docs": "https://docs.gitlab.com/api/project_level_variables/",
+    "predefined-variables": "https://docs.gitlab.com/ci/variables/predefined_variables/"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents, release engineers",
+    "estimated_reading_time": "6 min",
+    "prerequisites": [
+      "gitlab/auth",
+      "gitlab/ci",
+      "gitlab/projects"
+    ],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://gitlab.com/gitlab-org/gitlab",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

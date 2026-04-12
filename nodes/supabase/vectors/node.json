@@ -1,0 +1,142 @@
+{
+  "name": "vectors",
+  "version": "1.0.0",
+  "uri": "supabase/vectors",
+  "type": "skill",
+  "context": "Supabase Vectors — store embeddings with pgvector, perform similarity search, and build RAG pipelines in Postgres",
+  "info": "Supabase Vectors uses the pgvector Postgres extension to store, index, and query vector embeddings directly in your database. Enable with `CREATE EXTENSION vector`. Vectors are stored in `vector(dimensions)` columns (e.g., `vector(1536)` for OpenAI ada-002, `vector(3072)` for text-embedding-3-large). Similarity search uses operators: `<=>` (cosine distance), `<->` (Euclidean/L2), `<#>` (negative inner product). Create HNSW or IVFFlat indexes for fast approximate nearest neighbor (ANN) search. Common pattern: generate embeddings from text via OpenAI/Cohere/local models, store in a vector column, then query with a SQL function via `supabase.rpc()`. This enables RAG (Retrieval-Augmented Generation), semantic search, recommendations, and document similarity. Supabase also provides `supabase.ai.embed()` for generating embeddings from edge functions.",
+  "parent": "supabase",
+  "tags": ["vectors", "pgvector", "embeddings", "similarity-search", "rag", "ai", "cosine", "hnsw"],
+  "aliases": [
+    "supabase vectors",
+    "supabase pgvector",
+    "supabase embeddings",
+    "supabase vector search",
+    "supabase similarity search",
+    "supabase rag",
+    "supabase ai embeddings",
+    "pgvector",
+    "vector database supabase"
+  ],
+  "triggers": [
+    "store embeddings in supabase",
+    "vector similarity search",
+    "supabase pgvector setup",
+    "build rag pipeline with supabase",
+    "semantic search supabase",
+    "nearest neighbor search",
+    "supabase embedding storage",
+    "cosine similarity postgres",
+    "supabase ai search"
+  ],
+  "body": "# Supabase Vectors (pgvector)\n\nStore and search vector embeddings directly in Postgres using the pgvector extension.\n\n## Setup\n\nEnable pgvector in a migration:\n\n```sql\n-- Enable the pgvector extension\nCREATE EXTENSION IF NOT EXISTS vector;\n```\n\n## Create a Table with Vectors\n\n```sql\nCREATE TABLE documents (\n  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),\n  content text NOT NULL,\n  metadata jsonb DEFAULT '{}',\n  embedding vector(1536),  -- OpenAI ada-002 dimensions\n  created_at timestamptz DEFAULT now() NOT NULL\n);\n\n-- For OpenAI text-embedding-3-small (1536 dims)\n-- For OpenAI text-embedding-3-large (3072 dims)\n-- For Cohere embed-english-v3 (1024 dims)\n```\n\n## Create an Index\n\nHNSW (recommended for most use cases):\n```sql\n-- HNSW index for cosine similarity (best default)\nCREATE INDEX idx_documents_embedding ON documents\n  USING hnsw (embedding vector_cosine_ops)\n  WITH (m = 16, ef_construction = 200);\n\n-- HNSW for Euclidean distance\nCREATE INDEX idx_documents_embedding_l2 ON documents\n  USING hnsw (embedding vector_l2_ops);\n\n-- HNSW for inner product\nCREATE INDEX idx_documents_embedding_ip ON documents\n  USING hnsw (embedding vector_ip_ops);\n```\n\nIVFFlat (faster to build, slightly less accurate):\n```sql\n-- IVFFlat index (set lists = sqrt(row_count))\nCREATE INDEX idx_documents_embedding_ivf ON documents\n  USING ivfflat (embedding vector_cosine_ops)\n  WITH (lists = 100);\n```\n\n## Similarity Search Function\n\nCreate a Postgres function for similarity search:\n\n```sql\nCREATE OR REPLACE FUNCTION match_documents(\n  query_embedding vector(1536),\n  match_threshold float DEFAULT 0.78,\n  match_count int DEFAULT 10\n)\nRETURNS TABLE (\n  id uuid,\n  content text,\n  metadata jsonb,\n  similarity float\n) AS $$\n  SELECT\n    id,\n    content,\n    metadata,\n    1 - (embedding <=> query_embedding) AS similarity\n  FROM documents\n  WHERE 1 - (embedding <=> query_embedding) > match_threshold\n  ORDER BY embedding <=> query_embedding\n  LIMIT match_count;\n$$ LANGUAGE sql STABLE;\n```\n\n## Query from the Client\n\n```typescript\nimport { createClient } from '@supabase/supabase-js';\nimport OpenAI from 'openai';\n\nconst supabase = createClient(url, key);\nconst openai = new OpenAI();\n\n// 1. Generate embedding for the query\nconst embeddingResponse = await openai.embeddings.create({\n  model: 'text-embedding-3-small',\n  input: 'How do I set up authentication?',\n});\nconst queryEmbedding = embeddingResponse.data[0].embedding;\n\n// 2. Search for similar documents\nconst { data: documents, error } = await supabase.rpc('match_documents', {\n  query_embedding: queryEmbedding,\n  match_threshold: 0.78,\n  match_count: 5,\n});\n\n// 3. Use results for RAG\nconsole.log(documents);\n// [{ id: '...', content: '...', metadata: {...}, similarity: 0.92 }, ...]\n```\n\n## Insert Embeddings\n\n```typescript\n// Generate and store embeddings\nasync function embedAndStore(text: string, metadata: object) {\n  const embeddingResponse = await openai.embeddings.create({\n    model: 'text-embedding-3-small',\n    input: text,\n  });\n\n  const { error } = await supabase\n    .from('documents')\n    .insert({\n      content: text,\n      metadata,\n      embedding: embeddingResponse.data[0].embedding,\n    });\n\n  if (error) throw error;\n}\n```\n\n## RAG Pipeline Pattern\n\n```typescript\nasync function ragQuery(question: string) {\n  // 1. Embed the question\n  const { data } = await openai.embeddings.create({\n    model: 'text-embedding-3-small',\n    input: question,\n  });\n\n  // 2. Find relevant documents\n  const { data: docs } = await supabase.rpc('match_documents', {\n    query_embedding: data[0].embedding,\n    match_threshold: 0.75,\n    match_count: 5,\n  });\n\n  // 3. Build context from retrieved documents\n  const context = docs?.map(d => d.content).join('\\n\\n') || '';\n\n  // 4. Generate answer with context\n  const completion = await openai.chat.completions.create({\n    model: 'gpt-4o',\n    messages: [\n      {\n        role: 'system',\n        content: `Answer based on this context:\\n\\n${context}`,\n      },\n      { role: 'user', content: question },\n    ],\n  });\n\n  return completion.choices[0].message.content;\n}\n```\n\n## Distance Operators\n\n| Operator | Distance | Use Case |\n|----------|----------|----------|\n| `<=>` | Cosine | Most common, normalized vectors |\n| `<->` | Euclidean (L2) | Non-normalized vectors |\n| `<#>` | Negative inner product | Maximum inner product search |\n\n## Index Tuning\n\n### HNSW Parameters\n- `m` (default 16): connections per node. Higher = more accurate, more memory\n- `ef_construction` (default 64): build-time search breadth. Higher = better index quality, slower build\n\nAt query time, set `hnsw.ef_search` for accuracy/speed tradeoff:\n```sql\nSET hnsw.ef_search = 100;  -- Higher = more accurate, slower\n```\n\n### Performance Tips\n\n1. **Use HNSW over IVFFlat** for most cases — better recall at similar speed\n2. **Dimension reduction**: Use `text-embedding-3-small` (1536) over `text-embedding-3-large` (3072) unless you need maximum accuracy\n3. **Partial indexing**: Add a `WHERE` clause to the index if you only search a subset\n4. **Batch inserts**: Insert embeddings in batches of 100-500 for throughput\n5. **Normalize vectors**: Cosine distance requires normalized vectors for correct results\n\n```sql\n-- Partial index (only index published documents)\nCREATE INDEX idx_published_docs_embedding ON documents\n  USING hnsw (embedding vector_cosine_ops)\n  WHERE published = true;\n```\n\n## RLS with Vectors\n\n```sql\n-- Users can only search their own documents\nCREATE POLICY \"Users search own docs\" ON documents\n  FOR SELECT USING (auth.uid() = user_id);\n\n-- The match_documents function must be SECURITY INVOKER (default)\n-- to respect RLS policies\n```\n\n## Environment Variables\n\n| Variable | Purpose |\n|----------|----------|\n| `SUPABASE_URL` | Project URL for client |\n| `SUPABASE_ANON_KEY` | Auth key for client |\n| `OPENAI_API_KEY` | OpenAI API key for generating embeddings |\n",
+  "sections": [
+    {
+      "id": "setup",
+      "title": "Setup and schema",
+      "body": "Enable pgvector with `CREATE EXTENSION IF NOT EXISTS vector` in a migration. Create tables with `vector(N)` columns where N matches your embedding model's dimensions. OpenAI text-embedding-3-small = 1536, text-embedding-3-large = 3072, Cohere embed-v3 = 1024. Always create an HNSW index on the vector column for fast similarity search.",
+      "tags": ["setup", "extension", "schema", "dimensions", "create-table"]
+    },
+    {
+      "id": "search",
+      "title": "Similarity search",
+      "body": "Create a Postgres function that uses `<=>` (cosine distance) to find similar vectors. Return `1 - (embedding <=> query_embedding)` as similarity score (0-1, higher = more similar). Filter by threshold to exclude poor matches. Call from the client via `supabase.rpc('match_documents', { query_embedding, match_threshold, match_count })`.",
+      "tags": ["search", "similarity", "cosine", "threshold", "rpc"]
+    },
+    {
+      "id": "rag",
+      "title": "RAG pipeline",
+      "body": "Retrieval-Augmented Generation: (1) embed the user's question, (2) find similar documents via vector search, (3) build a context string from retrieved documents, (4) send context + question to an LLM. This pattern grounds LLM responses in your specific data. Use match_threshold to filter irrelevant documents. Chunk large documents before embedding.",
+      "tags": ["rag", "retrieval", "context", "llm", "chunking", "grounding"]
+    },
+    {
+      "id": "indexing",
+      "title": "Index types and tuning",
+      "body": "**HNSW** (recommended): graph-based, excellent recall, no training needed. Parameters: `m` (connections, default 16), `ef_construction` (build quality, default 64). **IVFFlat**: partition-based, faster to build, needs `lists = sqrt(rows)`. Query-time: `SET hnsw.ef_search = N` for accuracy tradeoff. Choose operator class: `vector_cosine_ops` for cosine, `vector_l2_ops` for Euclidean.",
+      "tags": ["hnsw", "ivfflat", "index", "tuning", "performance", "recall"]
+    }
+  ],
+  "links": [
+    { "uri": "supabase/migrations", "context": "Enable pgvector and create vector tables in migrations" },
+    { "uri": "supabase/database", "context": "Query vector data via RPC functions" },
+    { "uri": "supabase/edge-functions", "context": "Generate embeddings in edge functions" },
+    { "uri": "supabase/rls", "context": "RLS policies apply to vector search results" },
+    { "uri": "openai/embeddings", "context": "Generate embeddings with OpenAI" },
+    { "uri": "postgres/extensions", "context": "pgvector is a Postgres extension" }
+  ],
+  "related": [
+    { "uri": "openai/embeddings", "relation": "see-also", "note": "OpenAI provides the most common embedding models used with pgvector" },
+    { "uri": "postgres/extensions", "relation": "implements", "note": "pgvector is a Postgres extension" },
+    { "uri": "supabase/database", "relation": "see-also", "note": "Vector search is executed via supabase.rpc()" }
+  ],
+  "scripts": [
+    {
+      "id": "vector-search",
+      "name": "Vector similarity search",
+      "description": "Embed a query and search for similar documents using pgvector",
+      "lang": "typescript",
+      "runtime": "node>=18",
+      "entry": "./scripts/vector-search.ts",
+      "env": {
+        "SUPABASE_URL": { "required": true, "secret": false, "description": "Supabase project URL" },
+        "SUPABASE_ANON_KEY": { "required": true, "secret": false, "description": "Public anon key" },
+        "OPENAI_API_KEY": { "required": true, "secret": true, "description": "OpenAI API key for embeddings" }
+      },
+      "packages": ["@supabase/supabase-js", "openai"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "query": { "type": "string", "description": "Text to search for similar documents" },
+        "matchThreshold": { "type": "number", "default": 0.78, "description": "Minimum similarity score (0-1)" },
+        "matchCount": { "type": "integer", "default": 10, "description": "Maximum number of results" },
+        "embeddingModel": { "type": "string", "default": "text-embedding-3-small", "description": "OpenAI embedding model" }
+      },
+      "required": ["query"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "documents": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "content": { "type": "string" },
+              "similarity": { "type": "number" }
+            }
+          },
+          "description": "Matching documents sorted by similarity"
+        }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "supabase/database", "reason": "Vector search uses supabase.rpc() for queries" },
+    { "uri": "supabase/migrations", "reason": "pgvector extension and tables must be created via migrations" },
+    { "uri": "openai/embeddings", "reason": "An embedding model is needed to generate vectors", "optional": true }
+  ],
+  "more": {
+    "docs": "https://supabase.com/docs/guides/ai",
+    "pgvector": "https://github.com/pgvector/pgvector",
+    "examples": "https://supabase.com/docs/guides/ai/vector-columns"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents, ML engineers",
+    "estimated_reading_time": "7 min",
+    "prerequisites": ["supabase/migrations", "supabase/database"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

@@ -1,0 +1,127 @@
+{
+  "name": "services",
+  "version": "1.0.0",
+  "uri": "kubernetes/services",
+  "type": "skill",
+  "context": "Expose Kubernetes workloads with Services — ClusterIP, NodePort, LoadBalancer, and headless for service discovery",
+  "info": "Services provide stable networking for ephemeral Pods. A Service selects Pods by label and provides a stable DNS name and virtual IP that persists across Pod restarts, rescheduling, and scaling. Agents use Services to expose applications within the cluster (ClusterIP), on node ports (NodePort), via cloud load balancers (LoadBalancer), or as DNS-only discovery (headless). This skill covers Service types, selectors, ports, DNS resolution, and Endpoints. For HTTP routing and TLS, see [[kubernetes/ingress]].",
+  "parent": "kubernetes",
+  "tags": ["services", "networking", "clusterip", "nodeport", "loadbalancer", "dns", "service-discovery", "endpoints"],
+  "aliases": [
+    "kubernetes services",
+    "k8s services",
+    "service",
+    "svc",
+    "kubectl service",
+    "cluster ip",
+    "nodeport",
+    "load balancer",
+    "headless service",
+    "service discovery"
+  ],
+  "triggers": [
+    "create a kubernetes service",
+    "expose a deployment",
+    "create a load balancer service",
+    "expose a pod externally",
+    "set up service discovery",
+    "create a headless service",
+    "service is not routing traffic",
+    "how do services work in kubernetes"
+  ],
+  "body": "# Services\n\nA Service is a stable networking abstraction over a set of [[kubernetes/pods]]. Pods are ephemeral — they get new IPs when recreated. Services provide a fixed DNS name and virtual IP (ClusterIP) that routes traffic to matching Pods via label selectors.\n\n## Service Types\n\n| Type | Access | Use Case |\n|------|--------|----------|\n| `ClusterIP` | Internal only | Default. Microservice-to-microservice communication |\n| `NodePort` | External via node IP:port | Dev/test, direct node access |\n| `LoadBalancer` | External via cloud LB | Production external traffic (AWS ALB/NLB, GCP LB) |\n| `ExternalName` | DNS CNAME alias | Map to external DNS (e.g., RDS endpoint) |\n| Headless (`clusterIP: None`) | DNS only, no proxy | StatefulSets, direct Pod discovery |\n\n## ClusterIP Service (default)\n\n```yaml\napiVersion: v1\nkind: Service\nmetadata:\n  name: web-app\n  namespace: production\nspec:\n  type: ClusterIP\n  selector:\n    app: web-app\n  ports:\n    - name: http\n      port: 80\n      targetPort: 8080\n      protocol: TCP\n```\n\nOther Pods access this via `http://web-app.production.svc.cluster.local` or just `http://web-app` from the same namespace.\n\n## NodePort Service\n\n```yaml\napiVersion: v1\nkind: Service\nmetadata:\n  name: web-app-nodeport\nspec:\n  type: NodePort\n  selector:\n    app: web-app\n  ports:\n    - port: 80\n      targetPort: 8080\n      nodePort: 30080  # optional: auto-assigned from 30000-32767 if omitted\n```\n\nAccess via `http://<any-node-ip>:30080`.\n\n## LoadBalancer Service\n\n```yaml\napiVersion: v1\nkind: Service\nmetadata:\n  name: web-app-lb\n  annotations:\n    service.beta.kubernetes.io/aws-load-balancer-type: nlb  # AWS-specific\nspec:\n  type: LoadBalancer\n  selector:\n    app: web-app\n  ports:\n    - port: 443\n      targetPort: 8080\n      protocol: TCP\n```\n\nThe cloud provider provisions a load balancer and assigns an external IP. Check with `kubectl get svc web-app-lb` — the `EXTERNAL-IP` column shows the LB address.\n\n## ExternalName Service\n\n```yaml\napiVersion: v1\nkind: Service\nmetadata:\n  name: external-db\nspec:\n  type: ExternalName\n  externalName: mydb.us-east-1.rds.amazonaws.com\n```\n\nCreates a DNS CNAME record. Pods accessing `external-db` are redirected to the external hostname.\n\n## Headless Service\n\n```yaml\napiVersion: v1\nkind: Service\nmetadata:\n  name: my-stateful-app\nspec:\n  clusterIP: None\n  selector:\n    app: my-stateful-app\n  ports:\n    - port: 5432\n```\n\nNo ClusterIP is allocated. DNS returns individual Pod IPs. Used with StatefulSets for direct Pod addressing (`pod-0.my-stateful-app.namespace.svc.cluster.local`).\n\n## kubectl Service Commands\n\n```bash\n# Create service imperatively\nkubectl expose deployment web-app --port=80 --target-port=8080 --type=ClusterIP\n\n# List services\nkubectl get services -n production\nkubectl get svc -o wide\n\n# Describe (shows endpoints, selector, events)\nkubectl describe svc web-app\n\n# View endpoints (Pod IPs backing the service)\nkubectl get endpoints web-app\n\n# Quick test from inside cluster\nkubectl run curl-test --rm -it --image=curlimages/curl -- curl http://web-app.production.svc.cluster.local\n\n# Port-forward a service locally\nkubectl port-forward svc/web-app 8080:80\n\n# Delete\nkubectl delete svc web-app\n```\n\n## DNS Resolution\n\nKubernetes DNS (CoreDNS) creates records for every Service:\n\n| Format | Example |\n|--------|----------|\n| `<service>.<namespace>.svc.cluster.local` | `web-app.production.svc.cluster.local` |\n| `<service>.<namespace>` | `web-app.production` |\n| `<service>` (same namespace) | `web-app` |\n\nSRV records are created for named ports: `_http._tcp.web-app.production.svc.cluster.local`.\n\n## Multi-Port Services\n\n```yaml\nspec:\n  ports:\n    - name: http\n      port: 80\n      targetPort: 8080\n    - name: metrics\n      port: 9090\n      targetPort: 9090\n```\n\nWhen a Service has multiple ports, each port **must** have a `name`.\n\n## Environment Variables\n\n| Variable | Purpose |\n|----------|----------|\n| `KUBECONFIG` | Path to kubeconfig file |\n| `KUBE_NAMESPACE` | Default namespace |\n",
+  "sections": [
+    {
+      "id": "service-types",
+      "title": "Service types",
+      "body": "Four types: **ClusterIP** (default) — internal-only virtual IP. **NodePort** — exposes on every node at a static port (30000-32767). **LoadBalancer** — provisions a cloud load balancer with an external IP. **ExternalName** — CNAME alias to an external DNS name. Plus **headless** (clusterIP: None) — no proxy, DNS returns Pod IPs directly. Choose ClusterIP for internal microservices, LoadBalancer for production external traffic, NodePort for development, headless for StatefulSets.",
+      "tags": ["clusterip", "nodeport", "loadbalancer", "externalname", "headless", "types"]
+    },
+    {
+      "id": "selectors-endpoints",
+      "title": "Selectors and endpoints",
+      "body": "Services select Pods via `spec.selector` (label matching). The Endpoints controller maintains an Endpoints object listing the IPs of all matching, Ready Pods. When no Pods match the selector, the Service has no endpoints and traffic goes nowhere. Debug with `kubectl get endpoints <service>`. For services without selectors, manually create Endpoints objects to point to external IPs.",
+      "tags": ["selector", "endpoints", "labels", "ready", "no-endpoints"]
+    },
+    {
+      "id": "dns",
+      "title": "DNS and service discovery",
+      "body": "CoreDNS creates A/AAAA records for every Service: `<svc>.<ns>.svc.cluster.local`. Within the same namespace, just use `<svc>`. SRV records are created for named ports. Headless services return Pod IPs instead of the ClusterIP. DNS-based discovery means services find each other by name without hardcoded IPs. Environment variables (SERVICE_HOST, SERVICE_PORT) are also injected but DNS is preferred.",
+      "tags": ["dns", "coredns", "discovery", "srv", "a-record", "resolution"]
+    }
+  ],
+  "links": [
+    { "uri": "kubernetes/pods", "context": "Services route traffic to Pods selected by label" },
+    { "uri": "kubernetes/deployments", "context": "Deployments create the Pods that Services expose" },
+    { "uri": "kubernetes/ingress", "context": "Ingress adds HTTP routing and TLS on top of Services" },
+    { "uri": "kubernetes/namespaces", "context": "Services are namespaced — DNS includes the namespace" },
+    { "uri": "kubernetes/troubleshooting", "context": "Debug services with no endpoints or unreachable traffic" }
+  ],
+  "related": [
+    { "uri": "kubernetes/ingress", "relation": "see-also", "note": "Ingress provides HTTP routing and TLS on top of Services" },
+    { "uri": "kubernetes/pods", "relation": "prerequisite", "note": "Services need running Pods with matching labels to route traffic to" },
+    { "uri": "kubernetes/deployments", "relation": "see-also", "note": "Deployments manage the Pods that Services expose" }
+  ],
+  "scripts": [
+    {
+      "id": "expose-deployment",
+      "name": "Expose Deployment",
+      "description": "Create a Service to expose a Deployment",
+      "lang": "bash",
+      "runtime": "kubectl",
+      "entry": "./scripts/expose-deployment.sh",
+      "inline": "#!/bin/bash\nset -euo pipefail\nNAME=${1:?Usage: expose-deployment.sh <deployment> <port> <target-port> [type]}\nPORT=${2:?Usage: expose-deployment.sh <deployment> <port> <target-port> [type]}\nTARGET_PORT=${3:?Usage: expose-deployment.sh <deployment> <port> <target-port> [type]}\nTYPE=${4:-ClusterIP}\nNS=${KUBE_NAMESPACE:-default}\n\necho \"Exposing deployment $NAME as $TYPE service (port $PORT -> $TARGET_PORT)\"\nkubectl expose deployment \"$NAME\" \\\n  --port=\"$PORT\" \\\n  --target-port=\"$TARGET_PORT\" \\\n  --type=\"$TYPE\" \\\n  -n \"$NS\"\n\necho \"\"\nkubectl get svc \"$NAME\" -n \"$NS\" -o wide\necho \"\"\necho \"Endpoints:\"\nkubectl get endpoints \"$NAME\" -n \"$NS\"",
+      "env": {
+        "KUBECONFIG": { "required": false, "secret": false, "default": "~/.kube/config", "description": "Path to kubeconfig file" },
+        "KUBE_NAMESPACE": { "required": false, "secret": false, "default": "default", "description": "Target namespace" }
+      },
+      "packages": []
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "description": "Service name" },
+        "namespace": { "type": "string", "default": "default", "description": "Target namespace" },
+        "type": { "type": "string", "enum": ["ClusterIP", "NodePort", "LoadBalancer", "ExternalName"], "default": "ClusterIP" },
+        "port": { "type": "integer", "description": "Service port" },
+        "targetPort": { "type": "integer", "description": "Container port to forward to" },
+        "selector": { "type": "object", "description": "Label selector for target Pods" }
+      },
+      "required": ["name", "port", "targetPort"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "serviceName": { "type": "string" },
+        "clusterIP": { "type": "string" },
+        "externalIP": { "type": "string" },
+        "dnsName": { "type": "string", "description": "Cluster DNS name for the service" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "kubernetes/pods", "reason": "Services route traffic to Pods — Pods must exist with matching labels" }
+  ],
+  "more": {
+    "docs": "https://kubernetes.io/docs/concepts/services-networking/service/",
+    "api": "https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.31/#service-v1-core",
+    "dns": "https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, DevOps engineers, SREs, AI agents",
+    "estimated_reading_time": "5 min",
+    "prerequisites": ["kubernetes/pods"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

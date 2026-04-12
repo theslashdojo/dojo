@@ -1,0 +1,88 @@
+{
+  "name": "auth",
+  "version": "1.0.0",
+  "uri": "cloudflare/auth",
+  "type": "context",
+  "context": "Cloudflare API authentication — tokens, keys, scopes, and permission configuration",
+  "info": "Cloudflare provides two authentication methods: API Tokens (scoped, revocable, recommended) and the Global API Key (full account access, legacy). API Tokens are created in the Cloudflare dashboard under My Profile > API Tokens and carry specific permissions like 'Zone:DNS:Edit' or 'Account:Workers Scripts:Edit'. The token is passed as a Bearer token in the Authorization header. The Global API Key requires both the key and account email. Agents should always use API Tokens with minimal permissions. Wrangler authenticates via `wrangler login` (OAuth browser flow) or by setting `CLOUDFLARE_API_TOKEN` in the environment.",
+  "parent": "cloudflare",
+  "tags": ["auth", "api-token", "api-key", "permissions", "scopes", "bearer-token"],
+  "aliases": [
+    "cloudflare auth",
+    "cloudflare api token",
+    "cloudflare authentication",
+    "cf api key",
+    "cloudflare credentials",
+    "wrangler login",
+    "cloudflare permissions",
+    "cloudflare bearer token"
+  ],
+  "triggers": [
+    "authenticate with cloudflare",
+    "create a cloudflare api token",
+    "set up cloudflare credentials",
+    "configure wrangler authentication",
+    "cloudflare api token permissions",
+    "what permissions do i need for cloudflare"
+  ],
+  "body": "# Cloudflare Authentication\n\nAll Cloudflare API calls require authentication. There are two methods: **API Tokens** (recommended) and the **Global API Key** (legacy).\n\n## API Tokens (Recommended)\n\nAPI Tokens are scoped, revocable credentials. Each token carries specific permissions and can be restricted to specific zones or accounts.\n\n### Creating a Token\n\n1. Go to [Cloudflare Dashboard](https://dash.cloudflare.com/profile/api-tokens)\n2. Click \"Create Token\"\n3. Choose a template or create custom\n4. Set permissions (e.g., `Zone:DNS:Edit`, `Account:Workers Scripts:Edit`)\n5. Set zone/account restrictions\n6. Create and copy the token (shown only once)\n\n### Using API Tokens\n\n```bash\n# Via environment variable (recommended)\nexport CLOUDFLARE_API_TOKEN=\"your-api-token\"\n\n# In API calls\ncurl -X GET \"https://api.cloudflare.com/client/v4/zones\" \\\n  -H \"Authorization: Bearer $CLOUDFLARE_API_TOKEN\" \\\n  -H \"Content-Type: application/json\"\n```\n\n```javascript\n// Node.js SDK\nimport Cloudflare from 'cloudflare';\n\nconst cf = new Cloudflare({\n  apiToken: process.env.CLOUDFLARE_API_TOKEN,\n});\n```\n\n### Common Permission Sets\n\n| Task | Permissions Needed |\n|------|--------------------|\n| Deploy Workers | Account:Workers Scripts:Edit |\n| Manage DNS | Zone:DNS:Edit |\n| Manage R2 | Account:Workers R2 Storage:Edit |\n| Manage KV | Account:Workers KV Storage:Edit |\n| Deploy Pages | Account:Cloudflare Pages:Edit |\n| Read analytics | Zone:Analytics:Read |\n| Full admin | Account:Account Settings:Read + all zone permissions |\n\n## Global API Key (Legacy)\n\nThe Global API Key provides full account access. It requires both the key and account email.\n\n```bash\n# NOT recommended — use API Tokens instead\ncurl -X GET \"https://api.cloudflare.com/client/v4/zones\" \\\n  -H \"X-Auth-Key: $CLOUDFLARE_API_KEY\" \\\n  -H \"X-Auth-Email: $CLOUDFLARE_EMAIL\" \\\n  -H \"Content-Type: application/json\"\n```\n\n**Warning:** The Global API Key has full account access and cannot be scoped. If leaked, an attacker has full control. Always prefer API Tokens.\n\n## Wrangler Authentication\n\n```bash\n# Interactive OAuth login (opens browser)\nwrangler login\n\n# Or set token in environment\nexport CLOUDFLARE_API_TOKEN=\"your-api-token\"\nexport CLOUDFLARE_ACCOUNT_ID=\"your-account-id\"\n\n# Verify authentication\nwrangler whoami\n```\n\n## Environment Variables\n\n| Variable | Purpose | Required |\n|----------|---------|----------|\n| `CLOUDFLARE_API_TOKEN` | Scoped API token (preferred) | Yes (or API Key) |\n| `CLOUDFLARE_ACCOUNT_ID` | Account identifier | Yes for most operations |\n| `CLOUDFLARE_API_KEY` | Global API Key (legacy) | No |\n| `CLOUDFLARE_EMAIL` | Account email (with API Key) | Only with API Key |\n\n## Finding Your Account ID\n\n```bash\n# Via API\ncurl -s \"https://api.cloudflare.com/client/v4/accounts\" \\\n  -H \"Authorization: Bearer $CLOUDFLARE_API_TOKEN\" | jq '.result[0].id'\n\n# In the dashboard: appears in the URL and on the Workers overview page\n# Or via wrangler:\nwrangler whoami\n```\n",
+  "sections": [
+    {
+      "id": "api-tokens",
+      "title": "API Tokens",
+      "body": "API Tokens are the recommended authentication method. They are scoped to specific permissions, can target specific zones or accounts, and are individually revocable. Create tokens at dash.cloudflare.com/profile/api-tokens. Pass the token as `Authorization: Bearer <token>` in HTTP headers or set `CLOUDFLARE_API_TOKEN` in the environment for Wrangler and SDKs.",
+      "tags": ["api-token", "bearer", "scoped", "permissions"]
+    },
+    {
+      "id": "permission-sets",
+      "title": "Common permission sets",
+      "body": "Workers deployment: `Account:Workers Scripts:Edit`. DNS management: `Zone:DNS:Edit`. R2 storage: `Account:Workers R2 Storage:Edit`. KV storage: `Account:Workers KV Storage:Edit`. Pages deployment: `Account:Cloudflare Pages:Edit`. For development, the 'Edit Cloudflare Workers' template covers Workers, KV, R2, and D1. Always use the minimum permissions required.",
+      "tags": ["permissions", "scopes", "least-privilege"]
+    },
+    {
+      "id": "wrangler-login",
+      "title": "Wrangler authentication",
+      "body": "Run `wrangler login` for interactive OAuth login that opens a browser. For CI/CD and agent use, set `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` as environment variables. Verify with `wrangler whoami`. Wrangler stores OAuth credentials in `~/.wrangler/config/default.toml`.",
+      "tags": ["wrangler", "login", "oauth", "ci-cd"]
+    },
+    {
+      "id": "account-id",
+      "title": "Finding your Account ID",
+      "body": "The Account ID is required for most API calls and Wrangler operations. Find it in the Cloudflare dashboard URL (`dash.cloudflare.com/<account-id>`), on the Workers & Pages overview page sidebar, or via `wrangler whoami`. Set it as `CLOUDFLARE_ACCOUNT_ID` in the environment or `account_id` in `wrangler.toml`.",
+      "tags": ["account-id", "setup", "configuration"]
+    }
+  ],
+  "links": [
+    { "uri": "cloudflare", "context": "Cloudflare ecosystem overview" },
+    { "uri": "cloudflare/workers", "context": "Deploy Workers using authenticated credentials" },
+    { "uri": "cloudflare/dns", "context": "Manage DNS with Zone:DNS:Edit permission" },
+    { "uri": "cloudflare/wrangler", "context": "CLI authentication via wrangler login" },
+    { "uri": "cloudflare/r2", "context": "R2 requires Account:Workers R2 Storage:Edit" },
+    { "uri": "cloudflare/kv", "context": "KV requires Account:Workers KV Storage:Edit" }
+  ],
+  "related": [
+    { "uri": "cloudflare", "relation": "see-also", "note": "Auth is required for all Cloudflare API operations" },
+    { "uri": "cloudflare/wrangler", "relation": "see-also", "note": "Wrangler consumes API tokens for deployment" },
+    { "uri": "github/auth", "relation": "similar", "note": "Similar token-based auth model with scoped permissions" }
+  ],
+  "more": {
+    "docs": "https://developers.cloudflare.com/fundamentals/api/get-started/create-token/",
+    "api": "https://developers.cloudflare.com/api"
+  },
+  "content_type": "reference",
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "4 min",
+    "prerequisites": [],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

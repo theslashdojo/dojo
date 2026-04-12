@@ -1,0 +1,289 @@
+{
+  "name": "storage",
+  "uri": "azure/storage",
+  "type": "skill",
+  "context": "Create Azure Storage accounts and move artifacts through blob containers with `az storage` commands",
+  "info": "Azure Storage is the default artifact and data substrate for many Azure automation paths. Agents use this skill to create storage accounts, create blob containers, upload and download zip artifacts or other files, list blobs, and hand connection strings to legacy consumers when login-based auth is not available. The core execution surface is `az storage account`, `az storage container`, and `az storage blob`.",
+  "parent": "azure",
+  "tags": [
+    "azure",
+    "storage",
+    "blob",
+    "containers",
+    "artifacts",
+    "az-storage",
+    "storage-account",
+    "uploads"
+  ],
+  "aliases": [
+    "azure storage",
+    "blob storage",
+    "storage account",
+    "az storage",
+    "upload a blob",
+    "download a blob",
+    "create blob container",
+    "artifact storage in azure"
+  ],
+  "triggers": [
+    "create an azure storage account",
+    "upload a file to azure blob storage",
+    "download a blob from azure",
+    "list blobs in azure storage",
+    "create a blob container",
+    "get a storage connection string",
+    "store deployment artifacts in azure",
+    "manage azure blob storage from cli"
+  ],
+  "body": "# Azure Storage\n\nMost Azure deployment flows need storage somewhere: Function Apps need a storage account, build pipelines publish zip artifacts to blob storage, and applications often need object storage for uploads or generated files.\n\n~~~bash\naz storage account create \\\n  --name dojobuildstore \\\n  --resource-group rg-dojo \\\n  --location eastus \\\n  --sku Standard_LRS \\\n  --kind StorageV2\n\naz storage container create \\\n  --name artifacts \\\n  --account-name dojobuildstore \\\n  --auth-mode login\n\naz storage blob upload \\\n  --account-name dojobuildstore \\\n  --container-name artifacts \\\n  --name app.zip \\\n  --file ./dist/app.zip \\\n  --auth-mode login\n\naz storage blob list --account-name dojobuildstore --container-name artifacts --auth-mode login --output table\naz storage blob download --account-name dojobuildstore --container-name artifacts --name app.zip --file ./app.zip --auth-mode login\n~~~\n\nPrefer `--auth-mode login` when the executing identity already has RBAC on the storage account. Use connection strings only when the downstream tool cannot authenticate with Entra-backed login. The CLI can still surface a connection string with `az storage account show-connection-string`, but that should be treated as a compatibility path rather than the default.\n\nThis skill is the usual hand-off point before [[azure/functions]] zip deploys and a common dependency for [[azure/app-service]] build artifacts or user-upload features.\n",
+  "sections": [
+    {
+      "id": "accounts",
+      "title": "Storage account creation",
+      "body": "`az storage account create` provisions the account namespace and redundancy tier. `StorageV2` is the normal general-purpose choice. Pick the resource group and region first, then settle redundancy and network posture later if the workload requires more than the default path.",
+      "tags": [
+        "storage-account",
+        "storagev2",
+        "redundancy",
+        "region"
+      ]
+    },
+    {
+      "id": "auth",
+      "title": "Login auth versus connection strings",
+      "body": "`az storage` commands accept `--auth-mode login` or a `--connection-string`. Login mode is better for agents that already have RBAC and should avoid long-lived account keys. Connection strings are still useful when feeding older tooling or SDKs that cannot use the current CLI identity directly.",
+      "tags": [
+        "auth-mode",
+        "login",
+        "connection-string",
+        "rbac"
+      ]
+    },
+    {
+      "id": "blob-ops",
+      "title": "Blob upload, list, and download",
+      "body": "`az storage blob upload`, `list`, and `download` are the day-to-day artifact operations. Use upload for explicit one-file transfers, `upload-batch` when publishing a whole directory, and list before destructive cleanup or deployment promotion so the agent can confirm the exact blob names present.",
+      "tags": [
+        "blob",
+        "upload",
+        "download",
+        "list",
+        "artifacts"
+      ]
+    }
+  ],
+  "links": [
+    {
+      "uri": "azure/auth",
+      "context": "Use login-based auth or switch subscriptions before storage operations"
+    },
+    {
+      "uri": "azure/resource-groups",
+      "context": "Create the resource group before the storage account"
+    },
+    {
+      "uri": "azure/functions",
+      "context": "Function Apps depend on storage accounts and often deploy zip artifacts from them"
+    },
+    {
+      "uri": "azure/app-service",
+      "context": "Web apps often consume zip artifacts or uploaded content stored here"
+    },
+    {
+      "uri": "azure/key-vault",
+      "context": "Store connection strings only when login-based auth is not viable"
+    }
+  ],
+  "related": [
+    {
+      "uri": "azure/resource-groups",
+      "relation": "prerequisite",
+      "note": "Storage accounts are usually created inside a known workload group"
+    },
+    {
+      "uri": "aws/s3",
+      "relation": "alternative",
+      "note": "S3 is the closest object-storage analogue elsewhere in the graph"
+    },
+    {
+      "uri": "cloudflare/r2",
+      "relation": "alternative",
+      "note": "R2 is another object-storage target for artifact or file workflows"
+    }
+  ],
+  "scripts": [
+    {
+      "id": "manage-storage",
+      "name": "Manage Storage",
+      "description": "Create storage accounts, create containers, and transfer blobs with Azure CLI",
+      "lang": "bash",
+      "runtime": "bash>=4.0, azure-cli>=2.0",
+      "entry": "./scripts/manage-storage.sh",
+      "env": {
+        "AZURE_STORAGE_ACTION": {
+          "required": true,
+          "description": "One of account-create, container-create, blob-upload, blob-download, blob-list, or show-connection-string"
+        },
+        "AZURE_RESOURCE_GROUP": {
+          "required": false,
+          "description": "Resource group for account creation or connection string lookup"
+        },
+        "AZURE_LOCATION": {
+          "required": false,
+          "description": "Azure region for storage account creation"
+        },
+        "AZURE_STORAGE_ACCOUNT": {
+          "required": false,
+          "description": "Storage account name"
+        },
+        "AZURE_STORAGE_SKU": {
+          "required": false,
+          "default": "Standard_LRS",
+          "description": "Storage SKU such as Standard_LRS or Standard_ZRS"
+        },
+        "AZURE_STORAGE_CONTAINER": {
+          "required": false,
+          "description": "Blob container name"
+        },
+        "AZURE_STORAGE_SOURCE": {
+          "required": false,
+          "description": "Source file path for blob-upload"
+        },
+        "AZURE_STORAGE_DESTINATION": {
+          "required": false,
+          "description": "Destination file path for blob-download"
+        },
+        "AZURE_STORAGE_BLOB_NAME": {
+          "required": false,
+          "description": "Blob name, defaults to the source file basename on upload"
+        },
+        "AZURE_STORAGE_AUTH_MODE": {
+          "required": false,
+          "default": "login",
+          "description": "Either login or key; ignored when connection string is supplied"
+        },
+        "AZURE_STORAGE_CONNECTION_STRING": {
+          "required": false,
+          "secret": true,
+          "description": "Optional connection string for legacy or key-based auth"
+        },
+        "AZURE_SUBSCRIPTION_ID": {
+          "required": false,
+          "description": "Subscription ID or name to activate before the command"
+        }
+      }
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "action": {
+          "type": "string",
+          "enum": [
+            "account-create",
+            "container-create",
+            "blob-upload",
+            "blob-download",
+            "blob-list",
+            "show-connection-string"
+          ]
+        },
+        "resourceGroup": {
+          "type": "string",
+          "description": "Resource group name"
+        },
+        "account": {
+          "type": "string",
+          "description": "Storage account name"
+        },
+        "location": {
+          "type": "string",
+          "description": "Azure region for account creation"
+        },
+        "container": {
+          "type": "string",
+          "description": "Blob container name"
+        },
+        "source": {
+          "type": "string",
+          "description": "Local file to upload"
+        },
+        "destination": {
+          "type": "string",
+          "description": "Local file path for download"
+        },
+        "blobName": {
+          "type": "string",
+          "description": "Blob name in the container"
+        },
+        "authMode": {
+          "type": "string",
+          "enum": [
+            "login",
+            "key"
+          ],
+          "description": "Storage auth mode"
+        }
+      },
+      "required": [
+        "action"
+      ]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "ARM resource ID or storage result identifier"
+        },
+        "name": {
+          "type": "string",
+          "description": "Storage account or blob name"
+        },
+        "primaryEndpoints": {
+          "type": "object",
+          "description": "Storage service endpoints when creating an account"
+        }
+      }
+    }
+  },
+  "depends": [
+    {
+      "uri": "azure/auth",
+      "reason": "Login-based storage auth requires an Azure principal with RBAC on the account"
+    },
+    {
+      "uri": "azure/resource-groups",
+      "reason": "Storage accounts are generally created inside a resource group"
+    },
+    {
+      "uri": "shell/bash",
+      "reason": "The executable surface is a Bash wrapper around `az storage` commands"
+    }
+  ],
+  "more": {
+    "account": "https://learn.microsoft.com/en-us/cli/azure/storage/account?view=azure-cli-latest",
+    "blob": "https://learn.microsoft.com/en-us/cli/azure/storage/blob?view=azure-cli-latest"
+  },
+  "frontmatter": {
+    "created": "2026-04-12",
+    "updated": "2026-04-12",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "6 min",
+    "prerequisites": [
+      "azure/auth",
+      "azure/resource-groups"
+    ],
+    "status": "living",
+    "confidence": "high"
+  },
+  "repository": "https://github.com/Azure/azure-cli",
+  "version": "1.0.0",
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-12T00:00:00Z",
+  "updated": "2026-04-12T00:00:00Z",
+  "status": "published"
+}

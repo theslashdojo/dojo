@@ -1,0 +1,142 @@
+{
+  "name": "search",
+  "version": "1.0.0",
+  "uri": "dojo/search",
+  "type": "skill",
+  "context": "Discover and find nodes in the Dojo knowledge graph by query, alias, tag, or trigger phrase",
+  "info": "The search skill covers all discovery mechanisms in Dojo: full-text search across node fields, alias resolution for alternative names, trigger phrase matching for natural-language routing, tag-based filtering, and graph traversal for related nodes. Agents use this skill to find the right node before learning or executing. The search API normalizes queries, resolves aliases, scores results by field weight (triggers > aliases > context > tags > body), and returns ranked matches with context snippets. See [[dojo/api#discovery-routes]] for the HTTP surface and [[dojo/graph]] for traversal patterns.",
+  "parent": "dojo",
+  "tags": ["search", "discovery", "find", "query", "lookup", "aliases", "triggers", "ranking"],
+  "aliases": [
+    "dojo search",
+    "find node",
+    "discover skill",
+    "node lookup",
+    "search the graph",
+    "find a dojo node",
+    "skill discovery",
+    "dojo discovery",
+    "node search"
+  ],
+  "triggers": [
+    "find a dojo node",
+    "search for a skill",
+    "how does dojo search work",
+    "look up a node by name",
+    "discover nodes by tag",
+    "how do aliases work in dojo",
+    "how does trigger matching work",
+    "search the dojo registry"
+  ],
+  "body": "# Search & Discovery\n\nDiscovery is the first step in every Dojo workflow. Before an agent can learn from a node or execute a skill, it must find the right node. Dojo provides multiple discovery paths that work together.\n\n## Discovery Paths\n\n1. **Text search** — Full-text query across `context`, `info`, `body`, and `sections[].body`\n2. **Alias resolution** — Match against `aliases[]` for alternative names and phrasings. See [[dojo/search/aliases]]\n3. **Trigger matching** — Match against `triggers[]` for natural-language intent routing. See [[dojo/search/triggers]]\n4. **Tag filtering** — Filter by `tags[]` for categorical browsing\n5. **URI lookup** — Direct path lookup when the URI is known\n6. **Graph traversal** — Follow `links[]` and `related[]` edges from a known node. See [[dojo/graph]]\n\n## Search Ranking\n\nResults are scored by field weight. Higher-weight matches appear first:\n\n| Field | Weight | Rationale |\n|-------|--------|-----------|\n| `triggers` | 1.0 | Direct intent match — highest signal |\n| `aliases` | 0.9 | Known alternative names |\n| `name` | 0.85 | Exact name match |\n| `context` | 0.8 | One-line summary — concise and targeted |\n| `tags` | 0.7 | Categorical keywords |\n| `info` | 0.5 | Dense paragraph — broader match |\n| `body` | 0.3 | Long-form — lowest specificity |\n| `sections[].body` | 0.2 | Deep content matches |\n\n## Search API\n\n```bash\n# Search by query string\ncurl \"$DOJO_URL/v1/search?q=deploy+to+vercel&limit=5\"\n\n# Filter by tag\ncurl \"$DOJO_URL/v1/search?q=deploy&tags=vercel,nextjs\"\n\n# Filter by type\ncurl \"$DOJO_URL/v1/search?q=auth&type=context\"\n\n# Resolve an alias directly\ncurl \"$DOJO_URL/v1/alias/gh\"\n```\n\n## Response Shape\n\n```json\n{\n  \"results\": [\n    {\n      \"uri\": \"vercel/deploy\",\n      \"name\": \"deploy\",\n      \"type\": \"skill\",\n      \"context\": \"Deploy a web application to Vercel\",\n      \"score\": 0.95,\n      \"matched_field\": \"triggers\",\n      \"snippet\": \"deploy to vercel\"\n    }\n  ],\n  \"total\": 1,\n  \"query\": \"deploy to vercel\"\n}\n```\n\n## Agent Workflow\n\n1. Agent receives a task like \"deploy my app to vercel\"\n2. Extract key phrases → `deploy`, `vercel`\n3. Query search: `GET /v1/search?q=deploy+to+vercel`\n4. Receive ranked results → top match is `vercel/deploy`\n5. Load the node: `GET /v1/skills/vercel/deploy`\n6. Learn from `body` and `sections`\n7. Execute via `scripts`\n\n## Environment Variables\n\n| Variable | Purpose |\n|----------|----------|\n| `DOJO_URL` | Base URL of the Dojo registry (default: `http://localhost:3000`) |\n",
+  "sections": [
+    {
+      "id": "discovery-paths",
+      "title": "Discovery paths",
+      "body": "Dojo provides six discovery paths: text search across all content fields, alias resolution for alternative names, trigger matching for natural-language intents, tag filtering for categories, direct URI lookup, and graph traversal via links and related edges. An agent should try trigger matching first for intent-based queries, fall back to text search for exploratory queries, and use graph traversal when navigating from a known starting node. See [[dojo/search/aliases]] and [[dojo/search/triggers]] for the specialized sub-skills.",
+      "tags": ["discovery", "search", "alias", "trigger", "tag", "uri", "graph"]
+    },
+    {
+      "id": "ranking",
+      "title": "Search ranking",
+      "body": "Results are scored by field weight: triggers (1.0) > aliases (0.9) > name (0.85) > context (0.8) > tags (0.7) > info (0.5) > body (0.3) > sections (0.2). This weighting ensures that direct intent matches rank highest, while deep-content matches serve as fallback discovery. The ranking formula also considers exact vs. partial matches and query term coverage.",
+      "tags": ["ranking", "scoring", "weights", "relevance"]
+    },
+    {
+      "id": "search-api",
+      "title": "Search API endpoints",
+      "body": "The primary search endpoint is `GET /v1/search?q=<query>`. Optional parameters: `tags` (comma-separated tag filter), `type` (node type filter: ecosystem, standard, skill, context, sub), `limit` (max results, default 10), `offset` (pagination). The alias endpoint `GET /v1/alias/<alias>` resolves a single alias to its canonical node URI. See [[dojo/api#discovery-routes]] for the full HTTP surface.",
+      "tags": ["api", "endpoint", "http", "query-params", "pagination"]
+    },
+    {
+      "id": "agent-workflow",
+      "title": "Agent search workflow",
+      "body": "When an agent receives a task, it should: (1) extract key phrases from the task description, (2) query the search API with those phrases, (3) evaluate the top results by reading `context` fields, (4) load the best-match node, (5) learn from `body` and `sections`, (6) execute any `scripts` as needed. If the first query returns poor results, try alias resolution or broaden the query terms. Use [[dojo/graph]] traversal to explore related nodes from a near-match.",
+      "tags": ["workflow", "agent", "task-routing", "intent-matching"]
+    }
+  ],
+  "links": [
+    { "uri": "dojo/search/aliases", "context": "How alias resolution works for alternative node names" },
+    { "uri": "dojo/search/triggers", "context": "How trigger phrase matching routes natural-language queries" },
+    { "uri": "dojo/api#discovery-routes", "context": "HTTP endpoints for search and discovery" },
+    { "uri": "dojo/graph", "context": "Graph traversal for related node discovery" },
+    { "uri": "dojo/knowledge", "context": "How knowledge fields power search results" },
+    { "uri": "dojo/glossary", "context": "Vocabulary definitions for search terminology" },
+    { "uri": "dojo/api/query", "context": "Executable query client for search operations" }
+  ],
+  "related": [
+    { "uri": "dojo/api", "relation": "implements", "note": "Search is served by the API discovery routes" },
+    { "uri": "dojo/knowledge", "relation": "prerequisite", "note": "Knowledge fields (aliases, triggers, body) are what search indexes" },
+    { "uri": "dojo/graph", "relation": "see-also", "note": "Graph traversal complements text search for related discovery" }
+  ],
+  "scripts": [
+    {
+      "id": "search-nodes",
+      "name": "Search Nodes",
+      "description": "Search the Dojo registry for nodes matching a query, with optional tag and type filters",
+      "lang": "bash",
+      "runtime": "bash>=4",
+      "entry": "./scripts/search-nodes.sh",
+      "env": {
+        "DOJO_URL": { "required": false, "default": "http://localhost:3000", "description": "Dojo registry base URL" }
+      },
+      "packages": ["curl", "jq"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "query": { "type": "string", "description": "Search query text" },
+        "tags": { "type": "array", "items": { "type": "string" }, "description": "Filter by tags" },
+        "type": { "type": "string", "enum": ["ecosystem", "standard", "skill", "context", "sub"], "description": "Filter by node type" },
+        "limit": { "type": "integer", "default": 10, "description": "Maximum results to return" }
+      },
+      "required": ["query"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "results": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "uri": { "type": "string" },
+              "name": { "type": "string" },
+              "type": { "type": "string" },
+              "context": { "type": "string" },
+              "score": { "type": "number" },
+              "matched_field": { "type": "string" }
+            }
+          }
+        },
+        "total": { "type": "integer" },
+        "query": { "type": "string" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "dojo/api", "reason": "Search is served by the Dojo API discovery routes" }
+  ],
+  "more": {
+    "docs": "https://github.com/theslashdojo/dojo/blob/main/SPEC.md",
+    "repo": "https://github.com/theslashdojo/dojo"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "agent authors, integrators",
+    "estimated_reading_time": "4 min",
+    "prerequisites": ["dojo/api"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://github.com/theslashdojo/dojo",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

@@ -1,107 +1,82 @@
 ---
 name: stream
-description: Stream Claude responses token-by-token via server-sent events — use when building real-time UIs, chatbots, or any interface where perceived latency matters
+description: Stream Claude responses token-by-token via server-sent events. Use when building chat UIs, real-time displays, or any application where perceived latency matters.
 ---
 
 # Stream Messages
 
-Stream Claude's response incrementally for real-time display.
+Stream responses via SSE for real-time output.
 
 ## When to Use
 
-- Building a chat UI where users see tokens appear
-- Long responses where showing progress matters
-- Any scenario where first-token latency is critical
-- Streaming tool use arguments as they're generated
-
-## Prerequisites
-
-- `ANTHROPIC_API_KEY` set in environment
-- `pip install anthropic` or `npm install @anthropic-ai/sdk`
+- Chat interfaces showing text as it generates
+- Long-running completions where users need feedback
+- Any UX where waiting for the full response feels slow
+- Tool use with real-time progress indicators
 
 ## Workflow
 
-1. Initialize the Anthropic client
-2. Use `client.messages.stream()` (not `.create()`)
-3. Iterate over `stream.text_stream` for simple text output
-4. Or iterate over raw events for full control
-5. Call `stream.get_final_message()` for the accumulated message
+1. Use `client.messages.stream()` instead of `client.messages.create()`
+2. Iterate the text stream or listen for events
+3. Optionally get the final message after streaming completes
 
-## Python — Simple Text Stream
+## Python
 
 ```python
-import anthropic
-
-client = anthropic.Anthropic()
-
 with client.messages.stream(
     model="claude-sonnet-4-6",
     max_tokens=1024,
-    messages=[{"role": "user", "content": "Write a short story about a robot"}]
+    messages=[{"role": "user", "content": "Write a poem"}]
 ) as stream:
     for text in stream.text_stream:
         print(text, end="", flush=True)
-print()  # newline after stream
+
+final = stream.get_final_message()
 ```
 
-## Python — Raw Events
+### Async Python
 
 ```python
-with client.messages.stream(
+async with client.messages.stream(
     model="claude-sonnet-4-6",
     max_tokens=1024,
-    messages=[{"role": "user", "content": "Hello"}]
+    messages=[{"role": "user", "content": "Write a poem"}]
 ) as stream:
-    for event in stream:
-        match event.type:
-            case "content_block_delta":
-                if event.delta.type == "text_delta":
-                    print(event.delta.text, end="", flush=True)
-            case "message_delta":
-                print(f"\nDone: {event.delta.stop_reason}")
+    async for text in stream.text_stream:
+        print(text, end="", flush=True)
 ```
 
-## TypeScript — Event Handler
+## TypeScript
 
 ```typescript
-import Anthropic from "@anthropic-ai/sdk";
-
-const client = new Anthropic();
-
-const stream = client.messages.stream({
+const stream = await client.messages.stream({
   model: "claude-sonnet-4-6",
   max_tokens: 1024,
-  messages: [{ role: "user", content: "Write a haiku" }]
+  messages: [{ role: "user", content: "Write a poem" }]
 });
 
 stream.on("text", (text) => process.stdout.write(text));
-stream.on("message", (msg) => console.log("\nDone:", msg.stop_reason));
-
-await stream.finalMessage();
+const final = await stream.finalMessage();
 ```
 
-## Async Python
+## SSE Event Types
 
-```python
-import asyncio
-import anthropic
+| Event | When |
+|-------|------|
+| `message_start` | Response begins |
+| `content_block_start` | New content block |
+| `content_block_delta` | Incremental text/JSON |
+| `content_block_stop` | Block complete |
+| `message_delta` | Final stop_reason and usage |
+| `message_stop` | Stream complete |
 
-async def main():
-    client = anthropic.AsyncAnthropic()
-    async with client.messages.stream(
-        model="claude-sonnet-4-6",
-        max_tokens=1024,
-        messages=[{"role": "user", "content": "Hello"}]
-    ) as stream:
-        async for text in stream.text_stream:
-            print(text, end="", flush=True)
+## Streaming with Tools
 
-asyncio.run(main())
-```
+Tool use blocks stream `input_json_delta` events with partial JSON. The complete tool input is only available after `content_block_stop`. Execute the tool, then send the result as a normal message to continue.
 
 ## Edge Cases
 
-- **Connection drops**: The SDK handles reconnection automatically for transient failures
-- **Tool use in streams**: Watch for `input_json_delta` events — accumulate partial JSON until `content_block_stop`
-- **Extended thinking**: `thinking_delta` events arrive before `text_delta` events
-- **Error events**: An `error` SSE event may arrive mid-stream on server errors
+- Always flush stdout when printing streamed text
+- Tool input JSON is partial during streaming — wait for block completion
+- Network interruptions may truncate the stream without a message_stop event
+- Use `get_final_message()` / `finalMessage()` to get the complete response object

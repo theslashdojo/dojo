@@ -1,0 +1,120 @@
+{
+  "name": "namespaces",
+  "version": "1.0.0",
+  "uri": "kubernetes/namespaces",
+  "type": "skill",
+  "context": "Organize and isolate Kubernetes resources with Namespaces — multi-tenancy, resource quotas, and access control",
+  "info": "Namespaces partition a Kubernetes cluster into virtual sub-clusters. They provide scope for resource names (two Deployments can have the same name in different namespaces), boundaries for [[kubernetes/rbac]] policies, and targets for resource quotas and limit ranges. Agents use Namespaces to isolate environments (dev, staging, production), teams, or applications within a shared cluster. This skill covers creating namespaces, setting default namespaces, applying resource quotas and limit ranges, and namespace-scoped operations.",
+  "parent": "kubernetes",
+  "tags": ["namespaces", "isolation", "multi-tenancy", "resource-quotas", "limit-ranges", "organization"],
+  "aliases": [
+    "kubernetes namespaces",
+    "k8s namespaces",
+    "namespace",
+    "ns",
+    "kubectl namespace",
+    "kubens",
+    "resource quota",
+    "limit range",
+    "multi-tenancy kubernetes"
+  ],
+  "triggers": [
+    "create a kubernetes namespace",
+    "switch kubernetes namespace",
+    "set default namespace",
+    "set up resource quotas",
+    "isolate environments in kubernetes",
+    "list all namespaces",
+    "delete a namespace",
+    "set up multi-tenancy"
+  ],
+  "body": "# Namespaces\n\nNamespaces divide a cluster into isolated virtual sub-clusters. Most Kubernetes resources (Pods, Services, Deployments, ConfigMaps) are namespaced — they exist within a single namespace and their names must be unique within it.\n\n## Default Namespaces\n\n| Namespace | Purpose |\n|-----------|----------|\n| `default` | Where resources go when no namespace is specified |\n| `kube-system` | Kubernetes system components (CoreDNS, kube-proxy, metrics-server) |\n| `kube-public` | Publicly readable (cluster-info ConfigMap) |\n| `kube-node-lease` | Node heartbeat leases |\n\n## Create and Manage\n\n```yaml\napiVersion: v1\nkind: Namespace\nmetadata:\n  name: production\n  labels:\n    environment: production\n    team: backend\n```\n\n```bash\n# Create namespace\nkubectl create namespace production\nkubectl create ns staging\n\n# List namespaces\nkubectl get namespaces\nkubectl get ns\n\n# Set default namespace for current context\nkubectl config set-context --current --namespace=production\n\n# Or use kubens (faster)\nkubens production\n\n# Run commands in a specific namespace\nkubectl get pods -n production\nkubectl get all -n staging\n\n# Get resources across all namespaces\nkubectl get pods --all-namespaces\nkubectl get pods -A\n\n# Delete namespace (WARNING: deletes ALL resources inside it)\nkubectl delete namespace staging\n```\n\n## Resource Quotas\n\nLimit total resource consumption per namespace:\n\n```yaml\napiVersion: v1\nkind: ResourceQuota\nmetadata:\n  name: production-quota\n  namespace: production\nspec:\n  hard:\n    requests.cpu: \"10\"          # Total CPU requests across all Pods\n    requests.memory: 20Gi       # Total memory requests\n    limits.cpu: \"20\"            # Total CPU limits\n    limits.memory: 40Gi         # Total memory limits\n    pods: \"50\"                  # Max number of Pods\n    services: \"20\"              # Max number of Services\n    persistentvolumeclaims: \"10\" # Max PVCs\n    configmaps: \"50\"            # Max ConfigMaps\n    secrets: \"50\"               # Max Secrets\n```\n\n```bash\n# Apply quota\nkubectl apply -f resource-quota.yaml\n\n# Check quota usage\nkubectl describe resourcequota production-quota -n production\n```\n\nWhen a ResourceQuota is active, every Pod must specify resource requests and limits — otherwise the Pod creation is rejected.\n\n## Limit Ranges\n\nSet default and max/min resource constraints per Pod or Container:\n\n```yaml\napiVersion: v1\nkind: LimitRange\nmetadata:\n  name: production-limits\n  namespace: production\nspec:\n  limits:\n    - type: Container\n      default:           # applied when not specified\n        cpu: 200m\n        memory: 256Mi\n      defaultRequest:    # applied when requests not specified\n        cpu: 100m\n        memory: 128Mi\n      max:\n        cpu: 2000m\n        memory: 4Gi\n      min:\n        cpu: 50m\n        memory: 64Mi\n    - type: Pod\n      max:\n        cpu: 4000m\n        memory: 8Gi\n```\n\nLimitRanges auto-inject defaults and reject Pods that exceed max or fall below min.\n\n## Namespace Patterns\n\n### By Environment\n```bash\nkubectl create ns development\nkubectl create ns staging\nkubectl create ns production\n```\n\n### By Team\n```bash\nkubectl create ns team-backend\nkubectl create ns team-frontend\nkubectl create ns team-data\n```\n\n### By Application\n```bash\nkubectl create ns app-payments\nkubectl create ns app-auth\nkubectl create ns app-notifications\n```\n\nCombine with [[kubernetes/rbac]] to restrict team access to their namespace.\n\n## Cross-Namespace Communication\n\nPods in different namespaces communicate via fully qualified DNS:\n\n```\nhttp://<service>.<namespace>.svc.cluster.local\nhttp://api-service.production.svc.cluster.local\n```\n\nSee [[kubernetes/services#dns]] for full DNS resolution details.\n\n## Environment Variables\n\n| Variable | Purpose |\n|----------|----------|\n| `KUBECONFIG` | Path to kubeconfig file |\n| `KUBE_NAMESPACE` | Default namespace |\n",
+  "sections": [
+    {
+      "id": "resource-quotas",
+      "title": "Resource quotas",
+      "body": "ResourceQuota limits total resource consumption in a namespace: CPU, memory, Pod count, Service count, PVC count. When active, all Pods must specify requests and limits. Check usage with `kubectl describe resourcequota <name> -n <ns>`. Multiple quotas can exist per namespace — all constraints must be satisfied. Use quotas to prevent runaway workloads from exhausting cluster capacity.",
+      "tags": ["resource-quota", "cpu", "memory", "pod-count", "limits", "consumption"]
+    },
+    {
+      "id": "limit-ranges",
+      "title": "Limit ranges",
+      "body": "LimitRange sets per-container and per-Pod default, min, and max resource constraints. Defaults are auto-injected when omitted from Pod specs. Min/max enforce hard boundaries — Pods violating them are rejected. Use LimitRanges alongside ResourceQuotas: LimitRanges control individual Pod sizing, ResourceQuotas control aggregate namespace consumption.",
+      "tags": ["limit-range", "default-resources", "min", "max", "auto-inject"]
+    },
+    {
+      "id": "patterns",
+      "title": "Namespace organization patterns",
+      "body": "Three common patterns: **By environment** (dev/staging/production) — simplest, mirrors deployment pipeline. **By team** — maps to org structure, combine with [[kubernetes/rbac]] for access control. **By application** — strong isolation between services. Hybrid approaches work too (e.g., team-backend-production). Label namespaces for policy enforcement with NetworkPolicy, PodSecurityStandards, and admission controllers.",
+      "tags": ["patterns", "environment", "team", "application", "organization", "labels"]
+    }
+  ],
+  "links": [
+    { "uri": "kubernetes/rbac", "context": "RBAC restricts access per namespace" },
+    { "uri": "kubernetes/services", "context": "Services are namespaced — cross-namespace access uses FQDN" },
+    { "uri": "kubernetes/configmaps", "context": "ConfigMaps and Secrets are namespace-scoped" },
+    { "uri": "kubernetes/deployments", "context": "Deployments are namespaced resources" },
+    { "uri": "kubernetes/pods", "context": "Pods exist within a namespace" }
+  ],
+  "related": [
+    { "uri": "kubernetes/rbac", "relation": "see-also", "note": "RBAC RoleBindings are namespace-scoped — use with namespaces for multi-tenancy" },
+    { "uri": "kubernetes/services", "relation": "see-also", "note": "Cross-namespace service communication uses FQDN DNS" }
+  ],
+  "scripts": [
+    {
+      "id": "setup-namespace",
+      "name": "Setup Namespace",
+      "description": "Create a namespace with resource quota and limit range",
+      "lang": "bash",
+      "runtime": "kubectl",
+      "entry": "./scripts/setup-namespace.sh",
+      "inline": "#!/bin/bash\nset -euo pipefail\nNS=${1:?Usage: setup-namespace.sh <namespace> [cpu-quota] [memory-quota] [max-pods]}\nCPU=${2:-10}\nMEMORY=${3:-20Gi}\nMAX_PODS=${4:-50}\n\necho \"Creating namespace: $NS\"\nkubectl create namespace \"$NS\" --dry-run=client -o yaml | kubectl apply -f -\n\necho \"Applying resource quota...\"\ncat <<EOF | kubectl apply -f -\napiVersion: v1\nkind: ResourceQuota\nmetadata:\n  name: ${NS}-quota\n  namespace: ${NS}\nspec:\n  hard:\n    requests.cpu: \"${CPU}\"\n    requests.memory: ${MEMORY}\n    pods: \"${MAX_PODS}\"\nEOF\n\necho \"Applying limit range...\"\ncat <<EOF | kubectl apply -f -\napiVersion: v1\nkind: LimitRange\nmetadata:\n  name: ${NS}-limits\n  namespace: ${NS}\nspec:\n  limits:\n    - type: Container\n      default:\n        cpu: 200m\n        memory: 256Mi\n      defaultRequest:\n        cpu: 100m\n        memory: 128Mi\nEOF\n\necho \"\"\necho \"Namespace $NS configured:\"\nkubectl describe resourcequota ${NS}-quota -n \"$NS\"",
+      "env": {
+        "KUBECONFIG": { "required": false, "secret": false, "default": "~/.kube/config", "description": "Path to kubeconfig file" }
+      },
+      "packages": []
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "description": "Namespace name" },
+        "labels": { "type": "object", "description": "Labels for the namespace" },
+        "quotaCPU": { "type": "string", "description": "CPU quota (e.g., 10)" },
+        "quotaMemory": { "type": "string", "description": "Memory quota (e.g., 20Gi)" },
+        "maxPods": { "type": "integer", "description": "Maximum number of Pods" }
+      },
+      "required": ["name"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "namespaceName": { "type": "string" },
+        "hasQuota": { "type": "boolean" },
+        "hasLimitRange": { "type": "boolean" }
+      }
+    }
+  },
+  "depends": [],
+  "more": {
+    "docs": "https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/",
+    "quotas": "https://kubernetes.io/docs/concepts/policy/resource-quotas/",
+    "limits": "https://kubernetes.io/docs/concepts/policy/limit-range/"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, DevOps engineers, SREs, AI agents",
+    "estimated_reading_time": "4 min",
+    "prerequisites": [],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

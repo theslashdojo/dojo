@@ -1,0 +1,126 @@
+{
+  "name": "config",
+  "version": "1.0.0",
+  "uri": "eslint/config",
+  "type": "skill",
+  "context": "Initialize and configure ESLint flat config for JavaScript/TypeScript projects with rules, plugins, and ignores",
+  "info": "This skill covers creating and maintaining ESLint configuration files using the flat config format (eslint.config.js/mjs/cjs). It handles initializing ESLint in new projects, configuring language options (ecmaVersion, sourceType, globals), setting up ignores, integrating shareable configs like @eslint/js recommended, and structuring config arrays for multi-environment projects. Agents use this skill when setting up ESLint from scratch, adding ESLint to an existing project, or restructuring configuration. See [[eslint/rules]] for rule-level configuration, [[eslint/plugins]] for plugin integration, and [[eslint/flat-config]] for the underlying format reference.",
+  "parent": "eslint",
+  "tags": ["config", "configuration", "eslint-config", "flat-config", "setup", "init"],
+  "aliases": [
+    "eslint config",
+    "eslint configuration",
+    "eslint setup",
+    "eslint init",
+    "eslint.config.js",
+    "eslint.config.mjs",
+    "configure eslint",
+    "set up eslint",
+    "init eslint"
+  ],
+  "triggers": [
+    "set up eslint in my project",
+    "create eslint config",
+    "initialize eslint",
+    "configure eslint for typescript",
+    "add eslint to this project",
+    "create eslint.config.js",
+    "set up linting",
+    "configure eslint globals",
+    "eslint ignore files"
+  ],
+  "body": "# ESLint Configuration\n\nESLint flat config exports an array of configuration objects from `eslint.config.js` (or `.mjs`/`.cjs`). Each object can target specific files and define rules, plugins, globals, and parser options.\n\n## Initialize a New Project\n\n```bash\n# Guided setup — creates eslint.config.mjs with prompts\nnpm init @eslint/config@latest\n\n# Manual setup\nnpm install --save-dev eslint @eslint/js\n```\n\n## Minimal Config\n\n```javascript\n// eslint.config.mjs\nimport js from \"@eslint/js\";\n\nexport default [\n  js.configs.recommended,\n];\n```\n\n## Full Config Structure\n\n```javascript\n// eslint.config.mjs\nimport js from \"@eslint/js\";\nimport globals from \"globals\";\n\nexport default [\n  // Recommended rules from @eslint/js\n  js.configs.recommended,\n\n  // Global ignores (must be standalone object with ONLY ignores key)\n  {\n    ignores: [\"dist/\", \"build/\", \"node_modules/\", \"coverage/\", \"**/*.min.js\"],\n  },\n\n  // Main source config\n  {\n    files: [\"src/**/*.{js,mjs,cjs}\"],\n    languageOptions: {\n      ecmaVersion: 2024,\n      sourceType: \"module\",\n      globals: {\n        ...globals.browser,\n        ...globals.node,\n      },\n    },\n    rules: {\n      \"no-unused-vars\": [\"error\", { argsIgnorePattern: \"^_\" }],\n      \"no-console\": \"warn\",\n      \"prefer-const\": \"error\",\n      eqeqeq: [\"error\", \"always\"],\n    },\n  },\n\n  // Test file overrides\n  {\n    files: [\"**/*.test.{js,ts}\", \"**/*.spec.{js,ts}\"],\n    languageOptions: {\n      globals: {\n        ...globals.jest,\n      },\n    },\n    rules: {\n      \"no-unused-expressions\": \"off\",\n    },\n  },\n];\n```\n\n## TypeScript Configuration\n\n```javascript\n// eslint.config.mjs\nimport js from \"@eslint/js\";\nimport tseslint from \"typescript-eslint\";\nimport globals from \"globals\";\n\nexport default tseslint.config(\n  js.configs.recommended,\n  ...tseslint.configs.recommended,\n  {\n    ignores: [\"dist/\", \"node_modules/\"],\n  },\n  {\n    files: [\"src/**/*.ts\"],\n    languageOptions: {\n      globals: { ...globals.node },\n      parserOptions: {\n        projectService: true,\n        tsconfigRootDir: import.meta.dirname,\n      },\n    },\n    rules: {\n      \"@typescript-eslint/no-unused-vars\": [\"error\", { argsIgnorePattern: \"^_\" }],\n      \"@typescript-eslint/no-explicit-any\": \"warn\",\n    },\n  },\n);\n```\n\n## React Configuration\n\n```javascript\n// eslint.config.mjs\nimport js from \"@eslint/js\";\nimport react from \"eslint-plugin-react\";\nimport reactHooks from \"eslint-plugin-react-hooks\";\nimport globals from \"globals\";\n\nexport default [\n  js.configs.recommended,\n  {\n    files: [\"src/**/*.{jsx,tsx}\"],\n    plugins: {\n      react,\n      \"react-hooks\": reactHooks,\n    },\n    languageOptions: {\n      globals: { ...globals.browser },\n      parserOptions: {\n        ecmaFeatures: { jsx: true },\n      },\n    },\n    rules: {\n      ...reactHooks.configs.recommended.rules,\n      \"react/react-in-jsx-scope\": \"off\",\n      \"react/prop-types\": \"off\",\n    },\n    settings: {\n      react: { version: \"detect\" },\n    },\n  },\n];\n```\n\n## Ignores\n\nGlobal ignores must be a standalone config object with only the `ignores` key:\n\n```javascript\nexport default [\n  // Global ignores — applied to all files\n  { ignores: [\"dist/\", \"build/\", \"*.config.js\"] },\n\n  // Per-config ignores — only for matched files\n  {\n    files: [\"src/**/*.js\"],\n    ignores: [\"src/generated/**\"],\n    rules: { /* ... */ },\n  },\n];\n```\n\n## Language Options\n\n| Option | Values | Default |\n|--------|--------|----------|\n| `ecmaVersion` | `2015`-`2025`, `\"latest\"` | `\"latest\"` |\n| `sourceType` | `\"module\"`, `\"commonjs\"`, `\"script\"` | `\"module\"` for `.mjs`, `\"commonjs\"` for `.cjs` |\n| `globals` | Object from `globals` package | `{}` |\n| `parser` | Custom parser object | espree |\n| `parserOptions` | Parser-specific options | `{}` |\n\n## Using defineConfig Helper\n\n```javascript\nimport { defineConfig } from \"eslint/config\";\nimport js from \"@eslint/js\";\n\nexport default defineConfig([\n  { extends: [js.configs.recommended] },\n  {\n    files: [\"src/**/*.js\"],\n    rules: { \"no-console\": \"warn\" },\n  },\n]);\n```\n\n## Verify Config\n\n```bash\n# Print resolved config for a specific file\nnpx eslint --print-config src/index.js\n\n# Interactive config inspector\nnpx eslint --inspect-config\n```\n",
+  "sections": [
+    {
+      "id": "init",
+      "title": "Initialization",
+      "body": "Run `npm init @eslint/config@latest` for guided setup that detects your framework and creates `eslint.config.mjs`. For manual setup, install `eslint` and `@eslint/js`, then create the config file. The guided setup handles TypeScript, React, Vue, and other framework detection automatically.",
+      "tags": ["init", "setup", "create", "new-project"]
+    },
+    {
+      "id": "language-options",
+      "title": "Language options and globals",
+      "body": "Set `languageOptions.ecmaVersion` for JS version, `sourceType` for module system, and `globals` for global variables. Install the `globals` package for predefined sets: `globals.browser`, `globals.node`, `globals.jest`, `globals.mocha`. For TypeScript, the parser is set automatically by typescript-eslint. See [[eslint/plugins]] for parser plugins.",
+      "tags": ["language-options", "ecma-version", "globals", "parser", "source-type"]
+    },
+    {
+      "id": "ignores",
+      "title": "Ignore patterns",
+      "body": "Global ignores must be a standalone config object with ONLY the `ignores` key — no `files`, `rules`, or other properties. Patterns use glob syntax. Common ignores: `dist/`, `build/`, `node_modules/`, `coverage/`, `**/*.min.js`. Per-config ignores can coexist with `files` to exclude subsets. Note: dotfiles are NOT ignored by default in flat config — add `**/.*` if needed.",
+      "tags": ["ignores", "exclude", "glob", "dotfiles"]
+    },
+    {
+      "id": "typescript",
+      "title": "TypeScript setup",
+      "body": "Install `typescript-eslint` and use `tseslint.config()` to merge configs. Spread `tseslint.configs.recommended` for recommended TS rules. For type-aware linting, set `parserOptions.projectService: true` and `tsconfigRootDir: import.meta.dirname`. See [[eslint/plugins]] for typescript-eslint details.",
+      "tags": ["typescript", "ts", "tseslint", "type-aware", "parser"]
+    },
+    {
+      "id": "react",
+      "title": "React setup",
+      "body": "Install `eslint-plugin-react` and `eslint-plugin-react-hooks`. Set `ecmaFeatures: { jsx: true }` in parserOptions. Spread `reactHooks.configs.recommended.rules` for hooks rules. Disable `react/react-in-jsx-scope` for React 17+ (automatic JSX runtime). Set `settings.react.version` to `\"detect\"` for auto-detection.",
+      "tags": ["react", "jsx", "hooks", "react-hooks"]
+    }
+  ],
+  "links": [
+    { "uri": "eslint/rules", "context": "Configure individual rules after setup" },
+    { "uri": "eslint/plugins", "context": "Add plugins for TypeScript, React, etc." },
+    { "uri": "eslint/flat-config", "context": "Flat config format reference" },
+    { "uri": "eslint/fix", "context": "Auto-fix after configuration" },
+    { "uri": "eslint/troubleshooting", "context": "Debug config issues" },
+    { "uri": "typescript/compiler", "context": "tsconfig.json needed for type-aware linting" }
+  ],
+  "related": [
+    { "uri": "eslint/flat-config", "relation": "see-also", "note": "Flat config is the underlying format this skill configures" },
+    { "uri": "eslint/plugins", "relation": "see-also", "note": "Plugins are configured within the config file" },
+    { "uri": "eslint/rules", "relation": "see-also", "note": "Rules are a key part of configuration" }
+  ],
+  "scripts": [
+    {
+      "id": "init-config",
+      "name": "Initialize ESLint Config",
+      "description": "Detect project type and create an appropriate eslint.config.mjs with recommended rules, plugins, and ignores",
+      "lang": "bash",
+      "runtime": "bash",
+      "entry": "./scripts/init-config.sh",
+      "packages": ["eslint", "@eslint/js"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "project_dir": { "type": "string", "description": "Root directory of the project", "default": "." },
+        "typescript": { "type": "boolean", "description": "Enable TypeScript support", "default": false },
+        "react": { "type": "boolean", "description": "Enable React/JSX support", "default": false },
+        "node": { "type": "boolean", "description": "Enable Node.js globals", "default": true }
+      }
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "config_path": { "type": "string", "description": "Path to created eslint.config.mjs" },
+        "packages_installed": { "type": "array", "items": { "type": "string" }, "description": "npm packages installed" }
+      }
+    }
+  },
+  "depends": [],
+  "more": {
+    "docs": "https://eslint.org/docs/latest/use/configure/",
+    "migration": "https://eslint.org/docs/latest/use/configure/migration-guide"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "5 min",
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

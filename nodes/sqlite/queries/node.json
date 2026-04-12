@@ -1,0 +1,165 @@
+{
+  "name": "queries",
+  "version": "1.0.0",
+  "uri": "sqlite/queries",
+  "type": "skill",
+  "context": "Read and write data in SQLite — SELECT, INSERT, UPDATE, DELETE, CTEs, UPSERT, RETURNING, JSON operators, window functions",
+  "info": "This skill covers every SQLite query operation an agent needs: selecting data with WHERE, JOIN, GROUP BY, ORDER BY, and LIMIT; inserting rows with INSERT and INSERT OR REPLACE; updating with UPDATE and UPDATE OR; deleting with DELETE; using Common Table Expressions (WITH/WITH RECURSIVE) for complex queries; UPSERT via INSERT ON CONFLICT for atomic insert-or-update; RETURNING clauses to get affected rows back; JSON operators (-> and ->>) for querying JSON columns; window functions (ROW_NUMBER, RANK, LAG, LEAD, SUM OVER) for analytics; and parameterized queries to prevent SQL injection. Agents use this skill any time they need to read or write data in a SQLite database. See [[sqlite/schema]] for table design, [[sqlite/performance]] for query optimization, and [[sqlite/extensions]] for FTS5 full-text search queries.",
+  "parent": "sqlite",
+  "tags": ["queries", "select", "insert", "update", "delete", "sql", "cte", "upsert", "returning", "json", "window-functions", "joins"],
+  "aliases": [
+    "sqlite queries",
+    "sqlite select",
+    "sqlite insert",
+    "sqlite update",
+    "sqlite delete",
+    "sqlite sql",
+    "sqlite query",
+    "sql queries sqlite",
+    "sqlite cte",
+    "sqlite upsert",
+    "sqlite returning",
+    "sqlite json query",
+    "sqlite window functions",
+    "sqlite joins"
+  ],
+  "triggers": [
+    "query a sqlite database",
+    "select from sqlite",
+    "insert into sqlite",
+    "update sqlite rows",
+    "delete from sqlite",
+    "write a sqlite query",
+    "use CTEs in sqlite",
+    "upsert in sqlite",
+    "insert or update sqlite",
+    "query json in sqlite",
+    "use window functions in sqlite",
+    "join tables in sqlite",
+    "parameterized query sqlite",
+    "prevent sql injection sqlite"
+  ],
+  "body": "# SQLite Queries\n\nSQLite supports most of SQL-92 plus modern extensions. This skill covers all query operations for reading and writing data.\n\n## SELECT — Reading Data\n\n```sql\n-- Basic select\nSELECT id, name, email FROM users WHERE active = 1 ORDER BY name;\n\n-- With LIMIT and OFFSET\nSELECT * FROM logs ORDER BY created_at DESC LIMIT 50 OFFSET 100;\n\n-- Aggregations\nSELECT department, COUNT(*) as count, AVG(salary) as avg_salary\nFROM employees\nGROUP BY department\nHAVING count > 5;\n\n-- DISTINCT\nSELECT DISTINCT category FROM products;\n```\n\n## JOINs\n\n```sql\n-- INNER JOIN\nSELECT u.name, o.total\nFROM users u\nINNER JOIN orders o ON o.user_id = u.id;\n\n-- LEFT JOIN (include users with no orders)\nSELECT u.name, COALESCE(SUM(o.total), 0) as lifetime_value\nFROM users u\nLEFT JOIN orders o ON o.user_id = u.id\nGROUP BY u.id;\n\n-- Self-join (employees with managers)\nSELECT e.name, m.name AS manager\nFROM employees e\nLEFT JOIN employees m ON e.manager_id = m.id;\n```\n\n## INSERT — Writing Data\n\n```sql\n-- Single row\nINSERT INTO users (name, email) VALUES ('Alice', 'alice@example.com');\n\n-- Multiple rows\nINSERT INTO tags (name) VALUES ('rust'), ('python'), ('go');\n\n-- Insert from select\nINSERT INTO archive (user_id, name, archived_at)\nSELECT id, name, datetime('now') FROM users WHERE active = 0;\n\n-- With RETURNING (get inserted data back)\nINSERT INTO users (name, email)\nVALUES ('Bob', 'bob@example.com')\nRETURNING id, name, email;\n```\n\n## UPDATE\n\n```sql\n-- Basic update\nUPDATE users SET active = 0 WHERE last_login < datetime('now', '-1 year');\n\n-- Update with RETURNING\nUPDATE products SET price = price * 1.1\nWHERE category = 'electronics'\nRETURNING id, name, price;\n\n-- Update from another table (using subquery)\nUPDATE orders SET status = 'cancelled'\nWHERE user_id IN (SELECT id FROM users WHERE banned = 1);\n```\n\n## DELETE\n\n```sql\n-- Basic delete\nDELETE FROM sessions WHERE expires_at < datetime('now');\n\n-- Delete with RETURNING\nDELETE FROM temp_files WHERE created_at < datetime('now', '-7 days')\nRETURNING id, path;\n\n-- Delete all rows (use TRUNCATE-like pattern)\nDELETE FROM logs;\n```\n\n## UPSERT — INSERT ON CONFLICT\n\n```sql\n-- Insert or update on conflict\nINSERT INTO settings (key, value)\nVALUES ('theme', 'dark')\nON CONFLICT(key) DO UPDATE SET value = excluded.value;\n\n-- Insert or ignore\nINSERT OR IGNORE INTO tags (name) VALUES ('existing-tag');\n\n-- Insert or replace (deletes + re-inserts)\nINSERT OR REPLACE INTO cache (key, value, expires)\nVALUES ('session:abc', '{\"user\":1}', datetime('now', '+1 hour'));\n\n-- Upsert with RETURNING\nINSERT INTO counters (name, count)\nVALUES ('page_views', 1)\nON CONFLICT(name) DO UPDATE SET count = count + 1\nRETURNING name, count;\n```\n\n## CTEs — Common Table Expressions\n\n```sql\n-- Non-recursive CTE\nWITH active_users AS (\n  SELECT * FROM users WHERE active = 1\n),\nrecent_orders AS (\n  SELECT * FROM orders WHERE created_at > datetime('now', '-30 days')\n)\nSELECT au.name, COUNT(ro.id) as recent_order_count\nFROM active_users au\nLEFT JOIN recent_orders ro ON ro.user_id = au.id\nGROUP BY au.id;\n\n-- Recursive CTE (tree traversal)\nWITH RECURSIVE subordinates AS (\n  SELECT id, name, manager_id, 0 AS depth\n  FROM employees WHERE id = 1\n  UNION ALL\n  SELECT e.id, e.name, e.manager_id, s.depth + 1\n  FROM employees e\n  INNER JOIN subordinates s ON e.manager_id = s.id\n)\nSELECT * FROM subordinates ORDER BY depth;\n\n-- Recursive CTE (generate series)\nWITH RECURSIVE dates(d) AS (\n  VALUES(date('now', '-30 days'))\n  UNION ALL\n  SELECT date(d, '+1 day') FROM dates WHERE d < date('now')\n)\nSELECT d as date, COALESCE(count, 0) as signups\nFROM dates\nLEFT JOIN (SELECT date(created_at) as d, COUNT(*) as count FROM users GROUP BY 1) u USING(d);\n```\n\n## Window Functions\n\n```sql\n-- ROW_NUMBER for pagination\nSELECT *, ROW_NUMBER() OVER (ORDER BY created_at DESC) as row_num\nFROM posts;\n\n-- RANK within groups\nSELECT name, department, salary,\n  RANK() OVER (PARTITION BY department ORDER BY salary DESC) as dept_rank\nFROM employees;\n\n-- Running total\nSELECT date, amount,\n  SUM(amount) OVER (ORDER BY date ROWS UNBOUNDED PRECEDING) as running_total\nFROM transactions;\n\n-- LAG/LEAD for comparing rows\nSELECT date, revenue,\n  revenue - LAG(revenue) OVER (ORDER BY date) as daily_change\nFROM daily_revenue;\n```\n\n## JSON Queries\n\nSQLite has built-in JSON support via the `->` and `->>` operators and `json_*` functions:\n\n```sql\n-- Extract JSON values\nSELECT data->>'$.name' as name, data->>'$.age' as age\nFROM profiles;\n\n-- Filter by JSON field\nSELECT * FROM events\nWHERE data->>'$.type' = 'click'\nAND CAST(data->>'$.duration' AS REAL) > 5.0;\n\n-- JSON array operations\nSELECT id, json_each.value as tag\nFROM posts, json_each(posts.tags);\n\n-- Build JSON responses\nSELECT json_object(\n  'id', id,\n  'name', name,\n  'orders', (\n    SELECT json_group_array(json_object('id', o.id, 'total', o.total))\n    FROM orders o WHERE o.user_id = users.id\n  )\n) as user_json\nFROM users;\n\n-- Modify JSON\nUPDATE profiles\nSET data = json_set(data, '$.verified', json('true'))\nWHERE id = 42;\n```\n\n## Parameterized Queries (Prevent SQL Injection)\n\n```python\n# Python — ALWAYS use ? placeholders\ncursor.execute('SELECT * FROM users WHERE email = ?', (email,))\ncursor.execute('INSERT INTO users (name, email) VALUES (?, ?)', (name, email))\n```\n\n```javascript\n// Node.js (better-sqlite3) — ALWAYS use ? or $named placeholders\nconst user = db.prepare('SELECT * FROM users WHERE email = ?').get(email);\nconst stmt = db.prepare('INSERT INTO users (name, email) VALUES ($name, $email)');\nstmt.run({ name: 'Alice', email: 'alice@example.com' });\n```\n\n**Never interpolate user input into SQL strings.** Always use parameterized queries.\n\n## Transactions\n\n```sql\nBEGIN TRANSACTION;\nINSERT INTO accounts (user_id, balance) VALUES (1, 1000);\nINSERT INTO ledger (account_id, amount, type) VALUES (1, 1000, 'deposit');\nCOMMIT;\n\n-- Savepoints for nested transactions\nSAVEPOINT batch_insert;\nINSERT INTO items (name) VALUES ('item1');\nINSERT INTO items (name) VALUES ('item2');\nRELEASE batch_insert;\n-- or ROLLBACK TO batch_insert; on error\n```\n\n## Date and Time\n\nSQLite has no DATE type — store as TEXT (ISO-8601), INTEGER (Unix timestamp), or REAL (Julian day):\n\n```sql\n-- Current timestamps\nSELECT datetime('now');                    -- 2026-04-11 12:00:00\nSELECT strftime('%s', 'now');              -- Unix timestamp\nSELECT date('now', '-7 days');             -- 7 days ago\n\n-- Filter by date range\nSELECT * FROM events\nWHERE created_at BETWEEN datetime('now', '-24 hours') AND datetime('now');\n\n-- Date arithmetic\nSELECT date('now', '+1 month', 'start of month', '-1 day') as last_day_of_month;\n```\n",
+  "sections": [
+    {
+      "id": "select",
+      "title": "SELECT queries",
+      "body": "Use SELECT with WHERE, JOIN, GROUP BY, HAVING, ORDER BY, and LIMIT. SQLite supports INNER JOIN, LEFT JOIN, CROSS JOIN, and self-joins. Use COALESCE for null handling. DISTINCT removes duplicates. Aggregate functions: COUNT, SUM, AVG, MIN, MAX, GROUP_CONCAT, json_group_array.",
+      "tags": ["select", "join", "where", "group-by", "order-by", "aggregate"]
+    },
+    {
+      "id": "insert-update-delete",
+      "title": "INSERT, UPDATE, DELETE",
+      "body": "INSERT single or multiple rows. INSERT from SELECT for bulk operations. UPDATE with WHERE to filter. DELETE with WHERE to target rows. All three support the RETURNING clause to get affected rows back without a separate SELECT. Use parameterized queries (? placeholders) to prevent SQL injection.",
+      "tags": ["insert", "update", "delete", "returning", "parameterized"]
+    },
+    {
+      "id": "upsert",
+      "title": "UPSERT with ON CONFLICT",
+      "body": "INSERT ON CONFLICT(column) DO UPDATE SET provides atomic upsert. The `excluded` pseudo-table refers to the row that would have been inserted. INSERT OR IGNORE silently skips conflicts. INSERT OR REPLACE deletes the conflicting row then inserts. Upsert is essential for idempotent writes — caches, counters, settings, and sync operations.",
+      "tags": ["upsert", "on-conflict", "insert-or-replace", "insert-or-ignore", "idempotent"]
+    },
+    {
+      "id": "cte",
+      "title": "Common Table Expressions",
+      "body": "WITH clause creates named temporary result sets. Non-recursive CTEs simplify complex joins and subqueries. Recursive CTEs (WITH RECURSIVE) handle tree traversal, graph walking, and series generation. Recursive CTEs require a base case UNION ALL a recursive step. Use for: org charts, category trees, date range generation, bill-of-materials.",
+      "tags": ["cte", "with", "recursive", "tree-traversal", "common-table-expression"]
+    },
+    {
+      "id": "window-functions",
+      "title": "Window functions",
+      "body": "Window functions compute values across rows related to the current row without collapsing them. ROW_NUMBER() for numbering, RANK() for ranking with ties, DENSE_RANK() for gapless ranking. LAG()/LEAD() access previous/next rows. SUM/AVG/COUNT OVER() for running aggregates. PARTITION BY groups windows. ROWS BETWEEN defines the frame. Available since SQLite 3.25.0.",
+      "tags": ["window-functions", "row-number", "rank", "lag", "lead", "over", "partition"]
+    },
+    {
+      "id": "json",
+      "title": "JSON queries",
+      "body": "Use `->` to extract JSON (returns JSON text) and `->>` to extract values (returns SQL type). json_extract() for path-based access. json_each() to iterate arrays. json_group_array()/json_group_object() to build JSON in queries. json_set()/json_insert()/json_replace()/json_remove() to modify JSON. Path syntax: `$.key`, `$.array[0]`, `$.nested.deep`. See [[sqlite/extensions]] for full JSON reference.",
+      "tags": ["json", "json-extract", "json-each", "json-set", "arrow-operator"]
+    },
+    {
+      "id": "dates",
+      "title": "Date and time functions",
+      "body": "SQLite has no native DATE type. Store dates as TEXT (ISO-8601 `YYYY-MM-DD HH:MM:SS`), INTEGER (Unix epoch), or REAL (Julian day number). Functions: date(), time(), datetime(), julianday(), strftime(), unixepoch(). Modifiers: `'+1 day'`, `'-3 hours'`, `'start of month'`, `'weekday 0'`. Always use `datetime('now')` for current UTC time.",
+      "tags": ["date", "time", "datetime", "strftime", "timestamp", "epoch"]
+    },
+    {
+      "id": "transactions",
+      "title": "Transactions and savepoints",
+      "body": "BEGIN/COMMIT/ROLLBACK for atomic operations. SAVEPOINT/RELEASE/ROLLBACK TO for nested transaction control. In [[sqlite/wal]] mode, readers don't block writers and writers don't block readers. Use `BEGIN IMMEDIATE` if you know you'll write — avoids upgrading a read lock to a write lock mid-transaction. Always handle SQLITE_BUSY with `PRAGMA busy_timeout`.",
+      "tags": ["transactions", "begin", "commit", "rollback", "savepoint", "acid"]
+    }
+  ],
+  "links": [
+    { "uri": "sqlite/schema", "context": "Design tables and indexes before querying" },
+    { "uri": "sqlite/performance", "context": "Optimize queries with EXPLAIN QUERY PLAN and indexes" },
+    { "uri": "sqlite/wal", "context": "Enable concurrent reads during writes" },
+    { "uri": "sqlite/extensions", "context": "FTS5 for full-text search queries, JSON functions" },
+    { "uri": "sqlite", "context": "SQLite ecosystem overview and connection setup" }
+  ],
+  "related": [
+    { "uri": "sqlite/schema", "relation": "prerequisite", "note": "Tables and indexes must exist before you can query them" },
+    { "uri": "sqlite/performance", "relation": "see-also", "note": "Use EXPLAIN QUERY PLAN to understand and optimize query execution" },
+    { "uri": "sqlite/extensions", "relation": "extends", "note": "FTS5 MATCH queries and JSON functions extend the query language" },
+    { "uri": "drizzle/queries", "relation": "see-also", "note": "Drizzle ORM provides a type-safe TypeScript query builder over SQLite" },
+    { "uri": "prisma/client", "relation": "see-also", "note": "Prisma Client provides type-safe SQLite queries for Node.js/TypeScript" }
+  ],
+  "scripts": [
+    {
+      "id": "query-ops",
+      "name": "SQLite Query Operations",
+      "description": "Execute common SQLite query patterns: create tables, insert data, query with filters, upsert, CTEs, JSON queries, and transactions",
+      "lang": "bash",
+      "runtime": "bash>=4",
+      "entry": "./scripts/query-ops.sh",
+      "env": {
+        "SQLITE_DB": { "required": false, "default": "app.db", "description": "Path to SQLite database file" }
+      },
+      "packages": ["sqlite3"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "database": { "type": "string", "description": "Path to SQLite database file" },
+        "query": { "type": "string", "description": "SQL query to execute" },
+        "params": { "type": "array", "items": { "type": "string" }, "description": "Parameterized query values" },
+        "mode": { "type": "string", "enum": ["json", "csv", "table", "line"], "default": "json", "description": "Output format" }
+      },
+      "required": ["database", "query"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "rows": { "type": "array", "description": "Query result rows" },
+        "changes": { "type": "integer", "description": "Number of rows affected (for INSERT/UPDATE/DELETE)" },
+        "lastInsertRowid": { "type": "integer", "description": "Rowid of last inserted row" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "sqlite", "reason": "SQLite must be available (sqlite3 CLI or language driver)" },
+    { "uri": "sqlite/schema", "reason": "Tables must exist before querying", "optional": true }
+  ],
+  "more": {
+    "docs": "https://www.sqlite.org/lang.html",
+    "spec": "https://www.sqlite.org/lang_select.html",
+    "examples": "https://www.sqlite.org/cli.html"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "6 min",
+    "prerequisites": ["sqlite"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

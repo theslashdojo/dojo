@@ -1,0 +1,149 @@
+{
+  "name": "firestore",
+  "version": "1.0.0",
+  "uri": "firebase/firestore",
+  "type": "skill",
+  "context": "NoSQL document database with real-time sync, offline persistence, automatic scaling, and declarative security rules for web and mobile apps",
+  "info": "Cloud Firestore organizes data into collections of documents, where each document contains fields (strings, numbers, booleans, timestamps, arrays, maps, references, geopoints) and can hold subcollections for hierarchical data. CRUD operations use the v9 modular SDK: addDoc/setDoc to create, getDoc/getDocs to read, updateDoc to modify, and deleteDoc to remove. Queries support where clauses with comparison and array operators, orderBy, limit, startAfter for cursor-based pagination, and compound queries backed by composite indexes. Real-time listeners via onSnapshot stream document and query changes instantly to connected clients. Security rules in firestore.rules enforce read/write access per-path using request.auth, resource.data, and custom functions. Transactions with runTransaction guarantee atomic read-then-write consistency, while writeBatch groups up to 500 writes into a single atomic commit. Offline persistence is enabled by default on mobile and can be enabled on web with enableIndexedDbPersistence, caching reads and queuing writes until connectivity resumes. Server-side access via the Firebase Admin SDK bypasses security rules for backend operations, Cloud Functions triggers, and data migrations.",
+  "parent": "firebase",
+  "tags": ["firestore", "nosql", "document", "collection", "realtime", "query", "security-rules", "offline", "transactions"],
+  "aliases": [
+    "firestore",
+    "cloud firestore",
+    "firebase database",
+    "firebase nosql",
+    "firebase realtime database",
+    "firebase db",
+    "document database"
+  ],
+  "triggers": [
+    "query firestore",
+    "add document to firestore",
+    "listen to firestore changes",
+    "write firestore security rules",
+    "create firestore collection"
+  ],
+  "body": "# Cloud Firestore\n\nCloud Firestore is a NoSQL document database with real-time sync, offline support, and security rules. Data lives in collections of documents, each identified by a unique ID.\n\n## Initialize Firestore\n\n```typescript\nimport { initializeApp } from 'firebase/app';\nimport { getFirestore } from 'firebase/firestore';\n\nconst app = initializeApp({\n  apiKey: process.env.FIREBASE_API_KEY,\n  projectId: process.env.FIREBASE_PROJECT_ID,\n});\nconst db = getFirestore(app);\n```\n\n## Data Model\n\nFirestore organizes data hierarchically:\n\n```\nusers (collection)\n  \u251c\u2500 userId1 (document)\n  \u2502   \u251c\u2500 name: \"Alice\"\n  \u2502   \u251c\u2500 email: \"alice@example.com\"\n  \u2502   \u2514\u2500 posts (subcollection)\n  \u2502       \u2514\u2500 postId1 (document)\n  \u2514\u2500 userId2 (document)\n```\n\nDocuments contain fields (string, number, boolean, timestamp, array, map, reference, geopoint). Max document size is 1 MB.\n\n## Add a Document\n\n```typescript\nimport { collection, addDoc } from 'firebase/firestore';\n\n// Auto-generated ID\nconst docRef = await addDoc(collection(db, 'users'), {\n  name: 'Alice',\n  email: 'alice@example.com',\n  age: 30,\n  createdAt: serverTimestamp(),\n});\nconsole.log('Document ID:', docRef.id);\n```\n\n## Set a Document (with explicit ID)\n\n```typescript\nimport { doc, setDoc } from 'firebase/firestore';\n\nawait setDoc(doc(db, 'users', 'alice-uid'), {\n  name: 'Alice',\n  email: 'alice@example.com',\n  age: 30,\n});\n\n// Merge instead of overwrite\nawait setDoc(doc(db, 'users', 'alice-uid'), { age: 31 }, { merge: true });\n```\n\n## Get a Document\n\n```typescript\nimport { doc, getDoc } from 'firebase/firestore';\n\nconst docSnap = await getDoc(doc(db, 'users', 'alice-uid'));\nif (docSnap.exists()) {\n  console.log('Data:', docSnap.data());\n} else {\n  console.log('Document not found');\n}\n```\n\n## Query Documents\n\n```typescript\nimport { collection, query, where, orderBy, limit, getDocs } from 'firebase/firestore';\n\nconst q = query(\n  collection(db, 'users'),\n  where('age', '>', 18),\n  orderBy('name'),\n  limit(10)\n);\n\nconst snapshot = await getDocs(q);\nsnapshot.forEach((doc) => {\n  console.log(doc.id, '=>', doc.data());\n});\n```\n\n### Pagination with Cursors\n\n```typescript\nimport { query, collection, orderBy, limit, startAfter, getDocs } from 'firebase/firestore';\n\n// First page\nconst first = query(collection(db, 'users'), orderBy('name'), limit(25));\nconst firstSnap = await getDocs(first);\nconst lastDoc = firstSnap.docs[firstSnap.docs.length - 1];\n\n// Next page\nconst next = query(collection(db, 'users'), orderBy('name'), startAfter(lastDoc), limit(25));\nconst nextSnap = await getDocs(next);\n```\n\n### Compound Queries\n\n```typescript\n// Equality + range (requires composite index)\nconst q = query(\n  collection(db, 'posts'),\n  where('status', '==', 'published'),\n  where('likes', '>=', 10),\n  orderBy('likes', 'desc')\n);\n\n// Array contains\nconst q2 = query(\n  collection(db, 'posts'),\n  where('tags', 'array-contains', 'firebase')\n);\n\n// In operator\nconst q3 = query(\n  collection(db, 'users'),\n  where('role', 'in', ['admin', 'editor'])\n);\n```\n\n## Real-time Listener\n\n```typescript\nimport { doc, collection, query, where, onSnapshot } from 'firebase/firestore';\n\n// Listen to a single document\nconst unsub = onSnapshot(doc(db, 'users', 'alice-uid'), (docSnap) => {\n  if (docSnap.exists()) {\n    console.log('Current data:', docSnap.data());\n  }\n});\n\n// Listen to a query\nconst unsubQuery = onSnapshot(\n  query(collection(db, 'messages'), where('room', '==', 'general')),\n  (snapshot) => {\n    snapshot.docChanges().forEach((change) => {\n      if (change.type === 'added') console.log('New:', change.doc.data());\n      if (change.type === 'modified') console.log('Modified:', change.doc.data());\n      if (change.type === 'removed') console.log('Removed:', change.doc.data());\n    });\n  }\n);\n\n// Stop listening\nunsub();\nunsubQuery();\n```\n\n## Update a Document\n\n```typescript\nimport { doc, updateDoc, arrayUnion, arrayRemove, increment, serverTimestamp } from 'firebase/firestore';\n\nawait updateDoc(doc(db, 'users', 'alice-uid'), {\n  age: 31,\n  'address.city': 'San Francisco', // nested field\n  tags: arrayUnion('premium'),      // add to array\n  loginCount: increment(1),         // atomic increment\n  updatedAt: serverTimestamp(),      // server timestamp\n});\n\n// Remove from array\nawait updateDoc(doc(db, 'users', 'alice-uid'), {\n  tags: arrayRemove('trial'),\n});\n```\n\n## Delete a Document\n\n```typescript\nimport { doc, deleteDoc, deleteField, updateDoc } from 'firebase/firestore';\n\n// Delete entire document\nawait deleteDoc(doc(db, 'users', 'alice-uid'));\n\n// Delete a single field\nawait updateDoc(doc(db, 'users', 'alice-uid'), {\n  age: deleteField(),\n});\n```\n\n## Transactions\n\nTransactions ensure atomic read-then-write operations:\n\n```typescript\nimport { runTransaction, doc } from 'firebase/firestore';\n\nawait runTransaction(db, async (transaction) => {\n  const postRef = doc(db, 'posts', postId);\n  const postSnap = await transaction.get(postRef);\n\n  if (!postSnap.exists()) throw new Error('Post not found');\n\n  const newLikes = postSnap.data().likes + 1;\n  transaction.update(postRef, { likes: newLikes });\n});\n```\n\n## Batched Writes\n\nGroup up to 500 writes into a single atomic operation:\n\n```typescript\nimport { writeBatch, doc, collection } from 'firebase/firestore';\n\nconst batch = writeBatch(db);\n\nbatch.set(doc(collection(db, 'users')), { name: 'Alice' });\nbatch.update(doc(db, 'counters', 'users'), { count: increment(1) });\nbatch.delete(doc(db, 'invites', inviteId));\n\nawait batch.commit();\n```\n\n## Security Rules\n\n```\n// firestore.rules\nrules_version = '2';\nservice cloud.firestore {\n  match /databases/{database}/documents {\n\n    // Users can read/write their own documents\n    match /users/{userId} {\n      allow read: if request.auth != null;\n      allow write: if request.auth.uid == userId;\n    }\n\n    // Posts: anyone can read published, only author can write\n    match /posts/{postId} {\n      allow read: if resource.data.status == 'published'\n                  || request.auth.uid == resource.data.authorId;\n      allow create: if request.auth != null\n                    && request.resource.data.authorId == request.auth.uid;\n      allow update, delete: if request.auth.uid == resource.data.authorId;\n    }\n\n    // Helper function\n    function isAdmin() {\n      return request.auth.token.admin == true;\n    }\n\n    match /admin/{document=**} {\n      allow read, write: if isAdmin();\n    }\n  }\n}\n```\n\n## Composite Indexes\n\nCompound queries (equality on one field + range/orderBy on another) require composite indexes. Firestore auto-suggests missing indexes in error messages. Define them in `firestore.indexes.json`:\n\n```json\n{\n  \"indexes\": [\n    {\n      \"collectionGroup\": \"posts\",\n      \"queryScope\": \"COLLECTION\",\n      \"fields\": [\n        { \"fieldPath\": \"status\", \"order\": \"ASCENDING\" },\n        { \"fieldPath\": \"likes\", \"order\": \"DESCENDING\" }\n      ]\n    }\n  ]\n}\n```\n\n## Offline Persistence\n\n```typescript\nimport { enableIndexedDbPersistence, getFirestore } from 'firebase/firestore';\n\nconst db = getFirestore(app);\nawait enableIndexedDbPersistence(db).catch((err) => {\n  if (err.code === 'failed-precondition') {\n    // Multiple tabs open — only one can use persistence\n  } else if (err.code === 'unimplemented') {\n    // Browser doesn't support IndexedDB\n  }\n});\n```\n",
+  "sections": [
+    {
+      "id": "data-model",
+      "title": "Document/collection data model",
+      "body": "Firestore stores data in documents organized within collections. Each document is identified by a unique ID within its collection and contains key-value fields. Documents can hold subcollections, enabling hierarchical data modeling. Supported field types: string, number, boolean, timestamp, array, map, reference, geopoint, and null. Maximum document size is 1 MB. Collection names and document IDs are case-sensitive.",
+      "tags": ["document", "collection", "subcollection", "data-model", "fields"]
+    },
+    {
+      "id": "crud-operations",
+      "title": "CRUD operations",
+      "body": "Create documents with addDoc (auto-ID) or setDoc (explicit ID). Read with getDoc (single) or getDocs (query results). Update fields with updateDoc, supporting nested dot-notation paths, arrayUnion/arrayRemove, increment, serverTimestamp, and deleteField. Delete with deleteDoc. setDoc with { merge: true } performs a partial update like updateDoc but creates the document if it does not exist.",
+      "tags": ["addDoc", "setDoc", "getDoc", "updateDoc", "deleteDoc", "crud"]
+    },
+    {
+      "id": "queries",
+      "title": "Queries and filtering",
+      "body": "Build queries with query() chaining where(), orderBy(), limit(), startAt(), startAfter(), endAt(), endBefore(). Where operators: ==, !=, <, <=, >, >=, in, not-in, array-contains, array-contains-any. Compound queries combining equality on one field with range/orderBy on another require composite indexes. getDocs() executes a query once; onSnapshot() streams real-time updates.",
+      "tags": ["query", "where", "orderBy", "limit", "pagination", "filters", "composite-index"]
+    },
+    {
+      "id": "realtime-listeners",
+      "title": "Real-time listeners",
+      "body": "onSnapshot attaches a listener to a document reference or query that fires immediately with current data, then again on every change. Snapshot includes docChanges() to distinguish 'added', 'modified', and 'removed' events. The returned unsubscribe function stops the listener. Listeners work offline and automatically re-sync when connectivity resumes. Use snapshotEqual() to compare snapshots.",
+      "tags": ["onSnapshot", "realtime", "listener", "subscribe", "changes"]
+    },
+    {
+      "id": "security-rules",
+      "title": "Security rules",
+      "body": "Firestore Security Rules are defined in firestore.rules and enforce access control at the document path level. Rules use request.auth for the authenticated user, request.resource.data for incoming writes, and resource.data for the existing document. Custom functions factor out shared logic. Rules support get() and exists() to read other documents during evaluation. Deploy rules with 'firebase deploy --only firestore:rules'.",
+      "tags": ["security-rules", "access-control", "request.auth", "resource.data", "rules"]
+    },
+    {
+      "id": "transactions",
+      "title": "Transactions and batched writes",
+      "body": "runTransaction executes a function that can read and write documents atomically. If a read document is modified by another client during the transaction, Firestore retries automatically (up to 5 times). writeBatch groups up to 500 set/update/delete operations into a single atomic commit without reading. Both guarantee all-or-nothing semantics. Transactions run client-side; for server-side transactions use the Admin SDK.",
+      "tags": ["transaction", "runTransaction", "writeBatch", "atomic", "batch"]
+    },
+    {
+      "id": "offline-persistence",
+      "title": "Offline persistence",
+      "body": "Offline persistence caches Firestore data locally, serving reads from cache and queuing writes until connectivity resumes. Enabled by default on iOS and Android. On web, call enableIndexedDbPersistence() — only one tab can use persistence at a time. Use enableMultiTabIndexedDbPersistence() for multi-tab support. Cached data persists across app restarts. Pending writes are retried automatically in order.",
+      "tags": ["offline", "persistence", "cache", "indexeddb", "multi-tab"]
+    }
+  ],
+  "links": [
+    { "uri": "firebase", "context": "Firebase platform overview and project setup" },
+    { "uri": "firebase/auth", "context": "Authentication for security rules request.auth" },
+    { "uri": "firebase/functions", "context": "Cloud Functions triggered by Firestore writes" },
+    { "uri": "firebase/config", "context": "Firebase project configuration and initialization" },
+    { "uri": "firebase/cli", "context": "Deploy Firestore rules and indexes via CLI" }
+  ],
+  "related": [
+    { "uri": "firebase", "relation": "prerequisite", "note": "Firebase project must be initialized before using Firestore" },
+    { "uri": "firebase/auth", "relation": "see-also", "note": "Security rules reference request.auth from Firebase Authentication" },
+    { "uri": "supabase/database", "relation": "alternative", "note": "Supabase Postgres is a relational alternative to Firestore's document model" }
+  ],
+  "scripts": [
+    {
+      "id": "firestore-ops",
+      "name": "Firestore operations",
+      "description": "CLI tool for Firestore CRUD, queries, and real-time listeners",
+      "lang": "typescript",
+      "runtime": "node>=18",
+      "entry": "./scripts/firestore-ops.ts",
+      "env": {
+        "FIREBASE_API_KEY": { "required": true, "secret": false, "description": "Firebase project API key" },
+        "FIREBASE_PROJECT_ID": { "required": true, "secret": false, "description": "Firebase project ID" }
+      },
+      "packages": ["firebase"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "collection": { "type": "string", "description": "Firestore collection path" },
+        "operation": { "type": "string", "enum": ["add", "set", "get", "list", "query", "update", "delete", "listen"], "description": "Firestore operation to perform" },
+        "data": { "type": "object", "description": "Document data for add/set/update operations" },
+        "query": {
+          "type": "object",
+          "description": "Query filters and options",
+          "properties": {
+            "where": { "type": "array", "items": { "type": "object", "properties": { "field": { "type": "string" }, "op": { "type": "string" }, "value": {} } }, "description": "Where clauses (field, op, value)" },
+            "orderBy": { "type": "string", "description": "Field to order results by" },
+            "limit": { "type": "integer", "description": "Maximum number of documents to return" }
+          }
+        }
+      },
+      "required": ["collection", "operation"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "documents": { "type": "array", "description": "Array of matched documents with id and data" },
+        "id": { "type": "string", "description": "Document ID for single-document operations" },
+        "success": { "type": "boolean", "description": "Whether the operation completed successfully" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "firebase/config", "reason": "Firebase must be configured with project credentials before using Firestore" }
+  ],
+  "more": {
+    "docs": "https://firebase.google.com/docs/firestore",
+    "api": "https://firebase.google.com/docs/reference/js/firestore_",
+    "rules": "https://firebase.google.com/docs/firestore/security/get-started"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "8 min",
+    "prerequisites": ["firebase/config"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

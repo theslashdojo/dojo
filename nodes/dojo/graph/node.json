@@ -1,0 +1,97 @@
+{
+  "name": "graph",
+  "version": "1.0.0",
+  "uri": "dojo/graph",
+  "type": "context",
+  "content_type": "explainer",
+  "context": "Understand the Dojo knowledge graph — traversal, wiki-links, backlinks, related edges, and link resolution",
+  "info": "Dojo is a knowledge graph, not a flat registry. Every node connects to other nodes through four link types: parent-child hierarchy, wiki-links in body text via [[uri]] syntax, directed links[] with context annotations, and semantic related[] edges with typed relations (prerequisite, see-also, implements, extends, similar, evolution, equivalent, alternative). The graph enables agents to navigate from a known node to related knowledge without searching — following links is often faster and more contextual than querying. Backlinks are computed at runtime: if node A links to node B, then B automatically knows about A. Graph traversal powers the /v1/graph endpoint, learn workflows, and agent navigation.",
+  "parent": "dojo",
+  "tags": ["graph", "links", "backlinks", "wiki-links", "traversal", "edges", "related"],
+  "aliases": [
+    "dojo graph",
+    "knowledge graph",
+    "node graph",
+    "graph traversal",
+    "wiki links",
+    "backlinks",
+    "related nodes",
+    "graph edges",
+    "dojo links"
+  ],
+  "triggers": [
+    "how does the dojo graph work",
+    "what are wiki links in dojo",
+    "how do backlinks work",
+    "traverse the knowledge graph",
+    "find related nodes",
+    "how are nodes connected",
+    "explain dojo graph structure"
+  ],
+  "body": "# Knowledge Graph\n\nDojo is a directed graph where nodes are connected by multiple link types. Understanding the graph enables agents to navigate between related knowledge without searching — following edges is faster and preserves context.\n\n## Four Link Types\n\n### 1. Parent-Child Hierarchy\n\nEvery node has a `parent` field (except ecosystem roots). The tree hierarchy is the backbone of the graph:\n\n```\ngithub (ecosystem)\n├── repos (skill)\n│   ├── create (sub)\n│   └── settings (sub)\n├── issues (skill)\n└── auth (context)\n```\n\nTraverse up via `parent`, down via `sub[]` or directory listing.\n\n### 2. Wiki-Links in Body Text\n\nAny `body` or `sections[].body` field can contain `[[uri]]` wiki-links:\n\n```markdown\nSee [[github/auth]] for authentication setup.\nUse [[github/repos/create]] to make a new repository.\nCheck [[github/rate-limits#conditional-requests]] for caching.\n```\n\nWiki-links support section targeting: `[[uri#section-id]]`.\n\n### 3. Directed Links\n\nThe `links[]` array contains explicit next-step connections:\n\n```json\n{\n  \"links\": [\n    { \"uri\": \"github/auth\", \"context\": \"Authentication for API access\" },\n    { \"uri\": \"github/repos/create\", \"context\": \"Create a new repository\" }\n  ]\n}\n```\n\nLinks are directional: they represent \"from here, you might want to go there.\"\n\n### 4. Semantic Related Edges\n\nThe `related[]` array contains typed semantic relationships:\n\n```json\n{\n  \"related\": [\n    { \"uri\": \"github/auth\", \"relation\": \"prerequisite\", \"note\": \"Auth is required\" },\n    { \"uri\": \"github/pulls\", \"relation\": \"see-also\", \"note\": \"PRs reference issues\" }\n  ]\n}\n```\n\nRelation types: `prerequisite`, `see-also`, `implements`, `extends`, `similar`, `evolution`, `equivalent`, `alternative`.\n\n## Backlinks\n\nBacklinks are the reverse of forward links. If node A links to node B (in any link type), then B has a backlink from A. Backlinks are computed at runtime by scanning all forward links across the graph.\n\n```bash\n# Get backlinks for a node\ncurl \"$DOJO_URL/v1/graph/github/auth/backlinks\"\n# Returns all nodes that link TO github/auth\n```\n\nBacklinks answer the question: \"Who references this node?\" This is essential for understanding a node's impact and for pruning unused nodes.\n\n## Graph API\n\n```bash\n# Get the full graph for a subtree\ncurl \"$DOJO_URL/v1/graph/github\"\n\n# Get direct neighbors (links + related + parent + children)\ncurl \"$DOJO_URL/v1/graph/github/repos/neighbors\"\n\n# Get backlinks\ncurl \"$DOJO_URL/v1/graph/github/auth/backlinks\"\n\n# Shortest path between two nodes\ncurl \"$DOJO_URL/v1/graph/path?from=github/repos&to=github/actions\"\n```\n\n## Agent Navigation Patterns\n\n### Depth-First Learning\nStart at a known node, follow `links[]` to learn prerequisites, then return:\n1. Load `kubernetes/deployments`\n2. See `related: prerequisite → kubernetes/pods`\n3. Load `kubernetes/pods` first\n4. Return to `kubernetes/deployments` with context\n\n### Breadth-First Exploration\nFrom an ecosystem root, scan all children to understand scope:\n1. Load `github` → read `context` for each child in `links[]`\n2. Identify the most relevant skill\n3. Dive into that skill\n\n### Backlink Discovery\nFind what depends on a node before changing it:\n1. Query backlinks for `github/auth`\n2. See that `repos`, `issues`, `pulls`, `actions` all depend on it\n3. Understand the blast radius of auth changes\n",
+  "sections": [
+    {
+      "id": "link-types",
+      "title": "Four link types",
+      "body": "Dojo nodes connect through four link types: (1) parent-child hierarchy via `parent` and `sub[]` fields, (2) wiki-links in body text via `[[uri]]` syntax with optional section targeting, (3) directed links in `links[]` with context annotations, and (4) semantic related edges in `related[]` with typed relations. Each link type serves a different purpose: hierarchy for structure, wiki-links for inline references, directed links for next-step navigation, and related edges for semantic reasoning.",
+      "tags": ["links", "hierarchy", "wiki-links", "directed", "semantic", "types"]
+    },
+    {
+      "id": "backlinks",
+      "title": "Backlinks",
+      "body": "Backlinks are the reverse of forward links — if A links to B, then B has a backlink from A. Computed at runtime by scanning all forward links. Query via `GET /v1/graph/<uri>/backlinks`. Backlinks answer 'who references this node?' and are essential for impact analysis, dependency tracking, and pruning unused nodes. Every context node should have at least one backlink from an actionable node.",
+      "tags": ["backlinks", "reverse-links", "impact", "dependencies"]
+    },
+    {
+      "id": "graph-api",
+      "title": "Graph API endpoints",
+      "body": "The graph API exposes: `GET /v1/graph/<uri>` for the full subtree graph, `GET /v1/graph/<uri>/neighbors` for direct connections (links + related + parent + children), `GET /v1/graph/<uri>/backlinks` for reverse links, and `GET /v1/graph/path?from=<uri>&to=<uri>` for shortest path between two nodes. See [[dojo/api#knowledge-routes]] for the full HTTP surface.",
+      "tags": ["api", "endpoints", "neighbors", "path", "subtree"]
+    },
+    {
+      "id": "navigation-patterns",
+      "title": "Agent navigation patterns",
+      "body": "Three primary patterns: (1) Depth-first learning — follow prerequisite edges before the target node, (2) Breadth-first exploration — scan children of an ecosystem root to understand scope before diving in, (3) Backlink discovery — check what depends on a node before modifying it. Choose based on the agent's goal: learning uses depth-first, exploration uses breadth-first, impact analysis uses backlinks.",
+      "tags": ["navigation", "depth-first", "breadth-first", "backlink-discovery", "agent"]
+    },
+    {
+      "id": "wiki-link-syntax",
+      "title": "Wiki-link syntax",
+      "body": "Wiki-links use `[[uri]]` syntax in any markdown field (body, sections[].body, info). They support section targeting: `[[github/rest#pagination]]` links to the pagination section of the github/rest node. At render time, wiki-links are resolved to full node manifests. Broken wiki-links (pointing to non-existent URIs or sections) are detected by [[dojo/validate/knowledge]].",
+      "tags": ["wiki-links", "syntax", "section-targeting", "resolution", "validation"]
+    }
+  ],
+  "links": [
+    { "uri": "dojo/api#knowledge-routes", "context": "HTTP endpoints for graph queries" },
+    { "uri": "dojo/search", "context": "Text search complements graph traversal" },
+    { "uri": "dojo/knowledge", "context": "Knowledge fields that create graph edges" },
+    { "uri": "dojo/validate/knowledge", "context": "Validates wiki-link targets and graph integrity" },
+    { "uri": "dojo/architecture", "context": "How the graph is assembled at runtime" },
+    { "uri": "dojo/spec#knowledge-fields", "context": "Spec definition of links, related, and wiki-link syntax" }
+  ],
+  "related": [
+    { "uri": "dojo/search", "relation": "alternative", "note": "Search finds nodes by content; graph finds nodes by connection" },
+    { "uri": "dojo/knowledge", "relation": "prerequisite", "note": "The knowledge layer defines the fields that create graph edges" },
+    { "uri": "dojo/architecture", "relation": "see-also", "note": "Architecture explains how the graph is built at startup" },
+    { "uri": "dojo/api", "relation": "implements", "note": "The graph API endpoints serve graph queries" }
+  ],
+  "more": {
+    "docs": "https://github.com/theslashdojo/dojo/blob/main/SPEC.md",
+    "repo": "https://github.com/theslashdojo/dojo"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "agent developers, integrators, node authors",
+    "estimated_reading_time": "5 min",
+    "prerequisites": ["dojo/knowledge"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

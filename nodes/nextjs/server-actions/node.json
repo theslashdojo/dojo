@@ -1,0 +1,134 @@
+{
+  "name": "server-actions",
+  "version": "1.0.0",
+  "uri": "nextjs/server-actions",
+  "type": "skill",
+  "context": "Mutate data in Next.js with Server Actions — 'use server' functions for forms, revalidation, redirects, and optimistic updates",
+  "info": "Server Actions are asynchronous functions that run on the server, invoked directly from React components. They are defined with the `'use server'` directive and are the primary way to handle form submissions and data mutations in the App Router. Server Actions can be called from both Server and Client Components, support progressive enhancement (forms work without JavaScript), integrate with React's `useActionState` for pending states and validation errors, and can trigger revalidation of cached data via `revalidatePath()` and `revalidateTag()`. They replace the need for separate API routes for most mutation use cases. Server Actions are the idiomatic way to handle mutations in Next.js App Router applications.",
+  "parent": "nextjs",
+  "tags": ["server-actions", "use-server", "mutations", "forms", "revalidation", "nextjs"],
+  "aliases": [
+    "server actions",
+    "use server",
+    "'use server'",
+    "next server actions",
+    "nextjs server actions",
+    "form actions",
+    "server mutations",
+    "react server actions",
+    "form handling next.js",
+    "data mutations next"
+  ],
+  "triggers": [
+    "create a server action",
+    "handle form submission in next.js",
+    "mutate data in next.js",
+    "use server directive",
+    "revalidate after mutation",
+    "create a form with server action",
+    "optimistic update in next.js",
+    "add form validation with server action",
+    "redirect after form submission"
+  ],
+  "body": "# Server Actions\n\nServer Actions are async functions that execute on the server. They are the idiomatic way to handle data mutations in Next.js App Router applications.\n\n## Defining Server Actions\n\n### In a Separate File (Recommended)\n\n```tsx\n// app/actions.ts\n'use server'\n\nimport { revalidatePath } from 'next/cache'\nimport { redirect } from 'next/navigation'\n\nexport async function createPost(formData: FormData) {\n  const title = formData.get('title') as string\n  const content = formData.get('content') as string\n\n  await db.post.create({ data: { title, content } })\n\n  revalidatePath('/blog')\n  redirect('/blog')\n}\n\nexport async function deletePost(id: string) {\n  await db.post.delete({ where: { id } })\n  revalidatePath('/blog')\n}\n```\n\n### Inline in a Server Component\n\n```tsx\n// app/blog/page.tsx (Server Component)\nexport default function BlogPage() {\n  async function createPost(formData: FormData) {\n    'use server'\n    const title = formData.get('title') as string\n    await db.post.create({ data: { title } })\n    revalidatePath('/blog')\n  }\n\n  return (\n    <form action={createPost}>\n      <input name=\"title\" required />\n      <button type=\"submit\">Create</button>\n    </form>\n  )\n}\n```\n\n## Using with Forms\n\n### Basic Form\n\n```tsx\n// app/contact/page.tsx\nimport { submitContact } from './actions'\n\nexport default function ContactPage() {\n  return (\n    <form action={submitContact}>\n      <input name=\"email\" type=\"email\" required />\n      <textarea name=\"message\" required />\n      <button type=\"submit\">Send</button>\n    </form>\n  )\n}\n```\n\nForms with Server Actions work without JavaScript (progressive enhancement). When JS is available, the form submits without a full page reload.\n\n### With useActionState (Validation & Pending)\n\n```tsx\n// app/signup/actions.ts\n'use server'\n\nexport async function signup(\n  prevState: { error?: string } | undefined,\n  formData: FormData\n) {\n  const email = formData.get('email') as string\n  const password = formData.get('password') as string\n\n  if (password.length < 8) {\n    return { error: 'Password must be at least 8 characters' }\n  }\n\n  try {\n    await createUser({ email, password })\n  } catch (e) {\n    return { error: 'Email already exists' }\n  }\n\n  redirect('/dashboard')\n}\n```\n\n```tsx\n// app/signup/form.tsx\n'use client'\n\nimport { useActionState } from 'react'\nimport { signup } from './actions'\n\nexport default function SignupForm() {\n  const [state, action, pending] = useActionState(signup, undefined)\n\n  return (\n    <form action={action}>\n      <input name=\"email\" type=\"email\" required />\n      <input name=\"password\" type=\"password\" required />\n      {state?.error && <p className=\"text-red-500\">{state.error}</p>}\n      <button type=\"submit\" disabled={pending}>\n        {pending ? 'Creating account...' : 'Sign up'}\n      </button>\n    </form>\n  )\n}\n```\n\n### With useFormStatus (Submit Button)\n\n```tsx\n'use client'\n\nimport { useFormStatus } from 'react-dom'\n\nexport function SubmitButton({ label = 'Submit' }: { label?: string }) {\n  const { pending } = useFormStatus()\n  return (\n    <button type=\"submit\" disabled={pending}>\n      {pending ? 'Submitting...' : label}\n    </button>\n  )\n}\n```\n\n## Calling Server Actions from Client Components\n\n```tsx\n// app/components/delete-button.tsx\n'use client'\n\nimport { deletePost } from '@/app/actions'\nimport { useTransition } from 'react'\n\nexport function DeleteButton({ postId }: { postId: string }) {\n  const [isPending, startTransition] = useTransition()\n\n  return (\n    <button\n      onClick={() => startTransition(() => deletePost(postId))}\n      disabled={isPending}\n    >\n      {isPending ? 'Deleting...' : 'Delete'}\n    </button>\n  )\n}\n```\n\n## Revalidation\n\n```tsx\n'use server'\n\nimport { revalidatePath } from 'next/cache'\nimport { revalidateTag } from 'next/cache'\n\nexport async function updatePost(id: string, data: FormData) {\n  await db.post.update({ where: { id }, data: { title: data.get('title') as string } })\n\n  // Revalidate a specific path\n  revalidatePath('/blog')\n  revalidatePath(`/blog/${id}`)\n\n  // Or revalidate by cache tag\n  revalidateTag('posts')\n}\n```\n\n## Optimistic Updates\n\n```tsx\n'use client'\n\nimport { useOptimistic } from 'react'\nimport { addTodo } from './actions'\n\nexport function TodoList({ todos }: { todos: Todo[] }) {\n  const [optimisticTodos, addOptimisticTodo] = useOptimistic(\n    todos,\n    (state, newTodo: string) => [\n      ...state,\n      { id: 'temp', title: newTodo, completed: false },\n    ]\n  )\n\n  async function handleSubmit(formData: FormData) {\n    const title = formData.get('title') as string\n    addOptimisticTodo(title)\n    await addTodo(formData)\n  }\n\n  return (\n    <>\n      <form action={handleSubmit}>\n        <input name=\"title\" />\n        <button type=\"submit\">Add</button>\n      </form>\n      <ul>\n        {optimisticTodos.map(todo => (\n          <li key={todo.id}>{todo.title}</li>\n        ))}\n      </ul>\n    </>\n  )\n}\n```\n\n## Error Handling\n\n```tsx\n'use server'\n\nexport async function createItem(formData: FormData) {\n  try {\n    const item = await db.item.create({\n      data: { name: formData.get('name') as string },\n    })\n    revalidatePath('/items')\n    return { success: true, item }\n  } catch (error) {\n    return { success: false, error: 'Failed to create item' }\n  }\n}\n```\n\n## Security\n\nServer Actions create a public HTTP endpoint behind the scenes. Next.js:\n- Encrypts action references to prevent client-side tampering\n- Uses non-guessable action IDs\n- Validates the `Origin` header against the `Host` header (CSRF protection)\n\nAlways validate and sanitize inputs in Server Actions — they are exposed endpoints.\n",
+  "sections": [
+    {
+      "id": "defining",
+      "title": "Defining Server Actions",
+      "body": "Mark a file with `'use server'` at the top to make all exports Server Actions. Or add `'use server'` inside an async function in a Server Component for inline actions. Actions in a separate file can be imported by both Server and Client Components. Inline actions can only be used in the Server Component where they are defined.",
+      "tags": ["define", "use-server", "inline", "separate-file"]
+    },
+    {
+      "id": "forms",
+      "title": "Form integration",
+      "body": "Pass Server Actions to the `action` prop of `<form>`. The action receives `FormData` as its argument. Forms with Server Actions support progressive enhancement — they work without JavaScript. Use `useActionState` to get pending state and return values (validation errors). Use `useFormStatus` in child components to detect pending state for submit buttons.",
+      "tags": ["form", "formdata", "progressive-enhancement", "useactionstate", "useformstatus"]
+    },
+    {
+      "id": "revalidation",
+      "title": "Revalidation after mutations",
+      "body": "Call `revalidatePath('/path')` to invalidate the cache for a specific route, or `revalidateTag('tag')` to invalidate all fetches tagged with that string. Both functions are imported from `next/cache`. Use `redirect('/path')` from `next/navigation` after mutations to navigate the user to a new page. Revalidation and redirect must be called after the database mutation, not before.",
+      "tags": ["revalidatepath", "revalidatetag", "redirect", "cache-invalidation"]
+    },
+    {
+      "id": "optimistic-updates",
+      "title": "Optimistic updates",
+      "body": "Use React's `useOptimistic` hook to immediately update the UI before the Server Action completes. Pass the current state and a reducer function. The optimistic state shows instantly while the action runs. If the action fails, React reverts to the previous state. Combine with `useTransition` for non-form Server Action calls from event handlers.",
+      "tags": ["optimistic", "useoptimistic", "usetransition", "instant-feedback"]
+    },
+    {
+      "id": "security",
+      "title": "Security considerations",
+      "body": "Server Actions create public HTTP POST endpoints. Next.js provides CSRF protection by checking Origin/Host headers and encrypting action IDs. Always validate inputs — never trust FormData blindly. Use `zod` or similar for schema validation. Check authentication and authorization inside every Server Action. Never pass sensitive data through hidden form fields. The `server-only` package prevents server code from leaking to the client.",
+      "tags": ["security", "csrf", "validation", "authentication", "authorization"]
+    }
+  ],
+  "links": [
+    { "uri": "nextjs/app-router", "context": "Server Actions are a core App Router feature" },
+    { "uri": "nextjs/api-routes", "context": "Alternative to Server Actions for API endpoints" },
+    { "uri": "nextjs/data-fetching", "context": "Revalidation connects Server Actions to data fetching" },
+    { "uri": "nextjs/middleware", "context": "Middleware can protect Server Action endpoints" }
+  ],
+  "related": [
+    { "uri": "nextjs/api-routes", "relation": "alternative", "note": "API routes can handle mutations but Server Actions are preferred in App Router" },
+    { "uri": "nextjs/data-fetching", "relation": "see-also", "note": "Server Actions trigger revalidation of cached data" },
+    { "uri": "nextjs/app-router", "relation": "prerequisite", "note": "Server Actions require the App Router" }
+  ],
+  "scripts": [
+    {
+      "id": "create-server-action",
+      "name": "Create Server Action",
+      "description": "Scaffold a server action file with form handling and revalidation",
+      "lang": "bash",
+      "runtime": "bash",
+      "entry": "./scripts/create-action.sh",
+      "env": {
+        "ACTION_NAME": { "required": true, "description": "Action function name (e.g., 'createPost')" },
+        "REVALIDATE_PATH": { "required": false, "description": "Path to revalidate after mutation" },
+        "PROJECT_DIR": { "required": false, "default": ".", "description": "Next.js project root" }
+      },
+      "packages": []
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "actionName": { "type": "string", "description": "Name of the server action function" },
+        "revalidatePath": { "type": "string", "description": "Path to revalidate after mutation" },
+        "withValidation": { "type": "boolean", "default": true, "description": "Include Zod schema validation" },
+        "withRedirect": { "type": "boolean", "default": false, "description": "Redirect after successful mutation" }
+      },
+      "required": ["actionName"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "actionFile": { "type": "string", "description": "Path to the created action file" },
+        "formComponent": { "type": "string", "description": "Path to the created form component (if generated)" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "nextjs/app-router", "reason": "Server Actions require the App Router" }
+  ],
+  "more": {
+    "docs": "https://nextjs.org/docs/app/building-your-application/data-fetching/server-actions-and-mutations",
+    "spec": "https://nextjs.org/docs/app/api-reference/directives/use-server"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "7 min",
+    "prerequisites": ["nextjs", "nextjs/app-router"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

@@ -1,0 +1,137 @@
+{
+  "name": "ingress",
+  "version": "1.0.0",
+  "uri": "kubernetes/ingress",
+  "type": "skill",
+  "context": "Route external HTTP/HTTPS traffic into a Kubernetes cluster with Ingress resources and controllers",
+  "info": "Ingress exposes HTTP and HTTPS routes from outside the cluster to [[kubernetes/services]] inside the cluster. An Ingress resource defines routing rules (host, path, TLS), and an Ingress Controller (nginx, Traefik, AWS ALB) implements them. Agents use Ingress to route traffic by hostname and path, terminate TLS with certificates, and consolidate multiple services behind a single load balancer. This skill covers Ingress manifests, path-based and host-based routing, TLS termination, annotations for controller-specific features, and IngressClass selection.",
+  "parent": "kubernetes",
+  "tags": ["ingress", "http-routing", "tls", "nginx-ingress", "traefik", "alb", "reverse-proxy", "ssl"],
+  "aliases": [
+    "kubernetes ingress",
+    "k8s ingress",
+    "ingress controller",
+    "nginx ingress",
+    "traefik ingress",
+    "alb ingress",
+    "ingress rules",
+    "http routing kubernetes",
+    "tls termination kubernetes",
+    "kubernetes reverse proxy"
+  ],
+  "triggers": [
+    "create an ingress resource",
+    "route traffic to a kubernetes service",
+    "set up tls for kubernetes",
+    "configure nginx ingress",
+    "add a hostname to kubernetes ingress",
+    "path-based routing in kubernetes",
+    "install an ingress controller",
+    "ingress is not routing traffic"
+  ],
+  "body": "# Ingress\n\nIngress manages external HTTP/HTTPS access to [[kubernetes/services]]. It provides URL-based routing, TLS termination, and virtual hosting — all with a single external load balancer.\n\n## How It Works\n\n```\nClient → LoadBalancer → Ingress Controller (Pod) → Service → Pods\n                         (nginx, traefik, ALB)\n```\n\nTwo pieces required:\n1. **Ingress Controller** — a Pod running a reverse proxy (nginx, Traefik, etc.) that watches Ingress resources and configures routing\n2. **Ingress Resource** — a YAML manifest defining routing rules\n\n## Install Ingress Controller\n\n```bash\n# nginx ingress controller (most common)\nhelm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx\nhelm repo update\nhelm install ingress-nginx ingress-nginx/ingress-nginx \\\n  --namespace ingress-nginx \\\n  --create-namespace\n\n# Verify\nkubectl get pods -n ingress-nginx\nkubectl get svc -n ingress-nginx  # EXTERNAL-IP shows the LB address\n\n# Traefik (alternative)\nhelm repo add traefik https://traefik.github.io/charts\nhelm install traefik traefik/traefik --namespace traefik --create-namespace\n```\n\n## Basic Ingress (single service)\n\n```yaml\napiVersion: networking.k8s.io/v1\nkind: Ingress\nmetadata:\n  name: web-app\n  namespace: production\n  annotations:\n    nginx.ingress.kubernetes.io/rewrite-target: /\nspec:\n  ingressClassName: nginx\n  rules:\n    - host: app.example.com\n      http:\n        paths:\n          - path: /\n            pathType: Prefix\n            backend:\n              service:\n                name: web-app\n                port:\n                  number: 80\n```\n\n## Host-Based Routing (virtual hosting)\n\n```yaml\napiVersion: networking.k8s.io/v1\nkind: Ingress\nmetadata:\n  name: multi-host\nspec:\n  ingressClassName: nginx\n  rules:\n    - host: app.example.com\n      http:\n        paths:\n          - path: /\n            pathType: Prefix\n            backend:\n              service:\n                name: frontend\n                port:\n                  number: 80\n    - host: api.example.com\n      http:\n        paths:\n          - path: /\n            pathType: Prefix\n            backend:\n              service:\n                name: api-service\n                port:\n                  number: 8080\n```\n\n## Path-Based Routing\n\n```yaml\napiVersion: networking.k8s.io/v1\nkind: Ingress\nmetadata:\n  name: path-routing\nspec:\n  ingressClassName: nginx\n  rules:\n    - host: app.example.com\n      http:\n        paths:\n          - path: /api\n            pathType: Prefix\n            backend:\n              service:\n                name: api-service\n                port:\n                  number: 8080\n          - path: /\n            pathType: Prefix\n            backend:\n              service:\n                name: frontend\n                port:\n                  number: 80\n```\n\nPath types: `Prefix` (matches `/api` and `/api/users`), `Exact` (matches only `/api`), `ImplementationSpecific` (controller-dependent).\n\n## TLS Termination\n\n```yaml\napiVersion: networking.k8s.io/v1\nkind: Ingress\nmetadata:\n  name: tls-ingress\n  annotations:\n    cert-manager.io/cluster-issuer: letsencrypt-prod  # auto-provision certs\nspec:\n  ingressClassName: nginx\n  tls:\n    - hosts:\n        - app.example.com\n        - api.example.com\n      secretName: example-com-tls  # Secret with tls.crt and tls.key\n  rules:\n    - host: app.example.com\n      http:\n        paths:\n          - path: /\n            pathType: Prefix\n            backend:\n              service:\n                name: web-app\n                port:\n                  number: 80\n```\n\nThe TLS Secret must contain `tls.crt` and `tls.key`. Create manually or auto-provision with cert-manager:\n\n```bash\n# Manual TLS secret\nkubectl create secret tls example-com-tls \\\n  --cert=./tls.crt \\\n  --key=./tls.key\n\n# Or use cert-manager for automatic Let's Encrypt certificates\nhelm repo add jetstack https://charts.jetstack.io\nhelm install cert-manager jetstack/cert-manager \\\n  --namespace cert-manager \\\n  --create-namespace \\\n  --set crds.enabled=true\n```\n\n## Common Annotations (nginx)\n\n```yaml\nannotations:\n  nginx.ingress.kubernetes.io/rewrite-target: /$1         # URL rewriting\n  nginx.ingress.kubernetes.io/ssl-redirect: \"true\"        # Force HTTPS\n  nginx.ingress.kubernetes.io/proxy-body-size: \"50m\"      # Max upload size\n  nginx.ingress.kubernetes.io/proxy-read-timeout: \"300\"   # Backend timeout\n  nginx.ingress.kubernetes.io/cors-allow-origin: \"*\"      # CORS\n  nginx.ingress.kubernetes.io/rate-limit-rps: \"10\"        # Rate limiting\n  nginx.ingress.kubernetes.io/auth-url: \"https://auth.example.com/verify\"  # External auth\n```\n\n## kubectl Commands\n\n```bash\n# List ingresses\nkubectl get ingress -n production\nkubectl get ing -A  # all namespaces\n\n# Describe (shows rules, backends, events)\nkubectl describe ingress web-app\n\n# Check ingress controller logs\nkubectl logs -n ingress-nginx -l app.kubernetes.io/name=ingress-nginx --tail=50\n\n# Delete\nkubectl delete ingress web-app\n```\n\n## Ingress Controllers Comparison\n\n| Controller | Strengths | Install |\n|------------|-----------|----------|\n| nginx-ingress | Most popular, widely supported, rich annotations | Helm chart |\n| Traefik | Auto-discovery, middleware chains, dashboard | Helm chart |\n| AWS ALB | Native AWS integration, WAF, target groups | AWS Load Balancer Controller |\n| GCE | Native GCP integration, Cloud CDN, Cloud Armor | Built into GKE |\n| Contour | Envoy-based, HTTPProxy CRD, advanced routing | Helm chart |\n\n## Environment Variables\n\n| Variable | Purpose |\n|----------|----------|\n| `KUBECONFIG` | Path to kubeconfig file |\n| `KUBE_NAMESPACE` | Default namespace |\n",
+  "sections": [
+    {
+      "id": "routing",
+      "title": "Routing rules",
+      "body": "Ingress routes by host and path. Host-based routing sends different hostnames to different [[kubernetes/services]] (virtual hosting). Path-based routing sends different URL paths to different services. Path types: Prefix (matches path and sub-paths), Exact (exact match only), ImplementationSpecific. Rules are evaluated in order — more specific paths should come first. A default backend handles unmatched requests.",
+      "tags": ["routing", "host", "path", "prefix", "exact", "virtual-hosting", "default-backend"]
+    },
+    {
+      "id": "tls",
+      "title": "TLS termination",
+      "body": "Ingress terminates TLS at the controller. Specify a Secret containing tls.crt and tls.key in `spec.tls`. Create Secrets manually with `kubectl create secret tls` or automatically with cert-manager (Let's Encrypt). The controller handles the TLS handshake and forwards decrypted traffic to backend [[kubernetes/services]]. Use `nginx.ingress.kubernetes.io/ssl-redirect: true` to force HTTPS.",
+      "tags": ["tls", "ssl", "https", "certificate", "cert-manager", "letsencrypt", "termination"]
+    },
+    {
+      "id": "controllers",
+      "title": "Ingress controllers",
+      "body": "An Ingress resource does nothing without a controller. Install one: nginx-ingress (most common, Helm chart), Traefik (auto-discovery, middleware), AWS ALB Controller (native AWS), GCE (native GCP). Set `spec.ingressClassName` to select which controller handles the Ingress. Multiple controllers can coexist in the same cluster for different use cases.",
+      "tags": ["controller", "nginx", "traefik", "alb", "gce", "ingressclass", "install"]
+    }
+  ],
+  "links": [
+    { "uri": "kubernetes/services", "context": "Ingress routes to Services as backends" },
+    { "uri": "kubernetes/configmaps", "context": "TLS Secrets store certificates for Ingress" },
+    { "uri": "kubernetes/helm", "context": "Install ingress controllers via Helm" },
+    { "uri": "kubernetes/namespaces", "context": "Ingress resources are namespaced" },
+    { "uri": "kubernetes/troubleshooting", "context": "Debug Ingress routing issues" }
+  ],
+  "related": [
+    { "uri": "kubernetes/services", "relation": "prerequisite", "note": "Ingress routes traffic to Services — Services must exist first" },
+    { "uri": "kubernetes/helm", "relation": "see-also", "note": "Ingress controllers are typically installed via Helm charts" },
+    { "uri": "kubernetes/configmaps", "relation": "see-also", "note": "TLS Secrets used by Ingress are managed the same way as other Secrets" }
+  ],
+  "scripts": [
+    {
+      "id": "create-ingress",
+      "name": "Create Ingress",
+      "description": "Create an Ingress resource for a Service with optional TLS",
+      "lang": "bash",
+      "runtime": "kubectl",
+      "entry": "./scripts/create-ingress.sh",
+      "inline": "#!/bin/bash\nset -euo pipefail\nNAME=${1:?Usage: create-ingress.sh <name> <host> <service> <port>}\nHOST=${2:?Usage: create-ingress.sh <name> <host> <service> <port>}\nSERVICE=${3:?Usage: create-ingress.sh <name> <host> <service> <port>}\nPORT=${4:?Usage: create-ingress.sh <name> <host> <service> <port>}\nNS=${KUBE_NAMESPACE:-default}\n\nkubectl create ingress \"$NAME\" \\\n  --rule=\"${HOST}/*=${SERVICE}:${PORT}\" \\\n  --class=nginx \\\n  -n \"$NS\" \\\n  --dry-run=client -o yaml | kubectl apply -f -\n\necho \"Ingress $NAME created/updated:\"\nkubectl get ingress \"$NAME\" -n \"$NS\"",
+      "env": {
+        "KUBECONFIG": { "required": false, "secret": false, "default": "~/.kube/config", "description": "Path to kubeconfig file" },
+        "KUBE_NAMESPACE": { "required": false, "secret": false, "default": "default", "description": "Target namespace" }
+      },
+      "packages": []
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "description": "Ingress resource name" },
+        "namespace": { "type": "string", "default": "default" },
+        "host": { "type": "string", "description": "Hostname (e.g., app.example.com)" },
+        "paths": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "path": { "type": "string" },
+              "service": { "type": "string" },
+              "port": { "type": "integer" }
+            }
+          }
+        },
+        "tlsSecretName": { "type": "string", "description": "TLS Secret name (optional)" },
+        "ingressClassName": { "type": "string", "default": "nginx" }
+      },
+      "required": ["name", "host"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "ingressName": { "type": "string" },
+        "hosts": { "type": "array", "items": { "type": "string" } },
+        "address": { "type": "string", "description": "Load balancer address" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "kubernetes/services", "reason": "Ingress routes to Services as backends" }
+  ],
+  "more": {
+    "docs": "https://kubernetes.io/docs/concepts/services-networking/ingress/",
+    "api": "https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.31/#ingress-v1-networking-k8s-io",
+    "nginx": "https://kubernetes.github.io/ingress-nginx/",
+    "cert-manager": "https://cert-manager.io/docs/"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, DevOps engineers, SREs, AI agents",
+    "estimated_reading_time": "5 min",
+    "prerequisites": ["kubernetes/services"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

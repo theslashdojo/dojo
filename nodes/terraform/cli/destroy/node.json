@@ -1,0 +1,154 @@
+{
+  "name": "destroy",
+  "version": "1.0.0",
+  "uri": "terraform/cli/destroy",
+  "type": "skill",
+  "context": "Destroy Terraform-managed infrastructure safely with plan preview, targeted teardown, and lifecycle protection",
+  "info": "The `terraform destroy` command tears down all infrastructure resources managed by the current Terraform configuration and state. It is the inverse of `terraform apply` — it reads the state, determines the destruction order based on the dependency graph, and removes resources in the correct sequence. Destroy respects the dependency graph: resources that depend on other resources are destroyed first, and their dependencies are destroyed after. Before running destroy, preview the exact impact with `terraform plan -destroy`. The `-auto-approve` flag skips confirmation for automated teardown in CI/CD. The `-target` flag restricts destruction to specific resources or modules. Resources can be protected from accidental destruction using the `lifecycle { prevent_destroy = true }` meta-argument, which causes Terraform to error if a destroy is attempted on that resource. As an alternative to destroy, removing a resource block from configuration and running apply achieves selective removal. Destroy updates the state file as each resource is removed, so partial failures leave state reflecting reality. Always run `terraform plan -destroy` first in production.",
+  "parent": "terraform/cli",
+  "tags": ["terraform", "destroy", "teardown", "cleanup", "decommission", "lifecycle", "prevent-destroy", "dependency-graph"],
+  "aliases": [
+    "terraform destroy",
+    "tf destroy",
+    "terraform teardown",
+    "terraform delete all",
+    "terraform remove infrastructure",
+    "terraform decommission",
+    "terraform cleanup"
+  ],
+  "triggers": [
+    "destroy terraform infrastructure",
+    "run terraform destroy",
+    "tear down terraform resources",
+    "delete all terraform resources",
+    "terraform destroy specific resource",
+    "preview terraform destroy",
+    "prevent terraform from destroying a resource",
+    "terraform destroy order",
+    "safely destroy terraform infrastructure",
+    "terraform cleanup environment"
+  ],
+  "body": "# terraform destroy\n\n`terraform destroy` removes all resources defined in the current configuration and tracked in the state file. It is the clean teardown command for decommissioning infrastructure.\n\n## Basic Usage\n\n```bash\n# Destroy with interactive confirmation\nterraform destroy\n\n# Destroy without confirmation (CI/CD)\nterraform destroy -auto-approve\n\n# Destroy in a different directory\nterraform -chdir=environments/staging destroy\n\n# Destroy with variables (if config requires them)\nterraform destroy -var-file=staging.tfvars\n```\n\n## Always Preview First\n\nIn production, **always** preview destruction before executing:\n\n```bash\n# Preview what will be destroyed\nterraform plan -destroy\n\n# Save the destruction plan for review\nterraform plan -destroy -out=destroy.tfplan\n\n# View the saved plan\nterraform show destroy.tfplan\n\n# Apply the reviewed destruction plan\nterraform apply destroy.tfplan\n```\n\nUsing saved destruction plans is the safest approach — it guarantees the exact resources reviewed are the ones destroyed.\n\n## Destroy Order and Dependency Graph\n\nTerraform destroys resources in reverse dependency order:\n\n```\nDependency:   VPC  -->  Subnet  -->  Security Group  -->  EC2 Instance\nDestroy order: EC2 Instance  -->  Security Group  -->  Subnet  -->  VPC\n```\n\n```bash\n# Visualize the dependency graph\nterraform graph -type=destroy | dot -Tpng > destroy-graph.png\n\n# Or view as text\nterraform graph -type=destroy\n```\n\nTerraform resolves dependencies automatically. You do not need to specify destruction order — just run destroy and Terraform handles the sequence.\n\n## Targeted Destruction\n\nDestroy specific resources without affecting the rest:\n\n```bash\n# Destroy a single resource\nterraform destroy -target=aws_instance.web\n\n# Destroy an entire module\nterraform destroy -target=module.database\n\n# Destroy multiple specific resources\nterraform destroy -target=aws_instance.web -target=aws_eip.web\n\n# Preview targeted destruction first\nterraform plan -destroy -target=aws_instance.web\n```\n\nTargeted destruction still respects the dependency graph — if the target has dependents, Terraform destroys them first.\n\n## Protecting Resources with prevent_destroy\n\nThe `lifecycle` meta-argument `prevent_destroy` blocks destruction:\n\n```hcl\nresource \"aws_rds_instance\" \"production\" {\n  identifier     = \"prod-database\"\n  engine         = \"postgres\"\n  instance_class = \"db.r6g.xlarge\"\n\n  lifecycle {\n    prevent_destroy = true\n  }\n}\n\nresource \"aws_s3_bucket\" \"data\" {\n  bucket = \"company-critical-data\"\n\n  lifecycle {\n    prevent_destroy = true\n  }\n}\n```\n\nWith `prevent_destroy = true`, any plan that includes destroying this resource produces an error:\n\n```\nError: Instance cannot be destroyed\n\n  on main.tf line 1:\n   1: resource \"aws_rds_instance\" \"production\" {\n\nResource aws_rds_instance.production has lifecycle.prevent_destroy\nset, but the plan calls for this resource to be destroyed.\n```\n\nTo destroy a protected resource, you must first remove `prevent_destroy` from the config and apply the change, then run destroy.\n\n## Destroy vs Remove from Config\n\nTwo approaches to eliminating resources:\n\n| Approach | How | When to Use |\n|---|---|---|\n| `terraform destroy` | Run destroy command | Tearing down an entire environment |\n| `terraform destroy -target` | Target specific resources | Removing specific resources from a live environment |\n| Remove from `.tf` + `apply` | Delete the resource block, then apply | Selective removal as part of ongoing config changes |\n| `terraform state rm` + delete | Remove from state, delete manually | Adopting resource into another config or manual management |\n\n```bash\n# Approach: Remove from config\n# 1. Delete the resource block from your .tf files\n# 2. Plan to see the destruction\nterraform plan\n# Output: \"aws_instance.old will be destroyed\"\n# 3. Apply\nterraform apply\n```\n\nRemoving from config is preferred for selective changes because the destruction is part of your normal plan/apply/commit workflow.\n\n## Handling Partial Destroy Failures\n\nIf destroy fails partway through:\n\n```bash\n# Check what remains in state\nterraform state list\n\n# Inspect specific resource\nterraform state show aws_instance.web\n\n# Retry the destroy\nterraform destroy\n\n# If a resource was deleted externally, refresh state\nterraform apply -refresh-only\n\n# If a resource is stuck, remove it from state\n# (the real resource remains — delete it manually)\nterraform state rm aws_instance.stuck\n```\n\n## CI/CD Teardown Pattern\n\n```bash\n#!/usr/bin/env bash\nset -euo pipefail\n\n# Destroy preview/staging environments after PR merge\nENV=\"${ENVIRONMENT:?Must set ENVIRONMENT}\"\nDIR=\"environments/$ENV\"\n\nexport TF_IN_AUTOMATION=true\nexport TF_INPUT=0\n\n# Init\nterraform -chdir=\"$DIR\" init -input=false\n\n# Plan the destruction\nterraform -chdir=\"$DIR\" plan -destroy -out=destroy.tfplan -input=false -no-color\n\n# Execute\nterraform -chdir=\"$DIR\" apply -no-color destroy.tfplan\n\necho \"Environment $ENV destroyed successfully\"\n```\n\n## Common Flags Reference\n\n| Flag | Purpose |\n|---|---|\n| `-auto-approve` | Skip interactive confirmation |\n| `-target=ADDR` | Destroy only the specified resource/module |\n| `-var=\"key=value\"` | Set an input variable |\n| `-var-file=FILE` | Load variables from a .tfvars file |\n| `-parallelism=N` | Concurrent destroy operations (default 10) |\n| `-input=false` | Disable interactive prompts |\n| `-no-color` | Disable color output |\n| `-refresh=false` | Skip state refresh before destroying |\n| `-lock=false` | Disable state locking (not recommended) |\n| `-lock-timeout=DURATION` | Time to wait for state lock |\n",
+  "sections": [
+    {
+      "id": "preview-destruction",
+      "title": "Preview destruction with plan -destroy",
+      "body": "Always run terraform plan -destroy before executing a destroy in production. This shows every resource that will be removed. Save the plan with -out for exact execution. The saved destruction plan can be reviewed by the team and then applied with terraform apply destroy.tfplan for auditable, predictable teardowns.",
+      "tags": ["preview", "plan-destroy", "safety", "audit", "saved-plan"]
+    },
+    {
+      "id": "dependency-graph",
+      "title": "Destroy order and dependency graph",
+      "body": "Terraform destroys resources in reverse dependency order — dependents are destroyed before their dependencies. An EC2 instance is destroyed before its subnet, which is destroyed before the VPC. This ordering is automatic based on the resource graph. Use terraform graph -type=destroy to visualize the order. Circular dependencies are detected at plan time.",
+      "tags": ["dependency", "graph", "order", "reverse", "automatic"]
+    },
+    {
+      "id": "targeted-destruction",
+      "title": "Targeted destruction",
+      "body": "Use -target to destroy specific resources or modules without affecting the rest of the infrastructure. Targeted destroy still respects the dependency graph — dependents of the target are also destroyed. Combine with plan -destroy -target for preview. Targeted operations should be followed by a full plan to verify consistency.",
+      "tags": ["target", "selective", "partial", "module-target"]
+    },
+    {
+      "id": "prevent-destroy",
+      "title": "Protecting resources with prevent_destroy",
+      "body": "The lifecycle meta-argument prevent_destroy = true causes Terraform to error if any plan includes destroying that resource. Use it for databases, storage buckets, and other critical resources that should never be accidentally deleted. To override, remove the setting from config and apply before destroying. This is a Terraform-level safety net, not a cloud-level protection.",
+      "tags": ["prevent-destroy", "lifecycle", "protection", "safety", "critical-resources"]
+    },
+    {
+      "id": "destroy-vs-remove",
+      "title": "Destroy vs removing from config",
+      "body": "terraform destroy removes all or targeted resources. Removing a resource block from .tf files and running apply removes that specific resource as part of normal workflow. terraform state rm removes from state without deleting the real resource. Choose based on context: destroy for full teardown, config removal for selective changes, state rm for adoption into another config.",
+      "tags": ["destroy", "remove", "state-rm", "selective", "workflow"]
+    }
+  ],
+  "links": [
+    { "uri": "terraform/cli", "context": "Parent CLI node with global flags and environment variables" },
+    { "uri": "terraform/cli/init", "context": "Init must be run before destroy" },
+    { "uri": "terraform/cli/plan", "context": "Plan -destroy previews the destruction" },
+    { "uri": "terraform/cli/apply", "context": "Apply is the constructive counterpart to destroy" }
+  ],
+  "related": [
+    { "uri": "terraform/cli/apply", "relation": "see-also", "note": "Destroy is the inverse of apply — it removes what apply created" },
+    { "uri": "terraform/cli/plan", "relation": "prerequisite", "note": "Always plan -destroy before running destroy in production" },
+    { "uri": "terraform/cli/init", "relation": "prerequisite", "note": "Init must be run before destroy" }
+  ],
+  "scripts": [
+    {
+      "id": "terraform-safe-destroy",
+      "name": "Safe Destroy with Plan Preview",
+      "description": "Preview destruction with plan -destroy, save the plan, and optionally apply it for safe teardown",
+      "lang": "bash",
+      "runtime": "terraform>=1.0",
+      "inline": "set -euo pipefail\nDIR=\"${TF_WORKING_DIR:-.}\"\nPLAN_FILE=\"${PLAN_OUT:-destroy.tfplan}\"\n\nexport TF_IN_AUTOMATION=true\nexport TF_INPUT=0\n\n# Build plan args\nPLAN_ARGS=\"-destroy -input=false -out=$PLAN_FILE -no-color\"\n\n# Variable files\nif [ -n \"${VAR_FILE:-}\" ]; then\n  for vf in $(echo \"$VAR_FILE\" | tr ',' '\\n'); do\n    PLAN_ARGS=\"$PLAN_ARGS -var-file=$vf\"\n  done\nfi\n\n# Targets\nif [ -n \"${TARGET:-}\" ]; then\n  for t in $(echo \"$TARGET\" | tr ',' '\\n'); do\n    PLAN_ARGS=\"$PLAN_ARGS -target=$t\"\n  done\nfi\n\n# Plan the destruction\necho '=== Step 1: Plan Destruction ===' \nterraform -chdir=\"$DIR\" plan $PLAN_ARGS\n\n# Show summary\necho '' && echo '=== Destruction Summary ===' \nterraform -chdir=\"$DIR\" show -json \"$PLAN_FILE\" | jq '{resources_to_destroy: [.resource_changes[]? | select(.change.actions[] == \"delete\") | .address]}'\n\n# Apply if auto-execute is enabled\nif [ \"${AUTO_EXECUTE:-false}\" = 'true' ]; then\n  echo '' && echo '=== Step 2: Executing Destruction ==='\n  terraform -chdir=\"$DIR\" apply -no-color \"$PLAN_FILE\"\n  echo '' && echo 'Destruction complete.'\n  terraform -chdir=\"$DIR\" state list 2>/dev/null | head -20 || echo '(state is empty)'\nelse\n  echo '' && echo \"Destruction plan saved to $PLAN_FILE\"\n  echo \"Review and apply with: terraform -chdir=$DIR apply $PLAN_FILE\"\n  echo 'Or set AUTO_EXECUTE=true to destroy automatically.'\nfi",
+      "env": {
+        "TF_WORKING_DIR": { "required": false, "secret": false, "description": "Working directory with .tf files (default: current directory)" },
+        "PLAN_OUT": { "required": false, "secret": false, "description": "Plan file name (default: destroy.tfplan)" },
+        "VAR_FILE": { "required": false, "secret": false, "description": "Comma-separated .tfvars file paths" },
+        "TARGET": { "required": false, "secret": false, "description": "Comma-separated resource addresses for targeted destruction" },
+        "AUTO_EXECUTE": { "required": false, "secret": false, "description": "Set to 'true' to apply the destruction plan automatically" }
+      }
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "directory": { "type": "string", "description": "Path to the Terraform working directory" },
+        "autoApprove": { "type": "boolean", "description": "Skip interactive confirmation" },
+        "targets": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Resource addresses for targeted destruction"
+        },
+        "variables": {
+          "type": "object",
+          "additionalProperties": { "type": "string" },
+          "description": "Key-value variable assignments"
+        },
+        "varFiles": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Paths to .tfvars variable files"
+        },
+        "planFirst": { "type": "boolean", "description": "Run plan -destroy before executing (recommended)" }
+      }
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "success": { "type": "boolean", "description": "Whether destroy completed successfully" },
+        "destroyed": { "type": "integer", "description": "Number of resources destroyed" },
+        "remaining": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Resource addresses still in state (empty on full success)"
+        }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "terraform/cli", "reason": "Terraform CLI must be installed" },
+    { "uri": "terraform/cli/init", "reason": "Init must be run before destroy" }
+  ],
+  "more": {
+    "docs": "https://developer.hashicorp.com/terraform/cli/commands/destroy",
+    "lifecycle": "https://developer.hashicorp.com/terraform/language/meta-arguments/lifecycle",
+    "state-rm": "https://developer.hashicorp.com/terraform/cli/commands/state/rm"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents, DevOps engineers, SREs",
+    "estimated_reading_time": "7 min",
+    "prerequisites": [],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://github.com/hashicorp/terraform",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

@@ -1,0 +1,166 @@
+{
+  "name": "request",
+  "version": "1.0.0",
+  "uri": "curl/request",
+  "type": "skill",
+  "context": "Construct and execute HTTP requests with curl — methods, headers, JSON bodies, form data, file uploads, and query parameters",
+  "info": "This skill covers every aspect of building HTTP requests with curl: choosing the right method (GET, POST, PUT, PATCH, DELETE, HEAD), setting request headers, sending JSON payloads, posting form data (both URL-encoded and multipart), uploading and downloading files, adding query parameters, following redirects, and handling response output. Agents use this skill whenever they need to interact with a REST or GraphQL API, submit form data, transfer files, or construct complex multi-header requests. The script accepts a URL, method, headers, and body, then executes the curl command and returns the status code, headers, and response body. See [[curl/auth]] for adding authentication to requests and [[curl/debugging]] for troubleshooting failed requests.",
+  "parent": "curl",
+  "tags": ["request", "http", "get", "post", "put", "delete", "patch", "json", "form", "upload", "download", "headers", "api-call"],
+  "aliases": [
+    "curl request",
+    "http request",
+    "curl post",
+    "curl get",
+    "send json",
+    "post json",
+    "curl json",
+    "curl put",
+    "curl delete",
+    "curl patch",
+    "curl upload",
+    "curl download",
+    "curl form",
+    "multipart upload",
+    "file upload curl",
+    "curl headers",
+    "api request",
+    "rest request",
+    "graphql request curl"
+  ],
+  "triggers": [
+    "make an http request with curl",
+    "send a post request",
+    "send json to an api",
+    "upload a file with curl",
+    "download a file with curl",
+    "set custom headers in curl",
+    "send form data with curl",
+    "make a put request",
+    "make a delete request",
+    "make a patch request",
+    "send a graphql query with curl",
+    "curl with query parameters",
+    "post multipart form data",
+    "send binary data with curl",
+    "curl follow redirects"
+  ],
+  "body": "# HTTP Requests with curl\n\nEvery curl invocation constructs and sends an HTTP request. This skill covers the full request lifecycle: choosing a method, adding headers, attaching a body, handling response output, and managing redirects.\n\n## Methods\n\n```bash\n# GET (default)\ncurl https://api.example.com/users\n\n# POST — automatically set when using -d\ncurl -d '{\"name\":\"Alice\"}' https://api.example.com/users\n\n# Explicit method override\ncurl -X PUT -d '{\"name\":\"Bob\"}' https://api.example.com/users/1\ncurl -X PATCH -d '{\"email\":\"new@example.com\"}' https://api.example.com/users/1\ncurl -X DELETE https://api.example.com/users/1\n\n# HEAD — fetch headers only\ncurl -I https://api.example.com/users\n```\n\n## Headers\n\nUse `-H` to set any header. Multiple `-H` flags are allowed.\n\n```bash\ncurl -H \"Content-Type: application/json\" \\\n     -H \"Accept: application/json\" \\\n     -H \"X-Request-ID: $(uuidgen)\" \\\n     https://api.example.com/users\n```\n\n## Sending JSON\n\nThe most common agent pattern — POST or PUT a JSON body:\n\n```bash\n# Inline JSON\ncurl -X POST \\\n     -H \"Content-Type: application/json\" \\\n     -d '{\"name\": \"Alice\", \"role\": \"admin\"}' \\\n     https://api.example.com/users\n\n# JSON from a file\ncurl -X POST \\\n     -H \"Content-Type: application/json\" \\\n     -d @payload.json \\\n     https://api.example.com/users\n\n# JSON from stdin (pipe from jq)\necho '{\"name\":\"Alice\"}' | jq '.role = \"admin\"' | \\\n  curl -X POST -H \"Content-Type: application/json\" -d @- https://api.example.com/users\n\n# JSON with shell variable interpolation (use --data-raw to avoid @ interpretation)\ncurl -X POST \\\n     -H \"Content-Type: application/json\" \\\n     --data-raw \"{\\\"name\\\": \\\"$USER_NAME\\\", \\\"email\\\": \\\"$EMAIL\\\"}\" \\\n     https://api.example.com/users\n```\n\n## Form Data\n\n```bash\n# URL-encoded form (application/x-www-form-urlencoded)\ncurl -d \"username=alice&password=secret\" https://example.com/login\n\n# URL-encode special characters automatically\ncurl --data-urlencode \"query=hello world&special=a+b\" https://api.example.com/search\n\n# Multipart form (multipart/form-data) — for file uploads\ncurl -F \"file=@photo.jpg\" \\\n     -F \"description=Profile photo\" \\\n     -F \"tags=avatar,profile\" \\\n     https://api.example.com/upload\n\n# Multipart with explicit content type\ncurl -F \"data=@report.csv;type=text/csv\" https://api.example.com/import\n```\n\n## File Transfers\n\n```bash\n# Download to specific file\ncurl -o output.json https://api.example.com/data\n\n# Download using remote filename\ncurl -LO https://releases.example.com/v1.0/app.tar.gz\n\n# Download with progress bar (default) or silent\ncurl -sS -o app.tar.gz https://releases.example.com/v1.0/app.tar.gz\n\n# Upload via PUT\ncurl -T ./backup.sql https://storage.example.com/backups/backup.sql\n\n# Resume interrupted download\ncurl -C - -O https://releases.example.com/large-file.iso\n```\n\n## Query Parameters\n\n```bash\n# In the URL directly\ncurl \"https://api.example.com/search?q=curl&limit=10&offset=0\"\n\n# Using -G with -d to build query string\ncurl -G \\\n     -d \"q=curl\" \\\n     -d \"limit=10\" \\\n     --data-urlencode \"filter=name has spaces\" \\\n     https://api.example.com/search\n```\n\n## Redirects\n\n```bash\n# Follow redirects (301, 302, 303, 307, 308)\ncurl -L https://short.url/abc\n\n# Limit redirect hops\ncurl -L --max-redirs 5 https://short.url/abc\n\n# Follow redirects and send auth to new host (careful!)\ncurl -L --location-trusted -u user:pass https://api.example.com/resource\n```\n\n## Response Handling\n\n```bash\n# Save response body and headers separately\ncurl -D headers.txt -o body.json https://api.example.com/data\n\n# Extract just the status code\ncurl -s -o /dev/null -w '%{http_code}' https://api.example.com/health\n\n# Extract multiple response fields\ncurl -s -o /dev/null -w 'status=%{http_code} time=%{time_total}s size=%{size_download}B\\n' \\\n     https://api.example.com/data\n\n# Pipe JSON response to jq for processing\ncurl -s https://api.example.com/users | jq '.[0].name'\n\n# Fail on HTTP errors (exit code 22 for 4xx/5xx)\ncurl --fail -s https://api.example.com/data\n```\n\n## GraphQL\n\n```bash\n# GraphQL query\ncurl -X POST \\\n     -H \"Content-Type: application/json\" \\\n     -H \"Authorization: Bearer $TOKEN\" \\\n     -d '{\"query\": \"{ user(id: 42) { name email } }\"}' \\\n     https://api.example.com/graphql\n\n# GraphQL with variables\ncurl -X POST \\\n     -H \"Content-Type: application/json\" \\\n     -d '{\"query\": \"query($id: ID!) { user(id: $id) { name } }\", \"variables\": {\"id\": \"42\"}}' \\\n     https://api.example.com/graphql\n```\n\n## Cookies\n\n```bash\n# Send cookies\ncurl -b \"session=abc123; theme=dark\" https://example.com/dashboard\n\n# Save cookies from response\ncurl -c cookies.txt https://example.com/login -d \"user=alice&pass=secret\"\n\n# Use saved cookies in next request\ncurl -b cookies.txt https://example.com/dashboard\n\n# Cookie jar round-trip (login then use session)\ncurl -c jar.txt -d \"user=alice&pass=secret\" https://example.com/login && \\\ncurl -b jar.txt https://example.com/api/data\n```\n\n## Timeout and Retry\n\n```bash\n# Connection timeout (time to establish connection)\ncurl --connect-timeout 5 https://api.example.com/data\n\n# Total operation timeout\ncurl -m 30 https://api.example.com/slow-endpoint\n\n# Automatic retry with delay\ncurl --retry 3 --retry-delay 2 --retry-max-time 60 https://api.example.com/data\n\n# Retry only on specific errors (connection refused, timeout)\ncurl --retry 3 --retry-connrefused https://api.example.com/data\n```\n",
+  "sections": [
+    {
+      "id": "json",
+      "title": "Sending and receiving JSON",
+      "body": "Set `Content-Type: application/json` with `-H` and pass the body with `-d`. Read from a file with `-d @file.json` or from stdin with `-d @-`. Use `--data-raw` when your JSON might contain `@` characters that curl would interpret as file references. Always pipe JSON responses through `jq` for parsing. For shell variable interpolation in JSON, prefer building the payload with `jq` rather than string interpolation to avoid escaping issues: `jq -n --arg name \"$NAME\" '{name: $name}' | curl -d @- -H 'Content-Type: application/json' URL`.",
+      "tags": ["json", "content-type", "jq", "payload", "data"]
+    },
+    {
+      "id": "forms",
+      "title": "Form data and file uploads",
+      "body": "Use `-d` for URL-encoded forms (`application/x-www-form-urlencoded`) — this is what HTML forms submit by default. Use `-F` for multipart forms (`multipart/form-data`) — required for file uploads. With `-F`, prefix file paths with `@`: `-F 'file=@photo.jpg'`. Set the MIME type explicitly with `;type=`: `-F 'file=@data.csv;type=text/csv'`. For literal string values in multipart forms, use `--form-string` to prevent `@` interpretation.",
+      "tags": ["form", "multipart", "upload", "urlencoded", "file-upload"]
+    },
+    {
+      "id": "downloads",
+      "title": "Downloading files",
+      "body": "Use `-o file` to save to a specific path, or `-O` to use the remote filename. Add `-L` to follow redirects (essential for download URLs that redirect through CDNs). Use `-C -` to resume interrupted downloads. For silent downloads in scripts, use `-sS` (silent but show errors). For progress in interactive use, curl shows a progress bar by default. Use `--create-dirs` with `-o` to auto-create parent directories for the output path.",
+      "tags": ["download", "save", "output", "resume", "progress"]
+    },
+    {
+      "id": "response",
+      "title": "Response handling and write-out",
+      "body": "The `-w` (write-out) flag extracts response metadata using format strings. Key variables: `%{http_code}` (status), `%{time_total}` (total time), `%{time_connect}` (TCP connect time), `%{time_starttransfer}` (time to first byte), `%{size_download}` (body size), `%{content_type}` (MIME type), `%{redirect_url}` (redirect target), `%{num_redirects}` (redirect count). Combine with `-s -o /dev/null` to suppress body output and get just the metadata. Use `-D headers.txt` to dump response headers to a file for inspection.",
+      "tags": ["response", "status-code", "write-out", "headers", "metadata"]
+    },
+    {
+      "id": "graphql",
+      "title": "GraphQL requests",
+      "body": "GraphQL APIs accept POST requests with a JSON body containing `query` and optional `variables` fields. Send with `-X POST -H 'Content-Type: application/json' -d '{\"query\": \"...\", \"variables\": {...}}'`. For complex queries, store the GraphQL query in a file and use `jq` to build the payload: `jq -n --rawfile q query.graphql '{query: $q}' | curl -X POST -H 'Content-Type: application/json' -d @- URL`. Always include an `Authorization` header — see [[curl/auth]].",
+      "tags": ["graphql", "query", "variables", "mutation"]
+    }
+  ],
+  "links": [
+    { "uri": "curl/auth", "context": "Add authentication headers to requests — Bearer, Basic, API keys" },
+    { "uri": "curl/debugging", "context": "Debug failed requests with verbose output and timing" },
+    { "uri": "curl", "context": "curl ecosystem overview and exit codes" },
+    { "uri": "shell/bash", "context": "Shell execution context for running curl" },
+    { "uri": "shell/pipes", "context": "Pipe curl output to jq, grep, or other tools" }
+  ],
+  "related": [
+    { "uri": "curl/auth", "relation": "see-also", "note": "Most API requests require authentication — see auth patterns" },
+    { "uri": "curl/debugging", "relation": "see-also", "note": "When requests fail, use debugging techniques to diagnose" },
+    { "uri": "shell/bash", "relation": "prerequisite", "note": "curl commands execute in a Bash shell" }
+  ],
+  "scripts": [
+    {
+      "id": "http-request",
+      "name": "HTTP Request",
+      "description": "Execute an HTTP request with curl, supporting all methods, headers, body types, and output formatting",
+      "lang": "bash",
+      "runtime": "bash>=4.0",
+      "entry": "./scripts/http-request.sh",
+      "env": {
+        "CURL_URL": { "required": true, "description": "Target URL for the request" },
+        "CURL_METHOD": { "required": false, "default": "GET", "description": "HTTP method (GET, POST, PUT, PATCH, DELETE, HEAD)" },
+        "CURL_HEADERS": { "required": false, "description": "Newline-separated headers, e.g. 'Content-Type: application/json\\nAuthorization: Bearer token'" },
+        "CURL_DATA": { "required": false, "description": "Request body — raw string, @filename for file, or @- for stdin" },
+        "CURL_OUTPUT": { "required": false, "default": "body", "description": "Output mode: body, headers, status, full, or a -w format string" },
+        "CURL_FOLLOW_REDIRECTS": { "required": false, "default": "true", "description": "Follow HTTP redirects (true/false)" },
+        "CURL_TIMEOUT": { "required": false, "default": "30", "description": "Max total time in seconds" },
+        "CURL_RETRIES": { "required": false, "default": "0", "description": "Number of retries on transient failure" },
+        "CURL_INSECURE": { "required": false, "default": "false", "description": "Skip SSL verification (true/false) — use only for local dev" }
+      }
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "url": { "type": "string", "description": "Target URL" },
+        "method": { "type": "string", "enum": ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD"], "default": "GET", "description": "HTTP method" },
+        "headers": { "type": "object", "additionalProperties": { "type": "string" }, "description": "Request headers as key-value pairs" },
+        "body": { "type": "string", "description": "Request body (JSON string, form data, or file path with @ prefix)" },
+        "output": { "type": "string", "enum": ["body", "headers", "status", "full"], "default": "body", "description": "What to return" },
+        "followRedirects": { "type": "boolean", "default": true },
+        "timeout": { "type": "integer", "default": 30, "description": "Timeout in seconds" },
+        "retries": { "type": "integer", "default": 0, "description": "Number of retry attempts" }
+      },
+      "required": ["url"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "statusCode": { "type": "integer", "description": "HTTP response status code" },
+        "headers": { "type": "string", "description": "Response headers" },
+        "body": { "type": "string", "description": "Response body" },
+        "timing": { "type": "object", "properties": {
+          "total": { "type": "number", "description": "Total time in seconds" },
+          "connect": { "type": "number", "description": "TCP connect time in seconds" },
+          "ttfb": { "type": "number", "description": "Time to first byte in seconds" }
+        }}
+      }
+    }
+  },
+  "depends": [
+    { "uri": "shell/bash", "reason": "curl commands execute in a Bash shell" }
+  ],
+  "more": {
+    "docs": "https://curl.se/docs/manpage.html",
+    "examples": "https://curl.se/docs/httpscripting.html",
+    "wiki": "https://everything.curl.dev/"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "AI agents, developers",
+    "estimated_reading_time": "5 min",
+    "prerequisites": ["shell/bash"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

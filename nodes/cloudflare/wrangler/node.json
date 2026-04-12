@@ -1,0 +1,134 @@
+{
+  "name": "wrangler",
+  "version": "1.0.0",
+  "uri": "cloudflare/wrangler",
+  "type": "context",
+  "context": "Install and use the Wrangler CLI — develop, test, deploy, and manage all Cloudflare developer platform services",
+  "content_type": "reference",
+  "info": "Wrangler is the official Cloudflare CLI for the developer platform. It handles Worker development (init, dev, deploy, tail), KV operations (namespace CRUD, key read/write/list), R2 operations (bucket CRUD, object upload/download), D1 operations (database CRUD, migrations, SQL execution), Pages deployment, secret management, and local development with Miniflare. Wrangler reads configuration from `wrangler.toml` in the project root. Install with `npm install -g wrangler` or as a dev dependency. Authenticate with `wrangler login` (OAuth) or `CLOUDFLARE_API_TOKEN` environment variable.",
+  "parent": "cloudflare",
+  "tags": ["wrangler", "cli", "deploy", "dev", "tail", "local-development", "miniflare"],
+  "aliases": [
+    "wrangler",
+    "wrangler cli",
+    "cloudflare cli",
+    "cf cli",
+    "npx wrangler",
+    "wrangler dev",
+    "wrangler deploy",
+    "wrangler tail",
+    "cloudflare wrangler"
+  ],
+  "triggers": [
+    "install wrangler",
+    "set up wrangler",
+    "use the cloudflare cli",
+    "run wrangler dev",
+    "deploy with wrangler",
+    "how to use wrangler",
+    "wrangler commands",
+    "wrangler configuration"
+  ],
+  "body": "# Wrangler CLI\n\nWrangler is the Cloudflare developer platform CLI. It manages the entire lifecycle: create, develop, test, deploy, and monitor.\n\n## Installation\n\n```bash\n# Global install\nnpm install -g wrangler\n\n# Project dev dependency (recommended)\nnpm install --save-dev wrangler\n\n# Verify installation\nwrangler --version\n```\n\n## Authentication\n\n```bash\n# Interactive OAuth login (opens browser)\nwrangler login\n\n# Verify\nwrangler whoami\n\n# Or use API token (CI/CD, agents)\nexport CLOUDFLARE_API_TOKEN=\"your-token\"\nexport CLOUDFLARE_ACCOUNT_ID=\"your-account-id\"\n```\n\n## Core Commands\n\n### Workers\n\n```bash\n# Create new Worker project\nnpm create cloudflare@latest my-worker\n\n# Start local development server\nwrangler dev                        # local mode\nwrangler dev --remote               # use remote bindings\nwrangler dev --port 8080            # custom port\n\n# Deploy to production\nwrangler deploy                     # deploy to *.workers.dev\nwrangler deploy --env staging       # deploy to named environment\n\n# Stream live logs\nwrangler tail my-worker\nwrangler tail my-worker --status error\nwrangler tail my-worker --format json\n\n# Manage secrets\nwrangler secret put API_KEY\nwrangler secret list\nwrangler secret delete API_KEY\n\n# Rollback\nwrangler rollback\n```\n\n### KV\n\n```bash\n# Namespace management\nwrangler kv namespace create MY_KV\nwrangler kv namespace create MY_KV --preview\nwrangler kv namespace list\nwrangler kv namespace delete --namespace-id <id>\n\n# Key operations\nwrangler kv key put --namespace-id <id> \"key\" \"value\"\nwrangler kv key get --namespace-id <id> \"key\"\nwrangler kv key delete --namespace-id <id> \"key\"\nwrangler kv key list --namespace-id <id> --prefix \"user:\"\n\n# Bulk operations\nwrangler kv bulk put --namespace-id <id> data.json\nwrangler kv bulk delete --namespace-id <id> keys.json\n```\n\n### R2\n\n```bash\n# Bucket management\nwrangler r2 bucket create my-bucket\nwrangler r2 bucket list\nwrangler r2 bucket delete my-bucket\n\n# Object operations\nwrangler r2 object put my-bucket/path/file --file ./local.txt\nwrangler r2 object get my-bucket/path/file --file ./download.txt\nwrangler r2 object delete my-bucket/path/file\nwrangler r2 object list my-bucket --prefix images/\n```\n\n### D1\n\n```bash\n# Database management\nwrangler d1 create my-db\nwrangler d1 list\nwrangler d1 delete my-db\n\n# Migrations\nwrangler d1 migrations create my-db create_users\nwrangler d1 migrations apply my-db --local\nwrangler d1 migrations apply my-db --remote\nwrangler d1 migrations list my-db --remote\n\n# Execute SQL\nwrangler d1 execute my-db --command \"SELECT * FROM users\" --remote\nwrangler d1 execute my-db --file ./seed.sql --remote\n```\n\n### Pages\n\n```bash\n# Deploy\nwrangler pages deploy ./dist --project-name my-site\n\n# Project management\nwrangler pages project create my-site --production-branch main\nwrangler pages project list\n\n# Secrets\nwrangler pages secret put DB_URL --project-name my-site\n```\n\n## wrangler.toml Reference\n\n```toml\n# Required\nname = \"my-worker\"\nmain = \"src/index.ts\"\ncompatibility_date = \"2024-09-23\"\n\n# Optional\naccount_id = \"your-account-id\"\ncompatibility_flags = [\"nodejs_compat\"]\nworkers_dev = true  # enable *.workers.dev subdomain\n\n# Routes\nroutes = [\n  { pattern = \"api.example.com/*\", zone_name = \"example.com\" },\n]\n\n# Or custom domain\n# routes = [{ pattern = \"api.example.com\", custom_domain = true }]\n\n# Environment variables\n[vars]\nENVIRONMENT = \"production\"\nAPI_URL = \"https://api.example.com\"\n\n# KV bindings\n[[kv_namespaces]]\nbinding = \"MY_KV\"\nid = \"namespace-id\"\npreview_id = \"preview-namespace-id\"\n\n# R2 bindings\n[[r2_buckets]]\nbinding = \"MY_BUCKET\"\nbucket_name = \"my-bucket\"\n\n# D1 bindings\n[[d1_databases]]\nbinding = \"DB\"\ndatabase_name = \"my-database\"\ndatabase_id = \"database-uuid\"\n\n# Cron triggers\n[triggers]\ncrons = [\"0 * * * *\", \"*/15 * * * *\"]\n\n# Named environments\n[env.staging]\nname = \"my-worker-staging\"\nvars = { ENVIRONMENT = \"staging\" }\nroutes = [{ pattern = \"staging-api.example.com/*\", zone_name = \"example.com\" }]\n```\n\n## Local Development (Miniflare)\n\n`wrangler dev` uses Miniflare, a local Workers simulator that supports:\n- KV, R2, D1 (local persistence in `.wrangler/state`)\n- Cron trigger testing via HTTP: `curl http://localhost:8787/__scheduled`\n- Hot reloading on file changes\n- Breakpoint debugging via `--inspect`\n\n```bash\n# Dev with inspector for Chrome DevTools debugging\nwrangler dev --inspect\n\n# Clear local state\nrm -rf .wrangler/state\n```\n",
+  "sections": [
+    {
+      "id": "install",
+      "title": "Installation and authentication",
+      "body": "Install with `npm install -g wrangler` or as a dev dependency. Authenticate with `wrangler login` for OAuth or set `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` environment variables. Verify with `wrangler whoami`. For CI/CD, always use environment variables. See [[cloudflare/auth]] for token creation.",
+      "tags": ["install", "npm", "login", "authenticate"]
+    },
+    {
+      "id": "dev",
+      "title": "Local development",
+      "body": "`wrangler dev` starts a local development server with hot reloading. Uses Miniflare to simulate Workers runtime with local KV, R2, and D1. Add `--remote` to use production bindings. Add `--port` to set a custom port. State persists in `.wrangler/state/`. Test cron triggers via `curl http://localhost:8787/__scheduled`.",
+      "tags": ["dev", "local", "miniflare", "hot-reload", "testing"]
+    },
+    {
+      "id": "deploy-command",
+      "title": "Deploying",
+      "body": "`wrangler deploy` pushes the Worker to all 300+ Cloudflare edge locations. Use `--env <name>` for named environments. Reads configuration from `wrangler.toml`. The Worker URL is `<name>.<subdomain>.workers.dev` unless custom routes are configured. Use `wrangler rollback` to revert to a previous version.",
+      "tags": ["deploy", "production", "environments", "rollback"]
+    },
+    {
+      "id": "wrangler-toml",
+      "title": "wrangler.toml configuration",
+      "body": "Required fields: `name` (worker name), `main` (entry file), `compatibility_date`. Optional: `account_id`, `compatibility_flags`, `routes`, `[vars]`, binding blocks (`[[kv_namespaces]]`, `[[r2_buckets]]`, `[[d1_databases]]`), `[triggers]` for crons, and `[env.<name>]` for named environments. Each environment can override any top-level setting.",
+      "tags": ["wrangler-toml", "config", "bindings", "environments", "routes"]
+    },
+    {
+      "id": "tail",
+      "title": "Live log streaming",
+      "body": "`wrangler tail <worker-name>` streams real-time logs from production Workers. Filter with `--status error`, `--search <text>`, or `--method POST`. Output as JSON with `--format json` for piping. Tail connects via WebSocket and shows `console.log()` output, exceptions, and request metadata.",
+      "tags": ["tail", "logs", "streaming", "debugging", "monitoring"]
+    }
+  ],
+  "links": [
+    { "uri": "cloudflare/workers", "context": "Deploy and manage Workers" },
+    { "uri": "cloudflare/kv", "context": "KV namespace and key operations" },
+    { "uri": "cloudflare/r2", "context": "R2 bucket and object operations" },
+    { "uri": "cloudflare/d1", "context": "D1 database and migration operations" },
+    { "uri": "cloudflare/pages", "context": "Pages deployment" },
+    { "uri": "cloudflare/auth", "context": "Authentication setup for Wrangler" },
+    { "uri": "cloudflare/troubleshooting", "context": "Debug Wrangler errors" }
+  ],
+  "related": [
+    { "uri": "cloudflare/auth", "relation": "prerequisite", "note": "Wrangler requires authentication to deploy" },
+    { "uri": "cloudflare/workers", "relation": "see-also", "note": "Workers are the primary workload managed by Wrangler" },
+    { "uri": "vercel", "relation": "alternative", "note": "Vercel CLI (vercel) is the equivalent for the Vercel platform" }
+  ],
+  "scripts": [
+    {
+      "id": "wrangler-setup",
+      "name": "Wrangler Setup",
+      "description": "Install Wrangler, authenticate, and verify the setup",
+      "lang": "bash",
+      "runtime": "node>=18",
+      "entry": "./scripts/setup.sh",
+      "env": {
+        "CLOUDFLARE_API_TOKEN": { "required": true, "secret": true, "description": "API token for Wrangler authentication" },
+        "CLOUDFLARE_ACCOUNT_ID": { "required": true, "secret": false, "description": "Cloudflare account ID" }
+      },
+      "packages": ["wrangler"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "command": { "type": "string", "description": "Wrangler command to run (e.g., 'deploy', 'dev', 'tail')" },
+        "args": { "type": "array", "items": { "type": "string" }, "description": "Command arguments" }
+      },
+      "required": ["command"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "stdout": { "type": "string", "description": "Command output" },
+        "exitCode": { "type": "integer", "description": "Exit code" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "cloudflare/auth", "reason": "API token required for most Wrangler operations" }
+  ],
+  "more": {
+    "docs": "https://developers.cloudflare.com/workers/wrangler/",
+    "repo": "https://github.com/cloudflare/workers-sdk",
+    "api": "https://developers.cloudflare.com/workers/wrangler/commands/"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "5 min",
+    "prerequisites": ["cloudflare/auth"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

@@ -1,0 +1,151 @@
+{
+  "name": "services",
+  "version": "1.0.0",
+  "uri": "systemd/services",
+  "type": "skill",
+  "context": "Author, install, verify, and activate systemd service units for daemons and one-shot jobs",
+  "info": "This skill covers `.service` unit authoring for both the system manager and per-user managers. It focuses on the fields agents actually need to set to make processes production-safe: `Type=`, `ExecStart=`, restart policy, user and group, working directory, environment, and boot or login activation through `[Install]`. It also covers safe installation flow: write the unit into the correct load path, verify it with `systemd-analyze verify`, run `systemctl daemon-reload`, then enable or start it. Agents use this skill to turn servers, workers, sync processes, and shell automation into managed services with explicit lifecycle and logging behavior.",
+  "parent": "systemd",
+  "tags": ["services", "service-units", "execstart", "type-exec", "restart-policy", "user-services", "daemon", "unit-authoring", "drop-ins"],
+  "aliases": [
+    "systemd service",
+    "service unit",
+    "create systemd service",
+    "install linux service",
+    "run app as systemd service",
+    "user service",
+    "daemonize app with systemd",
+    "write service file"
+  ],
+  "triggers": [
+    "create a systemd service for my app",
+    "run a script as a linux service",
+    "install a user service",
+    "make this process start on boot",
+    "write a service unit file",
+    "convert a command into a managed service"
+  ],
+  "body": "# Service Units\n\nA `.service` file tells systemd how to launch and supervise a process. The common shape is `[Unit]`, `[Service]`, and `[Install]`. For most long-running daemons, `Type=exec` is the safest default because `systemctl start` will fail if the executable or configured user cannot be resolved.\n\n```ini\n[Unit]\nDescription=My App API\nAfter=network-online.target\nWants=network-online.target\n\n[Service]\nType=exec\nUser=deploy\nWorkingDirectory=/srv/my-app\nEnvironment=NODE_ENV=production\nExecStart=/usr/bin/node /srv/my-app/server.js\nRestart=on-failure\nRestartSec=5s\n\n[Install]\nWantedBy=multi-user.target\n```\n\nInstall system units under `/etc/systemd/system` and user units under `~/.config/systemd/user`. Verify before reload:\n\n```bash\nsystemd-analyze verify /etc/systemd/system/my-app.service\nsystemctl daemon-reload\nsystemctl enable --now my-app.service\n```\n\nUse drop-ins instead of editing vendor files in place. A file such as `/etc/systemd/system/my-app.service.d/10-env.conf` can override `Environment=` or `ExecStart=`. See [[systemd/unit-files#overrides-and-dropins]] and [[systemd/troubleshooting#overrides-and-stale-config]].",
+  "sections": [
+    {
+      "id": "anatomy",
+      "title": "Service unit anatomy",
+      "body": "Place generic dependency metadata in `[Unit]`, the process contract in `[Service]`, and install targets in `[Install]`. The minimum useful service usually sets `Description=`, `Type=`, `ExecStart=`, and `WantedBy=`. Add `User=`, `Group=`, `WorkingDirectory=`, `Environment=` or `EnvironmentFile=`, and `Restart=` when the process is long-running.",
+      "tags": ["unit-structure", "unit", "service", "install"]
+    },
+    {
+      "id": "service-types",
+      "title": "Service types",
+      "body": "`Type=exec` is the recommended default for long-running services because it surfaces executable and user setup failures. Use `Type=oneshot` for jobs that run and exit. Use `Type=notify` or `Type=dbus` only when the service actually implements the required readiness signaling protocol. Avoid legacy `Type=forking` unless the daemon still follows a parent-forks-child model and cannot be modernized.",
+      "tags": ["type-exec", "type-oneshot", "type-notify", "type-dbus", "type-forking"]
+    },
+    {
+      "id": "install-flow",
+      "title": "Install flow",
+      "body": "The reliable flow is: write the unit file into the correct path, run `systemd-analyze verify`, run `systemctl daemon-reload`, then `enable` and/or `start`. Follow with `systemctl show -p FragmentPath -p ActiveState -p SubState --value` and `journalctl -u UNIT --no-pager` to confirm both the loaded path and runtime behavior.",
+      "tags": ["verify", "daemon-reload", "enable", "start", "fragmentpath"]
+    },
+    {
+      "id": "overrides",
+      "title": "Overrides and drop-ins",
+      "body": "If the distribution or a package owns the primary unit file under `/usr/lib/systemd/system`, do not edit it in place. Create a drop-in under `/etc/systemd/system/NAME.service.d/*.conf` or the equivalent user path. Drop-ins are merged after the main file and are the correct place for environment changes, dependency additions, or `ExecStart=` replacement logic.",
+      "tags": ["drop-ins", "overrides", "vendor-units", "etc-systemd-system"]
+    }
+  ],
+  "links": [
+    { "uri": "systemd/unit-files#load-path", "context": "Write the service into the correct system or user path" },
+    { "uri": "systemd/systemctl#lifecycle", "context": "Reload the manager and activate the new service" },
+    { "uri": "systemd/journalctl", "context": "Inspect startup and runtime logs for the service" },
+    { "uri": "systemd/analyze#verify", "context": "Validate unit syntax and references before activation" },
+    { "uri": "systemd/timers", "context": "Pair a service with a timer when the process is scheduled work" },
+    { "uri": "systemd/troubleshooting#failed-service", "context": "Diagnose missing binaries, bad users, and crash loops" }
+  ],
+  "related": [
+    { "uri": "systemd/unit-files", "relation": "prerequisite", "note": "Load-path and override rules determine where the service should live" },
+    { "uri": "systemd/systemctl", "relation": "implements", "note": "systemctl is used to reload, enable, start, and inspect the service" },
+    { "uri": "systemd/timers", "relation": "see-also", "note": "Timers usually activate services rather than raw commands" }
+  ],
+  "scripts": [
+    {
+      "id": "install-service",
+      "name": "Install Service",
+      "description": "Render a `.service` unit, verify it, install it into the correct scope, reload the manager, and optionally enable or start it",
+      "lang": "bash",
+      "runtime": "bash>=4.0",
+      "entry": "./scripts/install-service.sh",
+      "env": {
+        "SYSTEMD_SCOPE": { "required": false, "default": "system", "description": "Manager scope: system or user" },
+        "SYSTEMD_USE_SUDO": { "required": false, "default": "false", "description": "Use sudo for system-level writes and manager calls" },
+        "SYSTEMD_SERVICE_NAME": { "required": true, "description": "Service unit name, with or without the .service suffix" },
+        "SYSTEMD_SERVICE_EXEC_START": { "required": true, "description": "ExecStart command line" },
+        "SYSTEMD_SERVICE_TYPE": { "required": false, "default": "exec", "description": "Service type such as exec, oneshot, notify, or dbus" },
+        "SYSTEMD_SERVICE_USER": { "required": false, "description": "User to run the service as" },
+        "SYSTEMD_SERVICE_GROUP": { "required": false, "description": "Group to run the service as" },
+        "SYSTEMD_SERVICE_WORKING_DIRECTORY": { "required": false, "description": "Working directory for the process" },
+        "SYSTEMD_SERVICE_ENV_FILE": { "required": false, "description": "EnvironmentFile= path" },
+        "SYSTEMD_SERVICE_ENV": { "required": false, "description": "Newline-separated Environment= assignments" },
+        "SYSTEMD_SERVICE_AFTER": { "required": false, "description": "Comma- or space-separated After= units" },
+        "SYSTEMD_SERVICE_WANTS": { "required": false, "description": "Comma- or space-separated Wants= units" },
+        "SYSTEMD_SERVICE_REQUIRES": { "required": false, "description": "Comma- or space-separated Requires= units" },
+        "SYSTEMD_SERVICE_ENABLE": { "required": false, "default": "false", "description": "Enable the service after install" },
+        "SYSTEMD_SERVICE_START": { "required": false, "default": "false", "description": "Start the service after install" }
+      }
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "description": "Service name, with or without .service suffix" },
+        "scope": { "type": "string", "enum": ["system", "user"], "default": "system", "description": "Manager scope" },
+        "description": { "type": "string", "description": "Human description for Description=" },
+        "exec_start": { "type": "string", "description": "ExecStart command line" },
+        "type": { "type": "string", "enum": ["exec", "simple", "oneshot", "notify", "dbus", "forking", "idle"], "default": "exec", "description": "systemd service Type=" },
+        "user": { "type": "string", "description": "User for the service" },
+        "group": { "type": "string", "description": "Group for the service" },
+        "working_directory": { "type": "string", "description": "WorkingDirectory= value" },
+        "environment": { "type": "array", "items": { "type": "string" }, "description": "Environment= lines" },
+        "environment_file": { "type": "string", "description": "EnvironmentFile= path" },
+        "restart": { "type": "string", "description": "Restart= policy" },
+        "enable": { "type": "boolean", "default": false, "description": "Enable after installation" },
+        "start": { "type": "boolean", "default": false, "description": "Start after installation" }
+      },
+      "required": ["name", "exec_start"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "unit": { "type": "string" },
+        "scope": { "type": "string" },
+        "path": { "type": "string" },
+        "enabledState": { "type": "string" },
+        "activeState": { "type": "string" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "systemd/systemctl", "reason": "Reloading, enabling, and starting the new unit happens through systemctl" },
+    { "uri": "systemd/unit-files", "reason": "Correct load paths and override rules matter before writing the unit" },
+    { "uri": "systemd/analyze", "reason": "Verifying the unit before activation prevents a broken deploy", "optional": true }
+  ],
+  "more": {
+    "docs": "https://www.freedesktop.org/software/systemd/man/latest/systemd.service.html",
+    "unit-docs": "https://www.freedesktop.org/software/systemd/man/latest/systemd.unit.html"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "AI agents, linux operators, backend engineers",
+    "estimated_reading_time": "6 min",
+    "prerequisites": ["systemd/unit-files", "systemd/systemctl"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://github.com/systemd/systemd",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

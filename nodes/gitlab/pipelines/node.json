@@ -1,0 +1,292 @@
+{
+  "name": "pipelines",
+  "version": "1.0.0",
+  "uri": "gitlab/pipelines",
+  "type": "skill",
+  "context": "List, inspect, trigger, retry, cancel, and read variables for GitLab pipelines with branch, status, and input-aware API calls",
+  "info": "This skill covers pipeline operations in GitLab: list pipelines by project, ref, source, or status; inspect a single pipeline; trigger a new pipeline on a branch or tag; pass pipeline variables or typed inputs; retrieve the variables used by a pipeline; and retry or cancel an existing pipeline. Agents use it for CI/CD orchestration, deployment automation, test reruns, and release verification. The most important prerequisite is understanding how `.gitlab-ci.yml`, runners, and variables determine whether a pipeline exists and what jobs it contains.",
+  "parent": "gitlab",
+  "tags": [
+    "gitlab",
+    "pipelines",
+    "ci",
+    "cd",
+    "trigger",
+    "retry",
+    "cancel",
+    "inputs"
+  ],
+  "aliases": [
+    "gitlab pipeline",
+    "gitlab pipelines",
+    "run gitlab pipeline",
+    "retry gitlab pipeline",
+    "cancel gitlab pipeline",
+    "pipeline variables",
+    "pipeline inputs"
+  ],
+  "triggers": [
+    "trigger a gitlab pipeline",
+    "list pipelines in a gitlab project",
+    "retry a failed gitlab pipeline",
+    "cancel a running gitlab pipeline",
+    "inspect pipeline variables in gitlab"
+  ],
+  "body": "# GitLab Pipelines\n\nGitLab pipelines are project-scoped executions of `.gitlab-ci.yml`. The Pipelines API lets an agent inspect historical runs, create new branch or tag pipelines, retrieve pipeline variables, and retry or cancel existing runs.\n\n```bash\npython ./scripts/manage-pipelines.py create group/project main \\\n  --var DEPLOY_ENV=staging \\\n  --input level=3 \\\n  --input scan_security=false\n\npython ./scripts/manage-pipelines.py retry group/project 311\n```\n\nThe generic pipeline creation endpoint requires `ref` and optionally accepts `variables` plus a typed `inputs` object. Merge-request-specific pipelines are a separate API under merge requests, so if a job only appears for `merge_request_event` sources, load [[gitlab/merge-requests]] and [[gitlab/ci]] before assuming pipeline triggering is broken.",
+  "sections": [
+    {
+      "id": "list-and-get",
+      "title": "List and inspect pipelines",
+      "body": "`GET /projects/:id/pipelines` filters by `ref`, `status`, `scope`, `source`, and date windows. Child pipelines are omitted unless `source=parent_pipeline` is requested. `GET /projects/:id/pipelines/:pipeline_id` returns the pipeline object with `status`, `source`, `web_url`, timing fields, and the `detailed_status` summary that agents usually need for reporting.",
+      "tags": [
+        "list",
+        "get",
+        "status",
+        "source",
+        "child-pipelines"
+      ]
+    },
+    {
+      "id": "create",
+      "title": "Create pipelines with variables and inputs",
+      "body": "`POST /projects/:id/pipeline?ref=<branch>` creates a pipeline on a branch or tag. The request can include `variables` as an array of key-value hashes and `inputs` as a typed object. Inputs are the right place for structured runtime choices, while variables remain better for secrets and environment values stored outside the repository.",
+      "tags": [
+        "create",
+        "ref",
+        "variables",
+        "inputs",
+        "typed-inputs"
+      ]
+    },
+    {
+      "id": "retry-and-cancel",
+      "title": "Retry and cancel behavior",
+      "body": "`POST /projects/:id/pipelines/:pipeline_id/retry` retries failed or canceled jobs in a pipeline and is a clean way to recover from flaky infrastructure. `POST /projects/:id/pipelines/:pipeline_id/cancel` returns `200` even when the pipeline is already complete, so cancellation automation should inspect the returned status rather than assuming the call changed state.",
+      "tags": [
+        "retry",
+        "cancel",
+        "status",
+        "flaky"
+      ]
+    },
+    {
+      "id": "pipeline-variables",
+      "title": "Inspect pipeline variables",
+      "body": "`GET /projects/:id/pipelines/:pipeline_id/variables` returns the variable set attached to a pipeline. This is useful when debugging why a deploy ran against the wrong environment or proving which non-secret parameters were used. Sensitive project-level variables are usually managed separately through [[gitlab/variables]].",
+      "tags": [
+        "variables",
+        "debugging",
+        "observability"
+      ]
+    }
+  ],
+  "links": [
+    {
+      "uri": "gitlab/auth",
+      "context": "Pipelines can be controlled with PATs, OAuth, or CI job tokens"
+    },
+    {
+      "uri": "gitlab/auth#job-tokens",
+      "context": "Job tokens are the safest credential for pipeline-to-pipeline automation inside CI"
+    },
+    {
+      "uri": "gitlab/ci",
+      "context": "Understand `.gitlab-ci.yml`, runners, and rules before automating pipelines"
+    },
+    {
+      "uri": "gitlab/ci#inputs",
+      "context": "Typed pipeline inputs change how trigger requests should be constructed"
+    },
+    {
+      "uri": "gitlab/projects",
+      "context": "Every pipeline belongs to a project path or ID"
+    },
+    {
+      "uri": "gitlab/merge-requests",
+      "context": "Merge-request-specific pipelines live under the MR workflow"
+    },
+    {
+      "uri": "gitlab/variables",
+      "context": "Manage long-lived project variables outside pipeline trigger requests"
+    },
+    {
+      "uri": "gitlab/variables#security",
+      "context": "Keep secrets in protected project variables instead of passing them as ad hoc trigger values"
+    },
+    {
+      "uri": "github/actions",
+      "context": "Comparable CI/CD orchestration workflow on GitHub"
+    }
+  ],
+  "related": [
+    {
+      "uri": "gitlab/auth",
+      "relation": "prerequisite",
+      "note": "Pipelines API calls require a token that can access the target project"
+    },
+    {
+      "uri": "gitlab/ci",
+      "relation": "prerequisite",
+      "note": "Pipeline behavior is defined by `.gitlab-ci.yml`, runner capacity, variables, and inputs"
+    },
+    {
+      "uri": "gitlab/ci#inputs",
+      "relation": "see-also",
+      "note": "Typed inputs are one of the most important distinctions between different pipeline trigger flows"
+    },
+    {
+      "uri": "github/actions",
+      "relation": "alternative",
+      "note": "GitHub Actions is the closest equivalent CI/CD execution surface"
+    }
+  ],
+  "scripts": [
+    {
+      "id": "manage-pipelines",
+      "name": "Manage GitLab Pipelines",
+      "description": "List, inspect, create, retry, cancel, and inspect variables for GitLab pipelines",
+      "lang": "python",
+      "runtime": "python>=3.10",
+      "entry": "./scripts/manage-pipelines.py",
+      "env": {
+        "GITLAB_TOKEN": {
+          "required": false,
+          "secret": true,
+          "description": "Preferred API token; use unless OAUTH_TOKEN or CI_JOB_TOKEN is provided instead"
+        },
+        "OAUTH_TOKEN": {
+          "required": false,
+          "secret": true,
+          "description": "Optional OAuth bearer token"
+        },
+        "CI_JOB_TOKEN": {
+          "required": false,
+          "secret": true,
+          "description": "Optional CI job token for in-pipeline automation"
+        },
+        "GITLAB_HOST": {
+          "required": false,
+          "default": "https://gitlab.com",
+          "description": "GitLab host, including scheme"
+        },
+        "GITLAB_HTTP_DEBUG": {
+          "required": false,
+          "default": "0",
+          "description": "Set to 1 to print request details to stderr"
+        }
+      }
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "action": {
+          "type": "string",
+          "enum": [
+            "list",
+            "get",
+            "create",
+            "retry",
+            "cancel",
+            "variables"
+          ]
+        },
+        "project": {
+          "type": "string"
+        },
+        "pipelineId": {
+          "type": "integer"
+        },
+        "ref": {
+          "type": "string",
+          "description": "Branch or tag for pipeline creation"
+        },
+        "variables": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "key": {
+                "type": "string"
+              },
+              "value": {
+                "type": "string"
+              },
+              "variableType": {
+                "type": "string",
+                "enum": [
+                  "env_var",
+                  "file"
+                ]
+              }
+            }
+          }
+        },
+        "inputs": {
+          "type": "object",
+          "description": "Typed pipeline inputs"
+        }
+      },
+      "required": [
+        "action",
+        "project"
+      ]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "integer"
+        },
+        "status": {
+          "type": "string"
+        },
+        "ref": {
+          "type": "string"
+        },
+        "source": {
+          "type": "string"
+        },
+        "webUrl": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "depends": [
+    {
+      "uri": "gitlab/auth",
+      "reason": "Authenticated access is required for private pipeline operations"
+    },
+    {
+      "uri": "gitlab/ci",
+      "reason": "Pipeline creation and debugging depends on understanding `.gitlab-ci.yml`, runners, variables, and inputs"
+    }
+  ],
+  "more": {
+    "docs": "https://docs.gitlab.com/api/pipelines/",
+    "ci-yaml": "https://docs.gitlab.com/ci/yaml/",
+    "inputs": "https://docs.gitlab.com/ci/inputs/"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents, release engineers",
+    "estimated_reading_time": "7 min",
+    "prerequisites": [
+      "gitlab/auth",
+      "gitlab/ci",
+      "gitlab/projects"
+    ],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://gitlab.com/gitlab-org/gitlab",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

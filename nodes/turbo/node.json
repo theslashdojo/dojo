@@ -1,0 +1,94 @@
+{
+  "name": "turbo",
+  "version": "1.0.0",
+  "uri": "turbo",
+  "type": "ecosystem",
+  "context": "Turborepo monorepo build system — task pipelines, workspace management, and intelligent caching",
+  "info": "Turborepo is a high-performance build system for JavaScript and TypeScript monorepos. It orchestrates task execution across workspaces using a dependency-aware task graph, caches outputs locally and remotely to eliminate redundant work, and parallelizes builds across available CPU cores. Agents use this ecosystem to configure turbo.json pipelines, manage workspace structure (apps/ and packages/), enable remote caching for CI, and troubleshoot cache misses. Turborepo works with npm, yarn, pnpm, and bun. Configuration lives in turbo.json at the repo root with optional per-workspace overrides via the extends field. Key sub-skills: [[turbo/config]] for turbo.json setup, [[turbo/pipelines]] for task dependency graphs, [[turbo/workspaces]] for monorepo structure, [[turbo/caching]] for cache behavior, and [[turbo/troubleshooting]] for debugging.",
+  "parent": null,
+  "tags": ["turbo", "turborepo", "monorepo", "build-system", "task-runner", "caching", "workspaces", "pipelines", "ci-cd", "javascript", "typescript"],
+  "aliases": [
+    "turborepo",
+    "turbo build",
+    "turbo repo",
+    "turbo monorepo",
+    "vercel turborepo",
+    "turbo.json",
+    "monorepo build tool",
+    "turbo run"
+  ],
+  "triggers": [
+    "set up turborepo",
+    "configure a monorepo with turbo",
+    "run tasks across workspaces",
+    "set up turbo caching",
+    "configure turbo.json",
+    "create a turborepo project",
+    "speed up monorepo builds",
+    "parallelize workspace tasks",
+    "set up remote caching",
+    "turbo run build"
+  ],
+  "body": "# Turborepo\n\nTurborepo is the standard build system for JavaScript/TypeScript monorepos. It takes your existing package.json scripts and turbo.json configuration, builds a dependency graph across workspaces, and executes tasks in the optimal order with maximum parallelism.\n\n## Core Concepts\n\n- **Tasks** — Scripts defined in package.json, orchestrated by [[turbo/pipelines]] in turbo.json\n- **Workspaces** — Individual packages in your monorepo, managed via [[turbo/workspaces]]\n- **Caching** — Local and remote caching of task outputs, explained in [[turbo/caching]]\n- **Configuration** — turbo.json at repo root, detailed in [[turbo/config]]\n\n## Quick Start\n\n```bash\n# Create a new turborepo\nnpx create-turbo@latest my-monorepo\n\n# Or add to existing monorepo\nnpm install turbo --save-dev\n```\n\n## Minimal turbo.json\n\n```json\n{\n  \"tasks\": {\n    \"build\": {\n      \"dependsOn\": [\"^build\"],\n      \"outputs\": [\"dist/**\"]\n    },\n    \"dev\": {\n      \"persistent\": true,\n      \"cache\": false\n    },\n    \"lint\": {},\n    \"test\": {\n      \"dependsOn\": [\"build\"]\n    }\n  }\n}\n```\n\n## CLI Overview\n\n```bash\n# Run tasks (turbo is an alias for turbo run)\nturbo build                    # Run build in all workspaces\nturbo build --filter=web       # Run build only in 'web' workspace\nturbo build lint test          # Run multiple tasks\nturbo build --affected         # Only workspaces changed on this branch\n\n# Utilities\nturbo prune --scope=web        # Create minimal monorepo subset\nturbo gen                      # Generate new workspaces from templates\nturbo login && turbo link      # Enable remote caching via Vercel\n\n# Debugging\nturbo build --dry              # Preview without executing\nturbo build --graph=graph.svg  # Visualize task graph\nturbo build --summarize        # Generate run summary JSON\n```\n\n## Environment Variables\n\n| Variable | Purpose |\n|----------|----------|\n| `TURBO_TOKEN` | Authentication token for remote cache |\n| `TURBO_TEAM` | Team name/ID for remote cache |\n| `TURBO_REMOTE_CACHE_SIGNATURE_KEY` | Signing key for cache artifact integrity |\n| `TURBO_SCM_BASE` | Git base ref for --affected (default: main) |\n| `TURBO_SCM_HEAD` | Git head ref for --affected (default: HEAD) |\n| `TURBO_FORCE` | Force re-execution ignoring cache |\n| `TURBO_LOG_ORDER` | Log ordering: stream, grouped, auto |\n\n## Package Manager Support\n\nTurborepo works with all major package managers:\n- **npm** — workspaces in package.json\n- **yarn** (v1 and berry) — workspaces in package.json\n- **pnpm** — workspaces in pnpm-workspace.yaml\n- **bun** — workspaces in package.json\n",
+  "sections": [
+    {
+      "id": "overview",
+      "title": "What is Turborepo",
+      "body": "Turborepo is a high-performance build system for JavaScript and TypeScript monorepos by Vercel. It analyzes your workspace dependency graph and runs tasks in the optimal order, caching outputs so repeated builds are near-instant. It requires minimal configuration — just a turbo.json file alongside your existing package.json scripts.",
+      "tags": ["overview", "introduction", "what-is"]
+    },
+    {
+      "id": "installation",
+      "title": "Installing Turborepo",
+      "body": "Install turbo as a devDependency in your monorepo root:\n\n```bash\nnpm install turbo --save-dev\n# or\npnpm add turbo --save-dev --workspace-root\n# or\nyarn add turbo --dev\n```\n\nAlternatively, scaffold a new project with `npx create-turbo@latest`. Add turbo.json to your repo root and define tasks matching your package.json scripts.",
+      "tags": ["install", "setup", "getting-started"]
+    },
+    {
+      "id": "cli",
+      "title": "CLI commands",
+      "body": "Primary commands:\n- `turbo run <tasks>` (or just `turbo <tasks>`) — execute tasks across workspaces\n- `turbo prune --scope=<pkg>` — create a sparse monorepo with only the specified package and its dependencies\n- `turbo gen` — generate new workspaces from templates\n- `turbo login` / `turbo link` — authenticate and connect to remote cache\n- `turbo daemon status` — check the turbo daemon\n\nKey flags: `--filter`, `--affected`, `--dry`, `--force`, `--graph`, `--summarize`, `--concurrency`, `--output-logs`, `--env-mode`",
+      "tags": ["cli", "commands", "turbo-run", "turbo-prune", "turbo-gen"]
+    },
+    {
+      "id": "package-managers",
+      "title": "Package manager compatibility",
+      "body": "Turborepo reads workspace configuration from your package manager. npm, yarn, and bun use the `workspaces` field in root package.json. pnpm uses pnpm-workspace.yaml. The `packageManager` field in root package.json is recommended for consistent behavior. Turborepo validates the package manager version at runtime unless `dangerouslyDisablePackageManagerCheck` is set.",
+      "tags": ["npm", "yarn", "pnpm", "bun", "package-manager"]
+    }
+  ],
+  "sub": ["turbo/config", "turbo/pipelines", "turbo/workspaces", "turbo/caching", "turbo/troubleshooting"],
+  "links": [
+    { "uri": "turbo/config", "context": "Configure turbo.json — global options, env modes, remote cache settings" },
+    { "uri": "turbo/pipelines", "context": "Define task dependency graphs with dependsOn, outputs, and caching rules" },
+    { "uri": "turbo/workspaces", "context": "Structure monorepo workspaces — apps/, packages/, internal packages" },
+    { "uri": "turbo/caching", "context": "Understand local and remote caching, cache inputs/outputs, invalidation" },
+    { "uri": "turbo/troubleshooting", "context": "Debug cache misses, slow builds, and common Turborepo issues" }
+  ],
+  "related": [
+    { "uri": "typescript", "relation": "see-also", "note": "TypeScript projects are the primary use case for Turborepo monorepos" },
+    { "uri": "testing", "relation": "see-also", "note": "Test tasks are commonly orchestrated via Turborepo pipelines" },
+    { "uri": "eslint", "relation": "see-also", "note": "Lint tasks are a standard part of turbo pipelines" },
+    { "uri": "vite", "relation": "see-also", "note": "Vite build outputs are cached by Turborepo" },
+    { "uri": "nextjs", "relation": "see-also", "note": "Next.js is the most common framework in Turborepo monorepos" }
+  ],
+  "more": {
+    "docs": "https://turborepo.dev/repo/docs",
+    "repo": "https://github.com/vercel/turborepo",
+    "examples": "https://github.com/vercel/turborepo/tree/main/examples",
+    "api": "https://turborepo.dev/repo/docs/reference/configuration"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents, DevOps engineers",
+    "estimated_reading_time": "5 min",
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

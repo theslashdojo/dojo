@@ -1,0 +1,127 @@
+{
+  "name": "gcp",
+  "version": "1.0.0",
+  "uri": "terraform/providers/gcp",
+  "type": "skill",
+  "context": "Terraform Google Cloud provider — configure, authenticate, and manage GCP resources including Compute Engine, GCS, Cloud SQL, GKE, and Cloud Run",
+  "info": "The Google Cloud Platform provider for Terraform (hashicorp/google) enables declarative management of GCP resources through HCL. It covers Compute Engine instances, Cloud Storage buckets, Cloud SQL databases, GKE clusters, Cloud Run services, IAM bindings, VPC networks, and many more GCP services. Authentication follows GCP's Application Default Credentials (ADC) chain: GOOGLE_APPLICATION_CREDENTIALS environment variable, gcloud auth application-default login, service account key files, workload identity federation, and compute engine metadata. The provider requires a project ID and region, which can be set in the provider block or via environment variables. The google-beta provider gives access to GCP features in beta before they reach general availability.",
+  "parent": "terraform/providers",
+  "tags": ["terraform", "gcp", "google-cloud", "provider", "hcl", "compute-engine", "gcs", "cloud-sql", "gke", "cloud-run", "iam", "infrastructure-as-code"],
+  "aliases": [
+    "terraform gcp provider",
+    "terraform google provider",
+    "terraform google cloud",
+    "tf gcp",
+    "hashicorp/google",
+    "google cloud terraform",
+    "gcp infrastructure as code",
+    "terraform gcp resources"
+  ],
+  "triggers": [
+    "configure the gcp terraform provider",
+    "authenticate terraform with google cloud",
+    "create gcp resources with terraform",
+    "deploy to google cloud with terraform",
+    "manage gcp infrastructure with terraform",
+    "terraform gcp provider setup",
+    "terraform gke cluster",
+    "terraform cloud run service",
+    "set up workload identity for terraform"
+  ],
+  "body": "# Terraform Google Cloud Provider\n\nThe Google Cloud provider (`hashicorp/google`) lets you manage GCP infrastructure declaratively with Terraform. It supports Compute Engine, Cloud Storage, Cloud SQL, GKE, Cloud Run, IAM, networking, and hundreds of other GCP resource types.\n\n## Provider Configuration\n\n```hcl\nterraform {\n  required_providers {\n    google = {\n      source  = \"hashicorp/google\"\n      version = \"~> 5.0\"\n    }\n  }\n}\n\nprovider \"google\" {\n  project = \"my-project-id\"\n  region  = \"us-central1\"\n  zone    = \"us-central1-a\"\n}\n```\n\nThe `project`, `region`, and `zone` arguments set defaults for all resources. They can also be set via environment variables `GOOGLE_PROJECT`, `GOOGLE_REGION`, and `GOOGLE_ZONE`, or overridden per resource.\n\n### Google Beta Provider\n\nSome GCP features are available in beta before general availability. Use the `google-beta` provider for these:\n\n```hcl\nterraform {\n  required_providers {\n    google-beta = {\n      source  = \"hashicorp/google-beta\"\n      version = \"~> 5.0\"\n    }\n  }\n}\n\nprovider \"google-beta\" {\n  project = \"my-project-id\"\n  region  = \"us-central1\"\n}\n\nresource \"google_compute_instance\" \"beta_feature\" {\n  provider = google-beta\n  # ... resource config using beta features\n}\n```\n\n## Authentication\n\nThe Google provider resolves credentials using Application Default Credentials (ADC) in this order:\n\n1. **GOOGLE_APPLICATION_CREDENTIALS** — environment variable pointing to a service account key JSON file\n2. **gcloud auth application-default login** — user credentials stored by the gcloud CLI\n3. **Service account key file** — path specified in the `credentials` argument\n4. **Workload Identity Federation** — OIDC-based authentication for CI/CD (GitHub Actions, GitLab)\n5. **Compute Engine metadata** — automatic on GCE instances, Cloud Build, Cloud Run\n\n```bash\n# Option 1: Service account key file\nexport GOOGLE_APPLICATION_CREDENTIALS=\"/path/to/service-account-key.json\"\n\n# Option 2: gcloud user credentials (for local development)\ngcloud auth application-default login\n\n# Option 3: Set project via gcloud\ngcloud config set project my-project-id\n```\n\n```hcl\n# Explicit credentials file in provider block (not recommended for production)\nprovider \"google\" {\n  project     = \"my-project-id\"\n  region      = \"us-central1\"\n  credentials = file(\"service-account-key.json\")\n}\n```\n\nFor CI/CD, prefer Workload Identity Federation over service account keys to avoid managing long-lived secrets.\n\n## Common Resources\n\n```hcl\n# Compute Engine instance\nresource \"google_compute_instance\" \"web\" {\n  name         = \"web-server\"\n  machine_type = \"e2-micro\"\n  zone         = \"us-central1-a\"\n\n  boot_disk {\n    initialize_params {\n      image = \"debian-cloud/debian-12\"\n      size  = 20\n    }\n  }\n\n  network_interface {\n    network    = google_compute_network.vpc.id\n    subnetwork = google_compute_subnetwork.subnet.id\n\n    access_config {\n      # Assigns an ephemeral external IP\n    }\n  }\n\n  metadata_startup_script = \"apt-get update && apt-get install -y nginx\"\n\n  tags = [\"http-server\", \"https-server\"]\n}\n\n# Cloud Storage bucket\nresource \"google_storage_bucket\" \"assets\" {\n  name          = \"my-app-assets-${var.environment}\"\n  location      = \"US\"\n  force_destroy = false\n\n  uniform_bucket_level_access = true\n\n  versioning {\n    enabled = true\n  }\n\n  lifecycle_rule {\n    condition {\n      age = 90\n    }\n    action {\n      type = \"Delete\"\n    }\n  }\n}\n\n# Cloud SQL instance\nresource \"google_sql_database_instance\" \"postgres\" {\n  name             = \"app-db\"\n  database_version = \"POSTGRES_16\"\n  region           = \"us-central1\"\n\n  settings {\n    tier = \"db-f1-micro\"\n\n    ip_configuration {\n      ipv4_enabled    = true\n      private_network = google_compute_network.vpc.id\n    }\n\n    backup_configuration {\n      enabled    = true\n      start_time = \"03:00\"\n    }\n  }\n\n  deletion_protection = true\n}\n\n# GKE cluster\nresource \"google_container_cluster\" \"primary\" {\n  name     = \"primary-cluster\"\n  location = \"us-central1\"\n\n  initial_node_count       = 1\n  remove_default_node_pool = true\n\n  network    = google_compute_network.vpc.id\n  subnetwork = google_compute_subnetwork.subnet.id\n}\n\nresource \"google_container_node_pool\" \"primary_nodes\" {\n  name       = \"primary-node-pool\"\n  cluster    = google_container_cluster.primary.id\n  node_count = 3\n\n  node_config {\n    machine_type = \"e2-standard-2\"\n    oauth_scopes = [\n      \"https://www.googleapis.com/auth/cloud-platform\"\n    ]\n  }\n}\n\n# Cloud Run service\nresource \"google_cloud_run_service\" \"api\" {\n  name     = \"api-service\"\n  location = \"us-central1\"\n\n  template {\n    spec {\n      containers {\n        image = \"gcr.io/my-project/api:latest\"\n        ports {\n          container_port = 8080\n        }\n        resources {\n          limits = {\n            memory = \"512Mi\"\n            cpu    = \"1000m\"\n          }\n        }\n      }\n    }\n  }\n\n  traffic {\n    percent         = 100\n    latest_revision = true\n  }\n}\n\n# IAM member binding\nresource \"google_project_iam_member\" \"editor\" {\n  project = var.project_id\n  role    = \"roles/editor\"\n  member  = \"serviceAccount:${google_service_account.sa.email}\"\n}\n\n# VPC network\nresource \"google_compute_network\" \"vpc\" {\n  name                    = \"main-vpc\"\n  auto_create_subnetworks = false\n}\n\nresource \"google_compute_subnetwork\" \"subnet\" {\n  name          = \"main-subnet\"\n  ip_cidr_range = \"10.0.0.0/24\"\n  region        = \"us-central1\"\n  network       = google_compute_network.vpc.id\n}\n```\n\n## Data Sources\n\nData sources query existing GCP resources without managing them:\n\n```hcl\n# Current project metadata\ndata \"google_project\" \"current\" {}\n\noutput \"project_number\" {\n  value = data.google_project.current.number\n}\n\n# Existing VPC network\ndata \"google_compute_network\" \"existing\" {\n  name = \"default\"\n}\n\n# Current client config (useful for GKE auth)\ndata \"google_client_config\" \"current\" {}\n\noutput \"access_token\" {\n  value     = data.google_client_config.current.access_token\n  sensitive = true\n}\n\n# Available compute zones\ndata \"google_compute_zones\" \"available\" {\n  region = \"us-central1\"\n}\n```\n\nThe `google_client_config` data source is especially useful for configuring the Kubernetes provider to authenticate with a GKE cluster.\n\n## Project and Region Configuration\n\nResources inherit `project`, `region`, and `zone` from the provider block, but they can be overridden per resource:\n\n```hcl\nresource \"google_storage_bucket\" \"eu_data\" {\n  name     = \"eu-data-bucket\"\n  project  = \"other-project-id\"\n  location = \"EU\"\n}\n```\n\nUse variables for project and region to support multiple environments:\n\n```hcl\nvariable \"project_id\" {\n  type = string\n}\n\nvariable \"region\" {\n  type    = string\n  default = \"us-central1\"\n}\n\nprovider \"google\" {\n  project = var.project_id\n  region  = var.region\n}\n```\n",
+  "sections": [
+    {
+      "id": "configuration",
+      "title": "Provider configuration",
+      "body": "Declare the Google provider in `required_providers` with `source = \"hashicorp/google\"` and a version constraint (e.g., `~> 5.0`). The `provider \"google\"` block accepts `project` (GCP project ID), `region`, `zone`, and `credentials`. Project, region, and zone can also be set via `GOOGLE_PROJECT`, `GOOGLE_REGION`, and `GOOGLE_ZONE` environment variables. Resources inherit these defaults but can override them. For beta GCP features, add the `hashicorp/google-beta` provider and set `provider = google-beta` on resources that need it.",
+      "tags": ["configuration", "project", "region", "zone", "google-beta", "required-providers"]
+    },
+    {
+      "id": "authentication",
+      "title": "Authentication and credentials",
+      "body": "The Google provider uses Application Default Credentials (ADC): (1) `GOOGLE_APPLICATION_CREDENTIALS` env var pointing to a service account key JSON, (2) `gcloud auth application-default login` for local development, (3) explicit `credentials` argument in the provider block, (4) Workload Identity Federation for CI/CD (GitHub Actions, GitLab CI), (5) Compute Engine metadata for code running on GCE/GKE/Cloud Run. For production CI/CD, use Workload Identity Federation to avoid service account key files. The `GOOGLE_IMPERSONATE_SERVICE_ACCOUNT` env var enables service account impersonation without a key file.",
+      "tags": ["authentication", "adc", "service-account", "workload-identity", "gcloud", "credentials", "impersonation"]
+    },
+    {
+      "id": "common-resources",
+      "title": "Most-used GCP resources",
+      "body": "The most commonly managed GCP resources: `google_compute_instance` (VMs), `google_storage_bucket` (object storage), `google_sql_database_instance` (Cloud SQL), `google_container_cluster` and `google_container_node_pool` (GKE Kubernetes), `google_cloud_run_service` (serverless containers), `google_project_iam_member` (IAM bindings), `google_compute_network` and `google_compute_subnetwork` (VPC), `google_compute_firewall` (firewall rules), `google_service_account` (service accounts), and `google_pubsub_topic` (messaging). Each resource maps to a GCP API resource with full CRUD lifecycle support.",
+      "tags": ["resources", "compute-instance", "storage-bucket", "cloud-sql", "gke", "cloud-run", "iam", "vpc", "firewall"]
+    },
+    {
+      "id": "data-sources",
+      "title": "Most-used GCP data sources",
+      "body": "Data sources query existing GCP state: `data.google_project` returns project metadata including the numeric project number. `data.google_compute_network` looks up existing VPC networks by name. `data.google_client_config` provides the current access token, project, and region, which is essential for configuring the Kubernetes provider to authenticate with GKE. `data.google_compute_zones` lists available zones in a region. `data.google_compute_image` finds images by family for use in instance boot disks. `data.google_iam_policy` generates IAM policy documents.",
+      "tags": ["data-sources", "google-project", "compute-network", "client-config", "compute-zones", "iam-policy"]
+    }
+  ],
+  "links": [
+    { "uri": "terraform/providers", "context": "Parent node covering Terraform provider concepts and configuration" },
+    { "uri": "terraform/providers/aws", "context": "AWS provider for multi-cloud Terraform deployments" },
+    { "uri": "terraform/providers/azure", "context": "Azure provider for multi-cloud Terraform deployments" }
+  ],
+  "related": [
+    { "uri": "terraform/providers", "relation": "extends", "note": "GCP provider implements the Terraform provider interface for Google Cloud" },
+    { "uri": "terraform/providers/aws", "relation": "alternative", "note": "AWS provider is the Amazon cloud alternative for infrastructure as code" },
+    { "uri": "terraform/providers/azure", "relation": "alternative", "note": "Azure provider is the Microsoft cloud alternative for infrastructure as code" }
+  ],
+  "scripts": [
+    {
+      "id": "verify-gcp-credentials",
+      "name": "Verify GCP Credentials",
+      "description": "Verify Google Cloud credentials are configured, display the active project, account, and list available services",
+      "lang": "bash",
+      "runtime": "gcloud-cli>=400",
+      "inline": "#!/usr/bin/env bash\nset -euo pipefail\n\necho '=== GCP Credential Verification ==='\necho ''\n\n# Check if gcloud is available\nif ! command -v gcloud &>/dev/null; then\n  echo 'ERROR: gcloud CLI not found. Install it from https://cloud.google.com/sdk/install'\n  exit 1\nfi\n\n# Display active configuration\necho '--- Active Configuration ---'\nACCOUNT=$(gcloud config get-value account 2>/dev/null || echo 'not set')\nPROJECT=$(gcloud config get-value project 2>/dev/null || echo 'not set')\nREGION=$(gcloud config get-value compute/region 2>/dev/null || echo 'not set')\nZONE=$(gcloud config get-value compute/zone 2>/dev/null || echo 'not set')\necho \"  Account: $ACCOUNT\"\necho \"  Project: $PROJECT\"\necho \"  Region:  $REGION\"\necho \"  Zone:    $ZONE\"\n\necho ''\necho '--- Application Default Credentials ---'\nif [ -n \"${GOOGLE_APPLICATION_CREDENTIALS:-}\" ]; then\n  echo \"  GOOGLE_APPLICATION_CREDENTIALS: $GOOGLE_APPLICATION_CREDENTIALS\"\n  if [ -f \"$GOOGLE_APPLICATION_CREDENTIALS\" ]; then\n    echo '  Key file exists: yes'\n  else\n    echo '  Key file exists: NO (file not found)'\n  fi\nelse\n  ADC_PATH=\"${HOME}/.config/gcloud/application_default_credentials.json\"\n  if [ -f \"$ADC_PATH\" ]; then\n    echo '  Using gcloud application-default credentials'\n  else\n    echo '  No ADC found. Run: gcloud auth application-default login'\n  fi\nfi\n\necho ''\necho '--- Auth Test ---'\nif gcloud auth print-access-token &>/dev/null; then\n  echo '  Authentication: OK'\nelse\n  echo '  Authentication: FAILED'\n  echo '  Run: gcloud auth login'\n  exit 1\nfi\n\necho ''\necho '--- Terraform Check ---'\nif command -v terraform &>/dev/null; then\n  echo \"  Terraform version: $(terraform version -json 2>/dev/null | python3 -c 'import sys,json; print(json.load(sys.stdin)[\"terraform_version\"])' 2>/dev/null || terraform version | head -1)\"\nelse\n  echo '  Terraform not installed. Install from https://developer.hashicorp.com/terraform/install'\nfi\n\necho ''\necho 'Credentials verified successfully.'\n",
+      "env": {
+        "GOOGLE_APPLICATION_CREDENTIALS": { "required": false, "secret": false, "description": "Path to service account key JSON file (optional if using gcloud auth or compute metadata)" },
+        "GOOGLE_PROJECT": { "required": false, "secret": false, "description": "GCP project ID (optional if set in gcloud config)" }
+      }
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "project": { "type": "string", "description": "GCP project ID" },
+        "region": { "type": "string", "description": "GCP region (e.g., us-central1)" },
+        "zone": { "type": "string", "description": "GCP zone (e.g., us-central1-a)" },
+        "credentials": { "type": "string", "description": "Path to service account key JSON file" }
+      },
+      "required": ["project"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "projectId": { "type": "string", "description": "GCP project ID" },
+        "projectNumber": { "type": "string", "description": "GCP numeric project number" },
+        "region": { "type": "string", "description": "Configured GCP region" },
+        "account": { "type": "string", "description": "Active service account or user email" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "terraform/providers", "reason": "The GCP provider is a Terraform provider plugin" }
+  ],
+  "more": {
+    "docs": "https://registry.terraform.io/providers/hashicorp/google/latest/docs",
+    "repo": "https://github.com/hashicorp/terraform-provider-google",
+    "examples": "https://github.com/hashicorp/terraform-provider-google/tree/main/examples"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents, DevOps engineers, SREs",
+    "estimated_reading_time": "9 min",
+    "prerequisites": ["terraform/providers"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://github.com/hashicorp/terraform-provider-google",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

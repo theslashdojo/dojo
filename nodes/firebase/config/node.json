@@ -1,0 +1,104 @@
+{
+  "name": "config",
+  "version": "1.0.0",
+  "uri": "firebase/config",
+  "type": "context",
+  "content_type": "reference",
+  "context": "Firebase project configuration files, environment variables, and SDK initialization — firebase.json, .firebaserc, firebaseConfig object, Admin SDK credentials, and multi-environment setup",
+  "info": "Firebase project configuration spans several files and patterns. firebase.json is the central config file defining hosting (public directory, rewrites, redirects, headers), firestore (rules file, indexes file), storage (rules file), functions (source directory, codebase, predeploy hooks), and emulators (ports and UI settings). .firebaserc maps project aliases (default, staging, production) to Firebase project IDs for multi-environment workflows. The client SDK requires a firebaseConfig object containing apiKey, authDomain, projectId, storageBucket, messagingSenderId, and appId — these values are safe to expose in client code since security is enforced by security rules, not by hiding config. The Admin SDK (firebase-admin) initializes server-side with a service account credential via cert() or automatically when GOOGLE_APPLICATION_CREDENTIALS points to a service account JSON file. In Cloud Functions runtime, FIREBASE_CONFIG is auto-populated with project config. Environment variables FIREBASE_PROJECT_ID, FIREBASE_API_KEY, FIREBASE_AUTH_DOMAIN, FIREBASE_STORAGE_BUCKET, FIREBASE_MESSAGING_SENDER_ID, and FIREBASE_APP_ID store client config for build-time injection. FIREBASE_TOKEN provides CI/CD deploy authentication. Security rules live in firestore.rules and storage.rules, referenced from firebase.json. Use --project flag or .firebaserc aliases to switch between environments.",
+  "parent": "firebase",
+  "tags": ["config", "configuration", "firebase-json", "firebaserc", "sdk", "admin-sdk", "environment", "setup", "initialization"],
+  "aliases": [
+    "firebase config",
+    "firebase configuration",
+    "firebase.json",
+    "firebaserc",
+    "firebase setup",
+    "firebase project config",
+    "firebase env",
+    "firebase environment variables"
+  ],
+  "triggers": [
+    "configure firebase project",
+    "set up firebase config",
+    "firebase environment variables",
+    "initialize firebase sdk",
+    "firebase admin sdk setup"
+  ],
+  "body": "# Firebase Configuration\n\nFirebase project configuration is split across several files: firebase.json for service settings, .firebaserc for project aliases, client SDK config for browser apps, and Admin SDK initialization for server-side access.\n\n## firebase.json\n\nThe central configuration file created by `firebase init`. It defines settings for each Firebase service:\n\n```json\n{\n  \"hosting\": {\n    \"public\": \"dist\",\n    \"ignore\": [\"firebase.json\", \"**/.*\", \"**/node_modules/**\"],\n    \"rewrites\": [{\"source\": \"**\", \"destination\": \"/index.html\"}]\n  },\n  \"firestore\": {\n    \"rules\": \"firestore.rules\",\n    \"indexes\": \"firestore.indexes.json\"\n  },\n  \"storage\": {\n    \"rules\": \"storage.rules\"\n  },\n  \"functions\": {\n    \"source\": \"functions\",\n    \"codebase\": \"default\",\n    \"predeploy\": [\"npm --prefix functions run build\"]\n  },\n  \"emulators\": {\n    \"auth\": {\"port\": 9099},\n    \"firestore\": {\"port\": 8080},\n    \"functions\": {\"port\": 5001},\n    \"hosting\": {\"port\": 5000},\n    \"storage\": {\"port\": 9199},\n    \"ui\": {\"enabled\": true, \"port\": 4000}\n  }\n}\n```\n\nEach top-level key corresponds to a Firebase service. Only include keys for services you use. The `hosting.rewrites` array routes all unmatched paths to `index.html` for SPA routing. The `functions.predeploy` array runs build steps before deployment. Emulator ports are configurable to avoid conflicts.\n\n## .firebaserc\n\nProject alias file mapping environment names to Firebase project IDs:\n\n```json\n{\"projects\": {\"default\": \"my-project-id\", \"staging\": \"my-staging-id\"}}\n```\n\nSwitch environments with `firebase use staging` or `firebase deploy --project staging`. The `default` alias is used when no `--project` flag is specified.\n\n## Client SDK Initialization\n\nThe client SDK requires a config object from the Firebase console (Project Settings > General > Your Apps):\n\n```typescript\nimport { initializeApp } from 'firebase/app';\n\nconst firebaseConfig = {\n  apiKey: \"...\",\n  authDomain: \"PROJECT_ID.firebaseapp.com\",\n  projectId: \"PROJECT_ID\",\n  storageBucket: \"PROJECT_ID.appspot.com\",\n  messagingSenderId: \"...\",\n  appId: \"...\"\n};\n\nconst app = initializeApp(firebaseConfig);\n```\n\nThese values are safe to expose in client-side code. Security is enforced by Firestore and Storage security rules, not by hiding the config. The optional `measurementId` field is needed only if Google Analytics is enabled. Store these values in environment variables (e.g., `VITE_FIREBASE_API_KEY`, `NEXT_PUBLIC_FIREBASE_API_KEY`) for build-time injection rather than hardcoding them.\n\n## Admin SDK Initialization\n\nThe Admin SDK runs server-side with elevated privileges that bypass security rules:\n\n```typescript\nimport { initializeApp, cert } from 'firebase-admin/app';\n\n// Option 1: Explicit service account\ninitializeApp({ credential: cert(serviceAccount) });\n\n// Option 2: With GOOGLE_APPLICATION_CREDENTIALS env var:\ninitializeApp();\n```\n\nOption 1 loads a service account JSON object directly. Option 2 reads the service account key file from the path specified in `GOOGLE_APPLICATION_CREDENTIALS`. On Google Cloud infrastructure (Cloud Functions, Cloud Run, App Engine), the Admin SDK auto-discovers credentials from the metadata server — no explicit credentials needed.\n\n## Environment Variables\n\n| Variable | Purpose | Required |\n|----------|---------|----------|\n| `FIREBASE_API_KEY` | Client SDK API key | Client |\n| `FIREBASE_AUTH_DOMAIN` | Auth domain | Client |\n| `FIREBASE_PROJECT_ID` | Project identifier | Both |\n| `FIREBASE_STORAGE_BUCKET` | Default storage bucket | Client |\n| `FIREBASE_MESSAGING_SENDER_ID` | FCM sender ID | Client |\n| `FIREBASE_APP_ID` | Firebase app ID | Client |\n| `GOOGLE_APPLICATION_CREDENTIALS` | Path to service account JSON | Server |\n| `FIREBASE_TOKEN` | CI/CD deploy token | CI |\n| `FIREBASE_CONFIG` | Auto-set in Cloud Functions runtime | Functions |\n| `GCLOUD_PROJECT` | GCP project ID (deprecated, use FIREBASE_PROJECT_ID) | Legacy |\n\nFor frontend frameworks, prefix variables according to the framework convention: `VITE_` for Vite, `NEXT_PUBLIC_` for Next.js, `REACT_APP_` for Create React App.\n\n## Security Rules Files\n\nFirebase uses declarative security rules for Firestore and Cloud Storage. Rule files are referenced in firebase.json and deployed with `firebase deploy --only firestore:rules` or `firebase deploy --only storage`.\n\n- **firestore.rules** — Controls read/write access to Firestore documents based on `request.auth`, document data, and custom functions.\n- **storage.rules** — Controls upload/download access to Cloud Storage objects based on file metadata, size limits, and auth state.\n\nRules are hot-reloaded in the Emulator Suite, so edits take effect immediately during local development.\n\n## Multiple Environments\n\nManage separate Firebase projects for development, staging, and production using .firebaserc aliases and the `--project` flag:\n\n1. Create separate Firebase projects for each environment.\n2. Add aliases in .firebaserc: `firebase use --add` and name each alias.\n3. Switch environments: `firebase use staging` sets the active project.\n4. Deploy to a specific environment: `firebase deploy --project production`.\n5. Use environment-specific config files or environment variables to inject the correct firebaseConfig object at build time.\n\nCloud Functions environment variables are set per-project with `firebase functions:config:set` (1st gen) or `firebase functions:secrets:set` (2nd gen with Secret Manager).\n",
+  "sections": [
+    {
+      "id": "firebase-json",
+      "title": "firebase.json configuration",
+      "body": "firebase.json is the central configuration file defining service settings for hosting, firestore, storage, functions, and emulators. Created by firebase init, it controls deploy targets, build hooks, rules file paths, and emulator ports. Each top-level key corresponds to a Firebase service. Hosting config includes public directory, ignore patterns, rewrites, redirects, and headers. Functions config includes source directory, codebase name, and predeploy scripts. Emulator config maps each service to a port number.",
+      "tags": ["firebase-json", "config", "hosting", "firestore", "functions", "emulators"]
+    },
+    {
+      "id": "firebaserc",
+      "title": ".firebaserc project aliases",
+      "body": ".firebaserc maps alias names to Firebase project IDs, enabling multi-environment workflows. The default alias is used when no --project flag is specified. Add aliases with firebase use --add, switch with firebase use <alias>, and deploy to a specific project with firebase deploy --project <alias>. This file should be committed to version control.",
+      "tags": ["firebaserc", "aliases", "projects", "environments"]
+    },
+    {
+      "id": "client-sdk-config",
+      "title": "Client SDK configuration",
+      "body": "The client SDK firebaseConfig object contains apiKey, authDomain, projectId, storageBucket, messagingSenderId, and appId. These values are obtained from the Firebase console under Project Settings > General > Your Apps. They are safe to expose in client code since security is enforced by security rules. Store them in environment variables prefixed for your framework (VITE_, NEXT_PUBLIC_, REACT_APP_) for build-time injection.",
+      "tags": ["client-sdk", "firebaseConfig", "apiKey", "initialization"]
+    },
+    {
+      "id": "admin-sdk-config",
+      "title": "Admin SDK initialization",
+      "body": "The firebase-admin SDK initializes with a service account credential via cert(serviceAccount) or automatically via GOOGLE_APPLICATION_CREDENTIALS environment variable pointing to a service account JSON key file. On Google Cloud infrastructure, credentials are auto-discovered from the metadata server. The Admin SDK bypasses all security rules and should only run server-side. Never expose service account credentials to client code.",
+      "tags": ["admin-sdk", "service-account", "credentials", "server"]
+    },
+    {
+      "id": "environment-variables",
+      "title": "Environment variables",
+      "body": "FIREBASE_API_KEY, FIREBASE_AUTH_DOMAIN, FIREBASE_PROJECT_ID, FIREBASE_STORAGE_BUCKET, FIREBASE_MESSAGING_SENDER_ID, and FIREBASE_APP_ID store client config. GOOGLE_APPLICATION_CREDENTIALS points to a service account JSON for the Admin SDK. FIREBASE_TOKEN authenticates the CLI in CI/CD pipelines. FIREBASE_CONFIG is auto-set in Cloud Functions runtime. GCLOUD_PROJECT is the legacy project ID variable, replaced by FIREBASE_PROJECT_ID.",
+      "tags": ["env", "environment-variables", "credentials", "ci-cd"]
+    },
+    {
+      "id": "security-rules-files",
+      "title": "Security rules files",
+      "body": "firestore.rules and storage.rules are declarative security rule files referenced in firebase.json. Firestore rules control document-level read/write access using request.auth, resource.data, and custom functions. Storage rules control file upload/download access based on auth state, file metadata, and size limits. Deploy rules with firebase deploy --only firestore:rules or firebase deploy --only storage. Rules hot-reload in the Emulator Suite.",
+      "tags": ["security-rules", "firestore-rules", "storage-rules", "access-control"]
+    },
+    {
+      "id": "multi-environment",
+      "title": "Multiple environments",
+      "body": "Use separate Firebase projects for development, staging, and production. Configure aliases in .firebaserc and switch with firebase use <alias> or deploy with --project flag. Inject environment-specific firebaseConfig at build time via environment variables. Cloud Functions 1st gen uses firebase functions:config:set for runtime config; 2nd gen uses Secret Manager via firebase functions:secrets:set.",
+      "tags": ["environments", "staging", "production", "aliases", "deploy"]
+    }
+  ],
+  "links": [
+    { "uri": "firebase", "context": "Firebase platform overview and project architecture" },
+    { "uri": "firebase/cli", "context": "Firebase CLI — firebase init creates firebase.json and .firebaserc" },
+    { "uri": "firebase/auth", "context": "Authentication SDK requires firebaseConfig for initialization" },
+    { "uri": "firebase/firestore", "context": "Firestore rules file path is configured in firebase.json" },
+    { "uri": "firebase/hosting", "context": "Hosting public directory and rewrites configured in firebase.json" },
+    { "uri": "firebase/functions", "context": "Functions source directory and predeploy hooks in firebase.json" },
+    { "uri": "firebase/storage", "context": "Storage rules file path configured in firebase.json" }
+  ],
+  "related": [
+    { "uri": "firebase", "relation": "prerequisite", "note": "Firebase project must exist before configuring services" },
+    { "uri": "firebase/cli", "relation": "see-also", "note": "The CLI creates and manages firebase.json and .firebaserc via firebase init" }
+  ],
+  "more": {
+    "docs": "https://firebase.google.com/docs/web/setup"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "5 min",
+    "prerequisites": ["firebase"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

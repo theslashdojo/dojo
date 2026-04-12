@@ -1,0 +1,85 @@
+{
+  "name": "teams",
+  "version": "1.0.0",
+  "uri": "linear/teams",
+  "type": "context",
+  "content_type": "reference",
+  "context": "Understand Linear team structure, workflow states, and how teams scope issues and cycles",
+  "info": "Teams are the primary organizational unit in Linear. Every issue belongs to exactly one team. Teams define their own workflow states (the lifecycle stages an issue moves through), cycle cadence, default labels, and triage settings. Understanding teams is essential for any agent that creates or queries issues, because the teamId is a required field for issue creation and workflow states are team-specific. The GraphQL API provides queries for listing teams, their members, workflow states, labels, and cycles. Agents use this context to discover available teams before creating issues and to understand valid workflow state transitions.",
+  "parent": "linear",
+  "tags": ["teams", "workflow-states", "organization", "cycles", "members", "triage"],
+  "aliases": [
+    "linear teams",
+    "linear team",
+    "linear workspace teams",
+    "team id",
+    "workflow states",
+    "linear workflow",
+    "team settings",
+    "linear triage"
+  ],
+  "triggers": [
+    "list linear teams",
+    "get team id for linear",
+    "what teams exist in linear",
+    "linear workflow states",
+    "find a team in linear",
+    "understand linear team structure"
+  ],
+  "body": "# Linear Teams\n\nTeams are the backbone of Linear's organizational model. Every issue belongs to exactly one team. Before creating issues, an agent must know the target team's ID.\n\n## Listing Teams\n\n```graphql\nquery Teams {\n  teams {\n    nodes {\n      id\n      name\n      key\n      description\n      members {\n        nodes {\n          id\n          name\n          email\n        }\n      }\n    }\n  }\n}\n```\n\nWith the SDK:\n\n```typescript\nimport { LinearClient } from \"@linear/sdk\";\n\nconst client = new LinearClient({ apiKey: process.env.LINEAR_API_KEY });\n\nconst teams = await client.teams();\nfor (const team of teams.nodes) {\n  console.log(`${team.key}: ${team.name} (${team.id})`);\n}\n```\n\n## Team Keys\n\nEach team has a short key (e.g., `ENG`, `DES`, `OPS`) that prefixes issue identifiers. Issue `ENG-42` belongs to the team with key `ENG`. The key is immutable after creation.\n\n## Workflow States\n\nEach team defines its own workflow states. States have a `type` that determines their category:\n\n| State Type | Meaning | Examples |\n|------------|---------|----------|\n| `backlog` | Not yet prioritized | Backlog, Triage |\n| `unstarted` | Ready to work on | Todo, Ready |\n| `started` | Actively being worked | In Progress, In Review |\n| `completed` | Done | Done, Merged |\n| `cancelled` | Won't do | Cancelled, Duplicate |\n\n```graphql\nquery TeamWorkflowStates($teamId: String!) {\n  team(id: $teamId) {\n    states {\n      nodes {\n        id\n        name\n        type\n        position\n        color\n      }\n    }\n  }\n}\n```\n\nWith the SDK:\n\n```typescript\nconst team = await client.team(\"TEAM_ID\");\nconst states = await team.states();\n\nfor (const state of states.nodes) {\n  console.log(`${state.name} (${state.type}) — ${state.color}`);\n}\n```\n\n## Cycles\n\nCycles are time-boxed sprints scoped to a single team. Teams configure cycle duration (typically 1-2 weeks) and auto-start behavior.\n\n```graphql\nquery TeamCycles($teamId: String!) {\n  team(id: $teamId) {\n    cycles {\n      nodes {\n        id\n        number\n        name\n        startsAt\n        endsAt\n        completedAt\n      }\n    }\n    activeCycle {\n      id\n      number\n      startsAt\n      endsAt\n    }\n  }\n}\n```\n\n## Team Labels\n\nLabels can be workspace-wide or team-scoped. Query team-specific labels:\n\n```graphql\nquery TeamLabels($teamId: String!) {\n  team(id: $teamId) {\n    labels {\n      nodes {\n        id\n        name\n        color\n      }\n    }\n  }\n}\n```\n\n## Finding the Right Team\n\nWhen an agent needs to create an issue but doesn't know the team:\n\n1. List all teams and their descriptions\n2. Match the issue's domain to the most relevant team\n3. Use the team's `id` in the `issueCreate` mutation's `teamId` field\n\n```typescript\n// Find team by key\nconst teams = await client.teams({ filter: { key: { eq: \"ENG\" } } });\nconst engTeam = teams.nodes[0];\n```\n\n## Priority Levels\n\nPriority is workspace-wide but assigned per issue within a team:\n\n| Value | Label | Meaning |\n|-------|-------|----------|\n| 0 | No priority | Not prioritized |\n| 1 | Urgent | Drop everything |\n| 2 | High | Do soon |\n| 3 | Medium | Normal priority |\n| 4 | Low | When possible |",
+  "sections": [
+    {
+      "id": "listing-teams",
+      "title": "Listing teams",
+      "body": "Use the `teams` query to list all teams in the workspace. Each team has `id` (UUID), `name`, `key` (short prefix like ENG), `description`, and `members`. The `key` is used in issue identifiers — `ENG-42` means issue 42 in the ENG team. Filter teams with `teams(filter: { key: { eq: \"ENG\" } })`.",
+      "tags": ["list", "query", "team-key", "team-id"]
+    },
+    {
+      "id": "workflow-states",
+      "title": "Workflow states",
+      "body": "Each team defines its own workflow states with types: `backlog`, `unstarted`, `started`, `completed`, `cancelled`. States determine valid issue transitions. Query via `team(id).states`. When creating issues, you can set `stateId` to place the issue in a specific state. Default is typically the first `backlog` or `unstarted` state.",
+      "tags": ["workflow", "states", "lifecycle", "status", "transitions"]
+    },
+    {
+      "id": "cycles",
+      "title": "Cycles and sprints",
+      "body": "Cycles are time-boxed sprints scoped to a team. Query `team(id).activeCycle` for the current sprint and `team(id).cycles` for history. Cycles have `startsAt`, `endsAt`, `number`, and issue associations. Teams configure cycle duration and auto-start in settings.",
+      "tags": ["cycles", "sprints", "iterations", "time-boxed"]
+    },
+    {
+      "id": "priority",
+      "title": "Priority levels",
+      "body": "Issues have a priority field from 0 (none) to 4 (low). Counter-intuitively, 1 is urgent and 4 is low. Priority 0 means no priority set. Use `priority` field in issue queries and mutations. Priority is an integer, not a string.",
+      "tags": ["priority", "urgent", "high", "medium", "low"]
+    }
+  ],
+  "links": [
+    { "uri": "linear", "context": "Linear ecosystem overview" },
+    { "uri": "linear/issues", "context": "Issues belong to teams — teamId is required for creation" },
+    { "uri": "linear/issues/create", "context": "Creating issues requires a valid teamId" },
+    { "uri": "linear/projects", "context": "Projects can span multiple teams" },
+    { "uri": "linear/auth", "context": "Authentication required before querying teams" }
+  ],
+  "related": [
+    { "uri": "linear/issues", "relation": "see-also", "note": "Issues are scoped to teams" },
+    { "uri": "linear/projects", "relation": "see-also", "note": "Projects can span teams" },
+    { "uri": "linear/auth", "relation": "prerequisite", "note": "Must authenticate before querying teams" }
+  ],
+  "more": {
+    "docs": "https://linear.app/developers"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "4 min",
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

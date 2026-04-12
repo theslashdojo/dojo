@@ -1,0 +1,111 @@
+{
+  "name": "remote-forward",
+  "version": "1.0.0",
+  "uri": "ssh/tunnel/remote-forward",
+  "type": "sub",
+  "context": "Expose a local service through a remote host with ssh -R for reverse tunnels and callbacks",
+  "info": "Remote forwarding makes the remote side listen on a TCP port and send traffic back over SSH toward a client-side destination. Agents use it to expose a local development server through a reachable bastion, receive webhook callbacks into a private environment, or temporarily publish a tool running on the client machine without opening inbound firewall access.",
+  "parent": "ssh/tunnel",
+  "tags": ["ssh", "remote-forward", "reverse-tunnel", "ssh-r", "callback", "webhook"],
+  "aliases": [
+    "ssh remote forward",
+    "reverse ssh tunnel",
+    "ssh -R",
+    "remote port forward",
+    "publish local service over ssh"
+  ],
+  "triggers": [
+    "open a reverse ssh tunnel",
+    "forward my local port to a remote host",
+    "receive webhooks through ssh",
+    "use ssh -R"
+  ],
+  "body": "# Remote Forwarding\n\nA remote forward tells the SSH server side to listen on a port and route connections back through the tunnel to a destination host and port as seen from the client side.\n\n```bash\nssh -R 8080:127.0.0.1:3000 ops@bastion.example.com -N\n```\n\nThis is useful when the remote side is publicly reachable but the local service is not.\n\nImportant operational detail: whether the remote listening socket can bind beyond loopback depends on the SSH server's `GatewayPorts` policy. If you only need the remote host itself to reach the forwarded service, the default loopback bind is usually desirable.\n",
+  "sections": [
+    {
+      "id": "reverse-service-publish",
+      "title": "Expose a local service remotely",
+      "body": "Use `ssh -R remote_port:127.0.0.1:local_port host -N` to publish a local process through the remote host. Typical uses include webhook callbacks into a dev machine, temporary demos, or reverse access when inbound connectivity to the client is blocked.",
+      "tags": ["reverse-tunnel", "webhook", "demo", "local-service"]
+    },
+    {
+      "id": "gatewayports",
+      "title": "Remote bind addresses and GatewayPorts",
+      "body": "By default, remote TCP listeners usually bind to loopback only. A remote bind address like `0.0.0.0` may require server-side `GatewayPorts` support before the bind succeeds. If the remote side only needs host-local reachability, keep the default or bind explicitly to `127.0.0.1`.",
+      "tags": ["gatewayports", "bind-address", "remote-listener", "exposure"]
+    }
+  ],
+  "links": [
+    { "uri": "ssh/tunnel", "context": "Parent skill for SSH forwarding behavior" },
+    { "uri": "ssh/config", "context": "Persist RemoteForward rules and keepalive settings" },
+    { "uri": "ssh/troubleshooting", "context": "Diagnose reverse tunnel bind and reachability issues" }
+  ],
+  "related": [
+    { "uri": "ssh/tunnel", "relation": "implements", "note": "This sub-skill specializes the general SSH tunnel workflow for -R" },
+    { "uri": "ssh/connect", "relation": "see-also", "note": "Reverse forwarding still relies on the same client auth and bastion path" }
+  ],
+  "scripts": [
+    {
+      "id": "open-remote-forward",
+      "name": "Open remote SSH forward",
+      "description": "Open a remote port forward with ssh -R",
+      "lang": "bash",
+      "runtime": "bash",
+      "entry": "./scripts/open-remote-forward.sh",
+      "env": {
+        "SSH_HOST": { "required": true, "description": "Remote SSH host anchoring the tunnel" },
+        "SSH_USER": { "required": false, "description": "Remote username" },
+        "SSH_REMOTE_PORT": { "required": true, "description": "Remote listening port" },
+        "SSH_DEST_HOST": { "required": true, "description": "Destination host reached from the client side" },
+        "SSH_DEST_PORT": { "required": true, "description": "Destination TCP port reached from the client side" },
+        "SSH_BIND_ADDRESS": { "required": false, "description": "Optional remote bind address" },
+        "SSH_BACKGROUND": { "required": false, "default": "false", "description": "Background the tunnel after setup" }
+      },
+      "packages": ["openssh-client"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "host": { "type": "string", "description": "Remote SSH host" },
+        "user": { "type": "string", "description": "Remote username" },
+        "remotePort": { "type": "integer", "description": "Remote listening port" },
+        "destinationHost": { "type": "string", "description": "Client-side destination host" },
+        "destinationPort": { "type": "integer", "description": "Client-side destination port" },
+        "bindAddress": { "type": "string", "description": "Optional remote bind address" },
+        "background": { "type": "boolean", "default": false, "description": "Background the tunnel after setup" }
+      },
+      "required": ["host", "remotePort", "destinationHost", "destinationPort"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "mode": { "type": "string", "const": "remote", "description": "Tunnel mode" },
+        "forwardSpec": { "type": "string", "description": "Forwarding specification passed to ssh -R" },
+        "exitCode": { "type": "integer", "description": "Exit code from ssh" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "ssh/tunnel", "reason": "This is a specialized wrapper around the general SSH tunnel skill" }
+  ],
+  "more": {
+    "docs": "https://man.openbsd.org/ssh"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, SREs, AI agents",
+    "estimated_reading_time": "3 min",
+    "prerequisites": ["ssh/tunnel"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

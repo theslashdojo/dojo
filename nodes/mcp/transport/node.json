@@ -4,86 +4,88 @@
   "uri": "mcp/transport",
   "type": "context",
   "content_type": "reference",
-  "context": "MCP transport mechanisms — stdio for local subprocess servers, Streamable HTTP for remote servers with SSE streaming",
-  "info": "MCP uses JSON-RPC 2.0 messages encoded as UTF-8, delivered over one of two transport mechanisms. The stdio transport launches the server as a subprocess and communicates via stdin/stdout — optimal for local servers with zero network overhead. The Streamable HTTP transport uses HTTP POST for client-to-server messages and optional Server-Sent Events (SSE) for server-to-client streaming — designed for remote servers that serve multiple clients. Streamable HTTP supports session management via Mcp-Session-Id headers, resumability via SSE event IDs, and backwards compatibility with the deprecated HTTP+SSE transport from protocol version 2024-11-05. Custom transports are allowed as long as they preserve JSON-RPC message format and lifecycle semantics.",
+  "context": "MCP transport mechanisms — stdio for local servers, Streamable HTTP with SSE for remote servers",
+  "info": "This context node covers MCP transport layer details. MCP supports two standard transports: stdio (client launches server as a subprocess, communicates via stdin/stdout with newline-delimited JSON-RPC) and Streamable HTTP (HTTP POST for client-to-server, optional SSE for server-to-client streaming, session management via Mcp-Session-Id header). Stdio is for local servers with zero network overhead and single client. Streamable HTTP is for remote servers supporting multiple clients, OAuth authorization, and resumable streams. Custom transports are permitted if they preserve JSON-RPC framing.",
   "parent": "mcp",
-  "tags": ["transport", "stdio", "http", "sse", "streamable-http", "json-rpc", "subprocess", "remote"],
+  "tags": ["transport", "stdio", "http", "sse", "streamable-http", "json-rpc", "session"],
   "aliases": [
     "mcp transport",
-    "MCP transport",
-    "stdio transport",
-    "streamable http",
-    "SSE transport",
     "mcp stdio",
     "mcp http",
-    "server-sent events",
-    "mcp connection",
-    "transport layer"
+    "mcp sse",
+    "mcp streamable http",
+    "mcp server-sent events",
+    "mcp communication",
+    "mcp session management",
+    "stdio transport",
+    "http transport"
   ],
   "triggers": [
-    "how does MCP transport work",
-    "configure MCP transport",
+    "how do mcp clients connect to servers",
+    "configure mcp transport",
     "use stdio transport",
-    "use HTTP transport for MCP",
-    "connect to a remote MCP server",
-    "MCP server-sent events",
-    "MCP session management",
-    "choose between stdio and HTTP"
+    "set up http transport for mcp",
+    "mcp server-sent events",
+    "mcp session management",
+    "local vs remote mcp server",
+    "mcp streamable http setup"
   ],
-  "body": "# MCP Transport Mechanisms\n\nMCP messages are JSON-RPC 2.0 encoded as UTF-8, delivered over transport channels. The transport layer handles connection establishment, message framing, and (for HTTP) authentication.\n\n## stdio Transport\n\nThe client launches the MCP server as a **subprocess** and communicates via standard I/O streams.\n\n### How it Works\n\n1. Client spawns the server process\n2. Client writes JSON-RPC messages to the server's **stdin**\n3. Server writes JSON-RPC messages to its **stdout**\n4. Server may write logs to **stderr**\n5. Messages are newline-delimited (no embedded newlines)\n6. Client terminates by closing stdin and killing the subprocess\n\n```\nClient Process\n  │\n  ├── stdin  ──→ Server Process (JSON-RPC requests)\n  ├── stdout ←── Server Process (JSON-RPC responses)\n  └── stderr ←── Server Process (logs, optional)\n```\n\n### Configuration\n\n```json\n// Claude Desktop — claude_desktop_config.json\n{\n  \"mcpServers\": {\n    \"my-server\": {\n      \"command\": \"python\",\n      \"args\": [\"path/to/server.py\"],\n      \"env\": {\"API_KEY\": \"xxx\"}\n    }\n  }\n}\n```\n\n### Python\n\n```python\n# Server\nfrom mcp.server.fastmcp import FastMCP\nmcp = FastMCP(\"my-server\")\nmcp.run()  # Defaults to stdio\n\n# Client\nfrom mcp import StdioServerParameters\nfrom mcp.client.stdio import stdio_client\n\nparams = StdioServerParameters(command=\"python\", args=[\"server.py\"])\nasync with stdio_client(params) as (read, write):\n    async with ClientSession(read, write) as session:\n        await session.initialize()\n```\n\n### TypeScript\n\n```typescript\n// Server\nimport { StdioServerTransport } from \"@modelcontextprotocol/sdk/server/stdio.js\";\nconst transport = new StdioServerTransport();\nawait server.connect(transport);\n\n// Client\nimport { StdioClientTransport } from \"@modelcontextprotocol/sdk/client/stdio.js\";\nconst transport = new StdioClientTransport({ command: \"python\", args: [\"server.py\"] });\nawait client.connect(transport);\n```\n\n### Rules\n\n- Server **MUST NOT** write non-MCP data to stdout (corrupts protocol)\n- Client **MUST NOT** write non-MCP data to server's stdin\n- Messages **MUST NOT** contain embedded newlines\n- Clients **SHOULD** support stdio whenever possible\n\n## Streamable HTTP Transport\n\nThe server runs as an independent HTTP service handling multiple client connections.\n\n### How it Works\n\n1. Server exposes a single HTTP endpoint (e.g., `https://example.com/mcp`)\n2. Client sends JSON-RPC messages via **HTTP POST** to the endpoint\n3. Server responds with either:\n   - `Content-Type: application/json` — single JSON-RPC response\n   - `Content-Type: text/event-stream` — SSE stream with response + optional notifications\n4. Client may **HTTP GET** the endpoint to open an SSE stream for server-initiated messages\n5. Session ID managed via `Mcp-Session-Id` header\n\n### Protocol Flow\n\n```\nClient                          Server\n  │                               │\n  ├── POST InitializeRequest ──→  │\n  │  ←── InitializeResponse ────  │  (Mcp-Session-Id: abc123)\n  │                               │\n  ├── POST tools/list ──────────→ │  (Mcp-Session-Id: abc123)\n  │  ←── tools list (JSON) ─────  │\n  │                               │\n  ├── POST tools/call ──────────→ │  (Mcp-Session-Id: abc123)\n  │  ←── SSE stream: ───────────  │  (streaming results)\n  │      data: {progress}         │\n  │      data: {result}           │\n  │                               │\n  ├── GET (open SSE stream) ───→  │  (server-initiated messages)\n  │  ←── SSE: notifications ───   │\n  │                               │\n  ├── DELETE ──────────────────→  │  (terminate session)\n```\n\n### Session Management\n\n- Server **MAY** assign a session ID via `Mcp-Session-Id` header during initialization\n- Client **MUST** include `Mcp-Session-Id` on all subsequent requests\n- Session ID must be globally unique and cryptographically secure\n- Server responds with `404` for expired/unknown session IDs\n- Client sends `HTTP DELETE` to terminate a session\n\n### Resumability\n\n- Server **MAY** attach `id` fields to SSE events for resumability\n- Client reconnects with `Last-Event-ID` header to resume from the last received event\n- Event IDs are per-stream, not global\n\n### Security\n\n- **MUST** validate `Origin` header to prevent DNS rebinding attacks\n- **SHOULD** bind to localhost (127.0.0.1) for local servers, not 0.0.0.0\n- **SHOULD** implement authentication (see [[mcp/auth]])\n- Client **MUST** include `MCP-Protocol-Version` header on all requests\n\n### Python\n\n```python\n# Server (HTTP)\nmcp = FastMCP(\"my-server\")\nmcp.run(transport=\"streamable-http\", host=\"0.0.0.0\", port=8000)\n\n# Client\nfrom mcp.client.streamable_http import streamablehttp_client\nasync with streamablehttp_client(\"https://example.com/mcp\") as (read, write, session_id):\n    async with ClientSession(read, write) as session:\n        await session.initialize()\n```\n\n### TypeScript\n\n```typescript\n// Server (HTTP)\nimport { StreamableHTTPServerTransport } from \"@modelcontextprotocol/sdk/server/streamableHttp.js\";\nconst transport = new StreamableHTTPServerTransport({ sessionIdGenerator: () => randomUUID() });\nawait server.connect(transport);\n\n// Client\nimport { StreamableHTTPClientTransport } from \"@modelcontextprotocol/sdk/client/streamableHttp.js\";\nconst transport = new StreamableHTTPClientTransport(new URL(\"https://example.com/mcp\"));\nawait client.connect(transport);\n```\n\n## Choosing a Transport\n\n| Feature | stdio | Streamable HTTP |\n|---------|-------|----------------|\n| Server location | Local (subprocess) | Local or remote |\n| Multiple clients | No (1:1) | Yes (1:N) |\n| Network overhead | None | HTTP |\n| Authentication | Environment-based | OAuth 2.1, Bearer tokens |\n| Streaming | Via stdout | SSE |\n| Session management | Implicit (process lifetime) | Explicit (Mcp-Session-Id) |\n| Best for | IDE plugins, CLI tools | SaaS APIs, shared services |\n\n## Custom Transports\n\nCustom transports are allowed as long as they:\n- Preserve JSON-RPC 2.0 message format\n- Implement the MCP lifecycle (initialize → operate → shutdown)\n- Support bidirectional message exchange\n- Document connection and message patterns\n",
+  "body": "# MCP Transports\n\nThe transport layer determines how MCP clients and servers communicate. All transports carry the same JSON-RPC 2.0 messages — the data layer is transport-agnostic.\n\n## stdio Transport\n\nFor local servers. The client launches the server as a subprocess and communicates via stdin/stdout.\n\n### How It Works\n\n1. Client spawns the server process\n2. Client writes JSON-RPC messages to the server's stdin\n3. Server writes JSON-RPC messages to its stdout\n4. Messages are newline-delimited, must not contain embedded newlines\n5. Server may write logs to stderr (not parsed as MCP messages)\n6. Client closes stdin and terminates the subprocess to end the session\n\n### When to Use\n\n- Server runs on the same machine as the client\n- No network overhead needed\n- Single client per server instance\n- Maximum performance for local integrations\n\n### Configuration\n\n```json\n{\n  \"mcpServers\": {\n    \"filesystem\": {\n      \"command\": \"npx\",\n      \"args\": [\"-y\", \"@modelcontextprotocol/server-filesystem\", \"/path/to/dir\"]\n    },\n    \"python-server\": {\n      \"command\": \"python\",\n      \"args\": [\"my_server.py\"],\n      \"env\": {\n        \"DATABASE_URL\": \"postgresql://localhost/mydb\"\n      }\n    }\n  }\n}\n```\n\n### Python stdio Server\n\n```python\nfrom mcp.server.fastmcp import FastMCP\n\nmcp = FastMCP(\"my-server\")\n\n@mcp.tool()\ndef hello(name: str) -> str:\n    \"\"\"Say hello.\"\"\"\n    return f\"Hello, {name}!\"\n\nif __name__ == \"__main__\":\n    mcp.run()  # Runs on stdio by default\n```\n\n### TypeScript stdio Server\n\n```typescript\nimport { McpServer } from \"@modelcontextprotocol/sdk/server/mcp.js\";\nimport { StdioServerTransport } from \"@modelcontextprotocol/sdk/server/stdio.js\";\n\nconst server = new McpServer({ name: \"my-server\", version: \"1.0.0\" });\nconst transport = new StdioServerTransport();\nawait server.connect(transport);\n```\n\n## Streamable HTTP Transport\n\nFor remote servers. Uses HTTP POST for client-to-server messages with optional Server-Sent Events (SSE) for streaming.\n\n### How It Works\n\n1. Server provides a single HTTP endpoint (e.g., `https://example.com/mcp`)\n2. Client sends JSON-RPC messages via HTTP POST\n3. Server responds with `application/json` (single response) or `text/event-stream` (SSE stream)\n4. Client can GET the endpoint to open an SSE stream for server-initiated messages\n5. Session management uses `Mcp-Session-Id` header\n\n### When to Use\n\n- Server runs on a different machine\n- Multiple clients need to connect simultaneously\n- OAuth authorization is required\n- Streaming responses are needed\n- Server is a managed/cloud service\n\n### Session Management\n\n1. Server assigns a session ID in the `Mcp-Session-Id` response header during initialization\n2. Client includes `Mcp-Session-Id` in all subsequent requests\n3. Server returns 404 if the session has expired — client must re-initialize\n4. Client sends HTTP DELETE to the endpoint to explicitly end a session\n\n### Protocol Version Header\n\nClients must include `MCP-Protocol-Version: 2025-06-18` in all HTTP requests after initialization.\n\n### Resumable Streams\n\nServers can assign `id` fields to SSE events. If a connection drops, the client reconnects with `Last-Event-ID` header and the server replays missed events.\n\n### Configuration\n\n```json\n{\n  \"mcpServers\": {\n    \"remote-service\": {\n      \"url\": \"https://example.com/mcp\",\n      \"headers\": {\n        \"Authorization\": \"Bearer <token>\"\n      }\n    }\n  }\n}\n```\n\n### Security for Streamable HTTP\n\n- Servers **must** validate the `Origin` header to prevent DNS rebinding attacks\n- Local servers should bind only to `127.0.0.1`, not `0.0.0.0`\n- Implement proper authentication (see [[mcp/auth]])\n\n## Custom Transports\n\nMCP allows custom transports as long as they:\n- Preserve JSON-RPC 2.0 message format\n- Support bidirectional message exchange\n- Implement the MCP lifecycle (initialize, operate, terminate)\n\n## Transport Comparison\n\n| Feature | stdio | Streamable HTTP |\n|---------|-------|------------------|\n| Deployment | Local subprocess | Remote service |\n| Clients | Single | Multiple |\n| Network | None | HTTP/HTTPS |\n| Streaming | stdout pipe | SSE |\n| Auth | Environment-based | OAuth 2.1 / Bearer |\n| Performance | Lowest latency | Network latency |\n| Session | Process lifetime | Mcp-Session-Id header |\n| Resumability | N/A | SSE event IDs |\n",
   "sections": [
     {
       "id": "stdio",
       "title": "stdio transport",
-      "body": "The stdio transport launches the server as a subprocess. Client writes JSON-RPC to stdin, server writes responses to stdout. Messages are newline-delimited. Server MUST NOT write non-MCP data to stdout. Logging goes to stderr. No network overhead — ideal for local servers. Used by Claude Desktop, VS Code, Cursor for locally-installed MCP servers. Configuration specifies `command` and `args` to launch the server process.",
-      "tags": ["stdio", "subprocess", "stdin", "stdout", "local"]
+      "body": "Client launches server as a subprocess. Communication via stdin (client→server) and stdout (server→client). Messages are newline-delimited JSON-RPC. Server must not write non-MCP data to stdout. Stderr is available for logging. Best for local integrations — zero network overhead, single client.",
+      "tags": ["stdio", "subprocess", "local", "stdin", "stdout", "newline-delimited"]
     },
     {
       "id": "streamable-http",
       "title": "Streamable HTTP transport",
-      "body": "Server runs as an HTTP service exposing a single endpoint. Client sends requests via POST, server responds with JSON or SSE streams. Supports session management via Mcp-Session-Id headers, resumability via SSE event IDs, and backwards compatibility with the deprecated HTTP+SSE transport. Must validate Origin headers to prevent DNS rebinding. Client includes MCP-Protocol-Version header on all requests. Ideal for remote servers, SaaS integrations, and multi-client scenarios.",
-      "tags": ["http", "streamable-http", "sse", "remote", "session", "resumability"]
+      "body": "Server exposes a single HTTP endpoint. Client sends JSON-RPC via POST. Server responds with JSON or SSE stream. Client can GET to open an SSE stream for server-initiated messages. Session management via `Mcp-Session-Id` header. Supports multiple clients, OAuth auth, and resumable streams. Replaces the deprecated HTTP+SSE transport from protocol version 2024-11-05.",
+      "tags": ["http", "sse", "streamable", "remote", "session", "post", "get"]
     },
     {
       "id": "session-management",
-      "title": "HTTP session management",
-      "body": "Server MAY assign a session ID during initialization via Mcp-Session-Id response header. Session ID must be globally unique and cryptographically secure (UUID, JWT, or hash). Client MUST include the session ID on all subsequent requests. Server responds 404 for unknown/expired sessions, prompting client to re-initialize. Client sends DELETE to explicitly terminate sessions. This enables stateful server-side session tracking across multiple HTTP requests.",
-      "tags": ["session", "session-id", "stateful", "lifecycle"]
+      "title": "Session management",
+      "body": "For Streamable HTTP: server assigns `Mcp-Session-Id` during initialization. Client includes it in all subsequent requests. Session ID must be cryptographically secure (UUID, JWT, hash). Server returns 404 for expired sessions. Client re-initializes on 404. Client sends DELETE to end a session.",
+      "tags": ["session", "session-id", "stateful", "expiry", "header"]
     },
     {
-      "id": "comparison",
-      "title": "Choosing between transports",
-      "body": "Use **stdio** for local servers integrated into IDEs and CLI tools — zero network overhead, simple subprocess management, single client per server. Use **Streamable HTTP** for remote servers, SaaS integrations, and shared services — supports multiple clients, OAuth authentication, SSE streaming, and session management. Most MCP hosts (Claude Desktop, VS Code) support both. Default to stdio for simplicity; use HTTP when you need remote access or multi-tenancy.",
-      "tags": ["comparison", "choosing", "when-to-use", "tradeoffs"]
+      "id": "choosing",
+      "title": "Choosing a transport",
+      "body": "Use stdio when: server is local, single client, maximum performance needed, no auth required. Use Streamable HTTP when: server is remote, multiple clients, OAuth needed, streaming responses, cloud deployment. Custom transports are allowed but must preserve JSON-RPC framing and lifecycle.",
+      "tags": ["choosing", "comparison", "decision", "local", "remote"]
     }
   ],
   "links": [
-    { "uri": "mcp/server", "context": "Servers choose a transport during setup" },
-    { "uri": "mcp/client", "context": "Clients connect via a transport" },
-    { "uri": "mcp/auth", "context": "HTTP transport uses OAuth for authentication" },
-    { "uri": "mcp/architecture", "context": "Transport is the outer layer of MCP architecture" }
+    { "uri": "mcp", "context": "MCP ecosystem overview" },
+    { "uri": "mcp/architecture", "context": "Protocol architecture and layers" },
+    { "uri": "mcp/server", "context": "Build servers using these transports" },
+    { "uri": "mcp/client", "context": "Build clients that connect via these transports" },
+    { "uri": "mcp/auth", "context": "OAuth 2.1 authorization for Streamable HTTP" }
   ],
   "related": [
-    { "uri": "mcp/server", "relation": "see-also", "note": "Servers run on a transport" },
-    { "uri": "mcp/client", "relation": "see-also", "note": "Clients connect via a transport" },
-    { "uri": "mcp/auth", "relation": "see-also", "note": "HTTP transport supports OAuth 2.1 authorization" }
+    { "uri": "mcp/architecture", "relation": "prerequisite", "note": "Architecture explains the two-layer model where transport is the outer layer" },
+    { "uri": "mcp/auth", "relation": "see-also", "note": "Authorization is implemented at the transport layer for HTTP" },
+    { "uri": "mcp/server", "relation": "see-also", "note": "Servers must choose and configure a transport" }
   ],
   "more": {
     "docs": "https://modelcontextprotocol.io/docs/concepts/transports",
-    "spec": "https://spec.modelcontextprotocol.io/specification/2025-06-18/basic/transports"
+    "spec": "https://modelcontextprotocol.io/specification/2025-06-18/basic/transports"
   },
   "frontmatter": {
-    "created": "2026-04-10",
-    "updated": "2026-04-10",
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
     "author": "dojo-community",
-    "audience": "developers, AI agents",
-    "estimated_reading_time": "5 min",
+    "audience": "developers, AI agents, DevOps",
+    "estimated_reading_time": "7 min",
+    "prerequisites": ["mcp/architecture"],
     "status": "living",
     "confidence": "high"
   },
   "author": "dojo-community",
   "license": "MIT",
-  "created": "2026-04-10T00:00:00Z",
-  "updated": "2026-04-10T00:00:00Z",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
   "status": "published"
 }

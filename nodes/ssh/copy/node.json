@@ -1,0 +1,139 @@
+{
+  "name": "copy",
+  "version": "1.0.0",
+  "uri": "ssh/copy",
+  "type": "skill",
+  "context": "Transfer files over SSH with scp or sftp, including recursive copies, batch mode, and bastions",
+  "info": "This skill covers the file-transfer surface of OpenSSH. `scp` is the quickest path for ad hoc uploads and downloads and now uses the SFTP protocol by default, while `sftp` adds interactive and batch workflows for repeatable transfers. Agents use this skill to push deploy artifacts, pull logs and backups, move files through bastions, preserve timestamps, and run transfer jobs without interactive prompts.",
+  "parent": "ssh",
+  "tags": ["ssh", "copy", "scp", "sftp", "file-transfer", "upload", "download", "batch"],
+  "aliases": [
+    "scp",
+    "sftp",
+    "ssh copy",
+    "copy files over ssh",
+    "upload files with scp",
+    "download files with sftp",
+    "secure file transfer"
+  ],
+  "triggers": [
+    "copy files to a server",
+    "download a file with scp",
+    "run sftp in batch mode",
+    "transfer a directory over ssh",
+    "upload artifacts through a bastion"
+  ],
+  "body": "# File Transfer with scp and sftp\n\nUse [[ssh/copy]] when the job is moving bytes, not opening a shell. `scp` is the simplest wrapper for file copy. `sftp` is better when you need repeatable batch commands, partial-transfer control, or an interactive remote file browser.\n\n## Quick Upload and Download\n\n```bash\nscp dist/app.tar.gz ops@host.example.com:/srv/releases/\nscp ops@host.example.com:/var/log/api.log ./api.log\nscp -r public/ ops@host.example.com:/srv/www/\n```\n\n`scp` uses the SFTP protocol over an SSH connection by default. `-O` forces the legacy SCP protocol only when compatibility requires it.\n\n## sftp Batch Mode\n\n```bash\nprintf '%s\n' 'put -p build.zip /srv/build.zip' 'get -p /var/log/app.log ./app.log' | sftp -b - ops@host.example.com\n```\n\nBatch files are useful when an agent needs deterministic uploads and downloads that abort on failure.\n\n## Jump Hosts and Limits\n\n```bash\nscp -J bastion.example.com backup.sql ops@db.internal.example.com:/tmp/\nsftp -J bastion.example.com -l 2048 ops@db.internal.example.com\n```\n\nBoth `scp` and `sftp` inherit bastions, identities, and multiplexing from [[ssh/config]].\n",
+  "sections": [
+    {
+      "id": "scp-vs-sftp",
+      "title": "scp versus sftp",
+      "body": "`scp` is fast and terse for one-shot upload or download workflows. `sftp` is better when you need a command loop, batch files, resumed transfers, or remote file browsing. `scp` uses the SFTP protocol by default; pass `-O` only for legacy SCP compatibility. See [[ssh/connect]] for the shared transport layer.",
+      "tags": ["scp", "sftp", "protocol", "legacy-scp"]
+    },
+    {
+      "id": "upload-download",
+      "title": "Uploads, downloads, and recursive copy",
+      "body": "Use `scp local remote:/path` for uploads and `scp remote:/path local` for downloads. Add `-r` to copy directories recursively and `-p` to preserve timestamps and modes. In `sftp`, the equivalent commands are `put`, `get`, `put -R`, and `get -R` with optional `-p` preservation.",
+      "tags": ["upload", "download", "recursive", "preserve-times"]
+    },
+    {
+      "id": "batch-mode",
+      "title": "Batch transfers",
+      "body": "`sftp -b batchfile host` runs a deterministic list of transfer commands and aborts on command failure unless you prefix a line with `-`. Use batch mode together with key-based auth and `BatchMode yes` from [[ssh/connect]] or [[ssh/config]] for unattended artifact movement.",
+      "tags": ["batch", "sftp-b", "automation", "artifact-transfer"]
+    }
+  ],
+  "links": [
+    { "uri": "ssh/connect", "context": "scp and sftp reuse the same SSH auth and host verification model" },
+    { "uri": "ssh/config", "context": "Store bastions, identities, and multiplexing for transfer commands" },
+    { "uri": "ssh/agent", "context": "Use agent-backed keys for repeated transfers" },
+    { "uri": "ssh/troubleshooting", "context": "Debug transfer failures with scp -v or sftp -vvv" },
+    { "uri": "shell/files", "context": "Combine SSH transfer with local file operations" }
+  ],
+  "related": [
+    { "uri": "ssh/connect", "relation": "prerequisite", "note": "Transfers inherit the same connection, auth, and host-key rules as ssh" },
+    { "uri": "ssh/config", "relation": "extends", "note": "Persistent host aliases and ProxyJump apply to both scp and sftp" },
+    { "uri": "ssh/tunnel", "relation": "see-also", "note": "Use port forwards when the remote service is not file-oriented" }
+  ],
+  "scripts": [
+    {
+      "id": "transfer-files",
+      "name": "Transfer files over SSH",
+      "description": "Upload or download files and directories using scp or sftp",
+      "lang": "bash",
+      "runtime": "bash",
+      "entry": "./scripts/transfer-files.sh",
+      "env": {
+        "SSH_COPY_MODE": { "required": false, "default": "scp", "description": "Transfer tool: scp or sftp" },
+        "SSH_DIRECTION": { "required": false, "default": "upload", "description": "Transfer direction: upload or download" },
+        "SSH_HOST": { "required": true, "description": "Remote hostname or address" },
+        "SSH_USER": { "required": false, "description": "Remote username" },
+        "SSH_PORT": { "required": false, "description": "Remote SSH port" },
+        "SSH_KEY_PATH": { "required": false, "description": "Private key path" },
+        "SSH_PROXY_JUMP": { "required": false, "description": "Jump host or chain passed to -J" },
+        "SSH_CONFIG_FILE": { "required": false, "description": "Alternate ssh config file" },
+        "SSH_LOCAL_PATH": { "required": false, "description": "Local path to upload or local destination for download" },
+        "SSH_REMOTE_PATH": { "required": false, "description": "Remote path to upload to or download from" },
+        "SSH_BATCH_FILE": { "required": false, "description": "sftp batch file path; bypasses generated get/put commands" },
+        "SSH_RECURSIVE": { "required": false, "default": "false", "description": "Set to true for recursive directory copy" },
+        "SSH_PRESERVE_TIMES": { "required": false, "default": "false", "description": "Set to true to preserve timestamps and modes" },
+        "SSH_BANDWIDTH_LIMIT": { "required": false, "description": "Bandwidth cap in Kbit/s" },
+        "SSH_LEGACY_SCP": { "required": false, "default": "false", "description": "Set to true to force scp -O" },
+        "SSH_EXTRA_ARGS": { "required": false, "description": "Extra tool arguments, one per line" }
+      },
+      "packages": ["openssh-client"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "mode": { "type": "string", "enum": ["scp", "sftp"], "default": "scp", "description": "Transfer tool" },
+        "direction": { "type": "string", "enum": ["upload", "download"], "default": "upload", "description": "Transfer direction" },
+        "host": { "type": "string", "description": "Remote hostname or IP" },
+        "user": { "type": "string", "description": "Remote username" },
+        "port": { "type": "integer", "description": "Remote SSH port" },
+        "localPath": { "type": "string", "description": "Local source or destination path" },
+        "remotePath": { "type": "string", "description": "Remote source or destination path" },
+        "batchFile": { "type": "string", "description": "Optional sftp batch file path" },
+        "recursive": { "type": "boolean", "default": false, "description": "Copy directories recursively" },
+        "preserveTimes": { "type": "boolean", "default": false, "description": "Preserve timestamps and modes" },
+        "proxyJump": { "type": "string", "description": "Jump host or chain" },
+        "legacyScp": { "type": "boolean", "default": false, "description": "Force the legacy SCP protocol" }
+      },
+      "required": ["host"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "mode": { "type": "string", "enum": ["scp", "sftp"], "description": "Transfer tool used" },
+        "direction": { "type": "string", "enum": ["upload", "download"], "description": "Transfer direction" },
+        "exitCode": { "type": "integer", "description": "Exit code from scp or sftp" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "ssh/connect", "reason": "scp and sftp rely on the same SSH auth and trust model" }
+  ],
+  "more": {
+    "scp": "https://man.openbsd.org/scp",
+    "sftp": "https://man.openbsd.org/sftp",
+    "manual": "https://www.openssh.com/manual.html"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, SREs, AI agents",
+    "estimated_reading_time": "5 min",
+    "prerequisites": ["ssh/connect"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

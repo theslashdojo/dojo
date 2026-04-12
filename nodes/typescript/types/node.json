@@ -1,0 +1,104 @@
+{
+  "name": "types",
+  "version": "1.0.0",
+  "uri": "typescript/types",
+  "type": "context",
+  "content_type": "reference",
+  "context": "TypeScript type system — primitives, unions, intersections, narrowing, utility types, conditional types, and type-level programming",
+  "info": "The TypeScript type system is structural and gradual: types are compared by shape (not name), and you can opt out with `any` or opt in with `strict: true`. This node covers every layer of the type system that an agent needs to write and understand TypeScript: primitive types, literal types, union and intersection types, type narrowing with control flow analysis, type guards, discriminated unions, tuple types, template literal types, conditional types, mapped types, indexed access types, and the full set of built-in utility types. Understanding the type system is essential for reading TypeScript error messages, writing correct generic functions, and building type-safe APIs. See [[typescript/generics]] for parameterized types and [[typescript/config]] for strict mode options that affect type checking.",
+  "parent": "typescript",
+  "tags": ["types", "type-system", "unions", "intersections", "narrowing", "utility-types", "conditional-types", "mapped-types", "type-guards", "discriminated-unions", "template-literals", "tuple"],
+  "aliases": [
+    "typescript types",
+    "ts types",
+    "type system",
+    "typescript type system",
+    "type annotations",
+    "type narrowing",
+    "utility types",
+    "conditional types",
+    "mapped types",
+    "union types",
+    "intersection types",
+    "type guards"
+  ],
+  "triggers": [
+    "what typescript types exist",
+    "how do union types work",
+    "narrow a type in typescript",
+    "typescript utility types",
+    "use Partial Pick Omit",
+    "discriminated union pattern",
+    "conditional type typescript",
+    "mapped type in typescript",
+    "type guard function",
+    "template literal type",
+    "indexed access type",
+    "fix type error typescript"
+  ],
+  "body": "# TypeScript Type System\n\nTypeScript's type system catches bugs at compile time by tracking the shape of every value through your program. It is structural (shape-based, not name-based) and gradual (you can opt in or out of strictness).\n\n## Primitive Types\n\n```typescript\nlet str: string = \"hello\";\nlet num: number = 42;\nlet big: bigint = 9007199254740991n;\nlet bool: boolean = true;\nlet sym: symbol = Symbol(\"id\");\nlet undef: undefined = undefined;\nlet nul: null = null;\nlet v: void = undefined;        // functions that return nothing\nlet n: never;                    // functions that never return (throws, infinite loop)\nlet a: any;                      // opt out of type checking\nlet u: unknown;                  // type-safe alternative to any\n```\n\n### `any` vs `unknown`\n\n`any` disables type checking — anything goes. `unknown` is type-safe: you must narrow before using.\n\n```typescript\nfunction processAny(val: any) {\n  val.foo();          // No error — dangerous\n  val.toUpperCase();  // No error — could crash at runtime\n}\n\nfunction processUnknown(val: unknown) {\n  // val.foo();       // Error: Object is of type 'unknown'\n  if (typeof val === \"string\") {\n    val.toUpperCase(); // OK — narrowed to string\n  }\n}\n```\n\n## Literal Types\n\nExact values as types. Combine with unions for enumerations.\n\n```typescript\nlet direction: \"north\" | \"south\" | \"east\" | \"west\";\ndirection = \"north\"; // OK\n// direction = \"up\"; // Error: not assignable\n\nlet httpStatus: 200 | 201 | 400 | 404 | 500;\nlet isActive: true | false; // equivalent to boolean\n```\n\n## Union Types\n\nA value that could be one of several types.\n\n```typescript\ntype StringOrNumber = string | number;\n\nfunction format(val: string | number): string {\n  if (typeof val === \"string\") {\n    return val.toUpperCase();  // narrowed to string\n  }\n  return val.toFixed(2);       // narrowed to number\n}\n\n// Nullable types\ntype MaybeString = string | null | undefined;\n```\n\n## Intersection Types\n\nCombine multiple types into one. The result has all properties from all types.\n\n```typescript\ntype HasName = { name: string };\ntype HasAge = { age: number };\ntype Person = HasName & HasAge;\n\nconst person: Person = { name: \"Alice\", age: 30 }; // must have both\n```\n\n## Type Narrowing\n\nTypeScript tracks type information through control flow. After a check, the type is narrowed.\n\n### typeof narrowing\n\n```typescript\nfunction process(val: string | number | boolean) {\n  if (typeof val === \"string\") {\n    // val is string here\n    return val.trim();\n  } else if (typeof val === \"number\") {\n    // val is number here\n    return val.toFixed(2);\n  } else {\n    // val is boolean here\n    return val.toString();\n  }\n}\n```\n\n### instanceof narrowing\n\n```typescript\nfunction getDate(val: string | Date): string {\n  if (val instanceof Date) {\n    return val.toISOString(); // narrowed to Date\n  }\n  return val; // narrowed to string\n}\n```\n\n### in narrowing\n\n```typescript\ntype Fish = { swim: () => void };\ntype Bird = { fly: () => void };\n\nfunction move(animal: Fish | Bird) {\n  if (\"swim\" in animal) {\n    animal.swim(); // narrowed to Fish\n  } else {\n    animal.fly();  // narrowed to Bird\n  }\n}\n```\n\n### Truthiness narrowing\n\n```typescript\nfunction greet(name: string | null) {\n  if (name) {\n    console.log(`Hello, ${name}!`); // narrowed to string\n  }\n}\n```\n\n## Type Guards\n\nCustom functions that narrow types with the `is` keyword.\n\n```typescript\ninterface Cat { meow(): void; }\ninterface Dog { bark(): void; }\n\nfunction isCat(pet: Cat | Dog): pet is Cat {\n  return (pet as Cat).meow !== undefined;\n}\n\nfunction interact(pet: Cat | Dog) {\n  if (isCat(pet)) {\n    pet.meow();  // narrowed to Cat\n  } else {\n    pet.bark();  // narrowed to Dog\n  }\n}\n```\n\nTypeScript 5.5+ can infer type predicates automatically in some cases.\n\n## Discriminated Unions\n\nThe most important pattern for modeling states. Use a literal property as a tag.\n\n```typescript\ntype Result<T> =\n  | { status: \"success\"; data: T }\n  | { status: \"error\"; error: Error }\n  | { status: \"loading\" };\n\nfunction handleResult(result: Result<string>) {\n  switch (result.status) {\n    case \"success\":\n      console.log(result.data);   // data is accessible\n      break;\n    case \"error\":\n      console.error(result.error); // error is accessible\n      break;\n    case \"loading\":\n      console.log(\"Loading...\");\n      break;\n  }\n}\n\n// Exhaustiveness checking\nfunction assertNever(x: never): never {\n  throw new Error(`Unexpected: ${x}`);\n}\n\nfunction handle(result: Result<string>) {\n  switch (result.status) {\n    case \"success\": return result.data;\n    case \"error\": return result.error.message;\n    case \"loading\": return \"...\";\n    default: return assertNever(result); // compile error if a case is missing\n  }\n}\n```\n\n## Interfaces vs Type Aliases\n\n```typescript\n// Interface — extendable, declaration-merged, for object shapes\ninterface User {\n  id: string;\n  name: string;\n}\n\ninterface Admin extends User {\n  role: \"admin\";\n}\n\n// Type alias — for unions, intersections, primitives, tuples\ntype ID = string | number;\ntype Pair = [string, number];\ntype Callback = (err: Error | null, data: string) => void;\n\n// Both work for objects — prefer interface for public APIs (better error messages)\ntype UserType = {\n  id: string;\n  name: string;\n};\n```\n\nKey difference: interfaces can be declaration-merged (multiple `interface User` blocks merge). Type aliases cannot.\n\n## Tuple Types\n\n```typescript\n// Fixed-length array with known element types\ntype Point = [number, number];\ntype NamedPoint = [x: number, y: number, label: string]; // labeled\n\nconst origin: Point = [0, 0];\n\n// Rest elements in tuples\ntype StringNumberBooleans = [string, number, ...boolean[]];\ntype LeadingRest = [...string[], number]; // strings followed by a number\n\n// Readonly tuples\ntype ReadonlyPoint = readonly [number, number];\nconst p: ReadonlyPoint = [1, 2];\n// p[0] = 3; // Error: readonly\n\n// as const for tuple inference\nconst colors = [\"red\", \"green\", \"blue\"] as const;\n// type: readonly [\"red\", \"green\", \"blue\"]\n```\n\n## Template Literal Types\n\n```typescript\ntype EventName = `on${\"Click\" | \"Hover\" | \"Focus\"}`;\n// \"onClick\" | \"onHover\" | \"onFocus\"\n\ntype HTTPMethod = \"GET\" | \"POST\" | \"PUT\" | \"DELETE\";\ntype Endpoint = `/api/${string}`;\ntype Route = `${HTTPMethod} ${Endpoint}`;\n// \"GET /api/${string}\" | \"POST /api/${string}\" | ...\n\n// Intrinsic string manipulation types\ntype Upper = Uppercase<\"hello\">;     // \"HELLO\"\ntype Lower = Lowercase<\"HELLO\">;     // \"hello\"\ntype Cap = Capitalize<\"hello\">;      // \"Hello\"\ntype Uncap = Uncapitalize<\"Hello\">; // \"hello\"\n```\n\n## Conditional Types\n\nTypes that branch based on a condition.\n\n```typescript\ntype IsString<T> = T extends string ? true : false;\n\ntype A = IsString<\"hello\">;  // true\ntype B = IsString<42>;       // false\n\n// Distributive conditional types — distributes over unions\ntype ToArray<T> = T extends unknown ? T[] : never;\ntype C = ToArray<string | number>;  // string[] | number[]\n\n// Non-distributive (wrap in tuple)\ntype ToArrayNonDist<T> = [T] extends [unknown] ? T[] : never;\ntype D = ToArrayNonDist<string | number>;  // (string | number)[]\n\n// infer — extract types from other types\ntype ReturnOf<T> = T extends (...args: any[]) => infer R ? R : never;\ntype E = ReturnOf<() => string>;  // string\n\ntype ElementType<T> = T extends (infer E)[] ? E : never;\ntype F = ElementType<number[]>;   // number\n\ntype Awaited2<T> = T extends Promise<infer U> ? Awaited2<U> : T;\ntype G = Awaited2<Promise<Promise<string>>>;  // string\n```\n\n## Mapped Types\n\nTransform properties of an existing type.\n\n```typescript\n// Make all properties optional\ntype MyPartial<T> = { [K in keyof T]?: T[K] };\n\n// Make all properties readonly\ntype MyReadonly<T> = { readonly [K in keyof T]: T[K] };\n\n// Rename keys with 'as' clause\ntype Getters<T> = {\n  [K in keyof T as `get${Capitalize<string & K>}`]: () => T[K];\n};\n\ninterface Person {\n  name: string;\n  age: number;\n}\n\ntype PersonGetters = Getters<Person>;\n// { getName: () => string; getAge: () => number }\n\n// Filter keys\ntype OnlyStrings<T> = {\n  [K in keyof T as T[K] extends string ? K : never]: T[K];\n};\n```\n\n## Indexed Access Types\n\nLook up a type by indexing into another type.\n\n```typescript\ninterface User {\n  id: number;\n  name: string;\n  address: {\n    street: string;\n    city: string;\n  };\n}\n\ntype UserId = User[\"id\"];           // number\ntype UserAddress = User[\"address\"]; // { street: string; city: string }\ntype Street = User[\"address\"][\"street\"]; // string\n\n// Index with a union\ntype IdOrName = User[\"id\" | \"name\"]; // number | string\n\n// Index with keyof\ntype UserValues = User[keyof User]; // number | string | { street; city }\n\n// Array element type\ntype Arr = string[];\ntype Elem = Arr[number]; // string\n\n// Const array element type\nconst roles = [\"admin\", \"user\", \"guest\"] as const;\ntype Role = (typeof roles)[number]; // \"admin\" | \"user\" | \"guest\"\n```\n\n## Built-in Utility Types\n\n```typescript\n// Object manipulation\nPartial<T>           // Make all properties optional\nRequired<T>          // Make all properties required\nReadonly<T>          // Make all properties readonly\nPick<T, K>           // Select specific properties\nOmit<T, K>           // Remove specific properties\nRecord<K, V>         // Object type with keys K and values V\n\n// Union manipulation\nExclude<T, U>        // Remove types from a union\nExtract<T, U>        // Keep only types assignable to U\nNonNullable<T>       // Remove null and undefined\n\n// Function types\nReturnType<T>        // Get return type of a function type\nParameters<T>        // Get parameter types as a tuple\nConstructorParameters<T>  // Get constructor parameter types\nInstanceType<T>      // Get instance type of a constructor\nThisParameterType<T> // Get 'this' parameter type\nOmitThisParameter<T> // Remove 'this' parameter\n\n// Promise\nAwaited<T>           // Unwrap Promise (recursively)\n\n// String\nUppercase<T>         // Convert string literal to uppercase\nLowercase<T>         // Convert string literal to lowercase\nCapitalize<T>        // Capitalize first letter\nUncapitalize<T>      // Uncapitalize first letter\n\n// Other\nNoInfer<T>           // Prevent type inference in this position (5.4+)\nSatisfies<T, U>      // Validate T satisfies U (no widening)\n```\n\n### Utility Type Examples\n\n```typescript\ninterface User {\n  id: number;\n  name: string;\n  email: string;\n  role: \"admin\" | \"user\";\n}\n\ntype UserUpdate = Partial<User>;                    // all optional\ntype UserRequired = Required<User>;                 // all required\ntype UserReadonly = Readonly<User>;                  // all readonly\ntype UserPreview = Pick<User, \"id\" | \"name\">;       // only id and name\ntype UserWithoutEmail = Omit<User, \"email\">;         // everything except email\ntype UserMap = Record<string, User>;                 // { [key: string]: User }\n\ntype NonAdminRole = Exclude<User[\"role\"], \"admin\">; // \"user\"\ntype AdminRole = Extract<User[\"role\"], \"admin\">;    // \"admin\"\n\ntype MaybeString = string | null | undefined;\ntype JustString = NonNullable<MaybeString>;          // string\n\nfunction createUser(name: string, email: string): User {\n  return { id: 1, name, email, role: \"user\" };\n}\ntype CreateUserReturn = ReturnType<typeof createUser>;  // User\ntype CreateUserParams = Parameters<typeof createUser>;  // [string, string]\n```\n\n## The `satisfies` Operator (4.9+)\n\nValidates a value matches a type without widening it.\n\n```typescript\ntype ColorMap = Record<string, string | number[]>;\n\n// With 'as' — loses literal types\nconst colors1 = {\n  red: \"#ff0000\",\n  green: [0, 255, 0],\n} as ColorMap;\n// colors1.red is string | number[] — widened\n\n// With 'satisfies' — keeps literal types\nconst colors2 = {\n  red: \"#ff0000\",\n  green: [0, 255, 0],\n} satisfies ColorMap;\n// colors2.red is string — precise\n// colors2.green is number[] — precise\n```\n\n## `as const` Assertions\n\nMake values deeply readonly with literal types.\n\n```typescript\nconst config = {\n  apiUrl: \"https://api.example.com\",\n  timeout: 5000,\n  retries: 3,\n} as const;\n// type: { readonly apiUrl: \"https://api.example.com\"; readonly timeout: 5000; readonly retries: 3 }\n\nconst DIRECTIONS = [\"north\", \"south\", \"east\", \"west\"] as const;\ntype Direction = (typeof DIRECTIONS)[number]; // \"north\" | \"south\" | \"east\" | \"west\"\n```\n",
+  "sections": [
+    {
+      "id": "primitives",
+      "title": "Primitive types",
+      "body": "TypeScript has 7 primitive types: `string`, `number`, `bigint`, `boolean`, `symbol`, `undefined`, `null`. Plus special types: `void` (functions returning nothing), `never` (functions that never return — throws or infinite loops), `any` (opt out of type checking), `unknown` (type-safe catch-all — must narrow before use). Always prefer `unknown` over `any` for values of uncertain type. Use `void` for function return types, not `undefined`. The `object` type means any non-primitive; prefer specific interfaces.",
+      "tags": ["primitives", "string", "number", "boolean", "any", "unknown", "never", "void"]
+    },
+    {
+      "id": "narrowing",
+      "title": "Type narrowing and control flow analysis",
+      "body": "TypeScript narrows types through control flow analysis. Narrowing techniques: `typeof` checks (`typeof x === \"string\"`), `instanceof` checks (`x instanceof Date`), `in` operator (`\"swim\" in animal`), truthiness (`if (x)`), equality (`x === null`), assignment (`x = \"hello\"`), and custom type guards (`function isFish(x): x is Fish`). After a narrowing check, TypeScript knows the more specific type in that branch. Discriminated unions use a literal property as a discriminant — switch on it for exhaustive handling. TypeScript 5.5+ can infer type predicates from function bodies automatically.",
+      "tags": ["narrowing", "typeof", "instanceof", "in", "type-guards", "control-flow", "discriminated-unions"]
+    },
+    {
+      "id": "utility-types",
+      "title": "Built-in utility types",
+      "body": "TypeScript ships with utility types for common transformations. Object: `Partial<T>` (all optional), `Required<T>` (all required), `Readonly<T>` (all readonly), `Pick<T, K>` (select properties), `Omit<T, K>` (remove properties), `Record<K, V>` (key-value map). Union: `Exclude<T, U>` (remove from union), `Extract<T, U>` (keep from union), `NonNullable<T>` (remove null/undefined). Function: `ReturnType<T>`, `Parameters<T>`, `ConstructorParameters<T>`, `InstanceType<T>`. Promise: `Awaited<T>` (unwrap promise). String: `Uppercase<T>`, `Lowercase<T>`, `Capitalize<T>`, `Uncapitalize<T>`. New: `NoInfer<T>` (5.4+) prevents inference.",
+      "tags": ["Partial", "Required", "Readonly", "Pick", "Omit", "Record", "Exclude", "Extract", "ReturnType", "Parameters", "Awaited", "NonNullable"]
+    },
+    {
+      "id": "conditional-mapped",
+      "title": "Conditional and mapped types",
+      "body": "Conditional types branch on type relationships: `T extends U ? X : Y`. They distribute over unions by default — `ToArray<string | number>` becomes `string[] | number[]`. Use `[T] extends [U]` to prevent distribution. The `infer` keyword extracts types: `T extends Promise<infer U> ? U : T` unwraps promises. Mapped types transform property types: `{ [K in keyof T]: V }`. The `as` clause remaps keys: `{ [K in keyof T as NewKey]: T[K] }`. Modifiers `+`/`-` add or remove `readonly` and `?`: `{ -readonly [K in keyof T]-?: T[K] }` makes all properties mutable and required.",
+      "tags": ["conditional-types", "mapped-types", "infer", "extends", "keyof", "distributive"]
+    },
+    {
+      "id": "type-assertions",
+      "title": "Type assertions and const assertions",
+      "body": "Type assertions tell TypeScript you know better: `value as Type`. Use sparingly — they bypass type safety. The `as const` assertion makes values deeply readonly with literal types — essential for deriving union types from arrays and object values. The `satisfies` operator (4.9+) validates a value matches a type without widening — `const x = { ... } satisfies Schema` keeps literal types while ensuring the shape matches. The non-null assertion `x!` tells TypeScript `x` is not null/undefined — prefer proper null checking instead. Double assertion `x as unknown as T` is a code smell but sometimes necessary for framework integration.",
+      "tags": ["as", "assertion", "as-const", "satisfies", "non-null-assertion", "widening"]
+    }
+  ],
+  "links": [
+    { "uri": "typescript/generics", "context": "Parameterized types — generic functions, classes, and constraints" },
+    { "uri": "typescript/config", "context": "Strict mode options that affect type checking strictness" },
+    { "uri": "typescript/compiler", "context": "tsc reports type errors — understanding types helps fix them" }
+  ],
+  "related": [
+    { "uri": "typescript/generics", "relation": "extends", "note": "Generics are parameterized types — they build on the type system primitives covered here" },
+    { "uri": "typescript/config", "relation": "see-also", "note": "Strict mode options (strictNullChecks, noImplicitAny) directly affect type checking behavior" }
+  ],
+  "more": {
+    "docs": "https://www.typescriptlang.org/docs/handbook/2/everyday-types.html",
+    "narrowing": "https://www.typescriptlang.org/docs/handbook/2/narrowing.html",
+    "utility-types": "https://www.typescriptlang.org/docs/handbook/utility-types.html",
+    "conditional-types": "https://www.typescriptlang.org/docs/handbook/2/conditional-types.html",
+    "mapped-types": "https://www.typescriptlang.org/docs/handbook/2/mapped-types.html",
+    "template-literals": "https://www.typescriptlang.org/docs/handbook/2/template-literal-types.html"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "10 min",
+    "prerequisites": [],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

@@ -3,73 +3,74 @@
   "version": "1.0.0",
   "uri": "anthropic/batch",
   "type": "skill",
-  "context": "Process thousands of Claude requests asynchronously at 50% discount via the Message Batches API",
-  "info": "The Message Batches API (`POST /v1/messages/batches`) processes large volumes of Messages API requests asynchronously with a 50% cost reduction. Submit up to 100,000 requests per batch, each with a `custom_id` and standard Messages API `params`. Batches process within 24 hours. Poll status via `GET /v1/messages/batches/{id}`, then retrieve results as JSONL via `GET /v1/messages/batches/{id}/results`. Results may arrive out of order — use `custom_id` to match. Result types: `succeeded` (with full message), `errored` (with error details). Cancel unprocessed requests via `POST /v1/messages/batches/{id}/cancel`. Batch + prompt caching discounts stack. Results available for 29 days after completion.",
+  "context": "Process large volumes of Claude requests asynchronously at 50% discount via the Message Batches API",
+  "info": "The Message Batches API processes thousands of Messages API requests asynchronously. You submit a batch of requests, each with a custom_id for tracking, and results are delivered within 24 hours at a 50% discount on both input and output tokens. This is ideal for non-time-sensitive workloads: bulk classification, content moderation, translation, data extraction, and evaluation pipelines. Create batches via POST /v1/messages/batches, poll status via GET /v1/messages/batches/{id}, and retrieve results when processing_status is 'ended'. Each batch supports up to 100,000 requests. Results may arrive out of order — match via custom_id. Batch processing supports all Messages API features including tools, vision, and extended thinking.",
   "parent": "anthropic",
-  "tags": ["batch", "batch-api", "async", "bulk", "high-volume", "cost-optimization"],
+  "tags": ["batch", "batch-api", "async", "bulk", "discount"],
   "aliases": [
     "batch api",
     "message batches",
     "batch processing",
-    "bulk requests",
+    "bulk processing",
     "async batch",
-    "batch messages",
     "anthropic batch",
-    "batches api"
+    "batch messages",
+    "bulk api"
   ],
   "triggers": [
-    "process requests in bulk with claude",
+    "process messages in batch",
     "use the batch api",
-    "send batch requests to claude",
-    "process many prompts at once",
-    "get 50 percent discount on claude api",
+    "bulk process with claude",
+    "send many requests at once",
+    "get 50% discount on claude api",
     "async batch processing",
     "create a message batch"
   ],
-  "body": "# Message Batches API\n\nProcess thousands of Claude requests asynchronously at 50% off standard pricing.\n\n## Endpoints\n\n| Method | Endpoint | Purpose |\n|--------|----------|----------|\n| `POST` | `/v1/messages/batches` | Create a batch |\n| `GET` | `/v1/messages/batches/{id}` | Get batch status |\n| `GET` | `/v1/messages/batches` | List all batches |\n| `POST` | `/v1/messages/batches/{id}/cancel` | Cancel batch |\n| `GET` | `/v1/messages/batches/{id}/results` | Get results (JSONL) |\n\n## Creating a Batch\n\n```python\nimport anthropic\n\nclient = anthropic.Anthropic()\n\nbatch = client.messages.batches.create(\n    requests=[\n        {\n            \"custom_id\": \"request-1\",\n            \"params\": {\n                \"model\": \"claude-sonnet-4-6\",\n                \"max_tokens\": 1024,\n                \"messages\": [{\"role\": \"user\", \"content\": \"Summarize this article: ...\"}]\n            }\n        },\n        {\n            \"custom_id\": \"request-2\",\n            \"params\": {\n                \"model\": \"claude-sonnet-4-6\",\n                \"max_tokens\": 1024,\n                \"messages\": [{\"role\": \"user\", \"content\": \"Translate this to French: ...\"}]\n            }\n        }\n    ]\n)\nprint(f\"Batch ID: {batch.id}\")\nprint(f\"Status: {batch.processing_status}\")\n```\n\n## Polling for Completion\n\n```python\nimport time\n\nwhile True:\n    batch = client.messages.batches.retrieve(batch.id)\n    print(f\"Status: {batch.processing_status}\")\n    print(f\"Succeeded: {batch.request_counts.succeeded}\")\n    print(f\"Processing: {batch.request_counts.processing}\")\n\n    if batch.processing_status == \"ended\":\n        break\n    time.sleep(30)\n```\n\n## Retrieving Results\n\n```python\n# Results come as a stream of JSON objects\nfor result in client.messages.batches.results(batch.id):\n    print(f\"Request: {result.custom_id}\")\n    if result.result.type == \"succeeded\":\n        message = result.result.message\n        print(f\"  Response: {message.content[0].text[:100]}\")\n        print(f\"  Tokens: {message.usage.input_tokens}in/{message.usage.output_tokens}out\")\n    elif result.result.type == \"errored\":\n        print(f\"  Error: {result.result.error.message}\")\n```\n\n## TypeScript\n\n```typescript\nimport Anthropic from \"@anthropic-ai/sdk\";\n\nconst client = new Anthropic();\n\nconst batch = await client.messages.batches.create({\n  requests: [\n    {\n      custom_id: \"req-1\",\n      params: {\n        model: \"claude-sonnet-4-6\",\n        max_tokens: 1024,\n        messages: [{ role: \"user\", content: \"Hello\" }]\n      }\n    }\n  ]\n});\n\n// Poll\nlet status = await client.messages.batches.retrieve(batch.id);\nwhile (status.processing_status !== \"ended\") {\n  await new Promise(r => setTimeout(r, 30000));\n  status = await client.messages.batches.retrieve(batch.id);\n}\n\n// Get results\nfor await (const result of client.messages.batches.results(batch.id)) {\n  if (result.result.type === \"succeeded\") {\n    console.log(result.custom_id, result.result.message.content[0].text);\n  }\n}\n```\n\n## curl\n\n```bash\n# Create batch\ncurl -X POST https://api.anthropic.com/v1/messages/batches \\\n  -H \"x-api-key: $ANTHROPIC_API_KEY\" \\\n  -H \"anthropic-version: 2023-06-01\" \\\n  -H \"content-type: application/json\" \\\n  -d '{\n    \"requests\": [\n      {\n        \"custom_id\": \"req-1\",\n        \"params\": {\n          \"model\": \"claude-sonnet-4-6\",\n          \"max_tokens\": 1024,\n          \"messages\": [{\"role\": \"user\", \"content\": \"Hello\"}]\n        }\n      }\n    ]\n  }'\n\n# Check status\ncurl https://api.anthropic.com/v1/messages/batches/BATCH_ID \\\n  -H \"x-api-key: $ANTHROPIC_API_KEY\" \\\n  -H \"anthropic-version: 2023-06-01\"\n\n# Get results (JSONL)\ncurl https://api.anthropic.com/v1/messages/batches/BATCH_ID/results \\\n  -H \"x-api-key: $ANTHROPIC_API_KEY\" \\\n  -H \"anthropic-version: 2023-06-01\"\n```\n\n## Pricing (50% Discount)\n\n| Model | Batch Input | Batch Output |\n|-------|-------------|---------------|\n| Opus 4.6 | $2.50/MTok | $12.50/MTok |\n| Sonnet 4.6 | $1.50/MTok | $7.50/MTok |\n| Haiku 4.5 | $0.50/MTok | $2.50/MTok |\n\n## Limits\n\n| Tier | Max RPM | Max Requests in Queue | Max per Batch |\n|------|---------|----------------------|----------------|\n| 1 | 50 | 100,000 | 100,000 |\n| 2 | 1,000 | 200,000 | 100,000 |\n| 3 | 2,000 | 300,000 | 100,000 |\n| 4 | 4,000 | 500,000 | 100,000 |\n\nResults available for 29 days after batch completion.\n",
+  "body": "# Message Batches API\n\nProcess large volumes of requests asynchronously at 50% off. Results within 24 hours.\n\n## Create a Batch\n\n```python\nimport anthropic\n\nclient = anthropic.Anthropic()\n\nbatch = client.messages.batches.create(\n    requests=[\n        {\n            \"custom_id\": \"task-001\",\n            \"params\": {\n                \"model\": \"claude-sonnet-4-6\",\n                \"max_tokens\": 1024,\n                \"messages\": [{\"role\": \"user\", \"content\": \"Summarize: [article 1]\"}]\n            }\n        },\n        {\n            \"custom_id\": \"task-002\",\n            \"params\": {\n                \"model\": \"claude-sonnet-4-6\",\n                \"max_tokens\": 1024,\n                \"messages\": [{\"role\": \"user\", \"content\": \"Summarize: [article 2]\"}]\n            }\n        }\n    ]\n)\nprint(f\"Batch ID: {batch.id}\")\nprint(f\"Status: {batch.processing_status}\")\n```\n\n## TypeScript\n\n```typescript\nimport Anthropic from \"@anthropic-ai/sdk\";\n\nconst client = new Anthropic();\n\nconst batch = await client.messages.batches.create({\n  requests: [\n    {\n      custom_id: \"task-001\",\n      params: {\n        model: \"claude-sonnet-4-6\",\n        max_tokens: 1024,\n        messages: [{ role: \"user\", content: \"Summarize: [article 1]\" }]\n      }\n    },\n    {\n      custom_id: \"task-002\",\n      params: {\n        model: \"claude-sonnet-4-6\",\n        max_tokens: 1024,\n        messages: [{ role: \"user\", content: \"Summarize: [article 2]\" }]\n      }\n    }\n  ]\n});\nconsole.log(`Batch ID: ${batch.id}`);\n```\n\n## cURL\n\n```bash\ncurl https://api.anthropic.com/v1/messages/batches \\\n  -H \"x-api-key: $ANTHROPIC_API_KEY\" \\\n  -H \"anthropic-version: 2023-06-01\" \\\n  -H \"content-type: application/json\" \\\n  -d '{\n    \"requests\": [\n      {\n        \"custom_id\": \"task-001\",\n        \"params\": {\n          \"model\": \"claude-sonnet-4-6\",\n          \"max_tokens\": 1024,\n          \"messages\": [{\"role\": \"user\", \"content\": \"Hello\"}]\n        }\n      }\n    ]\n  }'\n```\n\n## Poll for Completion\n\n```python\nimport time\n\nwhile True:\n    status = client.messages.batches.retrieve(batch.id)\n    print(f\"Status: {status.processing_status}\")\n    print(f\"Succeeded: {status.request_counts.succeeded}\")\n    print(f\"Errored: {status.request_counts.errored}\")\n    print(f\"Processing: {status.request_counts.processing}\")\n\n    if status.processing_status == \"ended\":\n        break\n    time.sleep(60)\n```\n\n## Retrieve Results\n\n```python\n# Stream results\nfor result in client.messages.batches.results(batch.id):\n    print(f\"ID: {result.custom_id}\")\n    if result.result.type == \"succeeded\":\n        message = result.result.message\n        print(f\"Response: {message.content[0].text}\")\n    elif result.result.type == \"errored\":\n        print(f\"Error: {result.result.error}\")\n```\n\n## Batch Pricing (50% Discount)\n\n| Model | Standard Input | Batch Input | Standard Output | Batch Output |\n|-------|---------------|-------------|-----------------|-------------|\n| Opus 4.6 | $5/MTok | $2.50/MTok | $25/MTok | $12.50/MTok |\n| Sonnet 4.6 | $3/MTok | $1.50/MTok | $15/MTok | $7.50/MTok |\n| Haiku 4.5 | $1/MTok | $0.50/MTok | $5/MTok | $2.50/MTok |\n\n## Batch Limits by Tier\n\n| Tier | RPM | Max Queued Requests | Max per Batch |\n|------|-----|---------------------|---------------|\n| Tier 1 | 50 | 100,000 | 100,000 |\n| Tier 2 | 1,000 | 200,000 | 100,000 |\n| Tier 3 | 2,000 | 300,000 | 100,000 |\n| Tier 4 | 4,000 | 500,000 | 100,000 |\n\n## Batch States\n\n| State | Description |\n|-------|-------------|\n| `in_progress` | Batch is actively processing |\n| `ended` | Processing complete — check request_counts |\n\n## Key Features\n\n- Each request has a `custom_id` for matching results (results may arrive out of order)\n- All Messages API features work: tools, vision, system prompts, extended thinking\n- Batches start processing immediately upon creation\n- Processing takes up to 24 hours\n- Extended output: Opus 4.6 and Sonnet 4.6 support up to 300K output tokens per request in batch mode\n\n## Use Cases\n\n- **Bulk classification** — Categorize thousands of support tickets\n- **Content moderation** — Scan user-generated content\n- **Data extraction** — Extract structured data from documents\n- **Translation** — Translate content at scale\n- **Evaluation** — Run model evaluations across test sets\n- **Summarization** — Summarize large document collections\n",
   "sections": [
     {
       "id": "create-batch",
-      "title": "Creating a batch",
-      "body": "Call `POST /v1/messages/batches` with a `requests` array. Each request has a `custom_id` (unique within the batch, used to match results) and `params` (standard Messages API parameters: model, max_tokens, messages, system, tools, temperature, etc.). The batch starts processing immediately. Maximum 100,000 requests per batch.",
+      "title": "Creating batches",
+      "body": "POST /v1/messages/batches with a `requests` array. Each request needs `custom_id` (unique string for matching) and `params` (standard Messages API parameters). Max 100,000 requests per batch. The response includes a batch `id` for polling. Processing starts immediately.",
       "tags": ["create", "requests", "custom-id", "params"]
     },
     {
       "id": "poll-results",
       "title": "Polling and retrieving results",
-      "body": "Poll `GET /v1/messages/batches/{id}` for status. The `processing_status` field shows progress: `processing` or `ended`. The `request_counts` object shows `processing`, `succeeded`, and `errored` counts. Once ended, retrieve results via `GET /v1/messages/batches/{id}/results` which returns JSONL. Each line has `custom_id` and `result` (type: succeeded/errored). Results may be out of order.",
-      "tags": ["poll", "status", "results", "jsonl", "out-of-order"]
+      "body": "GET /v1/messages/batches/{id} to check processing_status. When 'ended', retrieve results via the SDK's `.results()` method. Each result has custom_id, result.type ('succeeded' or 'errored'), and result.message (the full Message response). Results arrive out of order — always match by custom_id.",
+      "tags": ["poll", "status", "results", "retrieve", "ended"]
     },
     {
-      "id": "pricing-limits",
-      "title": "Pricing and limits",
-      "body": "Batch processing costs 50% of standard API pricing for both input and output tokens. Prompt caching discounts stack on top. Processing completes within 24 hours. Up to 100,000 requests per batch. Tier-based limits on concurrent requests in queue (100k–500k). Results available for 29 days after completion.",
-      "tags": ["pricing", "discount", "limits", "24-hours", "queue"]
+      "id": "pricing",
+      "title": "Batch pricing",
+      "body": "50% discount on both input and output tokens across all models. Prompt caching discounts stack with the batch discount. Extended output (up to 300K tokens) available on Opus 4.6 and Sonnet 4.6 with the output-300k-2026-03-24 beta header. Batch processing is the most cost-effective way to use the API for non-time-sensitive work.",
+      "tags": ["pricing", "discount", "50-percent", "cost"]
     }
   ],
   "links": [
-    { "uri": "anthropic/messages", "context": "Each batch request uses Messages API params" },
+    { "uri": "anthropic/messages", "context": "Batch requests use the same params as Messages API" },
     { "uri": "anthropic/prompt-caching", "context": "Caching discounts stack with batch discount" },
-    { "uri": "anthropic/pricing", "context": "Batch pricing is 50% of standard" },
-    { "uri": "anthropic/rate-limits", "context": "Batch-specific rate limits per tier" },
-    { "uri": "anthropic/auth", "context": "API key required for batch endpoints" },
-    { "uri": "anthropic/models", "context": "All models supported in batch requests" }
+    { "uri": "anthropic/pricing", "context": "Full pricing table with batch rates" },
+    { "uri": "anthropic/rate-limits", "context": "Batch-specific rate limits" },
+    { "uri": "anthropic/models", "context": "Models available for batch processing" }
   ],
   "related": [
-    { "uri": "anthropic/messages", "relation": "prerequisite", "note": "Batch requests use Messages API params" },
-    { "uri": "anthropic/prompt-caching", "relation": "see-also", "note": "Caching + batch discounts stack" },
-    { "uri": "anthropic/messages/create", "relation": "alternative", "note": "Use sync create for single requests" }
+    { "uri": "anthropic/messages", "relation": "prerequisite", "note": "Batch params are standard Messages API parameters" },
+    { "uri": "anthropic/messages/create", "relation": "alternative", "note": "Use create for real-time, synchronous requests" },
+    { "uri": "anthropic/pricing", "relation": "see-also", "note": "Batch discount is 50% on all models" }
   ],
   "scripts": [
     {
-      "id": "batch-process",
-      "name": "Batch Process",
-      "description": "Create a batch, poll for completion, and retrieve results",
+      "id": "create-batch",
+      "name": "Create Batch",
+      "description": "Create a message batch and poll for results",
       "lang": "python",
-      "runtime": "python>=3.10",
-      "entry": "./scripts/batch-process.py",
+      "runtime": "python>=3.9",
+      "entry": "./scripts/create-batch.py",
+      "inline": "import anthropic\nimport json\nimport os\nimport time\n\nclient = anthropic.Anthropic()\nmodel = os.environ.get(\"ANTHROPIC_MODEL\", \"claude-sonnet-4-6\")\n\n# Create sample batch\nrequests = []\nfor i in range(3):\n    requests.append({\n        \"custom_id\": f\"task-{i:03d}\",\n        \"params\": {\n            \"model\": model,\n            \"max_tokens\": 256,\n            \"messages\": [{\"role\": \"user\", \"content\": f\"What is {i + 1} * {i + 1}? Reply with just the number.\"}]\n        }\n    })\n\nbatch = client.messages.batches.create(requests=requests)\nprint(f\"Created batch: {batch.id}\")\n\n# Poll\nwhile True:\n    status = client.messages.batches.retrieve(batch.id)\n    succeeded = status.request_counts.succeeded\n    errored = status.request_counts.errored\n    processing = status.request_counts.processing\n    print(f\"Status: {status.processing_status} | succeeded={succeeded} errored={errored} processing={processing}\")\n    if status.processing_status == \"ended\":\n        break\n    time.sleep(30)\n\n# Retrieve results\nfor result in client.messages.batches.results(batch.id):\n    if result.result.type == \"succeeded\":\n        text = result.result.message.content[0].text\n        print(f\"{result.custom_id}: {text}\")\n    else:\n        print(f\"{result.custom_id}: ERROR - {result.result.error}\")\n",
       "env": {
-        "ANTHROPIC_API_KEY": { "required": true, "secret": true, "description": "Anthropic API key" }
+        "ANTHROPIC_API_KEY": { "required": true, "secret": true, "description": "Anthropic API key" },
+        "ANTHROPIC_MODEL": { "required": false, "default": "claude-sonnet-4-6", "description": "Model to use" }
       },
       "packages": ["anthropic"]
     }
@@ -83,11 +84,12 @@
           "items": {
             "type": "object",
             "properties": {
-              "custom_id": { "type": "string", "description": "Unique request identifier" },
+              "custom_id": { "type": "string", "description": "Unique ID for matching results" },
               "params": { "type": "object", "description": "Standard Messages API parameters" }
             },
             "required": ["custom_id", "params"]
-          }
+          },
+          "description": "Array of batch requests (max 100,000)"
         }
       },
       "required": ["requests"]
@@ -96,13 +98,13 @@
       "type": "object",
       "properties": {
         "id": { "type": "string", "description": "Batch ID" },
-        "processing_status": { "type": "string", "enum": ["processing", "ended"] },
+        "processing_status": { "type": "string", "enum": ["in_progress", "ended"] },
         "request_counts": {
           "type": "object",
           "properties": {
-            "processing": { "type": "integer" },
             "succeeded": { "type": "integer" },
-            "errored": { "type": "integer" }
+            "errored": { "type": "integer" },
+            "processing": { "type": "integer" }
           }
         }
       }
@@ -110,15 +112,14 @@
   },
   "depends": [
     { "uri": "anthropic/auth", "reason": "API key required" },
-    { "uri": "anthropic/messages", "reason": "Batch requests use Messages API params" }
+    { "uri": "anthropic/messages", "reason": "Batch params follow Messages API format" }
   ],
   "more": {
-    "docs": "https://docs.anthropic.com/en/api/creating-message-batches",
-    "guide": "https://docs.anthropic.com/en/docs/build-with-claude/batch-processing"
+    "docs": "https://docs.anthropic.com/en/api/creating-message-batches"
   },
   "frontmatter": {
-    "created": "2026-04-10",
-    "updated": "2026-04-10",
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
     "author": "dojo-community",
     "audience": "developers, AI agents",
     "estimated_reading_time": "5 min",
@@ -128,7 +129,7 @@
   },
   "author": "dojo-community",
   "license": "MIT",
-  "created": "2026-04-10T00:00:00Z",
-  "updated": "2026-04-10T00:00:00Z",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
   "status": "published"
 }

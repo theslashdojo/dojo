@@ -1,0 +1,172 @@
+{
+  "name": "kubectl",
+  "version": "1.0.0",
+  "uri": "kubernetes/kubectl",
+  "type": "skill",
+  "context": "Use kubectl to interact with Kubernetes clusters — apply manifests, inspect resources, debug workloads, and manage config contexts",
+  "info": "kubectl is the primary CLI for Kubernetes. Every cluster operation — deploying apps, inspecting Pods, reading logs, scaling Deployments, port-forwarding, managing contexts — goes through kubectl. It translates commands into Kubernetes API calls against the active cluster context defined in KUBECONFIG. Agents use kubectl to apply YAML manifests, query resource state with JSON/YAML output for parsing, run imperative commands for quick operations, and pipe output to other tools. This skill covers the complete kubectl command vocabulary: resource CRUD (get, describe, create, apply, delete, patch), debugging (logs, exec, debug, port-forward, cp), rollouts (rollout status, undo, restart), scaling, config context management, and output formatting. See [[kubernetes/pods]] for Pod-specific operations, [[kubernetes/deployments]] for rollout workflows, and [[kubernetes/troubleshooting]] for systematic debugging.",
+  "parent": "kubernetes",
+  "tags": ["kubectl", "cli", "kubernetes-cli", "apply", "get", "describe", "logs", "exec", "port-forward", "context", "kubeconfig"],
+  "aliases": [
+    "kubectl",
+    "kubernetes cli",
+    "k8s cli",
+    "kube ctl",
+    "kubectl commands",
+    "kubectl apply",
+    "kubectl get",
+    "kubectl describe",
+    "kubectl logs",
+    "kubectl exec",
+    "kubectl port-forward",
+    "kubectl config",
+    "kubeconfig"
+  ],
+  "triggers": [
+    "run a kubectl command",
+    "apply a kubernetes manifest",
+    "get pods with kubectl",
+    "describe a kubernetes resource",
+    "check kubectl context",
+    "switch kubernetes context",
+    "set default namespace",
+    "kubectl output as json",
+    "kubectl dry run",
+    "generate a manifest with kubectl",
+    "kubectl cheat sheet",
+    "how to use kubectl"
+  ],
+  "body": "# kubectl\n\nkubectl is the command-line interface for Kubernetes. Every interaction with a cluster — deploying workloads, reading logs, debugging failures, managing configuration — flows through kubectl or the equivalent API calls.\n\n## Installation\n\n```bash\n# macOS\nbrew install kubectl\n\n# Linux (latest stable)\ncurl -LO \"https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl\"\nchmod +x kubectl && sudo mv kubectl /usr/local/bin/\n\n# Verify\nkubectl version --client\n```\n\n## Context and Configuration\n\nkubectl uses a kubeconfig file (default `~/.kube/config`) to know which cluster, user, and namespace to target.\n\n```bash\n# List available contexts\nkubectl config get-contexts\n\n# Switch context\nkubectl config use-context production-cluster\n\n# Set default namespace for current context\nkubectl config set-context --current --namespace=my-app\n\n# View current context\nkubectl config current-context\n\n# View full config\nkubectl config view --minify\n\n# Merge multiple kubeconfigs\nexport KUBECONFIG=~/.kube/config:~/.kube/staging-config\nkubectl config view --flatten > ~/.kube/merged-config\n```\n\n## Core Verbs\n\n| Verb | Purpose | Example |\n|------|---------|----------|\n| `get` | List resources | `kubectl get pods -o wide` |\n| `describe` | Detailed info + events | `kubectl describe pod my-app` |\n| `apply` | Create/update from manifest | `kubectl apply -f deploy.yaml` |\n| `create` | Imperative create | `kubectl create deployment nginx --image=nginx` |\n| `delete` | Remove resources | `kubectl delete -f deploy.yaml` |\n| `patch` | Partial update | `kubectl patch deploy my-app -p '{\"spec\":{\"replicas\":5}}'` |\n| `edit` | Open in $EDITOR | `kubectl edit deployment my-app` |\n| `logs` | Container stdout/stderr | `kubectl logs my-pod --tail=100` |\n| `exec` | Run command in container | `kubectl exec -it my-pod -- /bin/sh` |\n| `port-forward` | Local tunnel to pod/svc | `kubectl port-forward svc/my-app 8080:80` |\n| `scale` | Change replica count | `kubectl scale deploy my-app --replicas=5` |\n| `rollout` | Manage rollouts | `kubectl rollout status deploy/my-app` |\n| `debug` | Ephemeral debug container | `kubectl debug pod/my-app -it --image=busybox` |\n| `cp` | Copy files to/from pod | `kubectl cp my-pod:/app/log.txt ./log.txt` |\n| `top` | Resource usage (needs metrics-server) | `kubectl top pods` |\n\n## Output Formatting\n\n```bash\n# Wide output (node, IP)\nkubectl get pods -o wide\n\n# JSON output (for parsing)\nkubectl get pod my-app -o json\n\n# YAML output\nkubectl get pod my-app -o yaml\n\n# JSONPath — extract specific fields\nkubectl get pod my-app -o jsonpath='{.status.phase}'\nkubectl get pods -o jsonpath='{.items[*].metadata.name}'\nkubectl get nodes -o jsonpath='{range .items[*]}{.metadata.name}{\"\\t\"}{.status.conditions[-1].type}{\"\\n\"}{end}'\n\n# Custom columns\nkubectl get pods -o custom-columns=NAME:.metadata.name,STATUS:.status.phase,NODE:.spec.nodeName\n\n# Sort by field\nkubectl get pods --sort-by=.status.startTime\nkubectl get events --sort-by=.metadata.creationTimestamp\n```\n\n## Filtering and Selection\n\n```bash\n# By namespace\nkubectl get pods -n production\nkubectl get pods --all-namespaces  # or -A\n\n# By label\nkubectl get pods -l app=my-app\nkubectl get pods -l 'app in (web, api)'\nkubectl get pods -l 'version!=v1'\n\n# By field\nkubectl get pods --field-selector status.phase=Running\nkubectl get pods --field-selector spec.nodeName=node-1\nkubectl get events --field-selector type=Warning\n\n# Watch for changes\nkubectl get pods --watch\nkubectl get events -w --sort-by=.metadata.creationTimestamp\n```\n\n## Dry Run and Manifest Generation\n\nGenerate manifests imperatively without creating resources:\n\n```bash\n# Generate Deployment YAML\nkubectl create deployment web-app --image=nginx:1.25 --replicas=3 \\\n  --dry-run=client -o yaml > deployment.yaml\n\n# Generate Service YAML\nkubectl expose deployment web-app --port=80 --target-port=8080 \\\n  --type=ClusterIP --dry-run=client -o yaml > service.yaml\n\n# Generate Job YAML\nkubectl create job data-import --image=myapp:latest \\\n  --dry-run=client -o yaml > job.yaml\n\n# Generate ConfigMap from literals\nkubectl create configmap app-config \\\n  --from-literal=DB_HOST=postgres \\\n  --from-literal=LOG_LEVEL=info \\\n  --dry-run=client -o yaml > configmap.yaml\n\n# Generate Secret\nkubectl create secret generic db-creds \\\n  --from-literal=password=s3cret \\\n  --dry-run=client -o yaml > secret.yaml\n\n# Server-side diff before applying\nkubectl diff -f deployment.yaml\n```\n\n## Apply and Manage Manifests\n\n```bash\n# Apply a single file\nkubectl apply -f deployment.yaml\n\n# Apply all files in a directory\nkubectl apply -f ./k8s/\n\n# Apply from URL\nkubectl apply -f https://raw.githubusercontent.com/org/repo/main/deploy.yaml\n\n# Apply with kustomize\nkubectl apply -k ./overlays/production/\n\n# Prune resources not in manifests\nkubectl apply -f ./k8s/ --prune -l app=my-app\n\n# Delete resources from manifest\nkubectl delete -f deployment.yaml\n\n# Force replace (dangerous — causes downtime)\nkubectl replace --force -f deployment.yaml\n```\n\n## Debugging Commands\n\n```bash\n# Logs from a specific container\nkubectl logs my-pod -c sidecar --tail=100 -f\n\n# Previous container logs (after crash)\nkubectl logs my-pod --previous\n\n# Exec into container\nkubectl exec -it my-pod -- /bin/sh\nkubectl exec my-pod -- env  # non-interactive\n\n# Ephemeral debug container (k8s 1.23+)\nkubectl debug pod/my-pod -it --image=busybox --target=app\n\n# Port-forward to pod or service\nkubectl port-forward pod/my-pod 8080:8080\nkubectl port-forward svc/my-service 3000:80\n\n# Copy files\nkubectl cp my-pod:/var/log/app.log ./app.log\nkubectl cp ./fix.conf my-pod:/etc/app/fix.conf\n\n# Run a one-off debug pod\nkubectl run debug --rm -it --image=nicolaka/netshoot -- /bin/bash\nkubectl run curl-test --rm -it --image=curlimages/curl -- curl -s http://my-service\n```\n\n## Resource Management\n\n```bash\n# Scale a deployment\nkubectl scale deployment my-app --replicas=5\n\n# Autoscale (create HPA)\nkubectl autoscale deployment my-app --min=2 --max=10 --cpu-percent=80\n\n# Rollout operations\nkubectl rollout status deployment/my-app\nkubectl rollout history deployment/my-app\nkubectl rollout undo deployment/my-app\nkubectl rollout restart deployment/my-app\n\n# Label resources\nkubectl label pod my-pod env=production\nkubectl label pod my-pod env-  # remove label\n\n# Annotate resources\nkubectl annotate deployment my-app 'deploy.note=hotfix for #123'\n\n# Taint nodes\nkubectl taint nodes node-1 dedicated=gpu:NoSchedule\nkubectl taint nodes node-1 dedicated-  # remove taint\n\n# Cordon/uncordon nodes (prevent/allow scheduling)\nkubectl cordon node-1\nkubectl uncordon node-1\n\n# Drain node (evict pods before maintenance)\nkubectl drain node-1 --ignore-daemonsets --delete-emptydir-data\n```\n\n## Useful Aliases\n\n```bash\n# Add to ~/.bashrc or ~/.zshrc\nalias k='kubectl'\nalias kgp='kubectl get pods'\nalias kgs='kubectl get svc'\nalias kgd='kubectl get deployments'\nalias kd='kubectl describe'\nalias kl='kubectl logs'\nalias ka='kubectl apply -f'\nalias kx='kubectl exec -it'\nalias kctx='kubectl config use-context'\nalias kns='kubectl config set-context --current --namespace'\n```\n\n## Environment Variables\n\n| Variable | Purpose |\n|----------|----------|\n| `KUBECONFIG` | Path to kubeconfig file(s), colon-separated (default: `~/.kube/config`) |\n| `KUBE_CONTEXT` | Override active context without switching |\n| `KUBECTL_EXTERNAL_DIFF` | Custom diff tool for `kubectl diff` (e.g., `dyff`) |\n| `KUBE_EDITOR` | Editor for `kubectl edit` (default: `$EDITOR` or `vi`) |\n",
+  "sections": [
+    {
+      "id": "context-config",
+      "title": "Context and kubeconfig management",
+      "body": "kubectl uses `~/.kube/config` (or `$KUBECONFIG`) to determine the target cluster, user credentials, and default namespace. A context combines a cluster + user + namespace. Use `kubectl config get-contexts` to list, `kubectl config use-context <name>` to switch, `kubectl config set-context --current --namespace=<ns>` to set default namespace. Merge multiple kubeconfigs by setting `KUBECONFIG=file1:file2` and running `kubectl config view --flatten`. Tools like `kubectx` and `kubens` provide faster switching.",
+      "tags": ["context", "kubeconfig", "namespace", "switch", "kubectx", "kubens", "credentials"]
+    },
+    {
+      "id": "output-formats",
+      "title": "Output formatting and parsing",
+      "body": "kubectl supports multiple output formats: `-o wide` for extra columns, `-o json` and `-o yaml` for machine-readable output, `-o jsonpath='{.field}'` for extracting specific fields, `-o custom-columns=COL:path` for tabular extraction. JSONPath supports array indexing (`[0]`), wildcards (`[*]`), ranges, and filters. Combine with `--sort-by=.field` for sorted output. Use `jq` for complex JSON processing: `kubectl get pods -o json | jq '.items[].metadata.name'`.",
+      "tags": ["output", "json", "yaml", "jsonpath", "custom-columns", "jq", "formatting", "parsing"]
+    },
+    {
+      "id": "dry-run",
+      "title": "Dry run and manifest generation",
+      "body": "Use `--dry-run=client -o yaml` with any imperative command to generate a YAML manifest without creating the resource. This is the fastest way to scaffold manifests: `kubectl create deployment web --image=nginx --dry-run=client -o yaml > deploy.yaml`. Use `kubectl diff -f manifest.yaml` to preview changes before applying (server-side diff). Use `--dry-run=server` for full validation including admission controllers and webhooks.",
+      "tags": ["dry-run", "generate", "scaffold", "diff", "validation", "manifest-generation"]
+    },
+    {
+      "id": "debugging",
+      "title": "Debugging with kubectl",
+      "body": "Core debug commands: `kubectl logs <pod> --tail=100` for application output, `kubectl logs <pod> --previous` for crashed container logs, `kubectl exec -it <pod> -- /bin/sh` for interactive shell, `kubectl debug pod/<pod> -it --image=busybox` for ephemeral debug containers (k8s 1.23+), `kubectl port-forward pod/<pod> 8080:8080` for local access, `kubectl cp <pod>:/path ./local` for file retrieval. Run disposable debug pods with `kubectl run debug --rm -it --image=nicolaka/netshoot -- /bin/bash` for network and DNS testing. See [[kubernetes/troubleshooting]] for systematic workflows.",
+      "tags": ["debug", "logs", "exec", "port-forward", "cp", "ephemeral-container", "netshoot"]
+    },
+    {
+      "id": "apply-strategies",
+      "title": "Apply strategies and kustomize",
+      "body": "Three apply modes: `kubectl apply -f` for declarative management (recommended), `kubectl create` for imperative one-off creation, `kubectl replace` for full replacement. Apply supports directories (`-f ./k8s/`), URLs, stdin (`cat manifest.yaml | kubectl apply -f -`), and kustomize (`-k ./overlays/prod/`). Use `--prune -l app=name` to delete resources not in the current manifest set. Use `kubectl apply --server-side` for conflict detection in multi-team environments.",
+      "tags": ["apply", "create", "replace", "kustomize", "prune", "server-side-apply", "declarative"]
+    }
+  ],
+  "links": [
+    { "uri": "kubernetes/pods", "context": "Pod-specific kubectl commands: logs, exec, port-forward" },
+    { "uri": "kubernetes/deployments", "context": "Deployment rollout, scale, and undo via kubectl" },
+    { "uri": "kubernetes/services", "context": "Expose deployments and inspect endpoints via kubectl" },
+    { "uri": "kubernetes/config", "context": "Kubeconfig structure and cluster connection details" },
+    { "uri": "kubernetes/troubleshooting", "context": "Systematic debugging workflows using kubectl" },
+    { "uri": "shell/bash", "context": "Shell scripting for kubectl automation" }
+  ],
+  "related": [
+    { "uri": "kubernetes", "relation": "prerequisite", "note": "kubectl requires a running Kubernetes cluster to connect to" },
+    { "uri": "kubernetes/config", "relation": "see-also", "note": "Config node covers kubeconfig file structure and cluster contexts in depth" },
+    { "uri": "kubernetes/troubleshooting", "relation": "see-also", "note": "Troubleshooting builds on kubectl commands for systematic diagnosis" }
+  ],
+  "scripts": [
+    {
+      "id": "kubectl-status",
+      "name": "Cluster Status",
+      "description": "Show cluster connection info, node status, and resource summary",
+      "lang": "bash",
+      "runtime": "kubectl",
+      "entry": "./scripts/cluster-status.sh",
+      "env": {
+        "KUBECONFIG": { "required": false, "secret": false, "default": "~/.kube/config", "description": "Path to kubeconfig file" },
+        "KUBE_NAMESPACE": { "required": false, "secret": false, "default": "default", "description": "Default namespace" }
+      },
+      "packages": []
+    },
+    {
+      "id": "kubectl-apply-manifest",
+      "name": "Apply Manifest",
+      "description": "Apply a YAML manifest with diff preview and rollout verification",
+      "lang": "bash",
+      "runtime": "kubectl",
+      "entry": "./scripts/apply-manifest.sh",
+      "env": {
+        "KUBECONFIG": { "required": false, "secret": false, "default": "~/.kube/config", "description": "Path to kubeconfig file" },
+        "KUBE_NAMESPACE": { "required": false, "secret": false, "default": "default", "description": "Target namespace" }
+      },
+      "packages": []
+    },
+    {
+      "id": "kubectl-generate",
+      "name": "Generate Manifest",
+      "description": "Generate Kubernetes YAML manifests using kubectl dry-run",
+      "lang": "bash",
+      "runtime": "kubectl",
+      "entry": "./scripts/generate-manifest.sh",
+      "env": {
+        "KUBECONFIG": { "required": false, "secret": false, "default": "~/.kube/config", "description": "Path to kubeconfig file" }
+      },
+      "packages": []
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "command": { "type": "string", "description": "kubectl verb (get, describe, apply, delete, logs, exec, etc.)" },
+        "resource": { "type": "string", "description": "Resource type (pods, deployments, services, etc.)" },
+        "name": { "type": "string", "description": "Resource name" },
+        "namespace": { "type": "string", "default": "default", "description": "Target namespace" },
+        "flags": { "type": "array", "items": { "type": "string" }, "description": "Additional flags (e.g., ['-o', 'json', '--tail=100'])" },
+        "manifest": { "type": "string", "description": "Path to YAML manifest file (for apply/delete)" }
+      },
+      "required": ["command"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "stdout": { "type": "string", "description": "Command standard output" },
+        "stderr": { "type": "string", "description": "Command standard error" },
+        "exitCode": { "type": "integer", "description": "Exit code (0 = success)" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "kubernetes/config", "reason": "kubectl needs a valid kubeconfig to connect to a cluster" }
+  ],
+  "more": {
+    "docs": "https://kubernetes.io/docs/reference/kubectl/",
+    "cheatsheet": "https://kubernetes.io/docs/reference/kubectl/cheatsheet/",
+    "repo": "https://github.com/kubernetes/kubectl",
+    "api": "https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.31/"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, DevOps engineers, SREs, AI agents",
+    "estimated_reading_time": "6 min",
+    "prerequisites": ["kubernetes/config"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://github.com/kubernetes/kubectl",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

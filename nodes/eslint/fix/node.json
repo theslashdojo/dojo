@@ -1,0 +1,133 @@
+{
+  "name": "fix",
+  "version": "1.0.0",
+  "uri": "eslint/fix",
+  "type": "skill",
+  "context": "Auto-fix ESLint violations with --fix, --fix-dry-run, and programmatic API — batch fix, preview, and selective fixing",
+  "info": "This skill covers ESLint's auto-fix capabilities: running --fix to correct fixable violations in-place, using --fix-dry-run to preview changes without writing, filtering fix types with --fix-type, and using the ESLint Node.js API for programmatic fixing in custom tooling. Agents use this skill when asked to fix lint errors, clean up code, or integrate auto-fixing into build pipelines and pre-commit hooks. Not all rules are fixable — unfixable violations require manual code changes. See [[eslint/rules]] for which rules support auto-fix and [[eslint/troubleshooting]] for when --fix produces unexpected results.",
+  "parent": "eslint",
+  "tags": ["fix", "auto-fix", "autofix", "fix-dry-run", "eslint-fix"],
+  "aliases": [
+    "eslint fix",
+    "eslint --fix",
+    "eslint autofix",
+    "auto fix lint",
+    "fix lint errors",
+    "fix eslint",
+    "lint fix",
+    "eslint fix-dry-run",
+    "fix linting issues",
+    "auto-correct lint"
+  ],
+  "triggers": [
+    "fix eslint errors",
+    "run eslint --fix",
+    "auto-fix lint issues",
+    "fix all linting errors",
+    "preview eslint fixes",
+    "fix lint warnings",
+    "eslint fix not working",
+    "fix code style issues",
+    "run linter with fix",
+    "how to auto-fix eslint"
+  ],
+  "body": "# ESLint Auto-Fix\n\nESLint's `--fix` flag automatically corrects fixable rule violations. Approximately 90 of ESLint's built-in rules are fixable. Plugin rules may also support auto-fix.\n\n## Basic Usage\n\n```bash\n# Fix all fixable issues in current directory\nnpx eslint --fix .\n\n# Fix specific files\nnpx eslint --fix src/index.js src/utils.js\n\n# Fix all files matching a pattern\nnpx eslint --fix \"src/**/*.{js,ts,jsx,tsx}\"\n\n# Fix only specific directories\nnpx eslint --fix src/ lib/\n```\n\n## Preview Fixes (Dry Run)\n\n```bash\n# Show what would be fixed without writing files\nnpx eslint --fix-dry-run .\n\n# Output proposed fixes as JSON for review\nnpx eslint --fix-dry-run --format json . > fixes.json\n```\n\n## Fix Types\n\nFilter which categories of fixes to apply:\n\n```bash\n# Only fix formatting/layout issues (quotes, semi, indent)\nnpx eslint --fix --fix-type layout .\n\n# Only fix problems (no-unused-vars, no-undef)\nnpx eslint --fix --fix-type problem .\n\n# Only fix suggestions\nnpx eslint --fix --fix-type suggestion .\n\n# Only fix inline directives\nnpx eslint --fix --fix-type directive .\n\n# Combine types\nnpx eslint --fix --fix-type problem --fix-type suggestion .\n```\n\n| Fix Type | Examples |\n|----------|----------|\n| `problem` | Fixes for correctness issues |\n| `suggestion` | Preference-based improvements |\n| `layout` | Whitespace, semicolons, quotes |\n| `directive` | Inline comment fixes |\n\n## Common Fixable Rules\n\n| Rule | What --fix Does |\n|------|------------------|\n| `semi` | Adds or removes semicolons |\n| `quotes` | Changes quote style |\n| `eqeqeq` | Replaces `==` with `===` |\n| `prefer-const` | Changes `let` to `const` |\n| `no-var` | Changes `var` to `let`/`const` |\n| `no-extra-semi` | Removes extra semicolons |\n| `arrow-body-style` | Converts arrow function bodies |\n| `object-shorthand` | Uses property shorthand |\n| `prefer-template` | Converts concatenation to template literals |\n| `curly` | Adds braces to if/else/for |\n\n## CI Integration\n\n```bash\n# In CI: fail if there are any fixable issues (don't auto-fix)\nnpx eslint --max-warnings 0 .\n\n# In CI: check if fix would change anything\nnpx eslint --fix-dry-run --format json . | jq '[.[] | select(.output != null)] | length'\n```\n\n## Pre-Commit Hook (with lint-staged)\n\n```json\n// package.json\n{\n  \"lint-staged\": {\n    \"*.{js,ts,jsx,tsx}\": [\"eslint --fix\"]\n  }\n}\n```\n\nSetup:\n\n```bash\nnpm install --save-dev lint-staged husky\nnpx husky init\necho 'npx lint-staged' > .husky/pre-commit\n```\n\n## Programmatic API\n\n```javascript\nimport { ESLint } from \"eslint\";\n\nconst eslint = new ESLint({ fix: true });\nconst results = await eslint.lintFiles([\"src/**/*.js\"]);\n\n// Write fixes to disk\nawait ESLint.outputFixes(results);\n\n// Get remaining (unfixable) errors\nconst formatter = await eslint.loadFormatter(\"stylish\");\nconst output = await formatter.format(results);\nif (output) console.log(output);\n```\n\n## Caching with Fix\n\n```bash\n# Cache + fix: only process changed files\nnpx eslint --fix --cache .\n\n# Clear cache when config changes\nrm .eslintcache && npx eslint --fix --cache .\n```\n\n## Unfixable Violations\n\nSome common rules are NOT auto-fixable and require manual code changes:\n\n| Rule | Why Not Fixable |\n|------|------------------|\n| `no-unused-vars` | ESLint can't know if removal is safe |\n| `no-console` | Removing console calls changes behavior |\n| `no-debugger` | Removing debugger changes behavior |\n| `no-undef` | ESLint can't determine the correct fix |\n| `no-unreachable` | Removing code changes behavior |\n\nFor these, the agent must understand the code context and apply the appropriate fix manually.\n",
+  "sections": [
+    {
+      "id": "basic-fix",
+      "title": "Basic fix usage",
+      "body": "Run `npx eslint --fix .` to auto-fix all fixable violations in the current directory. ESLint modifies files in-place. Only fixable rules are corrected — unfixable violations are still reported. Always review changes after fixing, especially in unfamiliar codebases.",
+      "tags": ["fix", "basic", "in-place", "cli"]
+    },
+    {
+      "id": "dry-run",
+      "title": "Preview with dry run",
+      "body": "Use `--fix-dry-run` to see what would change without writing files. Combine with `--format json` to get machine-readable output. The `output` field in JSON results contains the fixed source code — compare with the original `source` field to see changes.",
+      "tags": ["dry-run", "preview", "json", "review"]
+    },
+    {
+      "id": "fix-types",
+      "title": "Selective fix types",
+      "body": "Use `--fix-type` to apply only specific categories: `problem` for correctness, `suggestion` for preferences, `layout` for formatting, `directive` for inline comments. Multiple types can be combined. This is useful when you want to fix formatting without changing code logic.",
+      "tags": ["fix-type", "layout", "problem", "suggestion", "selective"]
+    },
+    {
+      "id": "pre-commit",
+      "title": "Pre-commit integration",
+      "body": "Use `lint-staged` with `husky` to run `eslint --fix` on staged files before commit. This ensures only clean code is committed. Install with `npm install --save-dev lint-staged husky`, then configure `lint-staged` in package.json to run `eslint --fix` on matching files.",
+      "tags": ["pre-commit", "lint-staged", "husky", "git-hooks"]
+    },
+    {
+      "id": "programmatic",
+      "title": "Programmatic API",
+      "body": "Use the `ESLint` class from the `eslint` package for programmatic fixing. Create an instance with `fix: true`, call `lintFiles()`, then `ESLint.outputFixes(results)` to write fixes. The `results` array contains per-file data with `errorCount`, `warningCount`, `fixableErrorCount`, and `output` (fixed source).",
+      "tags": ["api", "programmatic", "node-api", "eslint-class"]
+    }
+  ],
+  "links": [
+    { "uri": "eslint/rules", "context": "Check which rules are fixable" },
+    { "uri": "eslint/config", "context": "Config must exist before fixing" },
+    { "uri": "eslint/troubleshooting", "context": "Debug when --fix doesn't work" },
+    { "uri": "eslint/plugins", "context": "Plugin rules may also be fixable" }
+  ],
+  "related": [
+    { "uri": "eslint/rules", "relation": "prerequisite", "note": "Rules must be configured before fix can correct them" },
+    { "uri": "eslint/config", "relation": "prerequisite", "note": "A config file must exist for fix to work" }
+  ],
+  "scripts": [
+    {
+      "id": "fix-lint",
+      "name": "Fix ESLint Issues",
+      "description": "Run ESLint --fix on project files with caching, reporting unfixable issues",
+      "lang": "bash",
+      "runtime": "bash",
+      "entry": "./scripts/fix-lint.sh",
+      "packages": ["eslint"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "target": { "type": "string", "description": "File, directory, or glob to fix", "default": "." },
+        "dry_run": { "type": "boolean", "description": "Preview fixes without writing", "default": false },
+        "fix_type": {
+          "type": "array",
+          "items": { "type": "string", "enum": ["problem", "suggestion", "layout", "directive"] },
+          "description": "Filter fix types to apply"
+        },
+        "cache": { "type": "boolean", "description": "Enable caching for faster reruns", "default": true }
+      }
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "files_fixed": { "type": "integer", "description": "Number of files modified" },
+        "errors_remaining": { "type": "integer", "description": "Unfixable errors remaining" },
+        "warnings_remaining": { "type": "integer", "description": "Unfixable warnings remaining" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "eslint/config", "reason": "An ESLint config file must exist for --fix to work" }
+  ],
+  "more": {
+    "docs": "https://eslint.org/docs/latest/use/command-line-interface#fix-problems",
+    "api": "https://eslint.org/docs/latest/integrate/nodejs-api"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "4 min",
+    "prerequisites": ["eslint/config"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

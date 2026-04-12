@@ -1,0 +1,133 @@
+{
+  "name": "authoring",
+  "version": "1.0.0",
+  "uri": "terraform/modules/authoring",
+  "type": "skill",
+  "context": "Write, test, document, and publish reusable Terraform modules following HashiCorp best practices",
+  "info": "This skill covers the full lifecycle of authoring a Terraform module: standard directory structure, input variable design with validation, output design for downstream consumers, documentation generation with terraform-docs, testing with terratest and the built-in terraform test framework (1.6+), and versioning with git tags. A well-authored module has a single responsibility, minimal required variables with sane defaults, comprehensive outputs, and automated tests. See [[terraform/modules]] for module fundamentals and [[terraform/modules/registry]] for publishing to the Terraform Registry.",
+  "parent": "terraform/modules",
+  "tags": ["terraform", "module", "authoring", "testing", "terratest", "terraform-docs", "hcl", "best-practices", "validation", "versioning"],
+  "aliases": [
+    "write terraform module",
+    "terraform module authoring",
+    "create terraform module",
+    "terraform module development",
+    "terraform module best practices",
+    "terraform module testing",
+    "terraform module structure",
+    "tf module template"
+  ],
+  "triggers": [
+    "how to write a terraform module",
+    "create a new terraform module",
+    "terraform module structure",
+    "scaffold a terraform module",
+    "test a terraform module",
+    "document a terraform module",
+    "terraform module best practices",
+    "validate terraform module inputs",
+    "version a terraform module",
+    "terraform-docs generate"
+  ],
+  "body": "# Authoring Terraform Modules\n\nA well-authored Terraform module is a reusable building block for infrastructure. It follows a standard directory structure, validates its inputs, exposes useful outputs, includes documentation, and has automated tests.\n\n## Standard Module Structure\n\n```\nmodules/vpc/\n|-- main.tf          # Resources\n|-- variables.tf     # Input variables\n|-- outputs.tf       # Output values\n|-- versions.tf      # Provider requirements\n|-- locals.tf        # Local values and computed expressions\n|-- README.md        # Documentation (auto-generated with terraform-docs)\n|-- examples/\n|   |-- simple/\n|   |   |-- main.tf\n|   |-- complete/\n|       |-- main.tf\n|-- test/\n    |-- vpc_test.go  # Terratest tests\n```\n\nEach file has a clear purpose:\n\n- **main.tf** -- resource definitions, data sources, and module calls\n- **variables.tf** -- all input variable declarations with descriptions and defaults\n- **outputs.tf** -- all output value declarations with descriptions\n- **versions.tf** -- `terraform` block with `required_version` and `required_providers`\n- **locals.tf** -- computed values, name prefixes, tag merging\n\n## versions.tf\n\n```hcl\nterraform {\n  required_version = \">= 1.5.0\"\n\n  required_providers {\n    aws = {\n      source  = \"hashicorp/aws\"\n      version = \">= 5.0\"\n    }\n  }\n}\n```\n\n## Input Variable Design\n\nDesign variables with the consumer in mind. Minimize required inputs; provide sane defaults:\n\n```hcl\nvariable \"name\" {\n  description = \"Name prefix for all resources\"\n  type        = string\n\n  validation {\n    condition     = length(var.name) > 0 && length(var.name) <= 32\n    error_message = \"Name must be 1-32 characters.\"\n  }\n}\n\nvariable \"cidr_block\" {\n  description = \"CIDR block for the VPC\"\n  type        = string\n  default     = \"10.0.0.0/16\"\n\n  validation {\n    condition     = can(cidrhost(var.cidr_block, 0))\n    error_message = \"Must be a valid CIDR block.\"\n  }\n}\n\nvariable \"environment\" {\n  description = \"Deployment environment\"\n  type        = string\n  default     = \"dev\"\n\n  validation {\n    condition     = contains([\"dev\", \"staging\", \"production\"], var.environment)\n    error_message = \"Environment must be dev, staging, or production.\"\n  }\n}\n\nvariable \"tags\" {\n  description = \"Additional tags to apply to all resources\"\n  type        = map(string)\n  default     = {}\n}\n```\n\n## Output Design\n\nExpose enough for downstream modules and compositions. Include the resource ID, ARN, and any connection details:\n\n```hcl\noutput \"vpc_id\" {\n  description = \"The ID of the VPC\"\n  value       = aws_vpc.this.id\n}\n\noutput \"vpc_arn\" {\n  description = \"The ARN of the VPC\"\n  value       = aws_vpc.this.arn\n}\n\noutput \"private_subnet_ids\" {\n  description = \"List of private subnet IDs\"\n  value       = aws_subnet.private[*].id\n}\n\noutput \"public_subnet_ids\" {\n  description = \"List of public subnet IDs\"\n  value       = aws_subnet.public[*].id\n}\n\noutput \"database_subnet_ids\" {\n  description = \"List of database subnet IDs\"\n  value       = aws_subnet.database[*].id\n}\n\noutput \"nat_gateway_ips\" {\n  description = \"List of NAT Gateway public IPs\"\n  value       = aws_eip.nat[*].public_ip\n}\n```\n\n## Testing with terraform test (1.6+)\n\nTerraform 1.6 introduced a built-in test framework using `.tftest.hcl` files:\n\n```hcl\n# tests/vpc.tftest.hcl\nrun \"creates_vpc\" {\n  command = plan\n\n  variables {\n    name       = \"test-vpc\"\n    cidr_block = \"10.0.0.0/16\"\n  }\n\n  assert {\n    condition     = aws_vpc.this.cidr_block == \"10.0.0.0/16\"\n    error_message = \"VPC CIDR block does not match expected value\"\n  }\n}\n\nrun \"validates_cidr\" {\n  command = plan\n\n  variables {\n    name       = \"test\"\n    cidr_block = \"not-a-cidr\"\n  }\n\n  expect_failures = [var.cidr_block]\n}\n```\n\nRun with `terraform test`.\n\n## Testing with Terratest (Go)\n\nFor integration tests that create and destroy real infrastructure:\n\n```go\npackage test\n\nimport (\n    \"testing\"\n    \"github.com/gruntwork-io/terratest/modules/terraform\"\n    \"github.com/stretchr/testify/assert\"\n)\n\nfunc TestVpcModule(t *testing.T) {\n    t.Parallel()\n\n    terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{\n        TerraformDir: \"../examples/complete\",\n        Vars: map[string]interface{}{\n            \"name\":       \"test-vpc\",\n            \"cidr_block\": \"10.0.0.0/16\",\n        },\n    })\n\n    defer terraform.Destroy(t, terraformOptions)\n    terraform.InitAndApply(t, terraformOptions)\n\n    vpcId := terraform.Output(t, terraformOptions, \"vpc_id\")\n    assert.Regexp(t, `^vpc-`, vpcId)\n\n    privateSubnetIds := terraform.OutputList(t, terraformOptions, \"private_subnet_ids\")\n    assert.GreaterOrEqual(t, len(privateSubnetIds), 2)\n}\n```\n\n## Documentation with terraform-docs\n\nAuto-generate README from variable and output declarations:\n\n```bash\n# Install\nbrew install terraform-docs\n\n# Generate markdown table format\nterraform-docs markdown table --output-file README.md ./modules/vpc\n\n# Use a config file for consistent formatting\ncat > .terraform-docs.yml << 'CONF'\nformatter: markdown table\noutput:\n  file: README.md\n  mode: inject\nsort:\n  enabled: true\n  by: required\nCONF\n\nterraform-docs -c .terraform-docs.yml ./modules/vpc\n```\n\n## Versioning Strategy\n\nUse git tags with semantic versioning:\n\n```bash\n# Tag a release\ngit tag -a v1.0.0 -m \"Initial release of VPC module\"\ngit push origin v1.0.0\n\n# Consumers pin to the tag\n# source = \"git::https://github.com/org/terraform-aws-vpc.git?ref=v1.0.0\"\n```\n\nFollow semver: bump **major** for breaking changes to variables or outputs, **minor** for new features (new optional variables, new outputs), **patch** for bug fixes.\n",
+  "sections": [
+    {
+      "id": "structure",
+      "title": "Standard module structure",
+      "body": "A Terraform module follows a standard file layout: `main.tf` for resources, `variables.tf` for inputs, `outputs.tf` for outputs, `versions.tf` for provider requirements, and `locals.tf` for computed values. Include an `examples/` directory with at least a `simple/` and `complete/` example. Include a `test/` directory for automated tests. This structure is expected by the Terraform Registry and community tooling like terraform-docs.",
+      "tags": ["structure", "layout", "main-tf", "variables-tf", "outputs-tf", "versions-tf", "examples"]
+    },
+    {
+      "id": "best-practices",
+      "title": "Module design best practices",
+      "body": "Follow single responsibility: one module does one thing well (VPC, EKS cluster, RDS instance). Minimize required variables -- provide sane defaults for everything that has a reasonable default. Use variable validation blocks to catch errors at plan time. Expose comprehensive outputs (IDs, ARNs, endpoints, connection strings) so downstream modules can consume without data source lookups. Avoid hardcoding provider configurations -- let the root module configure providers. Use `locals` for computed values and tag merging. Never use `terraform_remote_state` inside a module -- accept values as variables instead.",
+      "tags": ["best-practices", "single-responsibility", "defaults", "validation", "outputs", "providers", "locals"]
+    },
+    {
+      "id": "testing",
+      "title": "Testing Terraform modules",
+      "body": "Two primary approaches: (1) `terraform test` (built-in, Terraform 1.6+) uses `.tftest.hcl` files for plan-level and apply-level assertions without external tools. (2) Terratest (Go) creates real infrastructure, runs assertions against it, and destroys it. Terratest is more powerful but slower and requires Go and cloud credentials. Use `terraform test` for fast validation of variable constraints and plan-time checks. Use Terratest for integration tests that verify real resource creation. Both can run in CI pipelines. Also consider `terraform validate` for syntax checks and `tflint` for linting.",
+      "tags": ["testing", "terratest", "terraform-test", "tftest", "tflint", "validate", "ci", "integration-test"]
+    },
+    {
+      "id": "documentation",
+      "title": "Documentation with terraform-docs",
+      "body": "Use `terraform-docs` to auto-generate README.md from variable and output declarations. Supports markdown table, markdown document, and other formats. Configure via `.terraform-docs.yml` for consistent output. Run in CI to ensure docs stay in sync with code. The Terraform Registry renders README.md as the module's documentation page. Every variable and output should have a `description` attribute -- terraform-docs uses these to generate the docs. Include usage examples in the README header.",
+      "tags": ["documentation", "terraform-docs", "readme", "description", "auto-generate"]
+    }
+  ],
+  "links": [
+    { "uri": "terraform/modules", "context": "Module fundamentals: sources, variables, outputs, versioning" },
+    { "uri": "terraform/modules/registry", "context": "Publish modules to the Terraform Registry" },
+    { "uri": "terraform/modules/composition", "context": "Compose authored modules into infrastructure stacks" },
+    { "uri": "terraform/modules/registry#public-registry", "context": "Publishing requirements for the public registry" },
+    { "uri": "terraform/modules/composition#patterns", "context": "How authored modules are composed together" },
+    { "uri": "terraform/hcl", "context": "HCL syntax for writing module configurations" },
+    { "uri": "terraform/providers", "context": "Provider requirements in versions.tf" },
+    { "uri": "terraform/state", "context": "How module resources are tracked in state" }
+  ],
+  "related": [
+    { "uri": "terraform/modules", "relation": "prerequisite", "note": "Understand module fundamentals before authoring" },
+    { "uri": "terraform/modules/registry", "relation": "see-also", "note": "Publish authored modules to a registry for sharing" },
+    { "uri": "terraform/modules/composition", "relation": "see-also", "note": "Authored modules are composed into infrastructure stacks" },
+    { "uri": "terraform/hcl", "relation": "prerequisite", "note": "HCL syntax knowledge is required for writing modules" }
+  ],
+  "scripts": [
+    {
+      "id": "scaffold-module",
+      "name": "Scaffold Terraform Module",
+      "description": "Create a new Terraform module directory with standard file structure, examples, and test stubs",
+      "lang": "bash",
+      "runtime": "bash>=4",
+      "inline": "#!/usr/bin/env bash\nset -euo pipefail\n\n# Scaffold a new Terraform module with standard structure\n# Usage: MODULE_NAME=vpc PROVIDER=aws bash scaffold-module.sh\n\nMODULE_NAME=\"${MODULE_NAME:?MODULE_NAME is required (e.g. vpc, eks, rds)}\"\nPROVIDER=\"${PROVIDER:-aws}\"\nMODULE_DIR=\"${MODULE_DIR:-./modules/${MODULE_NAME}}\"\n\necho \"Scaffolding Terraform module: ${MODULE_NAME} (provider: ${PROVIDER})\"\necho \"Directory: ${MODULE_DIR}\"\n\nmkdir -p \"${MODULE_DIR}/examples/simple\"\nmkdir -p \"${MODULE_DIR}/examples/complete\"\nmkdir -p \"${MODULE_DIR}/test\"\n\n# main.tf\ncat > \"${MODULE_DIR}/main.tf\" << 'HCL'\n# -----------------------------------------------\n# Main resources for this module\n# -----------------------------------------------\n\n# TODO: Add your resources here\nHCL\n\n# variables.tf\ncat > \"${MODULE_DIR}/variables.tf\" << HCL\nvariable \"name\" {\n  description = \"Name prefix for all resources created by this module\"\n  type        = string\n\n  validation {\n    condition     = length(var.name) > 0 && length(var.name) <= 64\n    error_message = \"Name must be between 1 and 64 characters.\"\n  }\n}\n\nvariable \"environment\" {\n  description = \"Deployment environment (dev, staging, production)\"\n  type        = string\n  default     = \"dev\"\n\n  validation {\n    condition     = contains([\"dev\", \"staging\", \"production\"], var.environment)\n    error_message = \"Environment must be dev, staging, or production.\"\n  }\n}\n\nvariable \"tags\" {\n  description = \"Additional tags to apply to all resources\"\n  type        = map(string)\n  default     = {}\n}\nHCL\n\n# outputs.tf\ncat > \"${MODULE_DIR}/outputs.tf\" << 'HCL'\n# -----------------------------------------------\n# Outputs\n# -----------------------------------------------\n\n# TODO: Add outputs for downstream consumers\n# output \"id\" {\n#   description = \"The ID of the primary resource\"\n#   value       = aws_xxx.this.id\n# }\nHCL\n\n# versions.tf\ncat > \"${MODULE_DIR}/versions.tf\" << HCL\nterraform {\n  required_version = \">= 1.5.0\"\n\n  required_providers {\n    ${PROVIDER} = {\n      source  = \"hashicorp/${PROVIDER}\"\n      version = \">= 5.0\"\n    }\n  }\n}\nHCL\n\n# locals.tf\ncat > \"${MODULE_DIR}/locals.tf\" << HCL\nlocals {\n  common_tags = merge(\n    {\n      Module      = \"${MODULE_NAME}\"\n      Environment = var.environment\n      ManagedBy   = \"terraform\"\n    },\n    var.tags,\n  )\n}\nHCL\n\n# examples/simple/main.tf\ncat > \"${MODULE_DIR}/examples/simple/main.tf\" << HCL\nmodule \"${MODULE_NAME}\" {\n  source = \"../../\"\n\n  name        = \"example\"\n  environment = \"dev\"\n}\nHCL\n\n# examples/complete/main.tf\ncat > \"${MODULE_DIR}/examples/complete/main.tf\" << HCL\nmodule \"${MODULE_NAME}\" {\n  source = \"../../\"\n\n  name        = \"example-complete\"\n  environment = \"production\"\n\n  tags = {\n    Project = \"example\"\n    Owner   = \"team\"\n  }\n}\n\noutput \"${MODULE_NAME}_id\" {\n  value = module.${MODULE_NAME}.id\n}\nHCL\n\n# test/module_test.go\ncat > \"${MODULE_DIR}/test/${MODULE_NAME}_test.go\" << GOTEST\npackage test\n\nimport (\n    \"testing\"\n    \"github.com/gruntwork-io/terratest/modules/terraform\"\n)\n\nfunc Test${MODULE_NAME^}Module(t *testing.T) {\n    t.Parallel()\n\n    terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{\n        TerraformDir: \"../examples/simple\",\n        Vars: map[string]interface{}{\n            \"name\": \"test\",\n        },\n    })\n\n    defer terraform.Destroy(t, terraformOptions)\n    terraform.InitAndApply(t, terraformOptions)\n\n    // TODO: Add assertions\n}\nGOTEST\n\n# tests/basic.tftest.hcl (terraform test)\nmkdir -p \"${MODULE_DIR}/tests\"\ncat > \"${MODULE_DIR}/tests/basic.tftest.hcl\" << 'HCL'\nrun \"plan_basic\" {\n  command = plan\n\n  variables {\n    name        = \"test\"\n    environment = \"dev\"\n  }\n}\n\nrun \"invalid_environment\" {\n  command = plan\n\n  variables {\n    name        = \"test\"\n    environment = \"invalid\"\n  }\n\n  expect_failures = [var.environment]\n}\nHCL\n\n# .terraform-docs.yml\ncat > \"${MODULE_DIR}/.terraform-docs.yml\" << 'YAML'\nformatter: markdown table\noutput:\n  file: README.md\n  mode: inject\nsort:\n  enabled: true\n  by: required\nsettings:\n  anchor: true\n  default: true\n  required: true\n  type: true\nYAML\n\n# README.md stub\ncat > \"${MODULE_DIR}/README.md\" << MD\n# ${MODULE_NAME} module\n\nTerraform module for managing ${MODULE_NAME} resources.\n\n## Usage\n\n\\`\\`\\`hcl\nmodule \"${MODULE_NAME}\" {\n  source = \"path/to/modules/${MODULE_NAME}\"\n\n  name        = \"my-${MODULE_NAME}\"\n  environment = \"production\"\n}\n\\`\\`\\`\n\n<!-- BEGIN_TF_DOCS -->\n<!-- END_TF_DOCS -->\nMD\n\necho \"\"\necho \"Module scaffolded at ${MODULE_DIR}/\"\necho \"Files created:\"\nfind \"${MODULE_DIR}\" -type f | sort | sed 's|^|  |'\necho \"\"\necho \"Next steps:\"\necho \"  1. Add resources to ${MODULE_DIR}/main.tf\"\necho \"  2. Define variables in ${MODULE_DIR}/variables.tf\"\necho \"  3. Expose outputs in ${MODULE_DIR}/outputs.tf\"\necho \"  4. Run: terraform-docs -c ${MODULE_DIR}/.terraform-docs.yml ${MODULE_DIR}\"\necho \"  5. Run: cd ${MODULE_DIR} && terraform test\"",
+      "env": {
+        "MODULE_NAME": { "required": true, "secret": false, "description": "Name of the module to scaffold (e.g. vpc, eks, rds)" },
+        "PROVIDER": { "required": false, "secret": false, "default": "aws", "description": "Terraform provider name (e.g. aws, azurerm, google)" },
+        "MODULE_DIR": { "required": false, "secret": false, "description": "Target directory for the module (default: ./modules/<MODULE_NAME>)" }
+      }
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "moduleName": { "type": "string", "description": "Name of the module to scaffold (e.g. vpc, eks, rds)" },
+        "provider": { "type": "string", "default": "aws", "description": "Terraform provider (aws, azurerm, google)" },
+        "moduleDir": { "type": "string", "description": "Target directory path for the module" }
+      },
+      "required": ["moduleName"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "moduleDir": { "type": "string", "description": "Path to the scaffolded module directory" },
+        "files": { "type": "array", "items": { "type": "string" }, "description": "List of created file paths" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "terraform/modules", "reason": "Foundational module concepts are prerequisite knowledge" },
+    { "uri": "terraform/hcl", "reason": "HCL syntax is used for all module files" }
+  ],
+  "more": {
+    "docs": "https://developer.hashicorp.com/terraform/language/modules/develop",
+    "terratest": "https://terratest.gruntwork.io/",
+    "terraform-docs": "https://terraform-docs.io/",
+    "terraform-test": "https://developer.hashicorp.com/terraform/language/tests"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "DevOps engineers, platform engineers, AI agents",
+    "estimated_reading_time": "10 min",
+    "prerequisites": ["terraform/modules", "terraform/hcl"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

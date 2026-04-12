@@ -1,0 +1,144 @@
+{
+  "name": "connect",
+  "version": "1.0.0",
+  "uri": "ssh/connect",
+  "type": "skill",
+  "context": "Open SSH sessions or execute remote commands, including bastions, batch mode, and connection reuse",
+  "info": "This skill wraps the core `ssh` client workflow for the jobs agents perform most often: interactive login, one-shot remote commands, bastion traversal with `-J` or `ProxyJump`, explicit identity selection, and batch-safe execution that fails instead of hanging on prompts. It also covers reusable connections via multiplexing and TTY control for commands like `sudo`. Use it whenever an agent must reach a remote machine directly rather than through an API.",
+  "parent": "ssh",
+  "tags": ["ssh", "connect", "remote-command", "bastion", "batch-mode", "proxyjump", "tty"],
+  "aliases": [
+    "ssh connect",
+    "ssh login",
+    "ssh into host",
+    "run remote command",
+    "remote shell",
+    "ssh jump host",
+    "ssh bastion",
+    "ssh batch mode"
+  ],
+  "triggers": [
+    "ssh into a server",
+    "run a command over ssh",
+    "connect through a bastion host",
+    "run non-interactive ssh",
+    "execute a remote shell command",
+    "reuse an existing ssh connection"
+  ],
+  "body": "# Connect with ssh\n\nUse `ssh` when the job is execution: open a shell, inspect a host, run a one-shot command, or step through a bastion to reach a private machine. Command-line flags are enough for ad hoc access, but repeated workflows should move into [[ssh/config]].\n\n## Basic Patterns\n\n```bash\nssh ops@host.example.com\nssh ops@host.example.com 'uname -a'\nssh -tt ops@host.example.com 'sudo journalctl -u api -n 50'\n```\n\n- No remote command means an interactive shell.\n- Adding a remote command makes `ssh` run it and exit.\n- `-tt` forces a TTY, which is often necessary for `sudo` or remote full-screen tools.\n\n## Batch-Safe Execution\n\n```bash\nssh -o BatchMode=yes -o StrictHostKeyChecking=accept-new ops@host.example.com 'uptime'\n```\n\n`BatchMode yes` disables password prompts, so the command fails fast if the key or agent is wrong. This is the default posture for autonomous agents.\n\n## Bastions and Connection Reuse\n\n```bash\nssh -J bastion.example.com ops@db.internal.example.com 'ps aux | grep postgres'\nssh -O check prod-api\nssh -O exit prod-api\n```\n\n`-J` is the command-line shortcut for `ProxyJump`. When `ControlMaster` is enabled in [[ssh/config]], `ssh -O` lets you inspect or stop the shared master connection.\n",
+  "sections": [
+    {
+      "id": "basic-login",
+      "title": "Interactive and one-shot sessions",
+      "body": "Use `ssh user@host` for an interactive shell and `ssh user@host command` for one-shot execution. `-t` or `-tt` forces TTY allocation; `-T` disables it. Explicit `-i keyfile`, `-p port`, and `-F config` are useful when you need to override defaults from [[ssh/config]].",
+      "tags": ["interactive", "remote-command", "tty", "identityfile", "port"]
+    },
+    {
+      "id": "batch-mode",
+      "title": "Non-interactive automation",
+      "body": "`BatchMode yes` prevents password and passphrase prompts. Combine it with a valid key from [[ssh/keys]] or [[ssh/agent]] and a scoped host policy such as `StrictHostKeyChecking=accept-new` or `ask`. This keeps automation deterministic and makes failures visible to the caller instead of stalling.",
+      "tags": ["batchmode", "automation", "strict-host-key-checking", "non-interactive"]
+    },
+    {
+      "id": "bastions-and-multiplexing",
+      "title": "Bastions, ProxyJump, and reuse",
+      "body": "`-J jump-host` or `ProxyJump` routes a connection through one or more bastions. Multiplexing with `ControlMaster`, `ControlPath`, and `ControlPersist` allows later sessions to reuse one authenticated connection. Inspect that state with `ssh -O check host` and stop it with `ssh -O exit host`. See [[ssh/config]] for persistent setup.",
+      "tags": ["proxyjump", "bastion", "controlmaster", "controlpersist", "ssh-o"]
+    }
+  ],
+  "links": [
+    { "uri": "ssh/keys", "context": "Generate and install identities for key-based auth" },
+    { "uri": "ssh/agent", "context": "Load passphrase-protected keys into an agent" },
+    { "uri": "ssh/config", "context": "Persist host aliases, bastions, and multiplexing" },
+    { "uri": "ssh/known-hosts", "context": "Control host-key verification and first-use trust" },
+    { "uri": "ssh/copy", "context": "Use the same transport for file transfer" },
+    { "uri": "ssh/tunnel", "context": "Open port forwards over SSH instead of a shell" },
+    { "uri": "ssh/troubleshooting", "context": "Debug auth and connection failures" },
+    { "uri": "shell/bash", "context": "Wrap SSH invocation in Bash automation" },
+    { "uri": "git/remote", "context": "Git remotes often reuse the same SSH config and keys" }
+  ],
+  "related": [
+    { "uri": "ssh/keys", "relation": "prerequisite", "note": "Key-based auth is the standard non-interactive connection path" },
+    { "uri": "ssh/config", "relation": "extends", "note": "Config moves repeated flags and bastion logic out of the command line" },
+    { "uri": "ssh/tunnel", "relation": "see-also", "note": "Port forwarding uses the same client transport without a shell" }
+  ],
+  "scripts": [
+    {
+      "id": "run-ssh-command",
+      "name": "Run SSH command",
+      "description": "Open an interactive SSH session or execute a one-shot command on a remote host",
+      "lang": "bash",
+      "runtime": "bash",
+      "entry": "./scripts/run-ssh-command.sh",
+      "env": {
+        "SSH_HOST": { "required": true, "description": "Destination hostname or address" },
+        "SSH_USER": { "required": false, "description": "Remote username" },
+        "SSH_PORT": { "required": false, "description": "Remote SSH port" },
+        "SSH_KEY_PATH": { "required": false, "description": "Private key path passed to ssh -i" },
+        "SSH_COMMAND": { "required": false, "description": "Remote command to execute; omit for an interactive shell" },
+        "SSH_PROXY_JUMP": { "required": false, "description": "Jump host or chain passed to ssh -J" },
+        "SSH_CONFIG_FILE": { "required": false, "description": "Alternate ssh config file passed with -F" },
+        "SSH_BATCH_MODE": { "required": false, "default": "false", "description": "Set to true to pass BatchMode=yes" },
+        "SSH_STRICT_HOST_KEY_CHECKING": { "required": false, "description": "Host-key policy: yes, ask, accept-new, no, or off" },
+        "SSH_KNOWN_HOSTS_FILE": { "required": false, "description": "UserKnownHostsFile override" },
+        "SSH_TTY": { "required": false, "default": "false", "description": "Set to true to force TTY allocation with -tt" },
+        "SSH_DISABLE_TTY": { "required": false, "default": "false", "description": "Set to true to disable TTY allocation with -T" },
+        "SSH_CONTROL_PATH": { "required": false, "description": "Control socket path used with -S" },
+        "SSH_EXTRA_ARGS": { "required": false, "description": "Extra ssh arguments, one per line" }
+      },
+      "packages": ["openssh-client"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "host": { "type": "string", "description": "Destination hostname or IP address" },
+        "user": { "type": "string", "description": "Remote username" },
+        "port": { "type": "integer", "description": "Remote SSH port" },
+        "command": { "type": "string", "description": "Remote command to execute; omit for interactive mode" },
+        "identityFile": { "type": "string", "description": "Path to the private key file" },
+        "proxyJump": { "type": "string", "description": "Jump host or comma-separated jump chain" },
+        "configFile": { "type": "string", "description": "Alternate ssh config path" },
+        "batchMode": { "type": "boolean", "default": false, "description": "Disable prompts and fail fast" },
+        "strictHostKeyChecking": { "type": "string", "enum": ["yes", "ask", "accept-new", "no", "off"], "description": "Host-key policy" },
+        "forceTty": { "type": "boolean", "default": false, "description": "Force TTY allocation" },
+        "disableTty": { "type": "boolean", "default": false, "description": "Disable TTY allocation" },
+        "extraArgs": { "type": "array", "items": { "type": "string" }, "description": "Additional raw ssh arguments" }
+      },
+      "required": ["host"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "destination": { "type": "string", "description": "Resolved destination in [user@]host form" },
+        "mode": { "type": "string", "enum": ["interactive", "command"], "description": "Whether a remote command was provided" },
+        "exitCode": { "type": "integer", "description": "Exit code from ssh" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "ssh/keys", "optional": true, "reason": "Public-key auth is the normal automation path for SSH" },
+    { "uri": "ssh/config", "optional": true, "reason": "Bastions, aliases, and multiplexing are commonly defined in config" }
+  ],
+  "more": {
+    "docs": "https://man.openbsd.org/ssh",
+    "config": "https://man.openbsd.org/ssh_config",
+    "manual": "https://www.openssh.com/manual.html"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, SREs, AI agents",
+    "estimated_reading_time": "5 min",
+    "prerequisites": ["ssh/keys"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

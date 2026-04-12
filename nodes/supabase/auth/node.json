@@ -1,0 +1,131 @@
+{
+  "name": "auth",
+  "version": "1.0.0",
+  "uri": "supabase/auth",
+  "type": "skill",
+  "context": "Supabase Auth — sign-up, sign-in, OAuth providers, magic links, MFA, and session management",
+  "info": "Supabase Auth (powered by GoTrue) provides a complete authentication system: email/password sign-up and sign-in, 20+ OAuth providers (Google, GitHub, Apple, Discord, etc.), magic link (passwordless email), phone/SMS OTP, SAML SSO, and multi-factor authentication. Auth issues JWTs that the PostgREST API validates against Row Level Security policies. The `auth.users` table in Postgres stores all user records with metadata. The client SDK exposes `supabase.auth.signUp()`, `supabase.auth.signInWithPassword()`, `supabase.auth.signInWithOAuth()`, and `supabase.auth.signInWithOtp()`. Sessions are automatically refreshed. Use `supabase.auth.getUser()` (not `getSession()`) for server-side verification as it validates the JWT against the auth server.",
+  "parent": "supabase",
+  "tags": ["auth", "authentication", "oauth", "magic-link", "jwt", "mfa", "signup", "signin", "gotrue"],
+  "aliases": [
+    "supabase auth",
+    "supabase authentication",
+    "supabase login",
+    "supabase signup",
+    "supabase oauth",
+    "supabase magic link",
+    "gotrue",
+    "supabase sign in",
+    "supabase google auth",
+    "supabase github auth"
+  ],
+  "triggers": [
+    "add authentication to my app",
+    "set up supabase auth",
+    "implement sign up with supabase",
+    "add google oauth with supabase",
+    "supabase magic link authentication",
+    "protect routes with supabase auth",
+    "get current user supabase",
+    "supabase auth callback",
+    "supabase password reset",
+    "add github login"
+  ],
+  "body": "# Supabase Auth\n\nSupabase Auth provides a complete authentication system with email/password, OAuth, magic links, phone OTP, and MFA — all backed by Postgres and integrated with Row Level Security.\n\n## Email/Password Sign-Up\n\n```typescript\nconst { data, error } = await supabase.auth.signUp({\n  email: 'user@example.com',\n  password: 'securepassword123',\n  options: {\n    data: {\n      full_name: 'John Doe',\n      avatar_url: 'https://example.com/avatar.png',\n    },\n    emailRedirectTo: 'https://myapp.com/welcome',\n  },\n});\n\nif (error) throw error;\n// data.user contains the new user\n// data.session is null until email is confirmed (if confirmation enabled)\n```\n\n## Email/Password Sign-In\n\n```typescript\nconst { data, error } = await supabase.auth.signInWithPassword({\n  email: 'user@example.com',\n  password: 'securepassword123',\n});\n\nif (error) throw error;\n// data.user — authenticated user\n// data.session — session with access_token and refresh_token\n```\n\n## OAuth (Google, GitHub, etc.)\n\n```typescript\n// Client-side — redirects to provider\nconst { data, error } = await supabase.auth.signInWithOAuth({\n  provider: 'google',\n  options: {\n    redirectTo: 'https://myapp.com/auth/callback',\n    scopes: 'email profile',\n    queryParams: {\n      access_type: 'offline',\n      prompt: 'consent',\n    },\n  },\n});\n// data.url — redirect URL (browser navigates here)\n```\n\nHandle the callback:\n```typescript\n// app/auth/callback/route.ts (Next.js)\nimport { createServerClient } from '@supabase/ssr';\nimport { cookies } from 'next/headers';\nimport { NextResponse } from 'next/server';\n\nexport async function GET(request: Request) {\n  const { searchParams } = new URL(request.url);\n  const code = searchParams.get('code');\n\n  if (code) {\n    const cookieStore = await cookies();\n    const supabase = createServerClient(\n      process.env.NEXT_PUBLIC_SUPABASE_URL!,\n      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,\n      {\n        cookies: {\n          getAll() { return cookieStore.getAll(); },\n          setAll(cookiesToSet) {\n            cookiesToSet.forEach(({ name, value, options }) => {\n              cookieStore.set(name, value, options);\n            });\n          },\n        },\n      }\n    );\n    await supabase.auth.exchangeCodeForSession(code);\n  }\n\n  return NextResponse.redirect(new URL('/dashboard', request.url));\n}\n```\n\n## Magic Link (Passwordless)\n\n```typescript\nconst { error } = await supabase.auth.signInWithOtp({\n  email: 'user@example.com',\n  options: {\n    emailRedirectTo: 'https://myapp.com/auth/callback',\n  },\n});\n// User receives email with a login link\n```\n\n## Phone OTP\n\n```typescript\n// Send OTP\nconst { error } = await supabase.auth.signInWithOtp({\n  phone: '+15551234567',\n});\n\n// Verify OTP\nconst { data, error: verifyError } = await supabase.auth.verifyOtp({\n  phone: '+15551234567',\n  token: '123456',\n  type: 'sms',\n});\n```\n\n## Get Current User\n\n```typescript\n// Client-side — reads from local session (fast but not verified)\nconst { data: { session } } = await supabase.auth.getSession();\n\n// Server-side — validates JWT against auth server (secure, use this)\nconst { data: { user }, error } = await supabase.auth.getUser();\n```\n\n**Important**: Always use `getUser()` on the server. `getSession()` reads from localStorage/cookies without verifying the JWT — it can be spoofed.\n\n## Password Reset\n\n```typescript\n// Send reset email\nconst { error } = await supabase.auth.resetPasswordForEmail(\n  'user@example.com',\n  { redirectTo: 'https://myapp.com/auth/reset-password' }\n);\n\n// After user clicks link and is redirected, update password\nconst { error: updateError } = await supabase.auth.updateUser({\n  password: 'newsecurepassword123',\n});\n```\n\n## Sign Out\n\n```typescript\nconst { error } = await supabase.auth.signOut();\n```\n\n## Listen to Auth Changes\n\n```typescript\nsupabase.auth.onAuthStateChange((event, session) => {\n  console.log(event); // 'SIGNED_IN' | 'SIGNED_OUT' | 'TOKEN_REFRESHED' | ...\n  console.log(session?.user);\n});\n```\n\n## OAuth Provider Setup\n\nConfigure providers in the Supabase dashboard (Authentication > Providers) or in `supabase/config.toml` for local dev:\n\n```toml\n[auth.external.google]\nenabled = true\nclient_id = \"env(GOOGLE_CLIENT_ID)\"\nsecret = \"env(GOOGLE_CLIENT_SECRET)\"\nredirect_uri = \"http://localhost:54321/auth/v1/callback\"\n\n[auth.external.github]\nenabled = true\nclient_id = \"env(GITHUB_CLIENT_ID)\"\nsecret = \"env(GITHUB_CLIENT_SECRET)\"\n```\n\nSupported providers: Google, GitHub, GitLab, Bitbucket, Apple, Discord, Facebook, Twitter/X, LinkedIn, Slack, Spotify, Twitch, Azure, Keycloak, Notion, Figma, Zoom, and more.\n\n## Auth + RLS Integration\n\nAuth JWTs contain `auth.uid()` and `auth.jwt()` which [[supabase/rls]] policies use:\n\n```sql\n-- Allow users to read only their own data\nCREATE POLICY \"users read own\" ON profiles\n  FOR SELECT USING (auth.uid() = user_id);\n```\n\n## User Metadata\n\nStore custom data on the user object:\n```typescript\nawait supabase.auth.updateUser({\n  data: {\n    full_name: 'Jane Doe',\n    preferences: { theme: 'dark' },\n  },\n});\n```\n\nAccess in RLS: `auth.jwt() ->> 'user_metadata'`.\n\n## Environment Variables\n\n| Variable | Purpose |\n|----------|----------|\n| `NEXT_PUBLIC_SUPABASE_URL` | Project API URL |\n| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Public anon key |\n| `GOOGLE_CLIENT_ID` | Google OAuth client ID (local dev) |\n| `GOOGLE_CLIENT_SECRET` | Google OAuth client secret (local dev) |\n| `GITHUB_CLIENT_ID` | GitHub OAuth client ID (local dev) |\n| `GITHUB_CLIENT_SECRET` | GitHub OAuth client secret (local dev) |\n",
+  "sections": [
+    {
+      "id": "email-password",
+      "title": "Email/password authentication",
+      "body": "Use `supabase.auth.signUp()` with `email` and `password` for registration. Optionally pass `data` in `options` for custom user metadata. Use `supabase.auth.signInWithPassword()` for login. If email confirmation is enabled, the session is null until the user clicks the confirmation link. Handle the redirect with `exchangeCodeForSession()` in the callback route.",
+      "tags": ["email", "password", "signup", "signin", "confirmation"]
+    },
+    {
+      "id": "oauth",
+      "title": "OAuth providers",
+      "body": "Call `supabase.auth.signInWithOAuth({ provider: 'google' })` to redirect to the OAuth provider. Set `redirectTo` in options to your callback URL. Handle the callback by extracting the `code` parameter and calling `exchangeCodeForSession(code)`. Configure provider credentials in the dashboard or `config.toml`. The PKCE flow is used by default for security.",
+      "tags": ["oauth", "google", "github", "apple", "discord", "social-login", "pkce"]
+    },
+    {
+      "id": "magic-link",
+      "title": "Magic link / passwordless",
+      "body": "Call `supabase.auth.signInWithOtp({ email })` to send a magic link. The user clicks the link and is redirected to `emailRedirectTo` with a code. Handle the callback the same way as OAuth. Magic links expire after 5 minutes by default. For phone OTP, use `signInWithOtp({ phone })` then `verifyOtp()` with the SMS code.",
+      "tags": ["magic-link", "passwordless", "otp", "phone", "sms"]
+    },
+    {
+      "id": "session-management",
+      "title": "Session management",
+      "body": "Sessions contain an `access_token` (JWT, 1 hour) and `refresh_token`. The client auto-refreshes tokens. Use `onAuthStateChange()` to react to auth events: `SIGNED_IN`, `SIGNED_OUT`, `TOKEN_REFRESHED`, `USER_UPDATED`, `PASSWORD_RECOVERY`. On the server, always use `getUser()` which validates the JWT. On the client, `getSession()` reads from local storage without validation.",
+      "tags": ["session", "jwt", "refresh-token", "state-change", "getuser"]
+    }
+  ],
+  "links": [
+    { "uri": "supabase/rls", "context": "RLS policies use auth.uid() and auth.jwt() from auth tokens" },
+    { "uri": "supabase/client", "context": "Client initialization and SSR setup for auth" },
+    { "uri": "supabase/cli", "context": "Configure OAuth providers in config.toml for local dev" },
+    { "uri": "supabase/edge-functions", "context": "Edge functions can use service role client for admin auth operations" },
+    { "uri": "nextjs/middleware", "context": "Next.js middleware for auth session refresh and route protection" }
+  ],
+  "related": [
+    { "uri": "supabase/rls", "relation": "see-also", "note": "Auth JWTs are the foundation for RLS policy evaluation" },
+    { "uri": "supabase/client", "relation": "prerequisite", "note": "Client SDK must be initialized before using auth methods" }
+  ],
+  "scripts": [
+    {
+      "id": "auth-flow",
+      "name": "Complete auth flow",
+      "description": "Sign up, sign in, get user, and sign out with Supabase Auth",
+      "lang": "typescript",
+      "runtime": "node>=18",
+      "entry": "./scripts/auth-flow.ts",
+      "env": {
+        "SUPABASE_URL": { "required": true, "secret": false, "description": "Supabase project URL" },
+        "SUPABASE_ANON_KEY": { "required": true, "secret": false, "description": "Public anon key" }
+      },
+      "packages": ["@supabase/supabase-js"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "method": { "type": "string", "enum": ["email", "oauth", "magic-link", "phone-otp"], "description": "Authentication method" },
+        "email": { "type": "string", "description": "User email address" },
+        "password": { "type": "string", "description": "User password (for email method)" },
+        "provider": { "type": "string", "enum": ["google", "github", "apple", "discord", "facebook", "twitter", "linkedin", "slack", "spotify", "twitch", "azure", "gitlab", "bitbucket"], "description": "OAuth provider (for oauth method)" },
+        "redirectTo": { "type": "string", "description": "URL to redirect after auth" }
+      },
+      "required": ["method"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Authenticated user UUID" },
+        "email": { "type": "string", "description": "User email" },
+        "accessToken": { "type": "string", "description": "JWT access token" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "supabase/client", "reason": "Auth methods are called on the Supabase client instance" }
+  ],
+  "more": {
+    "docs": "https://supabase.com/docs/guides/auth",
+    "api": "https://supabase.com/docs/reference/javascript/auth-signup",
+    "providers": "https://supabase.com/docs/guides/auth/social-login"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "6 min",
+    "prerequisites": ["supabase/client"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

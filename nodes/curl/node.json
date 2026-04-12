@@ -1,0 +1,102 @@
+{
+  "name": "curl",
+  "version": "1.0.0",
+  "uri": "curl",
+  "type": "ecosystem",
+  "context": "HTTP client for making API requests, transferring data, testing endpoints, and debugging network issues from the command line",
+  "info": "The curl ecosystem covers the command-line HTTP client that agents use for all direct HTTP interactions: calling REST and GraphQL APIs, uploading and downloading files, testing endpoints, inspecting response headers, and diagnosing connectivity problems. curl is available on virtually every system and supports HTTP/1.1, HTTP/2, HTTP/3, HTTPS, FTP, SFTP, and dozens of other protocols. Agents reach for curl when they need to make a quick API call without writing a script, when they need to debug request/response cycles with verbose output, or when they need to automate file transfers. The tree provides focused coverage: [[curl/request]] for constructing and executing HTTP requests, [[curl/auth]] for authentication patterns (Basic, Bearer, OAuth, mTLS), and [[curl/debugging]] for verbose output, tracing, timing, and diagnosing failures. curl is the HTTP substrate — most API ecosystems ([[github]], [[anthropic]], [[linear]], [[supabase]]) can be driven directly through curl before graduating to SDK-based approaches.",
+  "parent": null,
+  "tags": ["curl", "http", "api", "rest", "request", "wget", "httpie", "cli", "transfer", "download", "upload"],
+  "aliases": [
+    "curl",
+    "cURL",
+    "http client",
+    "http request",
+    "api call",
+    "api request",
+    "rest client",
+    "web request",
+    "wget alternative",
+    "httpie alternative",
+    "curl command",
+    "http from command line",
+    "fetch url",
+    "download file",
+    "upload file"
+  ],
+  "triggers": [
+    "make an http request",
+    "call an api",
+    "call a rest api",
+    "send a post request",
+    "download a file from a url",
+    "upload a file via http",
+    "test an api endpoint",
+    "send json to an api",
+    "make a get request",
+    "how to use curl",
+    "curl a url",
+    "hit an endpoint",
+    "fetch data from an api",
+    "send a webhook",
+    "check if a url is reachable"
+  ],
+  "body": "# curl Ecosystem\n\ncurl is the universal command-line tool for transferring data with URLs. It speaks HTTP, HTTPS, FTP, SFTP, SCP, and dozens of other protocols. For agents, curl is the go-to tool for making API calls, testing endpoints, downloading files, and diagnosing HTTP issues without writing application code.\n\n## Tree Structure\n\n| Node | Type | Purpose |\n|------|------|---------|\n| [[curl/request]] | skill | Construct and execute HTTP requests — GET, POST, PUT, DELETE, headers, body, query params |\n| [[curl/auth]] | context | Authentication patterns — Basic, Bearer tokens, OAuth, API keys, client certificates |\n| [[curl/debugging]] | context | Verbose output, response timing, tracing, diagnosing failures, write-out format strings |\n\n## Why curl?\n\ncurl is installed on every Linux, macOS, and modern Windows system. It requires no runtime, no package manager, no SDK installation. When an agent needs to:\n\n- **Test an API** before writing integration code → `curl -s https://api.example.com/health`\n- **Send a webhook payload** → `curl -X POST -H 'Content-Type: application/json' -d '{\"event\":\"deploy\"}' https://hooks.example.com`\n- **Download a file** → `curl -LO https://releases.example.com/v1.0/binary`\n- **Check connectivity** → `curl -sS -o /dev/null -w '%{http_code}' https://api.example.com`\n\ncurl handles it with a single command.\n\n## Quick Reference\n\n```bash\n# Simple GET\ncurl https://api.example.com/users\n\n# GET with headers\ncurl -H \"Authorization: Bearer $TOKEN\" \\\n     -H \"Accept: application/json\" \\\n     https://api.example.com/users\n\n# POST JSON\ncurl -X POST \\\n     -H \"Content-Type: application/json\" \\\n     -d '{\"name\": \"Alice\", \"email\": \"alice@example.com\"}' \\\n     https://api.example.com/users\n\n# PUT update\ncurl -X PUT \\\n     -H \"Content-Type: application/json\" \\\n     -d '{\"name\": \"Alice Updated\"}' \\\n     https://api.example.com/users/42\n\n# DELETE\ncurl -X DELETE https://api.example.com/users/42\n\n# Download file with progress\ncurl -LO https://releases.example.com/v2.0/app.tar.gz\n\n# Upload file\ncurl -X POST -F \"file=@report.pdf\" https://api.example.com/upload\n\n# Silent with status code only\ncurl -s -o /dev/null -w '%{http_code}\\n' https://api.example.com/health\n```\n\n## Exit Codes\n\n| Code | Meaning |\n|------|---------|\n| 0 | Success |\n| 6 | Could not resolve host |\n| 7 | Failed to connect to host |\n| 22 | HTTP error (with `--fail`) |\n| 28 | Operation timeout |\n| 35 | SSL connect error |\n| 51 | SSL peer certificate problem |\n| 52 | Empty reply from server |\n| 56 | Failure receiving data |\n\n## Environment Variables\n\n| Variable | Purpose |\n|----------|----------|\n| `http_proxy` / `HTTP_PROXY` | HTTP proxy URL |\n| `https_proxy` / `HTTPS_PROXY` | HTTPS proxy URL |\n| `no_proxy` / `NO_PROXY` | Comma-separated list of hosts to bypass proxy |\n| `CURL_CA_BUNDLE` | Path to CA certificate bundle |\n| `HOME/.curlrc` | Default config file read on every invocation |\n",
+  "sections": [
+    {
+      "id": "http-methods",
+      "title": "HTTP methods",
+      "body": "curl defaults to GET. Use `-X POST`, `-X PUT`, `-X DELETE`, `-X PATCH`, or `-X HEAD` to override. The `-I` flag is shorthand for HEAD. When you use `-d` (data), curl automatically switches to POST. The `-G` flag converts `-d` data into query string parameters on a GET request. For most API work: GET to read, POST to create, PUT/PATCH to update, DELETE to remove.",
+      "tags": ["get", "post", "put", "delete", "patch", "head", "methods"]
+    },
+    {
+      "id": "common-patterns",
+      "title": "Common agent patterns",
+      "body": "**Health check**: `curl -sf https://api.example.com/health` — silent, fail on error, exit code tells the story.\n**JSON API call**: `curl -s -H 'Content-Type: application/json' -H 'Authorization: Bearer $TOKEN' https://api.example.com/resource | jq .` — pipe to jq for parsing.\n**File download**: `curl -LO https://url/file` — follow redirects, use remote filename.\n**Status code only**: `curl -s -o /dev/null -w '%{http_code}' https://url` — discard body, print status.\n**Retry on failure**: `curl --retry 3 --retry-delay 2 https://api.example.com/resource` — automatic retry with backoff.\n**Parallel requests**: `curl -Z https://api1.example.com https://api2.example.com` — HTTP/2 multiplexing.",
+      "tags": ["health-check", "json", "download", "status-code", "retry", "parallel"]
+    },
+    {
+      "id": "vs-alternatives",
+      "title": "curl vs alternatives",
+      "body": "**curl vs wget**: wget is better for recursive site downloads; curl is better for API work, supports more protocols, and offers finer control over request construction. **curl vs httpie**: httpie has nicer default output and JSON syntax, but curl is universally installed and scripts depend on it. **curl vs fetch/axios**: SDK HTTP clients offer programmatic control, type safety, and middleware pipelines, but curl is zero-dependency and ideal for quick tests, CI scripts, and agent exploration. Use curl for ad-hoc requests and debugging; graduate to SDK clients for production application code.",
+      "tags": ["wget", "httpie", "fetch", "axios", "comparison", "alternatives"]
+    }
+  ],
+  "sub": ["curl/request", "curl/auth", "curl/debugging"],
+  "links": [
+    { "uri": "curl/request", "context": "Construct and execute HTTP requests with all methods, headers, and body types" },
+    { "uri": "curl/auth", "context": "Authentication patterns for APIs — Bearer, Basic, API keys, mTLS" },
+    { "uri": "curl/debugging", "context": "Verbose output, timing, tracing, and diagnosing HTTP failures" },
+    { "uri": "shell/bash", "context": "curl runs in a Bash shell — see Bash for execution patterns" },
+    { "uri": "shell/pipes", "context": "Pipe curl output to jq, grep, or other processors" },
+    { "uri": "shell/environment", "context": "Environment variables for proxy, CA bundles, and config" }
+  ],
+  "related": [
+    { "uri": "shell/bash", "relation": "prerequisite", "note": "curl is invoked through the shell — Bash execution context is required" },
+    { "uri": "shell/pipes", "relation": "see-also", "note": "curl output is typically piped to jq, grep, or wc for processing" },
+    { "uri": "github", "relation": "see-also", "note": "GitHub APIs can be called directly with curl before using the gh CLI or Octokit" },
+    { "uri": "anthropic", "relation": "see-also", "note": "Anthropic Messages API can be called directly with curl" },
+    { "uri": "supabase", "relation": "see-also", "note": "Supabase REST APIs are testable with curl" }
+  ],
+  "more": {
+    "docs": "https://curl.se/docs/",
+    "spec": "https://curl.se/docs/manpage.html",
+    "wiki": "https://everything.curl.dev/",
+    "examples": "https://curl.se/docs/httpscripting.html",
+    "repo": "https://github.com/curl/curl"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "AI agents, developers",
+    "estimated_reading_time": "3 min",
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

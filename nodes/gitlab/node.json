@@ -1,0 +1,170 @@
+{
+  "name": "gitlab",
+  "version": "1.0.0",
+  "uri": "gitlab",
+  "type": "ecosystem",
+  "context": "GitLab ecosystem for projects, issues, merge requests, pipelines, CI/CD variables, and API-driven engineering automation",
+  "info": "GitLab is an integrated software delivery platform that combines source control, issue tracking, merge requests, CI/CD pipelines, project settings, and token-based API access behind one host. Autonomous agents repeatedly use GitLab to create or inspect projects, file issues, open and merge merge requests, trigger or retry pipelines, and manage CI/CD variables across GitLab.com and self-managed instances. The execution surface is primarily the REST API under `/api/v4`, the `.gitlab-ci.yml` configuration model, and the official `glab` CLI.",
+  "parent": null,
+  "tags": [
+    "gitlab",
+    "git",
+    "scm",
+    "ci-cd",
+    "projects",
+    "issues",
+    "merge-requests",
+    "pipelines",
+    "devops",
+    "api"
+  ],
+  "aliases": [
+    "gitlab",
+    "git lab",
+    "gitlab platform",
+    "gitlab api",
+    "gitlab ci",
+    "glab",
+    "gitlab self-managed",
+    "gitlab dedicated",
+    "gitlab.com"
+  ],
+  "triggers": [
+    "work with gitlab",
+    "manage a gitlab project",
+    "open a gitlab merge request",
+    "run a gitlab pipeline",
+    "set a gitlab ci variable",
+    "file a gitlab issue",
+    "automate gitlab with the api"
+  ],
+  "body": "# GitLab Ecosystem\n\nGitLab exposes most engineering workflows through one host: repositories, issues, merge requests, CI/CD pipelines, runners, and project configuration. For automation, the most important surface is the REST API at `https://<host>/api/v4`, where `id` parameters usually accept either a numeric project ID or a URL-encoded `group/project` path.\n\n```bash\ncurl --header 'PRIVATE-TOKEN: $GITLAB_TOKEN' \\\n  'https://gitlab.com/api/v4/projects?membership=true&search=platform'\n```\n\nLoad [[gitlab/auth]] first to choose the right token and host model. Load [[gitlab/ci]] when pipeline behavior depends on `.gitlab-ci.yml`, runner availability, variables, or typed pipeline inputs. The executable skills in this tree are organized around the jobs agents actually perform: [[gitlab/projects]], [[gitlab/issues]], [[gitlab/merge-requests]], [[gitlab/pipelines]], and [[gitlab/variables]].",
+  "sections": [
+    {
+      "id": "api-surface",
+      "title": "API surface and host model",
+      "body": "GitLab automation usually targets the REST API under `/api/v4`. On GitLab.com the base is `https://gitlab.com/api/v4`; on self-managed or Dedicated instances it is `https://<your-host>/api/v4`. Most project endpoints accept a numeric project ID or a URL-encoded path like `group%2Fproject`. Pagination is commonly controlled with `page` and `per_page`, and some high-volume project listings also support keyset pagination.",
+      "tags": [
+        "api",
+        "rest",
+        "host",
+        "self-managed",
+        "pagination"
+      ]
+    },
+    {
+      "id": "agent-jobs",
+      "title": "Primary agent jobs",
+      "body": "The recurring jobs for agents are: create or inspect projects, keep project settings aligned with branch and CI rules, file or close issues, open merge requests from prepared branches, merge with SHA guards or auto-merge, trigger pipelines with variables or typed inputs, and manage project-scoped CI/CD variables for deploys. These jobs map directly to [[gitlab/projects]], [[gitlab/issues]], [[gitlab/merge-requests]], [[gitlab/pipelines]], and [[gitlab/variables]].",
+      "tags": [
+        "workflow",
+        "automation",
+        "projects",
+        "merge-requests",
+        "pipelines"
+      ]
+    },
+    {
+      "id": "self-managed",
+      "title": "GitLab.com versus self-managed",
+      "body": "The same API shape works across GitLab.com, GitLab Self-Managed, and GitLab Dedicated, but hostname, SSO requirements, runner topology, and feature availability can differ. In automation, always make the host explicit with `GITLAB_HOST`, avoid assuming `gitlab.com`, and prefer URL-encoded full project paths when the numeric ID is not known yet. See [[gitlab/auth#glab]] for multi-host CLI patterns.",
+      "tags": [
+        "gitlab-com",
+        "self-managed",
+        "dedicated",
+        "hostname"
+      ]
+    }
+  ],
+  "links": [
+    {
+      "uri": "gitlab/auth",
+      "context": "Authentication, token headers, and multi-host setup"
+    },
+    {
+      "uri": "gitlab/auth#tokens",
+      "context": "Token selection and header format for GitLab REST automation"
+    },
+    {
+      "uri": "gitlab/ci",
+      "context": "How `.gitlab-ci.yml`, runners, variables, and inputs shape pipeline behavior"
+    },
+    {
+      "uri": "gitlab/ci#yaml-structure",
+      "context": "Stage, rules, and needs model behind pipeline execution"
+    },
+    {
+      "uri": "gitlab/projects",
+      "context": "Create, list, inspect, and update projects"
+    },
+    {
+      "uri": "gitlab/projects#identifiers",
+      "context": "Why GitLab project IDs and URL-encoded paths both matter in automation"
+    },
+    {
+      "uri": "gitlab/issues",
+      "context": "Create, list, update, close, and reopen issues"
+    },
+    {
+      "uri": "gitlab/merge-requests",
+      "context": "Open, inspect, and merge merge requests"
+    },
+    {
+      "uri": "gitlab/pipelines",
+      "context": "List, trigger, retry, cancel, and inspect pipelines"
+    },
+    {
+      "uri": "gitlab/variables",
+      "context": "Manage project-level CI/CD variables"
+    },
+    {
+      "uri": "git",
+      "context": "Local branch and commit workflows usually precede merge request creation"
+    },
+    {
+      "uri": "github",
+      "context": "Comparable source control and CI platform when the repository is not on GitLab"
+    }
+  ],
+  "related": [
+    {
+      "uri": "git",
+      "relation": "prerequisite",
+      "note": "Most GitLab automation still assumes the agent understands branches, commits, remotes, and diffs"
+    },
+    {
+      "uri": "github",
+      "relation": "alternative",
+      "note": "GitHub is the closest alternative platform for repository and CI workflows"
+    },
+    {
+      "uri": "curl/request",
+      "relation": "see-also",
+      "note": "GitLab REST calls are often easiest to prototype with curl before using a client library"
+    }
+  ],
+  "more": {
+    "docs": "https://docs.gitlab.com",
+    "api": "https://docs.gitlab.com/api/",
+    "cli": "https://docs.gitlab.com/cli/",
+    "repo": "https://gitlab.com/gitlab-org/gitlab"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents, platform engineers",
+    "estimated_reading_time": "5 min",
+    "prerequisites": [
+      "git"
+    ],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://gitlab.com/gitlab-org/gitlab",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

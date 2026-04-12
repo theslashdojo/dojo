@@ -1,0 +1,172 @@
+{
+  "name": "plan",
+  "version": "1.0.0",
+  "uri": "terraform/cli/plan",
+  "type": "skill",
+  "context": "Preview infrastructure changes with terraform plan, save plan files, and interpret diff output",
+  "info": "The `terraform plan` command creates an execution plan showing what Terraform will do to reach the desired state defined in the configuration. It reads the current state (from the configured backend), compares it to the configuration, and produces a detailed diff of resources to create, update, or destroy. Plan is a read-only operation — it makes no changes to real infrastructure. The output shows each resource action with `+` for create, `~` for update, `-` for destroy, and `-/+` for replace. Plans can be saved to binary files with `-out` for later exact application with `terraform apply`. Variables can be supplied via `-var`, `-var-file`, or environment variables. The `-target` flag restricts planning to specific resources. The `-refresh-only` flag detects drift without proposing config-driven changes. The `-destroy` flag previews what a full destroy would do. Machine-readable JSON output is available with `-json` for integration with automation tools and policy engines like OPA or Sentinel.",
+  "parent": "terraform/cli",
+  "tags": ["terraform", "plan", "diff", "preview", "execution-plan", "drift", "target", "variables", "json-output"],
+  "aliases": [
+    "terraform plan",
+    "tf plan",
+    "terraform preview",
+    "terraform diff",
+    "terraform dry run",
+    "terraform execution plan",
+    "terraform what-if"
+  ],
+  "triggers": [
+    "run terraform plan",
+    "preview terraform changes",
+    "see what terraform will change",
+    "terraform dry run",
+    "save terraform plan to file",
+    "terraform plan with variables",
+    "detect terraform drift",
+    "terraform plan for specific resource",
+    "terraform plan json output",
+    "preview terraform destroy"
+  ],
+  "body": "# terraform plan\n\n`terraform plan` compares the desired state in your `.tf` configuration to the actual state of deployed resources and shows exactly what will change. No infrastructure is modified — plan is purely a read/diff operation.\n\n## Basic Usage\n\n```bash\n# Plan in the current directory\nterraform plan\n\n# Plan with non-interactive mode\nterraform plan -input=false\n\n# Plan and save to a file for exact apply later\nterraform plan -out=tfplan\n\n# Plan a different directory\nterraform -chdir=environments/staging plan\n```\n\n## Plan Output Format\n\nTerraform uses symbols to indicate the action for each resource:\n\n| Symbol | Action | Meaning |\n|---|---|---|\n| `+` | create | New resource will be created |\n| `-` | destroy | Existing resource will be destroyed |\n| `~` | update in-place | Resource will be modified without recreation |\n| `-/+` | replace | Resource must be destroyed and recreated |\n| `<=` | read | Data source will be read during apply |\n\n```\n# Example plan output\nTerraform will perform the following actions:\n\n  # aws_instance.web will be updated in-place\n  ~ resource \"aws_instance\" \"web\" {\n      ~ instance_type = \"t3.micro\" -> \"t3.small\"\n        tags          = {\n            \"Name\" = \"web-server\"\n        }\n    }\n\n  # aws_s3_bucket.logs will be created\n  + resource \"aws_s3_bucket\" \"logs\" {\n      + bucket = \"my-app-logs-2026\"\n      + id     = (known after apply)\n      + arn    = (known after apply)\n    }\n\nPlan: 1 to add, 1 to change, 0 to destroy.\n```\n\nValues shown as `(known after apply)` are computed by the cloud provider during resource creation.\n\n## Saving Plan Files\n\nSave a plan to guarantee the exact changes are applied:\n\n```bash\n# Save the plan\nterraform plan -out=tfplan\n\n# View the saved plan in human-readable format\nterraform show tfplan\n\n# View the saved plan as JSON\nterraform show -json tfplan | jq .\n\n# Apply the exact saved plan\nterraform apply tfplan\n```\n\nSaved plan files are binary and encode the exact set of changes. This is the safest way to ensure what you reviewed is what gets applied, especially in CI/CD.\n\n## Variable Input\n\n```bash\n# Set a single variable\nterraform plan -var=\"instance_type=t3.large\"\n\n# Set multiple variables\nterraform plan -var=\"region=us-west-2\" -var=\"env=staging\"\n\n# Use a variable file\nterraform plan -var-file=environments/prod.tfvars\n\n# Use multiple variable files\nterraform plan -var-file=common.tfvars -var-file=prod.tfvars\n\n# Variables via environment\nexport TF_VAR_region=us-east-1\nexport TF_VAR_instance_type=t3.micro\nterraform plan\n```\n\n### Variable File Format\n\n```hcl\n# prod.tfvars\nregion         = \"us-east-1\"\ninstance_type  = \"t3.large\"\nenvironment    = \"production\"\nmin_instances  = 3\nenable_logging = true\n\ntags = {\n  Team    = \"platform\"\n  Project = \"core-infra\"\n}\n```\n\n## Targeted Plans\n\nRestrict the plan to specific resources with `-target`:\n\n```bash\n# Plan only a specific resource\nterraform plan -target=aws_instance.web\n\n# Plan an entire module\nterraform plan -target=module.vpc\n\n# Multiple targets\nterraform plan -target=aws_instance.web -target=aws_security_group.web\n```\n\nTargeted operations are a last resort — they can leave state inconsistent. Prefer full plans whenever possible.\n\n## Drift Detection with -refresh-only\n\nDetect changes made outside Terraform (manual console edits, other tools):\n\n```bash\n# Detect drift without proposing config changes\nterraform plan -refresh-only\n\n# Apply the refresh to update state to match reality\nterraform apply -refresh-only\n```\n\nThis is useful for auditing infrastructure drift and reconciling state without modifying resources.\n\n## Destroy Preview\n\nPreview what a destroy operation would do:\n\n```bash\n# Preview full destruction\nterraform plan -destroy\n\n# Preview targeted destruction\nterraform plan -destroy -target=aws_instance.web\n\n# Save destruction plan\nterraform plan -destroy -out=destroy.tfplan\n```\n\n## Machine-Readable Output\n\nJSON output for automation, policy engines, and custom tooling:\n\n```bash\n# Stream JSON plan output\nterraform plan -json\n\n# Save plan then export as JSON\nterraform plan -out=tfplan\nterraform show -json tfplan > plan.json\n\n# Parse with jq — list all resources being changed\nterraform show -json tfplan | jq '.resource_changes[] | {address: .address, action: .change.actions}'\n\n# Count changes by action type\nterraform show -json tfplan | jq '[.resource_changes[].change.actions[]] | group_by(.) | map({action: .[0], count: length})'\n```\n\n## Common Flags Reference\n\n| Flag | Purpose |\n|---|---|\n| `-out=FILE` | Save plan to a binary file for exact apply |\n| `-var=\"key=value\"` | Set an input variable value |\n| `-var-file=FILE` | Load variables from a .tfvars file |\n| `-target=ADDR` | Restrict plan to specific resource/module |\n| `-refresh-only` | Detect drift without config-driven changes |\n| `-destroy` | Preview destruction of resources |\n| `-refresh=false` | Skip state refresh (use cached state) |\n| `-replace=ADDR` | Force replacement of a specific resource |\n| `-input=false` | Disable interactive variable prompts |\n| `-json` | Machine-readable JSON output |\n| `-no-color` | Disable terminal color codes |\n| `-parallelism=N` | Limit concurrent provider operations (default 10) |\n| `-compact-warnings` | Condense warning output |\n",
+  "sections": [
+    {
+      "id": "plan-output-format",
+      "title": "Plan output format",
+      "body": "Terraform plan uses + for create, - for destroy, ~ for update in-place, -/+ for replace (destroy then create), and <= for data source reads. Each resource block shows the attribute-level diff with before and after values. Values marked (known after apply) are computed server-side. The summary line at the bottom reports total counts: N to add, N to change, N to destroy.",
+      "tags": ["output", "diff", "symbols", "create", "update", "destroy", "replace"]
+    },
+    {
+      "id": "saved-plans",
+      "title": "Saving and applying plan files",
+      "body": "Use -out=FILE to save a plan. The saved file is a binary that encodes the exact changes. Apply it with terraform apply FILE — no re-planning occurs. Use terraform show FILE to inspect in human format or terraform show -json FILE for machine-readable output. Saved plans are the safest approach for CI/CD: plan in one step, review, then apply the saved file.",
+      "tags": ["plan-file", "out", "binary", "ci-cd", "saved-plan", "show"]
+    },
+    {
+      "id": "variables",
+      "title": "Variable input",
+      "body": "Variables can be set via -var flags, -var-file for .tfvars files, environment variables (TF_VAR_name), or auto-loaded files (terraform.tfvars, *.auto.tfvars). Precedence from lowest to highest: defaults in variable blocks, terraform.tfvars, *.auto.tfvars, -var-file, -var flags, environment variables. Use .tfvars files per environment (dev.tfvars, prod.tfvars) for clean separation.",
+      "tags": ["variables", "var", "var-file", "tfvars", "tf-var", "precedence"]
+    },
+    {
+      "id": "targeted-plans",
+      "title": "Targeted plans",
+      "body": "The -target flag restricts planning to a specific resource address or module. Useful for debugging or applying urgent fixes to a single resource. Multiple -target flags can be combined. Targeted operations skip dependency validation for non-targeted resources, which can lead to inconsistent state. HashiCorp recommends targeted operations only as a last resort.",
+      "tags": ["target", "partial", "resource-address", "module-target"]
+    },
+    {
+      "id": "drift-detection",
+      "title": "Drift detection with -refresh-only",
+      "body": "The -refresh-only flag causes Terraform to refresh the state from real infrastructure and report any differences without proposing configuration-driven changes. This detects drift caused by manual edits, other tools, or out-of-band changes. Apply with -refresh-only to update the state file to match reality. Combine with scheduled CI runs for continuous drift monitoring.",
+      "tags": ["drift", "refresh-only", "audit", "reconcile", "out-of-band"]
+    },
+    {
+      "id": "json-output",
+      "title": "Machine-readable JSON output",
+      "body": "The -json flag produces structured JSON output suitable for policy engines (OPA, Sentinel), custom dashboards, and automation scripts. The JSON plan format includes resource_changes with before/after values, prior_state, planned_values, and configuration metadata. Use terraform show -json planfile for the richest output. Parse with jq to extract specific change details.",
+      "tags": ["json", "machine-readable", "opa", "sentinel", "policy", "automation"]
+    }
+  ],
+  "links": [
+    { "uri": "terraform/cli", "context": "Parent CLI node with global flags and environment variables" },
+    { "uri": "terraform/cli/init", "context": "Init must be run before plan to install providers and configure backend" },
+    { "uri": "terraform/cli/apply", "context": "Apply executes the changes previewed by plan" },
+    { "uri": "terraform/cli/destroy", "context": "Plan -destroy previews what terraform destroy would do" }
+  ],
+  "related": [
+    { "uri": "terraform/cli/init", "relation": "prerequisite", "note": "Init must be run before plan" },
+    { "uri": "terraform/cli/apply", "relation": "see-also", "note": "Apply executes the plan; saved plans guarantee exact changes" },
+    { "uri": "terraform/cli/destroy", "relation": "see-also", "note": "Plan -destroy previews destruction" }
+  ],
+  "scripts": [
+    {
+      "id": "terraform-plan-to-file",
+      "name": "Terraform Plan with Output File",
+      "description": "Run terraform plan and save the result to a plan file, then display a summary of changes",
+      "lang": "bash",
+      "runtime": "terraform>=1.0",
+      "inline": "set -euo pipefail\nDIR=\"${TF_WORKING_DIR:-.}\"\nPLAN_FILE=\"${PLAN_OUT:-tfplan}\"\nPLAN_ARGS=\"-input=false -out=$PLAN_FILE\"\n\n# Variable files\nif [ -n \"${VAR_FILE:-}\" ]; then\n  for vf in $(echo \"$VAR_FILE\" | tr ',' '\\n'); do\n    PLAN_ARGS=\"$PLAN_ARGS -var-file=$vf\"\n  done\nfi\n\n# Individual variables\nif [ -n \"${VARS:-}\" ]; then\n  for v in $(echo \"$VARS\" | tr ',' '\\n'); do\n    PLAN_ARGS=\"$PLAN_ARGS -var=$v\"\n  done\nfi\n\n# Target\nif [ -n \"${TARGET:-}\" ]; then\n  for t in $(echo \"$TARGET\" | tr ',' '\\n'); do\n    PLAN_ARGS=\"$PLAN_ARGS -target=$t\"\n  done\nfi\n\n# Destroy preview\nif [ \"${DESTROY:-false}\" = 'true' ]; then\n  PLAN_ARGS=\"$PLAN_ARGS -destroy\"\nfi\n\n# Refresh-only\nif [ \"${REFRESH_ONLY:-false}\" = 'true' ]; then\n  PLAN_ARGS=\"$PLAN_ARGS -refresh-only\"\nfi\n\necho \"Running: terraform -chdir=$DIR plan $PLAN_ARGS\"\nterraform -chdir=\"$DIR\" plan $PLAN_ARGS\necho '' && echo '=== Plan Summary (JSON) ===' && terraform -chdir=\"$DIR\" show -json \"$PLAN_FILE\" | jq '{resource_changes: [.resource_changes[]? | {address: .address, actions: .change.actions}]}'",
+      "env": {
+        "TF_WORKING_DIR": { "required": false, "secret": false, "description": "Working directory with .tf files (default: current directory)" },
+        "PLAN_OUT": { "required": false, "secret": false, "description": "Output file name for saved plan (default: tfplan)" },
+        "VAR_FILE": { "required": false, "secret": false, "description": "Comma-separated .tfvars file paths" },
+        "VARS": { "required": false, "secret": false, "description": "Comma-separated variable assignments (e.g. region=us-east-1,env=prod)" },
+        "TARGET": { "required": false, "secret": false, "description": "Comma-separated resource addresses to target" },
+        "DESTROY": { "required": false, "secret": false, "description": "Set to 'true' to preview destruction" },
+        "REFRESH_ONLY": { "required": false, "secret": false, "description": "Set to 'true' for drift detection only" }
+      }
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "directory": { "type": "string", "description": "Path to the Terraform working directory" },
+        "outFile": { "type": "string", "description": "File path to save the binary plan" },
+        "variables": {
+          "type": "object",
+          "additionalProperties": { "type": "string" },
+          "description": "Key-value variable assignments"
+        },
+        "varFiles": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Paths to .tfvars variable files"
+        },
+        "targets": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Resource addresses to target"
+        },
+        "destroy": { "type": "boolean", "description": "Preview destruction instead of creation/update" },
+        "refreshOnly": { "type": "boolean", "description": "Drift detection mode — refresh state only" }
+      }
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "hasChanges": { "type": "boolean", "description": "Whether the plan includes any resource changes" },
+        "add": { "type": "integer", "description": "Number of resources to create" },
+        "change": { "type": "integer", "description": "Number of resources to update" },
+        "destroy": { "type": "integer", "description": "Number of resources to destroy" },
+        "planFile": { "type": "string", "description": "Path to the saved plan file if -out was used" },
+        "resourceChanges": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "address": { "type": "string" },
+              "actions": { "type": "array", "items": { "type": "string" } }
+            }
+          },
+          "description": "List of resource changes with their actions"
+        }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "terraform/cli", "reason": "Terraform CLI must be installed" },
+    { "uri": "terraform/cli/init", "reason": "Init must be run before plan" }
+  ],
+  "more": {
+    "docs": "https://developer.hashicorp.com/terraform/cli/commands/plan",
+    "json-format": "https://developer.hashicorp.com/terraform/internals/json-format",
+    "variables": "https://developer.hashicorp.com/terraform/language/values/variables"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents, DevOps engineers, SREs",
+    "estimated_reading_time": "7 min",
+    "prerequisites": [],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://github.com/hashicorp/terraform",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

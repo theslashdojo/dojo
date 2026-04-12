@@ -1,0 +1,107 @@
+{
+  "name": "ci",
+  "version": "1.0.0",
+  "uri": "testing/ci",
+  "type": "context",
+  "content_type": "guide",
+  "context": "Running tests in CI/CD pipelines — GitHub Actions, parallelization, test splitting, flaky test management, coverage gates",
+  "info": "This node covers running test suites in continuous integration pipelines: configuring GitHub Actions workflows for [[testing/jest]], [[testing/vitest]], [[testing/pytest]], and [[testing/playwright]]; parallelizing tests across workers and matrix strategies; splitting test suites for faster feedback; managing flaky tests with retries and quarantine; enforcing coverage thresholds as merge gates; and caching dependencies for fast CI runs. Agents use this node when setting up or debugging test pipelines, optimizing CI runtime, or integrating test results with pull request checks.",
+  "parent": "testing",
+  "tags": ["ci", "cd", "github-actions", "pipeline", "parallelization", "test-splitting", "coverage-gate", "flaky-tests", "ci-cd"],
+  "aliases": [
+    "ci testing",
+    "ci cd tests",
+    "github actions tests",
+    "test pipeline",
+    "continuous integration testing",
+    "run tests in ci",
+    "test automation pipeline",
+    "ci pipeline",
+    "test in github actions",
+    "coverage gate",
+    "flaky test management"
+  ],
+  "triggers": [
+    "run tests in github actions",
+    "set up ci for tests",
+    "parallelize tests in ci",
+    "speed up ci pipeline",
+    "fix flaky tests in ci",
+    "add coverage gate to pr",
+    "cache dependencies in ci",
+    "split tests across workers",
+    "run playwright in ci",
+    "run pytest in github actions"
+  ],
+  "body": "# Testing in CI/CD\n\nCI pipelines run tests automatically on every push and pull request. A well-configured pipeline catches bugs before merge, enforces coverage standards, and gives fast feedback to developers.\n\n## GitHub Actions: Basic Test Workflow\n\n```yaml\n# .github/workflows/test.yml\nname: Tests\non:\n  push:\n    branches: [main]\n  pull_request:\n    branches: [main]\n\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n\n      - uses: actions/setup-node@v4\n        with:\n          node-version: 20\n          cache: npm\n\n      - run: npm ci\n      - run: npm test -- --coverage --ci\n\n      - uses: actions/upload-artifact@v4\n        if: always()\n        with:\n          name: coverage-report\n          path: coverage/\n```\n\n## Framework-Specific CI Configurations\n\n### Jest / Vitest\n\n```yaml\n- run: npx jest --ci --coverage --maxWorkers=2\n# or\n- run: npx vitest run --coverage --reporter=junit --outputFile=test-results.xml\n```\n\nKey flags for CI:\n- `--ci` (Jest) — disables interactive snapshots, uses `--maxWorkers=2` by default\n- `run` (Vitest) — runs once without watch mode\n- `--maxWorkers=2` — limit parallelism to available CI CPU cores\n- `--coverage` — generate coverage reports\n- `--reporter=junit` — output JUnit XML for CI tools\n\n### pytest\n\n```yaml\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n      - uses: actions/setup-python@v5\n        with:\n          python-version: '3.12'\n          cache: pip\n      - run: pip install -e \".[test]\"\n      - run: pytest --cov=src --cov-report=xml --junitxml=test-results.xml -n auto\n      - uses: actions/upload-artifact@v4\n        if: always()\n        with:\n          name: test-results\n          path: test-results.xml\n```\n\nKey flags: `-n auto` (pytest-xdist parallelism), `--cov` (coverage), `--junitxml` (CI-parseable output).\n\n### Playwright\n\n```yaml\njobs:\n  e2e:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n      - uses: actions/setup-node@v4\n        with:\n          node-version: 20\n          cache: npm\n      - run: npm ci\n      - run: npx playwright install --with-deps chromium\n      - run: npx playwright test --project=chromium\n      - uses: actions/upload-artifact@v4\n        if: always()\n        with:\n          name: playwright-report\n          path: playwright-report/\n          retention-days: 7\n```\n\nPlaywright in CI: install only needed browsers (`--with-deps chromium`), run headless (default), upload traces and reports as artifacts for debugging failures.\n\n## Parallelization Strategies\n\n### Matrix Strategy\n\n```yaml\njobs:\n  test:\n    strategy:\n      matrix:\n        node-version: [18, 20, 22]\n        os: [ubuntu-latest, windows-latest]\n    runs-on: ${{ matrix.os }}\n    steps:\n      - uses: actions/setup-node@v4\n        with:\n          node-version: ${{ matrix.node-version }}\n      - run: npm ci\n      - run: npm test\n```\n\n### Test Splitting (Shard)\n\n```yaml\njobs:\n  test:\n    strategy:\n      matrix:\n        shard: [1, 2, 3, 4]\n    steps:\n      - run: npx jest --shard=${{ matrix.shard }}/4\n      # or\n      - run: npx vitest run --shard=${{ matrix.shard }}/4\n      # or\n      - run: npx playwright test --shard=${{ matrix.shard }}/4\n```\n\nSharding splits tests across N parallel jobs. Each shard runs a portion of the suite. Combine with `merge-reports` to get unified coverage.\n\n### pytest-xdist Parallel Workers\n\n```yaml\n- run: pytest -n auto  # auto-detect CPU count\n- run: pytest -n 4     # explicit 4 workers\n```\n\n## Dependency Caching\n\n```yaml\n# Node.js\n- uses: actions/setup-node@v4\n  with:\n    cache: npm  # or 'yarn' or 'pnpm'\n\n# Python\n- uses: actions/setup-python@v5\n  with:\n    cache: pip\n\n# Playwright browsers\n- uses: actions/cache@v4\n  with:\n    path: ~/.cache/ms-playwright\n    key: playwright-${{ hashFiles('package-lock.json') }}\n```\n\nCaching cuts CI time by 30-60%. Always cache: `node_modules` (via setup-node), pip packages, Playwright browsers.\n\n## Coverage Gates\n\nEnforce minimum coverage on pull requests:\n\n```yaml\n# In jest.config.js\ncoverageThreshold: {\n  global: {\n    branches: 80,\n    functions: 80,\n    lines: 80,\n    statements: 80,\n  },\n}\n```\n\n```toml\n# In pyproject.toml\n[tool.coverage.report]\nfail_under = 80\n```\n\n```yaml\n# GitHub Actions step\n- name: Check coverage threshold\n  run: |\n    coverage=$(jq '.total.lines.pct' coverage/coverage-summary.json)\n    if (( $(echo \"$coverage < 80\" | bc -l) )); then\n      echo \"Coverage $coverage% is below 80% threshold\"\n      exit 1\n    fi\n```\n\n## Flaky Test Management\n\nFlaky tests pass and fail non-deterministically. They erode trust in CI.\n\n**Detection:**\n- Run tests multiple times: `npx jest --repeat=3`, `pytest --count=5` (pytest-repeat)\n- Track flaky rate over time with test analytics\n\n**Mitigation:**\n- **Retry**: `retries: 2` in playwright.config.ts, `--retries 2` for Vitest\n- **Quarantine**: tag flaky tests (`@pytest.mark.flaky`, `test.skip`) and fix them in dedicated sprints\n- **Root causes**: shared state, time-dependent assertions, race conditions, network calls in tests\n\n**Prevention:**\n- Use [[testing/mocking]] for external dependencies\n- Avoid `sleep()` — use polling/waiting utilities instead\n- Isolate test state — each test gets a clean environment\n- Randomize test order to surface hidden dependencies (`pytest-randomly`, `--randomize` flag)\n\n## Environment Variables for CI\n\n| Variable | Purpose |\n|----------|----------|\n| `CI=true` | Most frameworks detect CI mode (no watch, no color) |\n| `GITHUB_ACTIONS=true` | Set automatically in GitHub Actions |\n| `JEST_WORKER_ID` | Worker ID for parallel Jest tests |\n| `VITEST_WORKER_ID` | Worker ID for parallel Vitest tests |\n| `PYTEST_CURRENT_TEST` | Currently running pytest test |\n| `PLAYWRIGHT_BROWSERS_PATH` | Custom browser install location |\n",
+  "sections": [
+    {
+      "id": "github-actions",
+      "title": "GitHub Actions test workflows",
+      "body": "The standard CI platform for open-source and many enterprise projects. Use `actions/checkout@v4` to get code, `actions/setup-node@v4` or `actions/setup-python@v5` for runtime, then run test commands. Upload coverage and test reports as artifacts with `actions/upload-artifact@v4`. Use `if: always()` on artifact upload to preserve reports even when tests fail. For [[testing/playwright]], install browsers in CI with `npx playwright install --with-deps`.",
+      "tags": ["github-actions", "workflow", "checkout", "setup", "artifacts"]
+    },
+    {
+      "id": "parallelization",
+      "title": "Parallelization and test splitting",
+      "body": "Three strategies: **Matrix** runs the full suite across multiple Node/Python versions or OSes. **Sharding** splits the suite across N jobs — `--shard=1/4` runs the first quarter. [[testing/jest]], [[testing/vitest]], and [[testing/playwright]] all support `--shard`. **Worker parallelism** runs tests in parallel within one job — `--maxWorkers=2` for Jest, `-n auto` for pytest-xdist. Combine sharding (across jobs) with worker parallelism (within jobs) for maximum throughput.",
+      "tags": ["parallel", "shard", "matrix", "workers", "xdist", "throughput"]
+    },
+    {
+      "id": "caching",
+      "title": "Dependency caching",
+      "body": "Cache dependencies to avoid re-downloading on every run. `actions/setup-node@v4` caches npm/yarn/pnpm automatically with `cache: npm`. `actions/setup-python@v5` caches pip with `cache: pip`. For Playwright browsers, use `actions/cache@v4` with `~/.cache/ms-playwright` keyed on package-lock.json hash. Caching typically reduces CI time by 30-60%. Always verify cache hits in workflow logs.",
+      "tags": ["cache", "npm", "pip", "playwright-browsers", "setup-node", "setup-python"]
+    },
+    {
+      "id": "coverage-gates",
+      "title": "Coverage thresholds and gates",
+      "body": "Enforce minimum code coverage as a merge gate. [[testing/jest]]: `coverageThreshold` in jest.config.js sets per-metric minimums. [[testing/vitest]]: `coverage.thresholds` in vitest.config.ts. [[testing/pytest]]: `fail_under` in `[tool.coverage.report]` in pyproject.toml. Typical thresholds: 80% lines, 80% branches. Coverage gates prevent merging PRs that reduce coverage below the bar. Set thresholds incrementally — don't jump from 40% to 80% overnight.",
+      "tags": ["coverage", "threshold", "gate", "merge-check", "quality"]
+    },
+    {
+      "id": "flaky-tests",
+      "title": "Flaky test management",
+      "body": "Flaky tests pass and fail non-deterministically. Root causes: shared mutable state, time-dependent assertions, network calls, race conditions, test ordering dependencies. Detection: run tests with `--repeat` or `--count` flags, track flaky rate in CI analytics. Mitigation: retry failures (`retries: 2` in Playwright, `--retries` in Vitest), quarantine known flaky tests with markers. Prevention: mock external deps ([[testing/mocking]]), avoid sleep (use waitFor/polling), isolate test state, randomize order (pytest-randomly).",
+      "tags": ["flaky", "retry", "quarantine", "reliability", "race-condition"]
+    },
+    {
+      "id": "reporting",
+      "title": "Test reporting and artifacts",
+      "body": "Generate machine-readable reports for CI tools: `--reporter=junit` (Vitest), `--junitxml=results.xml` (pytest), `--reporters=junit` (Playwright). Upload with `actions/upload-artifact@v4`. Coverage reports: `--coverage --coverageReporters=lcov` (Jest/Vitest), `--cov-report=xml` (pytest). Many CI tools parse JUnit XML natively. For Playwright, upload the HTML report and trace files — they're invaluable for debugging failures in CI.",
+      "tags": ["reporting", "junit", "xml", "artifacts", "html-report", "lcov"]
+    }
+  ],
+  "links": [
+    { "uri": "testing/jest", "context": "Jest CI flags: --ci, --maxWorkers, --shard" },
+    { "uri": "testing/vitest", "context": "Vitest CI: run mode, --shard, --reporter=junit" },
+    { "uri": "testing/pytest", "context": "pytest CI: -n auto, --cov, --junitxml" },
+    { "uri": "testing/playwright", "context": "Playwright CI: browser install, --shard, trace artifacts" },
+    { "uri": "testing/mocking", "context": "Mocking prevents flaky tests from external dependencies" },
+    { "uri": "testing/patterns", "context": "Good test patterns reduce CI flakiness" }
+  ],
+  "related": [
+    { "uri": "testing/jest", "relation": "see-also", "note": "Jest's --ci flag and --shard are designed for CI environments" },
+    { "uri": "testing/playwright", "relation": "see-also", "note": "Playwright requires browser installation in CI and generates rich debug artifacts" },
+    { "uri": "testing/mocking", "relation": "see-also", "note": "Mocking external dependencies is critical for deterministic CI tests" }
+  ],
+  "more": {
+    "docs": "https://docs.github.com/en/actions/automating-builds-and-tests",
+    "examples": "https://github.com/actions/starter-workflows/tree/main/ci",
+    "spec": "https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents, DevOps engineers",
+    "estimated_reading_time": "8 min",
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

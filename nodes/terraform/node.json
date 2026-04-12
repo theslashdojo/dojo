@@ -1,0 +1,184 @@
+{
+  "name": "terraform",
+  "version": "1.0.0",
+  "uri": "terraform",
+  "type": "ecosystem",
+  "context": "HashiCorp Terraform -- infrastructure as code using HCL to provision, plan, and manage cloud resources declaratively",
+  "info": "Terraform is HashiCorp's open-source infrastructure as code (IaC) tool that lets agents define cloud and on-premises resources in human-readable HCL configuration files, then provision and manage them through a consistent workflow: write, init, plan, apply. Terraform tracks real-world infrastructure in a state file and uses a provider plugin model to interact with hundreds of cloud platforms, SaaS services, and APIs. The module system enables reusable, composable infrastructure components. This ecosystem tree covers the CLI, HCL language, state management, providers, modules, workspaces, and troubleshooting.",
+  "parent": null,
+  "tags": ["terraform", "iac", "infrastructure-as-code", "hcl", "hashicorp", "cloud", "provisioning", "devops", "state", "providers", "modules"],
+  "aliases": [
+    "terraform",
+    "hashicorp terraform",
+    "tf",
+    "infrastructure as code",
+    "terraform iac",
+    "terraform cli",
+    "terraform hcl",
+    "hcl configuration",
+    "terraform provisioning",
+    "opentofu"
+  ],
+  "triggers": [
+    "provision infrastructure with terraform",
+    "write terraform configuration",
+    "terraform init plan apply",
+    "manage cloud resources with terraform",
+    "create terraform module",
+    "terraform state management",
+    "set up terraform project",
+    "deploy with terraform",
+    "terraform provider configuration",
+    "infrastructure as code setup"
+  ],
+  "sub": [
+    "terraform/init",
+    "terraform/plan",
+    "terraform/apply",
+    "terraform/state",
+    "terraform/modules",
+    "terraform/providers"
+  ],
+  "body": "# Terraform Ecosystem\n\nTerraform is an infrastructure as code tool that lets you define cloud and on-premises resources in declarative configuration files. Instead of clicking through a console or writing imperative scripts, you describe the desired end state and Terraform figures out how to reach it. Agents need Terraform to reproducibly create, modify, and destroy infrastructure across any cloud provider.\n\n## Why Agents Need Terraform\n\n- **Declarative** -- describe what you want, not how to get there\n- **Idempotent** -- running the same config twice produces the same result\n- **Plan before apply** -- always preview changes before they take effect\n- **Multi-cloud** -- one tool, one workflow for AWS, GCP, Azure, and hundreds more\n- **State-aware** -- Terraform knows what it manages and can detect drift\n- **Composable** -- modules let you build reusable infrastructure packages\n\n## Installation\n\n```bash\n# macOS (Homebrew)\nbrew tap hashicorp/tap\nbrew install hashicorp/tap/terraform\n\n# Ubuntu/Debian\nwget -O - https://apt.releases.hashicorp.com/gpg | sudo gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg\necho \"deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main\" | sudo tee /etc/apt/sources.list.d/hashicorp.list\nsudo apt update && sudo apt install terraform\n\n# Verify installation\nterraform version\n```\n\n## Core Workflow\n\nEvery Terraform operation follows the same four-step cycle:\n\n```\n  write  -->  init  -->  plan  -->  apply\n    |                                 |\n    +---- modify & repeat <-----------+\n```\n\n1. **Write** -- create `.tf` files describing the desired infrastructure\n2. **Init** -- `terraform init` downloads providers and initializes the backend\n3. **Plan** -- `terraform plan` computes what changes are needed (add, modify, destroy)\n4. **Apply** -- `terraform apply` executes the plan against the real infrastructure\n\n```bash\n# Typical workflow\nmkdir my-infra && cd my-infra\n\n# Write configuration\ncat > main.tf << 'EOF'\nterraform {\n  required_providers {\n    aws = {\n      source  = \"hashicorp/aws\"\n      version = \"~> 5.0\"\n    }\n  }\n}\n\nprovider \"aws\" {\n  region = \"us-east-1\"\n}\n\nresource \"aws_s3_bucket\" \"data\" {\n  bucket = \"my-data-bucket-unique-id\"\n\n  tags = {\n    Environment = \"dev\"\n    ManagedBy   = \"terraform\"\n  }\n}\nEOF\n\n# Initialize, plan, apply\nterraform init\nterraform plan -out=tfplan\nterraform apply tfplan\n```\n\n## HCL Basics\n\nHashiCorp Configuration Language (HCL) is Terraform's native syntax. See [[terraform/hcl]] for full coverage.\n\n```hcl\n# Variables\nvariable \"region\" {\n  type        = string\n  default     = \"us-east-1\"\n  description = \"AWS region to deploy into\"\n}\n\n# Resources -- the core building block\nresource \"aws_instance\" \"web\" {\n  ami           = \"ami-0c55b159cbfafe1f0\"\n  instance_type = \"t3.micro\"\n\n  tags = {\n    Name = \"web-server\"\n  }\n}\n\n# Outputs -- expose values after apply\noutput \"instance_ip\" {\n  value = aws_instance.web.public_ip\n}\n\n# Data sources -- read existing infrastructure\ndata \"aws_ami\" \"ubuntu\" {\n  most_recent = true\n  owners      = [\"099720109477\"]\n\n  filter {\n    name   = \"name\"\n    values = [\"ubuntu/images/hvm-ssd/ubuntu-*-amd64-server-*\"]\n  }\n}\n\n# Locals -- computed values\nlocals {\n  common_tags = {\n    Project   = \"my-app\"\n    ManagedBy = \"terraform\"\n  }\n}\n```\n\n## Provider Model\n\nProviders are plugins that let Terraform manage specific platforms. Each provider offers resources and data sources for its platform. See [[terraform/providers]] for details.\n\n```hcl\nterraform {\n  required_providers {\n    aws = {\n      source  = \"hashicorp/aws\"\n      version = \"~> 5.0\"\n    }\n    google = {\n      source  = \"hashicorp/google\"\n      version = \"~> 5.0\"\n    }\n    azurerm = {\n      source  = \"hashicorp/azurerm\"\n      version = \"~> 3.0\"\n    }\n  }\n}\n```\n\nPopular providers: `hashicorp/aws`, `hashicorp/google`, `hashicorp/azurerm`, `hashicorp/kubernetes`, `hashicorp/helm`, `hashicorp/docker`, `hashicorp/github`, `hashicorp/cloudflare`, `hashicorp/datadog`.\n\n## State Management\n\nTerraform stores a mapping between your configuration and real-world resources in a state file (`terraform.tfstate`). This is the source of truth for what Terraform manages. See [[terraform/state]] for backends, locking, and best practices.\n\n```hcl\n# Remote state backend (recommended for teams)\nterraform {\n  backend \"s3\" {\n    bucket         = \"my-terraform-state\"\n    key            = \"prod/terraform.tfstate\"\n    region         = \"us-east-1\"\n    dynamodb_table = \"terraform-locks\"\n    encrypt        = true\n  }\n}\n```\n\n**Critical rule**: never edit the state file manually. Use `terraform state` commands or `terraform import`.\n\n## Module System\n\nModules are reusable packages of Terraform configuration. They accept input variables and produce outputs. See [[terraform/modules]].\n\n```hcl\n# Calling a module\nmodule \"vpc\" {\n  source  = \"terraform-aws-modules/vpc/aws\"\n  version = \"5.5.0\"\n\n  name = \"my-vpc\"\n  cidr = \"10.0.0.0/16\"\n\n  azs             = [\"us-east-1a\", \"us-east-1b\"]\n  private_subnets = [\"10.0.1.0/24\", \"10.0.2.0/24\"]\n  public_subnets  = [\"10.0.101.0/24\", \"10.0.102.0/24\"]\n\n  enable_nat_gateway = true\n}\n\n# Using module outputs\nresource \"aws_instance\" \"web\" {\n  subnet_id = module.vpc.public_subnets[0]\n  # ...\n}\n```\n\n## Environment Variables\n\nTerraform respects several environment variables:\n\n| Variable | Purpose |\n|----------|----------|\n| `TF_VAR_<name>` | Set input variable `<name>` (e.g. `TF_VAR_region=us-west-2`) |\n| `TF_LOG` | Enable logging: `TRACE`, `DEBUG`, `INFO`, `WARN`, `ERROR` |\n| `TF_LOG_PATH` | Write logs to a file instead of stderr |\n| `TF_DATA_DIR` | Override the `.terraform` data directory |\n| `TF_INPUT` | Set to `0` or `false` to disable interactive prompts |\n| `TF_IN_AUTOMATION` | Set to any value to adjust output for CI/CD |\n| `TF_CLI_ARGS` | Additional CLI arguments appended to every command |\n| `TF_CLI_ARGS_<command>` | Additional CLI arguments for a specific command (e.g. `TF_CLI_ARGS_plan`) |\n| `TF_PLUGIN_CACHE_DIR` | Directory to cache provider plugins across projects |\n| `TF_WORKSPACE` | Select the active workspace |\n\n```bash\n# Example: CI/CD pipeline environment\nexport TF_IN_AUTOMATION=true\nexport TF_INPUT=0\nexport TF_VAR_environment=\"staging\"\nexport TF_LOG=WARN\nexport TF_LOG_PATH=\"/tmp/terraform.log\"\nexport TF_PLUGIN_CACHE_DIR=\"$HOME/.terraform.d/plugin-cache\"\n```\n\n## Destroy\n\nTear down all infrastructure managed by the current configuration:\n\n```bash\n# Preview what will be destroyed\nterraform plan -destroy\n\n# Destroy all resources\nterraform destroy\n\n# Destroy a specific resource\nterraform destroy -target=aws_s3_bucket.data\n```\n\n## File Structure\n\nA typical Terraform project layout:\n\n```\nmy-infra/\n  main.tf          # Primary resources\n  variables.tf     # Input variable declarations\n  outputs.tf       # Output value declarations\n  providers.tf     # Provider configuration and versions\n  terraform.tfvars # Variable values (do NOT commit secrets)\n  backend.tf       # Remote state backend configuration\n  modules/         # Local reusable modules\n    vpc/\n      main.tf\n      variables.tf\n      outputs.tf\n```\n",
+  "sections": [
+    {
+      "id": "installation",
+      "title": "Installation",
+      "body": "Install Terraform via Homebrew on macOS (`brew install hashicorp/tap/terraform`), via APT on Ubuntu/Debian using the HashiCorp repository, or download the binary directly from releases.hashicorp.com. Verify with `terraform version`. For version management across projects, use `tfenv` or `asdf`.",
+      "tags": ["install", "setup", "brew", "apt", "tfenv"]
+    },
+    {
+      "id": "core-workflow",
+      "title": "Core workflow: write, init, plan, apply",
+      "body": "Every Terraform operation follows write (create .tf files), init (download providers and initialize backend), plan (preview changes), apply (execute changes). Always save plans with `-out=tfplan` and apply saved plans for safety. In CI/CD, use `TF_IN_AUTOMATION=true` and `TF_INPUT=0`.",
+      "tags": ["workflow", "init", "plan", "apply", "lifecycle"]
+    },
+    {
+      "id": "hcl-basics",
+      "title": "HCL language basics",
+      "body": "HCL (HashiCorp Configuration Language) is Terraform's declarative syntax. Core constructs: `resource` (infrastructure objects), `variable` (inputs), `output` (exposed values), `data` (read existing infrastructure), `locals` (computed values), `module` (reusable groups). See [[terraform/hcl]] for the full language reference.",
+      "tags": ["hcl", "syntax", "resource", "variable", "output", "data", "locals"]
+    },
+    {
+      "id": "provider-model",
+      "title": "Provider plugin model",
+      "body": "Providers are plugins downloaded during `terraform init` that translate HCL resources into API calls. Declare required providers in a `required_providers` block with source and version constraints. Providers are published to the Terraform Registry. See [[terraform/providers]] for configuration and authentication.",
+      "tags": ["providers", "plugins", "registry", "required-providers"]
+    },
+    {
+      "id": "state-overview",
+      "title": "State management overview",
+      "body": "Terraform records the mapping between configuration and real resources in `terraform.tfstate`. Use remote backends (S3, GCS, Azure Blob, Terraform Cloud) for team collaboration with state locking. Never edit state manually -- use `terraform state mv`, `terraform state rm`, and `terraform import`. See [[terraform/state]].",
+      "tags": ["state", "tfstate", "backend", "locking", "remote-state"]
+    },
+    {
+      "id": "module-system",
+      "title": "Module system",
+      "body": "Modules are reusable packages of Terraform configuration. Source from the Terraform Registry, Git repos, or local paths. Modules accept input variables and produce outputs. Pin versions for reproducibility. See [[terraform/modules]] for authoring, publishing, and composition patterns.",
+      "tags": ["modules", "reusable", "registry", "composition"]
+    },
+    {
+      "id": "environment-variables",
+      "title": "Environment variables",
+      "body": "`TF_VAR_<name>` sets input variables. `TF_LOG` enables debug logging (TRACE/DEBUG/INFO/WARN/ERROR). `TF_LOG_PATH` redirects logs to a file. `TF_DATA_DIR` overrides the .terraform directory. `TF_INPUT=0` disables prompts. `TF_IN_AUTOMATION` adjusts output for CI. `TF_PLUGIN_CACHE_DIR` caches providers across projects.",
+      "tags": ["env", "tf-var", "tf-log", "tf-input", "automation", "cache"]
+    },
+    {
+      "id": "file-structure",
+      "title": "Project file structure",
+      "body": "Standard layout: `main.tf` (primary resources), `variables.tf` (input declarations), `outputs.tf` (output declarations), `providers.tf` (provider config and versions), `terraform.tfvars` (variable values -- do not commit secrets), `backend.tf` (remote state). Group related resources logically. Use modules/ for local reusable components.",
+      "tags": ["file-structure", "layout", "project", "organization"]
+    }
+  ],
+  "links": [
+    { "uri": "terraform/init", "context": "Initialize working directory -- download providers, configure backend, install modules" },
+    { "uri": "terraform/plan", "context": "Preview changes -- compute diff between config and real infrastructure" },
+    { "uri": "terraform/apply", "context": "Apply changes -- execute a plan to create, update, or destroy resources" },
+    { "uri": "terraform/state", "context": "State management -- inspect, move, remove, import tracked resources" },
+    { "uri": "terraform/modules", "context": "Module system -- reusable infrastructure packages, registry, composition" },
+    { "uri": "terraform/providers", "context": "Provider plugins -- configuration, authentication, version constraints" },
+    { "uri": "kubernetes", "context": "Kubernetes provider -- manage K8s resources with Terraform" },
+    { "uri": "github/actions", "context": "GitHub Actions -- automate terraform plan/apply in CI/CD pipelines" }
+  ],
+  "related": [
+    { "uri": "aws", "relation": "see-also", "note": "AWS is the most commonly used Terraform provider for cloud infrastructure" },
+    { "uri": "kubernetes", "relation": "see-also", "note": "Terraform can provision Kubernetes clusters and manage K8s resources" },
+    { "uri": "docker", "relation": "see-also", "note": "Terraform Docker provider manages containers, images, networks, and volumes" }
+  ],
+  "scripts": [
+    {
+      "id": "tf-init-plan-apply",
+      "name": "Terraform Init Plan Apply",
+      "description": "Run the full Terraform workflow: initialize, plan, and apply with auto-approve",
+      "lang": "bash",
+      "runtime": "terraform>=1.0",
+      "inline": "set -euo pipefail\necho '=== Terraform Init ===' && terraform init -input=false\necho '\\n=== Terraform Plan ===' && terraform plan -out=tfplan -input=false\necho '\\n=== Terraform Apply ===' && terraform apply -input=false tfplan\nrm -f tfplan\necho '\\n=== Done ==='",
+      "env": {
+        "TF_IN_AUTOMATION": { "required": false, "secret": false, "default": "true", "description": "Set to true for CI/CD-friendly output" },
+        "TF_LOG": { "required": false, "secret": false, "description": "Log level: TRACE, DEBUG, INFO, WARN, ERROR" }
+      }
+    },
+    {
+      "id": "tf-fmt-validate",
+      "name": "Terraform Format and Validate",
+      "description": "Format HCL files and validate configuration syntax",
+      "lang": "bash",
+      "runtime": "terraform>=1.0",
+      "inline": "set -euo pipefail\necho '=== Formatting ===' && terraform fmt -recursive -diff\necho '\\n=== Validating ===' && terraform init -backend=false -input=false > /dev/null 2>&1 && terraform validate\necho '\\n=== All checks passed ==='",
+      "env": {}
+    },
+    {
+      "id": "tf-destroy-target",
+      "name": "Terraform Destroy Target",
+      "description": "Destroy a specific Terraform resource by target address",
+      "lang": "bash",
+      "runtime": "terraform>=1.0",
+      "inline": "set -euo pipefail\nif [ -z \"${TARGET:-}\" ]; then echo 'ERROR: TARGET is required (e.g. aws_s3_bucket.data)' && exit 1; fi\necho \"=== Planning destruction of $TARGET ===\"\nterraform plan -destroy -target=\"$TARGET\" -out=destroy.tfplan -input=false\necho '\\nReview the plan above. Applying...'\nterraform apply -input=false destroy.tfplan\nrm -f destroy.tfplan\necho '\\n=== Destroyed ==='",
+      "env": {
+        "TARGET": { "required": true, "secret": false, "description": "Resource address to destroy (e.g. aws_s3_bucket.data)" }
+      }
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "action": { "type": "string", "enum": ["init", "plan", "apply", "destroy", "fmt", "validate", "import", "state"], "description": "Terraform operation to perform" },
+        "target": { "type": "string", "description": "Resource address for targeted operations" },
+        "varFile": { "type": "string", "description": "Path to a .tfvars file" },
+        "workspace": { "type": "string", "description": "Terraform workspace to select" }
+      },
+      "required": ["action"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "success": { "type": "boolean", "description": "Whether the operation succeeded" },
+        "planSummary": { "type": "string", "description": "Summary of planned changes (add/change/destroy)" },
+        "outputs": { "type": "object", "description": "Terraform output values after apply" }
+      }
+    }
+  },
+  "more": {
+    "docs": "https://developer.hashicorp.com/terraform/docs",
+    "repo": "https://github.com/hashicorp/terraform",
+    "registry": "https://registry.terraform.io",
+    "examples": "https://developer.hashicorp.com/terraform/tutorials"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents, DevOps engineers, SREs",
+    "estimated_reading_time": "10 min",
+    "prerequisites": [],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://github.com/hashicorp/terraform",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

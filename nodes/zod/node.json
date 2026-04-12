@@ -1,0 +1,93 @@
+{
+  "name": "zod",
+  "version": "1.0.0",
+  "uri": "zod",
+  "type": "ecosystem",
+  "context": "Runtime schema validation and type inference for TypeScript — define once, validate and infer everywhere",
+  "info": "Zod is the standard runtime validation library for TypeScript. It lets you declare schemas for any data shape — primitives, objects, arrays, unions, discriminated unions, recursive types — and validate unknown input at runtime while inferring static TypeScript types at compile time. Zero dependencies, 2kb gzipped core, works in Node.js and browsers. Agents use Zod constantly: validating API responses, parsing form input, defining tool parameter schemas, enforcing config shapes, and generating TypeScript types from runtime contracts. Zod schemas are immutable and composable — you build complex validators from simple ones using .extend(), .merge(), .pick(), .omit(), .partial(), .transform(), and .pipe(). The ecosystem includes integrations with React Hook Form (via @hookform/resolvers), tRPC, Astro, Remix, Express, and every major TypeScript framework. Zod v4 (current) requires TypeScript >=5.5 with strict mode enabled.",
+  "parent": null,
+  "tags": ["zod", "validation", "schema", "typescript", "runtime-validation", "type-inference", "parsing"],
+  "aliases": [
+    "zod",
+    "zod schema",
+    "zod validation",
+    "zod validator",
+    "z.object",
+    "z.string",
+    "z.parse",
+    "zod typescript",
+    "schema validation",
+    "runtime validation",
+    "ts validation",
+    "zod parsing",
+    "zod types"
+  ],
+  "triggers": [
+    "validate data with zod",
+    "create a zod schema",
+    "parse input with zod",
+    "define a validation schema",
+    "validate API response",
+    "infer types from schema",
+    "runtime type checking in typescript",
+    "validate form data",
+    "zod object schema",
+    "parse unknown data safely"
+  ],
+  "body": "# Zod — TypeScript-First Schema Validation\n\nZod lets you define a schema, validate data against it at runtime, and infer the TypeScript type — all from a single source of truth.\n\n## Installation\n\n```bash\nnpm install zod\n# or\npnpm add zod\n# or\nyarn add zod\n# or\nbun add zod\n```\n\nRequires TypeScript >=5.5 with `\"strict\": true` in tsconfig.json.\n\n## Quick Start\n\n```typescript\nimport { z } from \"zod\";\n\n// Define a schema\nconst UserSchema = z.object({\n  name: z.string().min(1),\n  email: z.string().email(),\n  age: z.number().int().positive(),\n  role: z.enum([\"admin\", \"user\", \"guest\"]),\n});\n\n// Infer the TypeScript type\ntype User = z.infer<typeof UserSchema>;\n// { name: string; email: string; age: number; role: \"admin\" | \"user\" | \"guest\" }\n\n// Parse unknown data — throws ZodError on failure\nconst user = UserSchema.parse(unknownInput);\n\n// Safe parse — returns { success, data } or { success, error }\nconst result = UserSchema.safeParse(unknownInput);\nif (result.success) {\n  console.log(result.data); // fully typed User\n} else {\n  console.log(result.error.flatten()); // structured error object\n}\n```\n\n## Child Nodes\n\n- **[[zod/schemas]]** — Define schemas for every data shape: primitives, objects, arrays, enums, unions, tuples, records\n- **[[zod/validation]]** — Validate, refine, and constrain data with built-in validators and custom refinements\n- **[[zod/transform]]** — Transform, coerce, preprocess, and pipe data through schema chains\n- **[[zod/inference]]** — Extract TypeScript types from schemas with z.infer, z.input, z.output\n- **[[zod/patterns]]** — Common Zod patterns: API validation, form schemas, env parsing, discriminated unions, recursive types\n\n## Why Zod\n\n| Feature | Zod | io-ts | yup | joi |\n|---------|-----|-------|-----|-----|\n| TypeScript-first | Yes | Yes | Partial | No |\n| Zero deps | Yes | fp-ts | Yes | No |\n| Type inference | Yes | Yes | Partial | No |\n| Transforms | Yes | Yes | Yes | Yes |\n| Async validation | Yes | Yes | Yes | Yes |\n| Bundle size | 2kb | 5kb | 12kb | 30kb |\n\n## Environment Variables\n\nZod itself requires no environment variables. It is a pure library.\n\n| Variable | Purpose |\n|----------|----------|\n| `NODE_ENV` | When set to `production`, some frameworks strip Zod error messages for smaller bundles |\n",
+  "sections": [
+    {
+      "id": "installation",
+      "title": "Installation and setup",
+      "body": "Install with `npm install zod`. Requires TypeScript >=5.5 with `strict: true` in tsconfig.json. Import as `import { z } from 'zod'` or `import * as z from 'zod'`. Works in Node.js >=18, Deno, Bun, and modern browsers. No additional configuration needed — Zod is a pure runtime library with zero dependencies.",
+      "tags": ["install", "setup", "typescript", "tsconfig"]
+    },
+    {
+      "id": "core-api",
+      "title": "Core API surface",
+      "body": "Every Zod schema has these methods:\n- `.parse(data)` — validate and return typed data, throws `ZodError` on failure\n- `.safeParse(data)` — returns `{ success: true, data }` or `{ success: false, error }` without throwing\n- `.parseAsync(data)` / `.safeParseAsync(data)` — async variants for schemas with async refinements or transforms\n- `.refine(check, message)` — add custom validation logic\n- `.superRefine(check)` — add custom validation with full control over error issues\n- `.transform(fn)` — transform validated data into a new shape\n- `.default(value)` — provide a default when input is undefined\n- `.catch(value)` — provide a fallback when validation fails\n- `.optional()` — make the schema accept undefined\n- `.nullable()` — make the schema accept null\n- `.nullish()` — make the schema accept null or undefined\n- `.or(otherSchema)` — create a union\n- `.and(otherSchema)` — create an intersection\n- `.pipe(otherSchema)` — pipe output into another schema\n- `.brand<T>()` — add a nominal type brand\n- `.readonly()` — make the inferred type readonly\n- `.describe(description)` — add a description for documentation/JSON Schema",
+      "tags": ["parse", "safeParse", "refine", "transform", "api"]
+    },
+    {
+      "id": "ecosystem",
+      "title": "Ecosystem integrations",
+      "body": "Zod integrates with the broader TypeScript ecosystem:\n- **tRPC** — uses Zod schemas for input/output validation on API procedures\n- **React Hook Form** — `@hookform/resolvers/zod` for form validation\n- **Astro** — content collections use Zod schemas for frontmatter validation\n- **Remix** — action/loader validation with Zod\n- **Express/Fastify** — middleware validation with zod-express-middleware or similar\n- **Prisma** — zod-prisma generates Zod schemas from Prisma models\n- **OpenAPI** — zod-to-openapi generates OpenAPI specs from Zod schemas\n- **JSON Schema** — zod-to-json-schema converts Zod schemas to JSON Schema\n- **env validation** — @t3-oss/env-core, znv, zod-env for environment variable validation",
+      "tags": ["trpc", "react-hook-form", "astro", "remix", "express", "prisma", "openapi"]
+    }
+  ],
+  "sub": ["zod/schemas", "zod/validation", "zod/transform", "zod/inference", "zod/patterns"],
+  "links": [
+    { "uri": "zod/schemas", "context": "Define schemas for any data shape" },
+    { "uri": "zod/validation", "context": "Validate and refine data with constraints" },
+    { "uri": "zod/transform", "context": "Transform, coerce, and pipe data through schemas" },
+    { "uri": "zod/inference", "context": "Extract TypeScript types from Zod schemas" },
+    { "uri": "zod/patterns", "context": "Common real-world Zod patterns and recipes" },
+    { "uri": "typescript/types", "context": "TypeScript type system that Zod infers into" },
+    { "uri": "testing/vitest", "context": "Test Zod schemas with Vitest" },
+    { "uri": "testing/jest", "context": "Test Zod schemas with Jest" }
+  ],
+  "related": [
+    { "uri": "typescript/types", "relation": "prerequisite", "note": "Understanding TypeScript types is essential for using Zod's type inference" },
+    { "uri": "typescript/generics", "relation": "prerequisite", "note": "Zod heavily uses generics for type inference" }
+  ],
+  "more": {
+    "docs": "https://zod.dev",
+    "repo": "https://github.com/colinhacks/zod",
+    "examples": "https://zod.dev/basics",
+    "wiki": "https://zod.dev"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "TypeScript developers, AI agents",
+    "estimated_reading_time": "5 min",
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

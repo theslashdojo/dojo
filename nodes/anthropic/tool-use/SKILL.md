@@ -1,75 +1,49 @@
 ---
 name: tool-use
-description: Define callable tools for Claude and handle the agentic tool use loop — use when Claude needs to interact with external systems, fetch data, or take actions
+description: Connect Claude to external tools and functions for agentic workflows. Use when Claude needs to take actions, fetch data, or interact with external systems.
 ---
 
-# Tool Use (Function Calling)
+# Tool Use
 
-Give Claude tools it can call. Build agentic loops where Claude decides what to do, calls tools, and continues.
+Give Claude the ability to call functions you define.
 
 ## When to Use
 
-- Claude needs to access external data (APIs, databases, files)
-- Building an agent that takes actions in the real world
-- Structured data extraction (force a specific output schema)
-- Connecting Claude to your application's capabilities
-
-## Prerequisites
-
-- `ANTHROPIC_API_KEY` set in environment
-- `pip install anthropic` or `npm install @anthropic-ai/sdk`
+- Claude needs to fetch real-time data (weather, stock prices, databases)
+- Building agents that take actions (file operations, API calls, deployments)
+- Structured data extraction (force specific output via tool_choice)
+- Any workflow where Claude needs to interact with external systems
 
 ## Workflow
 
-1. Define tools with `name`, `description`, and `input_schema` (JSON Schema)
-2. Pass tools in the `tools` parameter of `messages.create()`
-3. Check if `stop_reason == "tool_use"`
-4. Execute each `tool_use` block's function with its `input`
-5. Send `tool_result` blocks back with the output
-6. Repeat until `stop_reason == "end_turn"`
+1. Define tools with name, description, and input_schema
+2. Send messages with tools array
+3. If stop_reason is "tool_use", extract tool_use blocks
+4. Execute each tool with the provided input
+5. Send tool_result blocks back (matching tool_use_id)
+6. Repeat until stop_reason is "end_turn"
 
-## Defining a Tool
+## Defining Tools
 
 ```python
 tools = [{
-    "name": "search_database",
-    "description": "Search the product database by query. Returns matching products with name, price, and availability.",
+    "name": "get_weather",
+    "description": "Get current weather for a location. Returns temperature and conditions.",
     "input_schema": {
         "type": "object",
         "properties": {
-            "query": {"type": "string", "description": "Search query"},
-            "limit": {"type": "integer", "description": "Max results (default 10)"}
+            "location": {"type": "string", "description": "City, e.g. 'San Francisco, CA'"},
+            "unit": {"type": "string", "enum": ["celsius", "fahrenheit"]}
         },
-        "required": ["query"]
+        "required": ["location"]
     }
 }]
 ```
 
-## Complete Loop
+## The Agentic Loop
 
 ```python
-import anthropic
-import json
-
-client = anthropic.Anthropic()
-
-def search_database(query, limit=10):
-    return [{"name": "Widget", "price": 9.99, "available": True}]
-
-tools = [{
-    "name": "search_database",
-    "description": "Search products by query",
-    "input_schema": {
-        "type": "object",
-        "properties": {
-            "query": {"type": "string"},
-            "limit": {"type": "integer"}
-        },
-        "required": ["query"]
-    }
-}]
-
-messages = [{"role": "user", "content": "Find widgets under $20"}]
+messages = [{"role": "user", "content": "What's the weather?"}]
 
 while True:
     response = client.messages.create(
@@ -79,50 +53,39 @@ while True:
     messages.append({"role": "assistant", "content": response.content})
 
     if response.stop_reason == "end_turn":
-        for b in response.content:
-            if b.type == "text": print(b.text)
         break
 
-    if response.stop_reason == "tool_use":
-        results = []
-        for b in response.content:
-            if b.type == "tool_use":
-                result = search_database(**b.input)
-                results.append({
-                    "type": "tool_result",
-                    "tool_use_id": b.id,
-                    "content": json.dumps(result)
-                })
-        messages.append({"role": "user", "content": results})
+    results = []
+    for block in response.content:
+        if block.type == "tool_use":
+            output = execute(block.name, block.input)
+            results.append({
+                "type": "tool_result",
+                "tool_use_id": block.id,
+                "content": output
+            })
+    messages.append({"role": "user", "content": results})
 ```
 
 ## Tool Choice
 
-```python
-# Claude decides (default)
-tool_choice = {"type": "auto"}
-
-# Must use a tool
-tool_choice = {"type": "any"}
-
-# Must use specific tool
-tool_choice = {"type": "tool", "name": "search_database"}
-
-# Disable tools
-tool_choice = {"type": "none"}
-```
+- `{"type": "auto"}` — Claude decides (default)
+- `{"type": "any"}` — Must use at least one tool
+- `{"type": "tool", "name": "get_weather"}` — Must use specific tool
+- `{"type": "none"}` — Cannot use tools
 
 ## Best Practices
 
-- **Write clear descriptions** — Claude reads them to decide when to call tools
-- **Use required fields** — Mark mandatory parameters
-- **Return JSON** — Structured results work best
-- **Use strict mode** — `"strict": True` guarantees schema conformance
-- **Fewer tools = better** — Only include tools relevant to the task
+- Write clear, specific tool descriptions — they guide Claude's decision
+- Include parameter descriptions with examples
+- Use `strict: true` for guaranteed schema conformance
+- Return errors via `is_error: true` on tool_result
+- Cache tool definitions with prompt caching to save tokens
+- Handle multiple tool calls in a single response
 
 ## Edge Cases
 
-- **Multiple tool calls**: Claude can call multiple tools in one turn. Execute all before sending results.
-- **Missing parameters**: Opus asks for clarification; Sonnet may guess. Use clear descriptions.
-- **Tool errors**: Return error messages in tool_result — Claude will handle them gracefully.
-- **Recursive tools**: Claude may call tools repeatedly. Set a max loop count.
+- Claude may call multiple tools in one response — handle all of them
+- Missing required parameters: Opus asks for clarification, Sonnet may guess
+- Tool input JSON may be malformed on rare occasions — validate before executing
+- Long tool results consume input tokens on the next turn

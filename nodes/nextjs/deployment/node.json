@@ -1,0 +1,102 @@
+{
+  "name": "deployment",
+  "version": "1.0.0",
+  "uri": "nextjs/deployment",
+  "type": "context",
+  "content_type": "guide",
+  "context": "Deploy Next.js apps — Vercel, self-hosted Node.js, Docker containers, static export, and production optimization",
+  "info": "Next.js applications can be deployed in multiple ways depending on the features used. Vercel (the company behind Next.js) provides zero-config deployment with edge functions, ISR, image optimization, and analytics. Self-hosting with Node.js uses `next build && next start` for a production server. Docker deployment uses the `output: 'standalone'` config to create a minimal container. Static export (`output: 'export'`) generates plain HTML/CSS/JS files deployable to any static host (GitHub Pages, S3, Cloudflare Pages) but disables server features. Production optimization includes environment variable management, build caching, CDN configuration, and monitoring. Agents need to understand these options to choose the right deployment target and configure the build pipeline correctly.",
+  "parent": "nextjs",
+  "tags": ["deployment", "vercel", "docker", "self-hosting", "static-export", "production", "ci-cd", "nextjs"],
+  "aliases": [
+    "deploy next.js",
+    "next deployment",
+    "nextjs deployment",
+    "vercel deploy",
+    "next docker",
+    "next static export",
+    "self-host next.js",
+    "next production",
+    "next build",
+    "deploy to vercel",
+    "nextjs hosting",
+    "next standalone"
+  ],
+  "triggers": [
+    "deploy a next.js app",
+    "deploy to vercel",
+    "dockerize a next.js app",
+    "create a Dockerfile for next.js",
+    "static export next.js",
+    "self-host next.js",
+    "next build and start",
+    "production build next.js",
+    "configure CI/CD for next.js",
+    "optimize next.js for production",
+    "deploy next.js to AWS"
+  ],
+  "body": "# Deployment\n\nNext.js supports multiple deployment strategies. Choose based on your infrastructure and feature requirements.\n\n## Vercel (Recommended)\n\nVercel provides zero-config deployment with full Next.js feature support.\n\n```bash\n# Install Vercel CLI\nnpm i -g vercel\n\n# Deploy (from project root)\nvercel\n\n# Deploy to production\nvercel --prod\n```\n\nOr connect your Git repository at [vercel.com](https://vercel.com) for automatic deployments on push.\n\nVercel features:\n- Automatic HTTPS and CDN\n- Edge Functions for middleware\n- ISR and on-demand revalidation\n- Image optimization\n- Analytics and Web Vitals\n- Preview deployments for PRs\n- Environment variable management\n\n## Self-Hosting with Node.js\n\n```bash\n# Build the application\nnpm run build\n\n# Start the production server\nnpm run start\n\n# Or with custom port and hostname\nPORT=8080 HOSTNAME=0.0.0.0 npm run start\n```\n\nThis starts a Node.js server on port 3000 (default). Configure with environment variables:\n\n| Variable | Default | Description |\n|----------|---------|-------------|\n| `PORT` | `3000` | Server port |\n| `HOSTNAME` | `0.0.0.0` | Server hostname |\n| `NODE_ENV` | `production` | Must be `production` for optimized builds |\n\n## Docker Deployment\n\nUse `output: 'standalone'` in `next.config.mjs` to create a self-contained build:\n\n```js\n// next.config.mjs\nconst nextConfig = {\n  output: 'standalone',\n}\nexport default nextConfig\n```\n\n### Dockerfile\n\n```dockerfile\nFROM node:20-alpine AS base\n\n# Install dependencies\nFROM base AS deps\nWORKDIR /app\nCOPY package.json package-lock.json ./\nRUN npm ci --omit=dev\n\n# Build the application\nFROM base AS builder\nWORKDIR /app\nCOPY --from=deps /app/node_modules ./node_modules\nCOPY . .\nRUN npm run build\n\n# Production image\nFROM base AS runner\nWORKDIR /app\n\nENV NODE_ENV=production\nENV HOSTNAME=0.0.0.0\nENV PORT=3000\n\nRUN addgroup --system --gid 1001 nodejs\nRUN adduser --system --uid 1001 nextjs\n\n# Copy static assets\nCOPY --from=builder /app/public ./public\n\n# Copy standalone build\nCOPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./\nCOPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static\n\nUSER nextjs\nEXPOSE 3000\n\nCMD [\"node\", \"server.js\"]\n```\n\n```bash\n# Build and run\ndocker build -t my-nextjs-app .\ndocker run -p 3000:3000 my-nextjs-app\n```\n\n### Docker Compose\n\n```yaml\n# docker-compose.yml\nversion: '3.8'\nservices:\n  web:\n    build: .\n    ports:\n      - '3000:3000'\n    environment:\n      - DATABASE_URL=postgresql://db:5432/mydb\n      - NODE_ENV=production\n    depends_on:\n      - db\n  db:\n    image: postgres:16-alpine\n    environment:\n      - POSTGRES_DB=mydb\n      - POSTGRES_PASSWORD=secret\n    volumes:\n      - pgdata:/var/lib/postgresql/data\nvolumes:\n  pgdata:\n```\n\n## Static Export\n\nGenerate static HTML files with no server required:\n\n```js\n// next.config.mjs\nconst nextConfig = {\n  output: 'export',\n  images: { unoptimized: true }, // Required for static export\n}\nexport default nextConfig\n```\n\n```bash\nnpm run build\n# Output in out/ directory\n```\n\nDeploy `out/` to any static host: GitHub Pages, AWS S3 + CloudFront, Cloudflare Pages, Netlify.\n\n**Static export limitations:**\n- No Server Components (server rendering)\n- No API Routes / Route Handlers\n- No Middleware\n- No ISR / Revalidation\n- No Image Optimization (unless unoptimized)\n- No Server Actions\n\n## Production Checklist\n\n### Environment Variables\n\n```bash\n# .env.production\nNEXT_PUBLIC_APP_URL=https://myapp.com\nDATABASE_URL=postgresql://prod-host:5432/mydb\nNEXT_PUBLIC_ANALYTICS_ID=UA-XXXXX\n```\n\nServer-only variables (no `NEXT_PUBLIC_` prefix) are never exposed to the browser.\n\n### Build Optimization\n\n```bash\n# Analyze bundle size\nnpm install @next/bundle-analyzer\n```\n\n```js\n// next.config.mjs\nimport withBundleAnalyzer from '@next/bundle-analyzer'\n\nconst nextConfig = {\n  // config options\n}\n\nexport default process.env.ANALYZE === 'true'\n  ? withBundleAnalyzer()(nextConfig)\n  : nextConfig\n```\n\n```bash\nANALYZE=true npm run build\n```\n\n### Caching\n\nNext.js caches build output in `.next/cache`. Preserve this directory between CI builds for faster rebuilds:\n\n```yaml\n# GitHub Actions\n- uses: actions/cache@v4\n  with:\n    path: ${{ github.workspace }}/.next/cache\n    key: nextjs-${{ hashFiles('**/package-lock.json') }}-${{ hashFiles('**/*.ts', '**/*.tsx') }}\n    restore-keys: |\n      nextjs-${{ hashFiles('**/package-lock.json') }}-\n```\n\n### Health Check\n\n```tsx\n// app/api/health/route.ts\nexport async function GET() {\n  return Response.json({ status: 'ok', timestamp: new Date().toISOString() })\n}\n```\n\n### Security Headers\n\nSee [[nextjs/config]] for configuring security headers, or use [[nextjs/middleware]] for dynamic header management.\n\n## CI/CD Pipeline (GitHub Actions)\n\n```yaml\n# .github/workflows/deploy.yml\nname: Deploy\non:\n  push:\n    branches: [main]\n\njobs:\n  deploy:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n\n      - uses: actions/setup-node@v4\n        with:\n          node-version: 20\n          cache: npm\n\n      - run: npm ci\n      - run: npm run build\n      - run: npm run lint\n\n      # Deploy to Vercel\n      - uses: amondnet/vercel-action@v25\n        with:\n          vercel-token: ${{ secrets.VERCEL_TOKEN }}\n          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}\n          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}\n          vercel-args: --prod\n```\n\n## Platform Comparison\n\n| Feature | Vercel | Node.js | Docker | Static Export |\n|---------|--------|---------|--------|---------------|\n| Server Components | Yes | Yes | Yes | No |\n| API Routes | Yes | Yes | Yes | No |\n| Middleware | Yes (Edge) | Yes | Yes | No |\n| ISR | Yes | Yes | Yes | No |\n| Image Optimization | Yes | Yes | Yes | No |\n| Static Pages | Yes | Yes | Yes | Yes |\n| Edge Functions | Yes | No | No | No |\n| Zero Config | Yes | Manual | Manual | Manual |\n| Cost | Free tier + paid | Your infra | Your infra | Free (static hosts) |\n",
+  "sections": [
+    {
+      "id": "vercel",
+      "title": "Vercel deployment",
+      "body": "Vercel is the recommended deployment platform for Next.js. Connect a Git repository for automatic deployments, or use `vercel` CLI. Vercel provides zero-config support for all Next.js features including Edge Functions, ISR, middleware, image optimization, and analytics. Preview deployments are created for every pull request. Environment variables are managed in the Vercel dashboard. The free tier supports hobby projects; paid plans add team features, bandwidth, and build minutes.",
+      "tags": ["vercel", "zero-config", "preview", "edge-functions", "automatic"]
+    },
+    {
+      "id": "docker",
+      "title": "Docker deployment",
+      "body": "Set `output: 'standalone'` in `next.config.mjs` to generate a self-contained build in `.next/standalone/`. The standalone output includes a `server.js` file and only the necessary `node_modules`. Use a multi-stage Dockerfile: `deps` stage installs dependencies, `builder` stage runs the build, `runner` stage copies only the standalone output and static files. The final image is minimal (typically 100-200MB). Copy `public/` and `.next/static/` separately as they are not included in standalone output.",
+      "tags": ["docker", "standalone", "container", "multi-stage", "server-js"]
+    },
+    {
+      "id": "static-export",
+      "title": "Static export",
+      "body": "Set `output: 'export'` to generate static HTML in `out/`. Requires `images.unoptimized: true` since there's no server for image optimization. Static export works for fully client-rendered apps, marketing sites, and documentation. Incompatible with server features: no Server Components (server rendering), no API routes, no middleware, no ISR, no Server Actions. Deploy to any static host: GitHub Pages, S3, Cloudflare Pages, Netlify, Firebase Hosting.",
+      "tags": ["static-export", "html", "s3", "github-pages", "cloudflare", "no-server"]
+    },
+    {
+      "id": "ci-cd",
+      "title": "CI/CD and build optimization",
+      "body": "Cache `.next/cache` between CI builds for faster rebuilds (GitHub Actions, CircleCI, etc.). Run `npm run build` and `npm run lint` in CI. Use `@next/bundle-analyzer` to track bundle sizes. Set up health check endpoints (`/api/health`) for load balancer readiness probes. For monorepos, use `transpilePackages` in next.config. Environment variables should be injected at build time (`NEXT_PUBLIC_*`) or runtime (server-only variables).",
+      "tags": ["ci-cd", "caching", "bundle-analyzer", "health-check", "github-actions"]
+    },
+    {
+      "id": "self-hosting",
+      "title": "Self-hosting with Node.js",
+      "body": "Run `next build` then `next start` for a production Node.js server. Configure `PORT` and `HOSTNAME` environment variables. Use a process manager (PM2, systemd) for reliability. Place behind a reverse proxy (nginx, Caddy) for TLS termination and load balancing. For ISR to work, the server needs write access to `.next/` for cache updates. Self-hosting supports all Next.js features except Vercel-specific ones (Edge Functions, Vercel Analytics).",
+      "tags": ["self-hosting", "node", "pm2", "nginx", "reverse-proxy", "process-manager"]
+    }
+  ],
+  "links": [
+    { "uri": "nextjs/config", "context": "Output mode and other build settings configured in next.config" },
+    { "uri": "nextjs/middleware", "context": "Middleware deployment behavior varies by platform" },
+    { "uri": "nextjs/app-router", "context": "App Router features require server deployment (not static export)" },
+    { "uri": "nextjs/api-routes", "context": "API routes require server deployment" }
+  ],
+  "related": [
+    { "uri": "nextjs/config", "relation": "prerequisite", "note": "Output mode in next.config determines deployment strategy" },
+    { "uri": "nextjs/middleware", "relation": "see-also", "note": "Middleware runs on Edge in Vercel, Node.js in self-hosted" },
+    { "uri": "nextjs/app-router", "relation": "see-also", "note": "Server Components require a server — incompatible with static export" }
+  ],
+  "more": {
+    "docs": "https://nextjs.org/docs/app/building-your-application/deploying",
+    "docker": "https://github.com/vercel/next.js/tree/canary/examples/with-docker",
+    "vercel": "https://vercel.com/docs"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents, devops",
+    "estimated_reading_time": "8 min",
+    "prerequisites": ["nextjs", "nextjs/config"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

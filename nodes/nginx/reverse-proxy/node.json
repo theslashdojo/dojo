@@ -1,0 +1,151 @@
+{
+  "name": "reverse-proxy",
+  "version": "1.0.0",
+  "uri": "nginx/reverse-proxy",
+  "type": "skill",
+  "context": "Proxy HTTP/WebSocket traffic to backend servers with upstream groups, load balancing, and health checks",
+  "info": "This skill covers using nginx as a reverse proxy: forwarding client requests to one or more backend application servers (Node.js, Python, Go, etc.), configuring upstream groups for load balancing, setting correct proxy headers, proxying WebSocket connections, and tuning timeouts and buffering. The core directive is `proxy_pass` inside a `location` block, backed by `upstream` groups for multi-server setups. Agents use this to put nginx in front of application servers — handling SSL termination at the proxy layer, distributing load with round-robin/least_conn/ip_hash, and ensuring proper client IP forwarding via X-Forwarded-For headers. See [[nginx/config]] for server block setup and [[nginx/ssl]] for HTTPS termination. See [[nginx/troubleshooting]] for 502/504 diagnosis.",
+  "parent": "nginx",
+  "tags": ["nginx", "reverse-proxy", "proxy", "proxy-pass", "upstream", "load-balancer", "websocket", "backend"],
+  "aliases": [
+    "nginx reverse proxy",
+    "nginx proxy",
+    "proxy pass",
+    "proxy_pass",
+    "nginx upstream",
+    "nginx load balancer",
+    "nginx load balancing",
+    "nginx backend",
+    "nginx proxy server",
+    "nginx forward proxy",
+    "nginx websocket proxy",
+    "put nginx in front"
+  ],
+  "triggers": [
+    "proxy traffic to a backend",
+    "set up nginx reverse proxy",
+    "configure nginx load balancing",
+    "proxy_pass to node app",
+    "nginx upstream configuration",
+    "load balance across servers",
+    "proxy websocket connections",
+    "put nginx in front of my app",
+    "forward traffic to backend",
+    "set up nginx proxy headers",
+    "nginx round robin",
+    "nginx least connections"
+  ],
+  "body": "# Nginx Reverse Proxy\n\nA reverse proxy sits in front of backend servers, forwarding client requests and returning responses. Nginx is the most common reverse proxy — it handles SSL termination, load balancing, caching, and request routing while backends focus on application logic.\n\n## Basic Reverse Proxy\n\n```nginx\nserver {\n    listen 80;\n    server_name example.com;\n\n    location / {\n        proxy_pass http://127.0.0.1:3000;\n        proxy_http_version 1.1;\n        proxy_set_header Host $host;\n        proxy_set_header X-Real-IP $remote_addr;\n        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;\n        proxy_set_header X-Forwarded-Proto $scheme;\n    }\n}\n```\n\n## Upstream Groups (Load Balancing)\n\nDefine a group of backend servers in an `upstream` block:\n\n```nginx\nupstream backend {\n    # Load balancing method (default: round-robin)\n    least_conn;\n\n    server 10.0.0.1:3000 weight=5;\n    server 10.0.0.2:3000 weight=3;\n    server 10.0.0.3:3000 max_fails=3 fail_timeout=30s;\n    server 10.0.0.4:3000 backup;\n}\n\nserver {\n    listen 80;\n    server_name example.com;\n\n    location / {\n        proxy_pass http://backend;\n        proxy_http_version 1.1;\n        proxy_set_header Host $host;\n        proxy_set_header X-Real-IP $remote_addr;\n        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;\n        proxy_set_header X-Forwarded-Proto $scheme;\n    }\n}\n```\n\n## Load Balancing Methods\n\n| Method | Directive | Behavior |\n|--------|-----------|----------|\n| Round-robin | (default) | Distribute evenly, respects `weight` |\n| Least connections | `least_conn` | Send to server with fewest active connections |\n| IP hash | `ip_hash` | Same client IP always goes to same server (session affinity) |\n| Generic hash | `hash $key` | Hash a custom key (e.g., `$request_uri`) |\n| Random | `random two least_conn` | Pick 2 random servers, choose by least connections |\n\n## Server Parameters\n\n| Parameter | Default | Description |\n|-----------|---------|-------------|\n| `weight=N` | 1 | Relative weight for load balancing |\n| `max_fails=N` | 1 | Failed attempts before marking down |\n| `fail_timeout=Ns` | 10s | Time window for max_fails AND unavailability duration |\n| `max_conns=N` | 0 | Max simultaneous connections (0=unlimited) |\n| `backup` | — | Only used when all primary servers are down |\n| `down` | — | Permanently marks server as unavailable |\n\n## Proxy Headers\n\nAlways set these headers so backends know about the real client:\n\n```nginx\n# Essential proxy headers\nproxy_set_header Host $host;\nproxy_set_header X-Real-IP $remote_addr;\nproxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;\nproxy_set_header X-Forwarded-Proto $scheme;\n```\n\n- **Host**: The original Host header from the client\n- **X-Real-IP**: The actual client IP address\n- **X-Forwarded-For**: Chain of IP addresses through proxies\n- **X-Forwarded-Proto**: `http` or `https` — so backends know if the original request was secure\n\n## WebSocket Proxying\n\nWebSocket connections require the Upgrade and Connection headers:\n\n```nginx\nlocation /ws/ {\n    proxy_pass http://backend;\n    proxy_http_version 1.1;\n    proxy_set_header Upgrade $http_upgrade;\n    proxy_set_header Connection \"upgrade\";\n    proxy_set_header Host $host;\n    proxy_read_timeout 86400s;  # keep connection alive for 24h\n    proxy_send_timeout 86400s;\n}\n```\n\n## Timeouts\n\n```nginx\nlocation / {\n    proxy_pass http://backend;\n    proxy_connect_timeout 60s;   # time to establish connection\n    proxy_send_timeout 60s;      # time between write operations\n    proxy_read_timeout 60s;      # time between read operations\n}\n```\n\n## Buffering\n\n```nginx\nlocation / {\n    proxy_pass http://backend;\n    proxy_buffering on;                # buffer responses (default: on)\n    proxy_buffer_size 4k;              # buffer for response headers\n    proxy_buffers 8 4k;                # number and size of response buffers\n    proxy_busy_buffers_size 8k;        # max buffers actively sending\n    proxy_max_temp_file_size 1024m;    # max temp file for buffered responses\n}\n```\n\nDisable buffering for streaming/SSE:\n\n```nginx\nlocation /events/ {\n    proxy_pass http://backend;\n    proxy_buffering off;\n    proxy_cache off;\n}\n```\n\n## Keepalive Connections to Backends\n\n```nginx\nupstream backend {\n    server 127.0.0.1:3000;\n    keepalive 32;  # keep 32 idle connections per worker\n}\n\nserver {\n    location / {\n        proxy_pass http://backend;\n        proxy_http_version 1.1;\n        proxy_set_header Connection \"\";\n    }\n}\n```\n\n## Caching Proxied Responses\n\n```nginx\nproxy_cache_path /var/cache/nginx levels=1:2 keys_zone=app_cache:10m max_size=1g inactive=60m;\n\nserver {\n    location / {\n        proxy_pass http://backend;\n        proxy_cache app_cache;\n        proxy_cache_valid 200 60m;\n        proxy_cache_valid 404 10m;\n        proxy_cache_bypass $http_cache_control;\n        proxy_cache_key \"$scheme$request_method$host$request_uri\";\n        add_header X-Cache-Status $upstream_cache_status;\n    }\n}\n```\n\n## Failover\n\n```nginx\nupstream backend {\n    server 10.0.0.1:3000;\n    server 10.0.0.2:3000;\n}\n\nserver {\n    location / {\n        proxy_pass http://backend;\n        proxy_next_upstream error timeout http_502 http_503 http_504;\n        proxy_next_upstream_tries 3;\n        proxy_next_upstream_timeout 10s;\n    }\n}\n```\n",
+  "sections": [
+    {
+      "id": "proxy-pass",
+      "title": "The proxy_pass directive",
+      "body": "The `proxy_pass` directive forwards requests to a backend. It takes a URL: `proxy_pass http://address:port`. When used with a URI (`proxy_pass http://backend/app/`), the matched location prefix is replaced by the URI. Without a URI, the full original request path is forwarded. In regex locations, you cannot specify a URI in proxy_pass — use `rewrite` instead. Always pair with `proxy_http_version 1.1` for keepalive support.",
+      "tags": ["proxy-pass", "forwarding", "uri-rewriting", "backend"]
+    },
+    {
+      "id": "upstream-groups",
+      "title": "Upstream groups and load balancing",
+      "body": "Define backend server groups with `upstream name { ... }` in the `http` context. Servers can have `weight` (default 1), `max_fails` (default 1), `fail_timeout` (default 10s), `backup`, and `down` parameters. Load balancing methods: round-robin (default), `least_conn` (fewest connections), `ip_hash` (session affinity by IP), `hash $key [consistent]` (custom key hashing), and `random two least_conn` (power of two choices). The upstream name is referenced in `proxy_pass http://name`.",
+      "tags": ["upstream", "load-balancing", "round-robin", "least-conn", "ip-hash", "weight"]
+    },
+    {
+      "id": "websocket",
+      "title": "WebSocket proxying",
+      "body": "WebSocket requires HTTP/1.1 Upgrade mechanism. Set `proxy_http_version 1.1`, `proxy_set_header Upgrade $http_upgrade`, and `proxy_set_header Connection \"upgrade\"`. Increase `proxy_read_timeout` to keep connections alive (default 60s will close idle WebSockets). A typical value is `86400s` (24 hours). The hop-by-hop Connection and Upgrade headers are not forwarded by default — you must set them explicitly.",
+      "tags": ["websocket", "upgrade", "connection", "real-time", "long-lived"]
+    },
+    {
+      "id": "headers",
+      "title": "Proxy headers for client identity",
+      "body": "Nginx defaults `Host` to `$proxy_host` (the upstream name) and `Connection` to `close`. Override both: set `Host $host` to forward the client's original Host header, `X-Real-IP $remote_addr` for the client IP, `X-Forwarded-For $proxy_add_x_forwarded_for` for the proxy chain, and `X-Forwarded-Proto $scheme` so backends know if the request was HTTPS. Without these, backends see nginx's IP as the client and don't know about HTTPS termination.",
+      "tags": ["headers", "x-forwarded-for", "x-real-ip", "host", "x-forwarded-proto"]
+    },
+    {
+      "id": "caching",
+      "title": "Response caching",
+      "body": "Enable caching with `proxy_cache_path` (at `http` level) and `proxy_cache zone_name` (at `location` level). Set cache validity per status code with `proxy_cache_valid`. Use `proxy_cache_key` to define the cache key (default: `$scheme$proxy_host$request_uri`). Add `X-Cache-Status` header with `$upstream_cache_status` (HIT/MISS/BYPASS/EXPIRED/STALE) for debugging. Bypass cache conditionally with `proxy_cache_bypass`. Serve stale on errors with `proxy_cache_use_stale error timeout updating http_502 http_503`.",
+      "tags": ["cache", "proxy-cache", "cache-key", "stale", "bypass"]
+    },
+    {
+      "id": "failover",
+      "title": "Failover and retry behavior",
+      "body": "Control how nginx retries failed requests: `proxy_next_upstream` lists conditions that trigger failover (default: `error timeout`). Add `http_502 http_503 http_504` to retry on those status codes. Limit retries with `proxy_next_upstream_tries N` and `proxy_next_upstream_timeout Ns`. A server is marked unavailable after `max_fails` failures within `fail_timeout` seconds. The `backup` parameter designates standby servers used only when all primary servers are down.",
+      "tags": ["failover", "retry", "next-upstream", "max-fails", "backup"]
+    }
+  ],
+  "links": [
+    { "uri": "nginx/config", "context": "Server blocks and location routing where proxy_pass is configured" },
+    { "uri": "nginx/ssl", "context": "HTTPS termination in front of proxied backends" },
+    { "uri": "nginx/troubleshooting", "context": "Diagnose 502 Bad Gateway and 504 Gateway Timeout errors" },
+    { "uri": "nginx", "context": "Nginx ecosystem overview" }
+  ],
+  "related": [
+    { "uri": "nginx/config", "relation": "prerequisite", "note": "Server blocks and location matching must be understood before configuring proxy_pass" },
+    { "uri": "nginx/ssl", "relation": "see-also", "note": "SSL termination is typically done at the nginx proxy layer, not the backend" },
+    { "uri": "nginx/troubleshooting", "relation": "see-also", "note": "Most proxy issues manifest as 502/504 errors covered in troubleshooting" }
+  ],
+  "scripts": [
+    {
+      "id": "setup-reverse-proxy",
+      "name": "Setup Reverse Proxy",
+      "description": "Generate a complete nginx reverse proxy configuration with upstream, headers, and optional WebSocket support",
+      "lang": "bash",
+      "runtime": "bash>=4",
+      "entry": "./scripts/setup-reverse-proxy.sh",
+      "env": {
+        "SITE_NAME": { "required": true, "description": "Site config name (e.g., myapp)" },
+        "SERVER_NAME": { "required": true, "description": "Server hostname (e.g., example.com)" },
+        "BACKEND_SERVERS": { "required": true, "description": "Comma-separated backend addresses (e.g., 127.0.0.1:3000,127.0.0.1:3001)" },
+        "LB_METHOD": { "required": false, "default": "round-robin", "description": "Load balancing method: round-robin, least-conn, ip-hash" },
+        "WEBSOCKET_PATH": { "required": false, "description": "Path for WebSocket proxy (e.g., /ws/)" },
+        "ENABLE_CACHE": { "required": false, "default": "false", "description": "Enable proxy response caching (true/false)" },
+        "NGINX_CONF_DIR": { "required": false, "default": "/etc/nginx", "description": "Nginx config directory" }
+      }
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "site_name": { "type": "string", "description": "Config file name" },
+        "server_name": { "type": "string", "description": "Server hostname" },
+        "backend_servers": { "type": "array", "items": { "type": "string" }, "description": "Backend server addresses (host:port)" },
+        "lb_method": { "type": "string", "enum": ["round-robin", "least-conn", "ip-hash", "random"], "default": "round-robin" },
+        "websocket_path": { "type": "string", "description": "Path prefix for WebSocket proxy" },
+        "enable_cache": { "type": "boolean", "default": false }
+      },
+      "required": ["site_name", "server_name", "backend_servers"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "config_path": { "type": "string", "description": "Path to generated config file" },
+        "upstream_name": { "type": "string", "description": "Name of the upstream group" },
+        "valid": { "type": "boolean", "description": "Whether nginx -t passed" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "nginx/config", "reason": "Reverse proxy configuration lives inside server blocks" }
+  ],
+  "more": {
+    "docs": "https://nginx.org/en/docs/http/ngx_http_proxy_module.html",
+    "upstream": "https://nginx.org/en/docs/http/ngx_http_upstream_module.html"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, devops, AI agents",
+    "estimated_reading_time": "6 min",
+    "prerequisites": ["nginx/config"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

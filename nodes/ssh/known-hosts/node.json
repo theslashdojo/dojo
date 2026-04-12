@@ -1,0 +1,77 @@
+{
+  "name": "known-hosts",
+  "version": "1.0.0",
+  "uri": "ssh/known-hosts",
+  "type": "context",
+  "content_type": "guide",
+  "context": "Verify SSH server identity with known_hosts, fingerprints, key rotation, and safe first contact",
+  "info": "This node covers the server-trust side of SSH: first-use host verification, `known_hosts` lookup and maintenance, hashed hostnames, changed-host-key response, `StrictHostKeyChecking`, `UpdateHostKeys`, and optional `VerifyHostKeyDNS`. Agents need this whenever they connect to new infrastructure, rotate host keys, or troubleshoot the classic 'REMOTE HOST IDENTIFICATION HAS CHANGED' failure without blindly disabling verification.",
+  "parent": "ssh",
+  "tags": ["ssh", "known-hosts", "host-keys", "strict-host-key-checking", "fingerprint", "updatehostkeys"],
+  "aliases": [
+    "known_hosts",
+    "ssh known hosts",
+    "host key verification",
+    "remote host identification has changed",
+    "strict host key checking",
+    "ssh fingerprint check"
+  ],
+  "triggers": [
+    "verify an ssh host key",
+    "remove a bad known_hosts entry",
+    "hash known_hosts",
+    "accept a new ssh host key safely",
+    "fix remote host identification has changed"
+  ],
+  "body": "# known_hosts and Host Verification\n\nSSH remembers server host keys in `~/.ssh/known_hosts` and optionally `/etc/ssh/ssh_known_hosts`. On first contact, the client asks whether to trust the server key unless stricter policy is configured. On later connections, the key must still match or the connection is treated as suspicious.\n\n## First Contact\n\nThe default behavior is usually `StrictHostKeyChecking ask`, which prompts before adding a new key. For unattended automation where first contact is acceptable, many agents use `accept-new` instead of disabling checks entirely:\n\n```bash\nssh -o StrictHostKeyChecking=accept-new ops@host.example.com\n```\n\n## Inspect and Remove Entries\n\n```bash\nssh-keygen -F host.example.com\nssh-keygen -R host.example.com\nssh-keygen -H -f ~/.ssh/known_hosts\n```\n\n- `-F` finds entries, including hashed names.\n- `-R` removes entries for a host, which is the safe repair after legitimate host-key rotation.\n- `-H` hashes hostnames in place and writes a `.old` backup.\n\n## Rotation and Alternate Verification\n\nIf you already trust a server key, `UpdateHostKeys` can learn replacement keys and support graceful rotation. DNS-based SSHFP records can also help when used carefully:\n\n```bash\nssh-keygen -r host.example.com\nssh -o VerifyHostKeyDNS=ask host.example.com\n```\n\nDo not 'fix' host-key errors by turning verification off globally. Load [[ssh/troubleshooting]] instead and confirm whether the change is expected.\n",
+  "sections": [
+    {
+      "id": "first-contact",
+      "title": "First contact and StrictHostKeyChecking",
+      "body": "`StrictHostKeyChecking yes` never adds unknown hosts automatically. `accept-new` adds new keys but still blocks changed ones. `ask` is the common default and prompts before adding new hosts. `no` or `off` is the loosest setting and should be a last resort. Use [[ssh/config]] to scope any policy to specific hosts instead of weakening every connection.",
+      "tags": ["strict-host-key-checking", "accept-new", "ask", "first-use"]
+    },
+    {
+      "id": "changed-host-key",
+      "title": "Changed host keys",
+      "body": "A changed host key may indicate legitimate rebuild or rotation, or it may indicate MITM risk. Confirm the new fingerprint out-of-band, then remove the old entry with `ssh-keygen -R host` and reconnect. SSH intentionally disables easy fallback here because host-key continuity is the integrity check.",
+      "tags": ["changed-key", "rotation", "mitm", "ssh-keygen-r"]
+    },
+    {
+      "id": "hashing-and-rotation",
+      "title": "Hashing hostnames and learning new keys",
+      "body": "Use `ssh-keygen -H -f ~/.ssh/known_hosts` to hash hostnames at rest. `UpdateHostKeys yes|ask` lets trusted servers advertise additional host keys so clients can learn replacements before old keys disappear. `UserKnownHostsFile` controls which file the client updates. See [[ssh/config]].",
+      "tags": ["hashknownhosts", "updatehostkeys", "userknownhostsfile", "privacy"]
+    }
+  ],
+  "links": [
+    { "uri": "ssh/connect", "context": "Host-key policy affects every SSH connection" },
+    { "uri": "ssh/config", "context": "Set StrictHostKeyChecking, UpdateHostKeys, and UserKnownHostsFile in config" },
+    { "uri": "ssh/keys", "context": "Distinguish host keys from client identity keys" },
+    { "uri": "ssh/troubleshooting#host-key-errors", "context": "Handle host-key mismatch failures safely" }
+  ],
+  "related": [
+    { "uri": "ssh/connect", "relation": "prerequisite", "note": "Trusted host keys are required before a safe SSH session can proceed" },
+    { "uri": "ssh/config", "relation": "see-also", "note": "Client config controls host-key verification policy" },
+    { "uri": "ssh/keys", "relation": "see-also", "note": "Client identity keys and server host keys solve different trust problems" }
+  ],
+  "more": {
+    "docs": "https://man.openbsd.org/ssh",
+    "keygen": "https://man.openbsd.org/ssh-keygen"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, SREs, AI agents",
+    "estimated_reading_time": "4 min",
+    "prerequisites": [],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

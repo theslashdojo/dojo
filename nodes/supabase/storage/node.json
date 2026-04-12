@@ -1,0 +1,133 @@
+{
+  "name": "storage",
+  "version": "1.0.0",
+  "uri": "supabase/storage",
+  "type": "skill",
+  "context": "Supabase Storage — upload files, manage buckets, generate signed URLs, and transform images",
+  "info": "Supabase Storage is an S3-compatible file storage service integrated with auth and RLS. Files are organized into buckets (public or private). The client SDK provides `supabase.storage.from('bucket')` with `.upload()`, `.download()`, `.getPublicUrl()`, `.createSignedUrl()`, `.remove()`, and `.list()` methods. Storage policies (similar to RLS) control access per-bucket and per-path using `auth.uid()`. Public buckets serve files without authentication. Private buckets require signed URLs or authenticated requests. Image transformations (resize, crop, format conversion) are available via URL parameters on public URLs. Storage metadata lives in the `storage.objects` and `storage.buckets` tables in Postgres.",
+  "parent": "supabase",
+  "tags": ["storage", "files", "upload", "download", "buckets", "signed-urls", "images", "s3-compatible"],
+  "aliases": [
+    "supabase storage",
+    "supabase file upload",
+    "supabase bucket",
+    "supabase files",
+    "supabase images",
+    "supabase signed url",
+    "supabase s3",
+    "file storage",
+    "supabase blob"
+  ],
+  "triggers": [
+    "upload file to supabase",
+    "create storage bucket",
+    "download file from supabase",
+    "generate signed url",
+    "supabase image upload",
+    "supabase public file url",
+    "supabase storage policy",
+    "list files in supabase",
+    "resize image supabase"
+  ],
+  "body": "# Supabase Storage\n\nSupabase Storage provides S3-compatible file storage with auth integration, storage policies, and image transformations.\n\n## Create a Bucket\n\n```typescript\n// Create a private bucket\nconst { data, error } = await supabase.storage.createBucket('avatars', {\n  public: false,\n  fileSizeLimit: 5 * 1024 * 1024, // 5MB\n  allowedMimeTypes: ['image/png', 'image/jpeg', 'image/webp'],\n});\n\n// Create a public bucket\nconst { data, error } = await supabase.storage.createBucket('public-assets', {\n  public: true,\n});\n```\n\nOr via SQL migration:\n```sql\nINSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)\nVALUES ('avatars', 'avatars', false, 5242880, ARRAY['image/png', 'image/jpeg', 'image/webp']);\n```\n\n## Upload Files\n\n```typescript\n// Upload from a File object (browser)\nconst { data, error } = await supabase.storage\n  .from('avatars')\n  .upload(`${userId}/avatar.png`, file, {\n    cacheControl: '3600',\n    upsert: true, // Overwrite if exists\n    contentType: 'image/png',\n  });\n\n// Upload from a buffer (Node.js)\nconst buffer = fs.readFileSync('./avatar.png');\nconst { data, error } = await supabase.storage\n  .from('avatars')\n  .upload('user123/avatar.png', buffer, {\n    contentType: 'image/png',\n    upsert: true,\n  });\n\n// Upload from a Blob\nconst blob = new Blob(['Hello, World!'], { type: 'text/plain' });\nconst { data, error } = await supabase.storage\n  .from('documents')\n  .upload('hello.txt', blob);\n```\n\n## Download Files\n\n```typescript\n// Download as Blob\nconst { data, error } = await supabase.storage\n  .from('avatars')\n  .download('user123/avatar.png');\n\nif (data) {\n  const url = URL.createObjectURL(data);\n}\n```\n\n## Public URLs\n\nFor files in **public** buckets:\n```typescript\nconst { data } = supabase.storage\n  .from('public-assets')\n  .getPublicUrl('images/logo.png');\n\nconsole.log(data.publicUrl);\n// https://abc.supabase.co/storage/v1/object/public/public-assets/images/logo.png\n```\n\n## Signed URLs (Private Buckets)\n\nFor files in **private** buckets:\n```typescript\nconst { data, error } = await supabase.storage\n  .from('avatars')\n  .createSignedUrl('user123/avatar.png', 3600); // Expires in 1 hour\n\nconsole.log(data?.signedUrl);\n\n// Multiple signed URLs\nconst { data, error } = await supabase.storage\n  .from('avatars')\n  .createSignedUrls(['path1.png', 'path2.png'], 3600);\n```\n\n## List Files\n\n```typescript\nconst { data, error } = await supabase.storage\n  .from('avatars')\n  .list('user123/', {\n    limit: 100,\n    offset: 0,\n    sortBy: { column: 'name', order: 'asc' },\n  });\n\n// data: [{ name: 'avatar.png', id: '...', metadata: {...}, ... }]\n```\n\n## Delete Files\n\n```typescript\nconst { error } = await supabase.storage\n  .from('avatars')\n  .remove(['user123/avatar.png', 'user123/old-avatar.png']);\n```\n\n## Move/Copy Files\n\n```typescript\n// Move (rename)\nconst { error } = await supabase.storage\n  .from('avatars')\n  .move('user123/avatar.png', 'user123/profile.png');\n\n// Copy\nconst { error } = await supabase.storage\n  .from('avatars')\n  .copy('user123/avatar.png', 'user123/avatar-backup.png');\n```\n\n## Image Transformations\n\nTransform images on-the-fly via URL parameters (public buckets) or with `transform` option:\n\n```typescript\n// Public URL with transforms\nconst { data } = supabase.storage\n  .from('public-assets')\n  .getPublicUrl('photos/landscape.jpg', {\n    transform: {\n      width: 300,\n      height: 200,\n      resize: 'cover',    // 'cover' | 'contain' | 'fill'\n      quality: 80,\n      format: 'origin',   // 'origin' | 'avif'\n    },\n  });\n\n// Signed URL with transforms\nconst { data } = await supabase.storage\n  .from('avatars')\n  .createSignedUrl('user123/photo.jpg', 3600, {\n    transform: {\n      width: 100,\n      height: 100,\n      resize: 'cover',\n    },\n  });\n```\n\n## Storage Policies\n\nStorage policies work like [[supabase/rls]] but for files. Define them in SQL:\n\n```sql\n-- Allow users to upload to their own folder\nCREATE POLICY \"Users can upload own avatars\"\n  ON storage.objects FOR INSERT\n  TO authenticated\n  WITH CHECK (\n    bucket_id = 'avatars' AND\n    (storage.foldername(name))[1] = auth.uid()::text\n  );\n\n-- Allow users to read their own files\nCREATE POLICY \"Users can read own avatars\"\n  ON storage.objects FOR SELECT\n  TO authenticated\n  USING (\n    bucket_id = 'avatars' AND\n    (storage.foldername(name))[1] = auth.uid()::text\n  );\n\n-- Allow public read on public bucket\nCREATE POLICY \"Public read on public-assets\"\n  ON storage.objects FOR SELECT\n  TO anon, authenticated\n  USING (bucket_id = 'public-assets');\n\n-- Allow users to delete their own files\nCREATE POLICY \"Users can delete own avatars\"\n  ON storage.objects FOR DELETE\n  TO authenticated\n  USING (\n    bucket_id = 'avatars' AND\n    (storage.foldername(name))[1] = auth.uid()::text\n  );\n```\n\n## Helper Functions\n\n| Function | Returns | Purpose |\n|----------|---------|----------|\n| `storage.foldername(name)` | text[] | Array of folder path segments |\n| `storage.filename(name)` | text | The file name without path |\n| `storage.extension(name)` | text | The file extension |\n\n## Environment Variables\n\n| Variable | Purpose |\n|----------|----------|\n| `NEXT_PUBLIC_SUPABASE_URL` | Base URL for storage endpoints |\n| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Auth for storage operations |\n",
+  "sections": [
+    {
+      "id": "buckets",
+      "title": "Bucket management",
+      "body": "Create buckets with `supabase.storage.createBucket()` or via SQL INSERT into `storage.buckets`. Set `public: true` for publicly accessible files (no auth needed for reads) or `public: false` for private files (require signed URLs). Configure `fileSizeLimit` and `allowedMimeTypes` to restrict uploads.",
+      "tags": ["buckets", "create", "public", "private", "limits"]
+    },
+    {
+      "id": "upload-download",
+      "title": "Upload and download",
+      "body": "Upload with `.upload(path, file, options)`. Path becomes the object key within the bucket. Use `upsert: true` to overwrite existing files. Set `contentType` explicitly for non-browser environments. Download with `.download(path)` which returns a Blob. For server-side, convert to Buffer with `Buffer.from(await blob.arrayBuffer())`.",
+      "tags": ["upload", "download", "file", "blob", "buffer", "upsert"]
+    },
+    {
+      "id": "urls",
+      "title": "Public and signed URLs",
+      "body": "Public buckets: use `getPublicUrl(path)` for a permanent URL. Private buckets: use `createSignedUrl(path, expiresIn)` for a time-limited URL. Signed URLs can include image transforms. Use `createSignedUrls()` (plural) to generate multiple URLs in one call. Signed URLs contain a JWT token in the query string.",
+      "tags": ["urls", "public-url", "signed-url", "expiry", "sharing"]
+    },
+    {
+      "id": "policies",
+      "title": "Storage policies",
+      "body": "Storage policies are RLS policies on `storage.objects`. Use `bucket_id`, `storage.foldername(name)`, `storage.filename(name)`, and `auth.uid()` in conditions. Common pattern: restrict uploads/reads to `<user_id>/*` paths using `(storage.foldername(name))[1] = auth.uid()::text`. Policies apply to all operations: SELECT (read), INSERT (upload), UPDATE (overwrite), DELETE.",
+      "tags": ["policies", "security", "rls", "foldername", "bucket-id"]
+    },
+    {
+      "id": "transforms",
+      "title": "Image transformations",
+      "body": "Transform images on-the-fly with `width`, `height`, `resize` (cover/contain/fill), `quality` (1-100), and `format` (origin/avif). Pass transforms to `getPublicUrl()` or `createSignedUrl()` in the `transform` option. Transforms are cached at the CDN edge. Only works with image/* content types.",
+      "tags": ["transforms", "resize", "crop", "images", "cdn", "optimization"]
+    }
+  ],
+  "links": [
+    { "uri": "supabase/client", "context": "Client initialization for storage operations" },
+    { "uri": "supabase/rls", "context": "Storage policies use the same RLS concepts" },
+    { "uri": "supabase/auth", "context": "Auth provides user identity for storage policies" },
+    { "uri": "supabase/migrations", "context": "Create buckets and policies in migration files" },
+    { "uri": "supabase/edge-functions", "context": "Process uploaded files in edge functions" }
+  ],
+  "related": [
+    { "uri": "supabase/rls", "relation": "see-also", "note": "Storage policies are RLS policies on storage.objects" },
+    { "uri": "aws/s3", "relation": "similar", "note": "Supabase Storage is S3-compatible with similar concepts" },
+    { "uri": "cloudflare/r2", "relation": "alternative", "note": "R2 is an alternative S3-compatible storage with zero egress" }
+  ],
+  "scripts": [
+    {
+      "id": "upload-file",
+      "name": "Upload file to Supabase Storage",
+      "description": "Upload a local file to a Supabase storage bucket",
+      "lang": "typescript",
+      "runtime": "node>=18",
+      "entry": "./scripts/upload-file.ts",
+      "env": {
+        "SUPABASE_URL": { "required": true, "secret": false, "description": "Supabase project URL" },
+        "SUPABASE_ANON_KEY": { "required": true, "secret": false, "description": "Public anon key" }
+      },
+      "packages": ["@supabase/supabase-js"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "bucket": { "type": "string", "description": "Storage bucket name" },
+        "path": { "type": "string", "description": "File path within the bucket" },
+        "file": { "type": "string", "description": "File content or path to local file" },
+        "contentType": { "type": "string", "description": "MIME type of the file" }
+      },
+      "required": ["bucket", "path"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "url": { "type": "string", "description": "Public or signed URL of the uploaded file" },
+        "path": { "type": "string", "description": "Storage path of the file" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "supabase/client", "reason": "Client must be initialized for storage operations" }
+  ],
+  "more": {
+    "docs": "https://supabase.com/docs/guides/storage",
+    "api": "https://supabase.com/docs/reference/javascript/storage-createbucket"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "6 min",
+    "prerequisites": ["supabase/client"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

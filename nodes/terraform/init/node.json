@@ -1,0 +1,141 @@
+{
+  "name": "init",
+  "version": "1.0.0",
+  "uri": "terraform/init",
+  "type": "skill",
+  "context": "Initialize a Terraform working directory — download providers, configure backends, and install modules",
+  "info": "terraform init is the first command run in any Terraform workflow. It initializes the working directory by downloading provider plugins declared in required_providers, configuring the state backend (local or remote), and installing child modules referenced by module blocks. Init is safe to run multiple times and never deletes existing state or configuration. In CI/CD pipelines, run with -input=false and cache the .terraform directory for speed. After changing provider versions, backend configuration, or module sources, re-run terraform init (with -upgrade to update providers). Backend migration uses -migrate-state or -reconfigure. See [[terraform]] for the full ecosystem and [[terraform/plan]] for the next step after initialization.",
+  "parent": "terraform",
+  "tags": ["terraform", "init", "initialize", "providers", "backend", "modules", "setup", "download"],
+  "aliases": [
+    "terraform init",
+    "tf init",
+    "terraform initialize",
+    "terraform setup",
+    "terraform backend init",
+    "terraform provider install",
+    "terraform module install",
+    "initialize terraform"
+  ],
+  "triggers": [
+    "initialize a terraform project",
+    "run terraform init",
+    "download terraform providers",
+    "configure terraform backend",
+    "install terraform modules",
+    "set up terraform working directory",
+    "migrate terraform backend",
+    "upgrade terraform providers",
+    "terraform init fails",
+    "terraform init backend configuration"
+  ],
+  "body": "# Terraform Init\n\n`terraform init` prepares a working directory for use with Terraform. It performs four tasks in order: backend initialization, module installation, provider plugin installation, and lock file generation. This is always the first command you run.\n\n## Basic Usage\n\n```bash\n# Standard initialization\nterraform init\n\n# Non-interactive (CI/CD)\nterraform init -input=false\n\n# Upgrade providers and modules to latest within constraints\nterraform init -upgrade\n\n# Reconfigure backend without migrating state\nterraform init -reconfigure\n\n# Migrate state to a new backend\nterraform init -migrate-state\n```\n\n## What Init Does\n\n### 1. Backend Initialization\n\nConfigures where Terraform stores its state file. For teams, this should be a remote backend:\n\n```hcl\nterraform {\n  backend \"s3\" {\n    bucket         = \"my-terraform-state\"\n    key            = \"prod/terraform.tfstate\"\n    region         = \"us-east-1\"\n    dynamodb_table = \"terraform-locks\"\n    encrypt        = true\n  }\n}\n```\n\nBackend config can be partially specified and completed at init time:\n\n```bash\n# Partial backend config in code, secrets at init\nterraform init \\\n  -backend-config=\"bucket=my-state-bucket\" \\\n  -backend-config=\"key=prod/terraform.tfstate\" \\\n  -backend-config=\"region=us-east-1\"\n```\n\n### 2. Module Installation\n\nDownloads child modules referenced by `module` blocks into `.terraform/modules/`:\n\n```hcl\nmodule \"vpc\" {\n  source  = \"terraform-aws-modules/vpc/aws\"\n  version = \"~> 5.0\"\n}\n```\n\nSkip module installation with `-get=false` (only valid after first init).\n\n### 3. Provider Plugin Installation\n\nDownloads provider binaries into `.terraform/providers/` based on `required_providers`:\n\n```hcl\nterraform {\n  required_providers {\n    aws = {\n      source  = \"hashicorp/aws\"\n      version = \"~> 5.0\"\n    }\n  }\n}\n```\n\nUse `-plugin-dir=PATH` to load providers from a local mirror instead of downloading. Use `-lockfile=readonly` in CI to fail if the lock file is out of date.\n\n### 4. Lock File Generation\n\nWrites `.terraform.lock.hcl` with exact provider versions and checksums. Commit this file to version control.\n\n## All Flags\n\n| Flag | Purpose |\n|------|----------|\n| `-input=false` | Disable interactive prompts (required for CI/CD) |\n| `-upgrade` | Update all providers and modules to latest within constraints |\n| `-reconfigure` | Reconfigure backend, discarding any saved backend config |\n| `-migrate-state` | Migrate state from old backend to newly configured backend |\n| `-force-copy` | Suppress migration prompts, auto-copy state |\n| `-backend=false` | Skip backend initialization (useful for validation-only runs) |\n| `-backend-config=KEY=VALUE` | Pass backend config at init time (repeatable) |\n| `-backend-config=FILE` | Load backend config from a file |\n| `-get=false` | Skip module installation |\n| `-lockfile=readonly` | Fail if lock file needs updates (CI safety) |\n| `-plugin-dir=PATH` | Load providers from local directory only |\n| `-lock=false` | Disable state locking during init |\n| `-lock-timeout=DURATION` | Wait this long for state lock (e.g., `30s`) |\n| `-no-color` | Disable colored output |\n| `-json` | Machine-readable JSON output |\n| `-from-module=SOURCE` | Copy module source into empty directory before init |\n\n## Environment Variables\n\n| Variable | Purpose |\n|----------|----------|\n| `TF_DATA_DIR` | Override the `.terraform` data directory location |\n| `TF_PLUGIN_CACHE_DIR` | Cache provider plugins across projects (saves bandwidth) |\n| `TF_CLI_ARGS_init` | Extra arguments appended to every `terraform init` invocation |\n| `TF_IN_AUTOMATION` | Adjust output for CI/CD systems |\n| `TF_INPUT` | Set to `0` to disable all prompts |\n\n```bash\n# CI/CD example: cache providers and disable prompts\nexport TF_PLUGIN_CACHE_DIR=\"$HOME/.terraform.d/plugin-cache\"\nexport TF_IN_AUTOMATION=true\nexport TF_INPUT=0\nterraform init -lockfile=readonly\n```\n\n## Backend Migration\n\nWhen moving state between backends (e.g., local to S3):\n\n```bash\n# Step 1: Update backend block in code\n# Step 2: Run init with migration\nterraform init -migrate-state\n\n# Terraform will prompt:\n# \"Do you want to copy existing state to the new backend?\"\n# Answer yes to migrate.\n\n# For non-interactive migration:\nterraform init -migrate-state -force-copy\n```\n\n## Common Errors\n\n- **\"Backend configuration changed\"** — run `terraform init -reconfigure` or `-migrate-state`\n- **\"Failed to install provider\"** — check network, registry availability, or version constraints\n- **\"Module not found\"** — verify `source` path, check git access for private repos\n- **\"Lock file is out of date\"** — run `terraform init -upgrade` to regenerate `.terraform.lock.hcl`\n",
+  "sections": [
+    {
+      "id": "backend-init",
+      "title": "Backend initialization",
+      "body": "Init configures the state backend — where `terraform.tfstate` is stored. Use `-backend-config` to pass secrets at runtime instead of hardcoding them. Use `-migrate-state` to move state between backends. Use `-reconfigure` to reset backend configuration without migrating. Use `-backend=false` to skip backend setup entirely (useful for `terraform validate` workflows). See [[terraform/state]] for backend configuration details.",
+      "tags": ["backend", "s3", "gcs", "azure-blob", "terraform-cloud", "migrate", "reconfigure"]
+    },
+    {
+      "id": "provider-install",
+      "title": "Provider plugin installation",
+      "body": "Init downloads provider binaries matching `required_providers` constraints into `.terraform/providers/`. The dependency lock file (`.terraform.lock.hcl`) records exact versions and checksums. Use `-upgrade` to update providers within their constraint ranges. Use `-plugin-dir` to force loading from a local mirror. Use `-lockfile=readonly` in CI to ensure the lock file is current. Set `TF_PLUGIN_CACHE_DIR` to share provider binaries across projects.",
+      "tags": ["providers", "plugins", "download", "lock-file", "upgrade", "cache", "mirror"]
+    },
+    {
+      "id": "module-install",
+      "title": "Module installation",
+      "body": "Init downloads child modules declared in `module` blocks into `.terraform/modules/`. Sources can be local paths, Terraform Registry, GitHub, S3, GCS, or HTTP URLs. Use `-upgrade` to update modules to the latest matching version. Use `-get=false` to skip module download (only after first init). Module versions are pinned in the `version` argument of the module block. See [[terraform/modules]] for module sources and versioning.",
+      "tags": ["modules", "download", "source", "registry", "git", "upgrade"]
+    },
+    {
+      "id": "ci-cd",
+      "title": "Running init in CI/CD",
+      "body": "For CI/CD pipelines, always run with `-input=false` to prevent hanging on prompts. Use `-lockfile=readonly` to fail if provider versions have drifted. Set `TF_IN_AUTOMATION=true` for cleaner output. Cache `.terraform/` and `TF_PLUGIN_CACHE_DIR` between runs for speed. Pass backend secrets via `-backend-config` flags or environment variables, not hardcoded in HCL. Use `-no-color` when piping output to logs.",
+      "tags": ["ci-cd", "automation", "non-interactive", "cache", "lockfile", "github-actions"]
+    }
+  ],
+  "links": [
+    { "uri": "terraform/plan", "context": "Run plan after init to preview infrastructure changes" },
+    { "uri": "terraform/apply", "context": "Apply changes after planning" },
+    { "uri": "terraform/state", "context": "State backends configured during init" },
+    { "uri": "terraform/providers", "context": "Providers downloaded during init" },
+    { "uri": "terraform/modules", "context": "Modules installed during init" },
+    { "uri": "terraform", "context": "Terraform ecosystem root with installation and core workflow" }
+  ],
+  "related": [
+    { "uri": "terraform", "relation": "prerequisite", "note": "Terraform must be installed before running init" },
+    { "uri": "terraform/plan", "relation": "see-also", "note": "Plan is the next command after init in the standard workflow" },
+    { "uri": "terraform/state", "relation": "see-also", "note": "Init configures the backend where state is stored" },
+    { "uri": "terraform/providers", "relation": "see-also", "note": "Init downloads provider plugins" },
+    { "uri": "terraform/modules", "relation": "see-also", "note": "Init installs child modules" }
+  ],
+  "scripts": [
+    {
+      "id": "terraform-init",
+      "name": "Terraform Init",
+      "description": "Initialize a Terraform working directory with backend configuration and provider installation",
+      "lang": "bash",
+      "runtime": "terraform>=1.0",
+      "entry": "scripts/terraform-init.sh",
+      "env": {
+        "TF_WORKING_DIR": { "required": false, "secret": false, "default": ".", "description": "Path to Terraform configuration directory" },
+        "TF_BACKEND_CONFIG": { "required": false, "secret": false, "description": "Backend config file path or KEY=VALUE pairs (comma-separated)" },
+        "TF_UPGRADE": { "required": false, "secret": false, "default": "false", "description": "Set to true to upgrade providers and modules" },
+        "TF_MIGRATE_STATE": { "required": false, "secret": false, "default": "false", "description": "Set to true to migrate state to new backend" },
+        "TF_PLUGIN_CACHE_DIR": { "required": false, "secret": false, "description": "Directory to cache provider plugins across projects" }
+      }
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "workingDir": { "type": "string", "description": "Path to the Terraform configuration directory" },
+        "backendConfig": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Backend configuration key=value pairs passed via -backend-config"
+        },
+        "upgrade": { "type": "boolean", "default": false, "description": "Whether to upgrade providers and modules" },
+        "migrateState": { "type": "boolean", "default": false, "description": "Whether to migrate state to a new backend" },
+        "reconfigure": { "type": "boolean", "default": false, "description": "Whether to reconfigure backend without migration" }
+      }
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "success": { "type": "boolean", "description": "Whether init completed successfully" },
+        "providersInstalled": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "List of installed provider names and versions"
+        },
+        "backendType": { "type": "string", "description": "Configured backend type (local, s3, gcs, azurerm, etc.)" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "terraform", "reason": "Terraform CLI must be installed" }
+  ],
+  "more": {
+    "docs": "https://developer.hashicorp.com/terraform/cli/commands/init",
+    "repo": "https://github.com/hashicorp/terraform"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, DevOps engineers, AI agents",
+    "estimated_reading_time": "5 min",
+    "prerequisites": ["terraform"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

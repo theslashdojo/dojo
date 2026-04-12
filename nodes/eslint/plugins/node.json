@@ -1,0 +1,100 @@
+{
+  "name": "plugins",
+  "version": "1.0.0",
+  "uri": "eslint/plugins",
+  "type": "context",
+  "content_type": "reference",
+  "context": "ESLint plugin ecosystem — typescript-eslint, react, import, and custom plugins in flat config format",
+  "info": "ESLint plugins extend the linter with additional rules, processors, and configurations for specific frameworks, languages, and patterns. In flat config, plugins are JavaScript objects imported directly — not strings. This node covers the most important plugins (typescript-eslint, eslint-plugin-react, eslint-plugin-import, eslint-plugin-jsx-a11y), how to configure them in flat config, how to create local/virtual plugins, and how to use shareable configs. Agents use this context when integrating framework-specific linting, understanding plugin rule namespaces, or creating custom rules.",
+  "parent": "eslint",
+  "tags": ["plugins", "typescript-eslint", "eslint-plugin-react", "eslint-plugin-import", "custom-rules"],
+  "aliases": [
+    "eslint plugins",
+    "eslint plugin",
+    "typescript-eslint",
+    "tseslint",
+    "eslint-plugin-react",
+    "eslint-plugin-import",
+    "eslint-plugin-jsx-a11y",
+    "eslint-plugin-prettier",
+    "eslint custom plugin",
+    "eslint shareable config"
+  ],
+  "triggers": [
+    "add eslint plugin",
+    "install typescript-eslint",
+    "configure eslint-plugin-react",
+    "eslint plugin for typescript",
+    "write custom eslint rule",
+    "create eslint plugin",
+    "eslint import plugin",
+    "eslint jsx accessibility",
+    "use eslint with prettier",
+    "shareable eslint config"
+  ],
+  "body": "# ESLint Plugins\n\nPlugins extend ESLint with rules, processors, and configs for specific ecosystems. In flat config, plugins are imported as JavaScript objects — not referenced as strings.\n\n## Plugin Configuration in Flat Config\n\n```javascript\nimport example from \"eslint-plugin-example\";\n\nexport default [\n  {\n    plugins: {\n      example,              // Registers the plugin under namespace \"example\"\n    },\n    rules: {\n      \"example/rule-1\": \"error\",   // Use namespace/rule-name format\n      \"example/rule-2\": \"warn\",\n    },\n  },\n];\n```\n\nThe `plugins` object maps namespaces to plugin objects. Rule names use `namespace/rule-name` format.\n\n## typescript-eslint\n\nThe most important ESLint plugin — adds TypeScript-specific rules and type-aware linting.\n\n```bash\nnpm install --save-dev typescript-eslint\n```\n\n```javascript\n// eslint.config.mjs\nimport js from \"@eslint/js\";\nimport tseslint from \"typescript-eslint\";\n\nexport default tseslint.config(\n  js.configs.recommended,\n  ...tseslint.configs.recommended,              // Basic TS rules\n  // ...tseslint.configs.recommendedTypeChecked, // Type-aware rules (slower)\n  // ...tseslint.configs.strict,                 // Stricter rules\n  // ...tseslint.configs.strictTypeChecked,      // Strict + type-aware\n  {\n    languageOptions: {\n      parserOptions: {\n        projectService: true,                     // Enable type-aware linting\n        tsconfigRootDir: import.meta.dirname,\n      },\n    },\n  },\n);\n```\n\n**Key rules:**\n| Rule | Purpose |\n|------|----------|\n| `@typescript-eslint/no-unused-vars` | TS-aware unused vars (replaces base rule) |\n| `@typescript-eslint/no-explicit-any` | Warns on `any` usage |\n| `@typescript-eslint/no-floating-promises` | Requires handling promises (type-aware) |\n| `@typescript-eslint/await-thenable` | Prevents awaiting non-thenables (type-aware) |\n| `@typescript-eslint/consistent-type-imports` | Enforces `import type` syntax |\n| `@typescript-eslint/no-unsafe-assignment` | Prevents `any` propagation (type-aware) |\n\n## eslint-plugin-react\n\nRules for React components and JSX.\n\n```bash\nnpm install --save-dev eslint-plugin-react eslint-plugin-react-hooks\n```\n\n```javascript\nimport react from \"eslint-plugin-react\";\nimport reactHooks from \"eslint-plugin-react-hooks\";\n\nexport default [\n  {\n    files: [\"**/*.{jsx,tsx}\"],\n    plugins: { react, \"react-hooks\": reactHooks },\n    languageOptions: {\n      parserOptions: { ecmaFeatures: { jsx: true } },\n    },\n    rules: {\n      ...reactHooks.configs.recommended.rules,\n      \"react/react-in-jsx-scope\": \"off\",     // Not needed in React 17+\n      \"react/prop-types\": \"off\",              // Not needed with TypeScript\n      \"react-hooks/exhaustive-deps\": \"warn\",\n    },\n    settings: { react: { version: \"detect\" } },\n  },\n];\n```\n\n## eslint-plugin-import\n\nRules for import/export syntax, module resolution, and import ordering.\n\n```bash\nnpm install --save-dev eslint-plugin-import\n```\n\n```javascript\nimport importPlugin from \"eslint-plugin-import\";\n\nexport default [\n  {\n    plugins: { import: importPlugin },\n    rules: {\n      \"import/order\": [\"error\", {\n        groups: [\"builtin\", \"external\", \"internal\", \"parent\", \"sibling\", \"index\"],\n        \"newlines-between\": \"always\",\n        alphabetize: { order: \"asc\" },\n      }],\n      \"import/no-duplicates\": \"error\",\n      \"import/no-unresolved\": \"error\",\n      \"import/no-cycle\": \"warn\",\n    },\n    settings: {\n      \"import/resolver\": {\n        node: true,\n        typescript: true,  // needs eslint-import-resolver-typescript\n      },\n    },\n  },\n];\n```\n\n## eslint-plugin-jsx-a11y\n\nAccessibility rules for JSX elements.\n\n```bash\nnpm install --save-dev eslint-plugin-jsx-a11y\n```\n\n```javascript\nimport jsxA11y from \"eslint-plugin-jsx-a11y\";\n\nexport default [\n  {\n    files: [\"**/*.{jsx,tsx}\"],\n    plugins: { \"jsx-a11y\": jsxA11y },\n    rules: {\n      ...jsxA11y.configs.recommended.rules,\n    },\n  },\n];\n```\n\n## ESLint + Prettier\n\nUse `eslint-config-prettier` to disable formatting rules that conflict with Prettier:\n\n```bash\nnpm install --save-dev eslint-config-prettier\n```\n\n```javascript\nimport prettier from \"eslint-config-prettier\";\n\nexport default [\n  js.configs.recommended,\n  prettier,  // Must be last to override formatting rules\n];\n```\n\nNote: `eslint-plugin-prettier` (running Prettier as an ESLint rule) is discouraged — run Prettier separately.\n\n## Local Plugins (Custom Rules)\n\nCreate a rule file and register it as a local plugin:\n\n```javascript\n// rules/no-foo.js\nexport default {\n  meta: {\n    type: \"problem\",\n    docs: { description: \"Disallow use of foo()\" },\n    fixable: \"code\",\n    schema: [],\n  },\n  create(context) {\n    return {\n      CallExpression(node) {\n        if (node.callee.name === \"foo\") {\n          context.report({\n            node,\n            message: \"Do not use foo()\",\n            fix(fixer) {\n              return fixer.replaceText(node, \"bar()\");\n            },\n          });\n        }\n      },\n    };\n  },\n};\n```\n\n```javascript\n// eslint.config.mjs\nimport noFoo from \"./rules/no-foo.js\";\n\nexport default [\n  {\n    plugins: {\n      local: { rules: { \"no-foo\": noFoo } },\n    },\n    rules: {\n      \"local/no-foo\": \"error\",\n    },\n  },\n];\n```\n\n## Popular Plugin Reference\n\n| Plugin | Purpose | Install |\n|--------|---------|----------|\n| `typescript-eslint` | TypeScript rules and parser | `npm i -D typescript-eslint` |\n| `eslint-plugin-react` | React component rules | `npm i -D eslint-plugin-react` |\n| `eslint-plugin-react-hooks` | React hooks rules | `npm i -D eslint-plugin-react-hooks` |\n| `eslint-plugin-import` | Import/export rules | `npm i -D eslint-plugin-import` |\n| `eslint-plugin-jsx-a11y` | Accessibility rules | `npm i -D eslint-plugin-jsx-a11y` |\n| `eslint-plugin-jest` | Jest test rules | `npm i -D eslint-plugin-jest` |\n| `eslint-plugin-vitest` | Vitest test rules | `npm i -D eslint-plugin-vitest` |\n| `eslint-plugin-n` | Node.js rules | `npm i -D eslint-plugin-n` |\n| `eslint-plugin-unicorn` | Various useful rules | `npm i -D eslint-plugin-unicorn` |\n| `eslint-config-prettier` | Disable formatting rules | `npm i -D eslint-config-prettier` |\n| `@next/eslint-plugin-next` | Next.js rules | `npm i -D @next/eslint-plugin-next` |\n",
+  "sections": [
+    {
+      "id": "typescript-eslint",
+      "title": "typescript-eslint",
+      "body": "The `typescript-eslint` package provides a parser, plugin, and configs for TypeScript. Use `tseslint.config()` to compose configs. Spread `tseslint.configs.recommended` for basic rules or `tseslint.configs.recommendedTypeChecked` for type-aware rules (requires `parserOptions.projectService: true`). Key rules include `@typescript-eslint/no-unused-vars`, `@typescript-eslint/no-explicit-any`, and `@typescript-eslint/no-floating-promises`.",
+      "tags": ["typescript", "tseslint", "type-aware", "parser"]
+    },
+    {
+      "id": "react-plugins",
+      "title": "React plugins",
+      "body": "Install `eslint-plugin-react` for component rules and `eslint-plugin-react-hooks` for hooks rules (rules of hooks, exhaustive deps). Spread `reactHooks.configs.recommended.rules` for hooks rules. Disable `react/react-in-jsx-scope` for React 17+. Set `settings.react.version` to `\"detect\"`. Add `eslint-plugin-jsx-a11y` for accessibility linting.",
+      "tags": ["react", "hooks", "jsx", "accessibility", "a11y"]
+    },
+    {
+      "id": "import-plugin",
+      "title": "Import plugin",
+      "body": "The `eslint-plugin-import` provides rules for import/export: `import/order` enforces import ordering with groups and newlines, `import/no-duplicates` prevents duplicate imports, `import/no-cycle` detects circular dependencies. For TypeScript resolution, install `eslint-import-resolver-typescript` and set it in `settings[\"import/resolver\"]`.",
+      "tags": ["import", "order", "resolution", "circular-deps"]
+    },
+    {
+      "id": "custom-rules",
+      "title": "Custom and local plugins",
+      "body": "Create custom rules as ESLint rule objects with `meta` (type, docs, fixable, schema) and `create(context)` function. Register as a local plugin in flat config: `plugins: { local: { rules: { \"my-rule\": myRule } } }`. Use AST node visitors in `create()` to traverse code. The `context.report()` method flags violations with optional `fix` functions.",
+      "tags": ["custom-rule", "local-plugin", "ast", "create", "meta"]
+    },
+    {
+      "id": "prettier",
+      "title": "Prettier integration",
+      "body": "Use `eslint-config-prettier` to disable ESLint formatting rules that conflict with Prettier. Add it as the LAST config in the array so it overrides other configs. Do NOT use `eslint-plugin-prettier` (running Prettier as an ESLint rule) — it's slow and creates confusing error messages. Run Prettier and ESLint separately.",
+      "tags": ["prettier", "formatting", "config-prettier"]
+    }
+  ],
+  "links": [
+    { "uri": "eslint/config", "context": "Plugins are configured in the config file" },
+    { "uri": "eslint/rules", "context": "Plugin rules follow the same severity/options pattern" },
+    { "uri": "eslint/flat-config", "context": "Flat config changes how plugins are imported" },
+    { "uri": "typescript/compiler", "context": "tsconfig.json needed for type-aware typescript-eslint" },
+    { "uri": "eslint/troubleshooting", "context": "Debug plugin installation and configuration issues" }
+  ],
+  "related": [
+    { "uri": "eslint/config", "relation": "prerequisite", "note": "Config file must exist to add plugins" },
+    { "uri": "eslint/flat-config", "relation": "see-also", "note": "Plugin registration differs between flat config and eslintrc" },
+    { "uri": "typescript/compiler", "relation": "see-also", "note": "typescript-eslint needs a tsconfig for type-aware rules" }
+  ],
+  "more": {
+    "docs": "https://eslint.org/docs/latest/use/configure/plugins",
+    "typescript-eslint": "https://typescript-eslint.io/",
+    "react-plugin": "https://github.com/jsx-eslint/eslint-plugin-react",
+    "import-plugin": "https://github.com/import-js/eslint-plugin-import"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "6 min",
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

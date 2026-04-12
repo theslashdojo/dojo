@@ -1,0 +1,112 @@
+{
+  "name": "local-forward",
+  "version": "1.0.0",
+  "uri": "ssh/tunnel/local-forward",
+  "type": "sub",
+  "context": "Expose a remote service on a local port with ssh -L for databases, dashboards, and private APIs",
+  "info": "Local forwarding is the most common SSH tunnel pattern: the client listens on a local port and forwards traffic over the SSH session to a destination host and port as seen from the remote side. Agents use it to reach private Postgres instances, internal admin panels, or service endpoints through a bastion without exposing the remote service publicly.",
+  "parent": "ssh/tunnel",
+  "tags": ["ssh", "local-forward", "port-forwarding", "ssh-l", "database-tunnel", "private-api"],
+  "aliases": [
+    "ssh local forward",
+    "ssh -L",
+    "local port forward",
+    "forward remote port locally",
+    "database tunnel over ssh"
+  ],
+  "triggers": [
+    "forward a remote service to my laptop",
+    "open a local ssh tunnel",
+    "access postgres over ssh",
+    "use ssh -L"
+  ],
+  "body": "# Local Forwarding\n\nA local forward binds a port on the client and sends connections across SSH to a destination host and port from the remote side.\n\n```bash\nssh -L 5433:127.0.0.1:5432 ops@db-gateway.example.com -N\n```\n\nAfter the tunnel is up, connect your local client to `127.0.0.1:5433` and SSH carries the traffic to `127.0.0.1:5432` from the gateway host.\n\nCommon uses:\n\n- reach a private [[postgres]] instance\n- inspect an internal HTTP admin interface\n- call a service available only inside the remote network\n\nIf the listening port should stay private on the client, omit `SSH_BIND_ADDRESS` or set it to `127.0.0.1`.\n",
+  "sections": [
+    {
+      "id": "database-access",
+      "title": "Tunnel a private database",
+      "body": "A classic pattern is `ssh -L 5433:127.0.0.1:5432 bastion -N`, then pointing the local database client at `127.0.0.1:5433`. The destination host and port are resolved from the remote side, so `127.0.0.1` usually means the SSH host itself unless the host can reach another internal target.",
+      "tags": ["postgres", "database", "localhost", "bastion"]
+    },
+    {
+      "id": "bind-addresses",
+      "title": "Choose the listening bind address",
+      "body": "Without an explicit bind address, SSH follows local defaults. Setting `SSH_BIND_ADDRESS=127.0.0.1` keeps the tunnel local-only. Binding to `0.0.0.0` or `*` exposes the local listening port to other machines on the client network and should be done deliberately.",
+      "tags": ["bind-address", "localhost", "0.0.0.0", "exposure"]
+    }
+  ],
+  "links": [
+    { "uri": "ssh/tunnel", "context": "Parent skill for all forwarding modes" },
+    { "uri": "postgres", "context": "Private databases are a common local-forward target" },
+    { "uri": "ssh/config", "context": "Persist LocalForward rules and keepalives in SSH config" },
+    { "uri": "ssh/troubleshooting", "context": "Debug tunnel setup and port collisions" }
+  ],
+  "related": [
+    { "uri": "ssh/tunnel", "relation": "implements", "note": "This sub-skill specializes the general SSH tunnel workflow for -L" },
+    { "uri": "postgres", "relation": "see-also", "note": "Postgres access through bastions commonly uses local forwarding" }
+  ],
+  "scripts": [
+    {
+      "id": "open-local-forward",
+      "name": "Open local SSH forward",
+      "description": "Open a local port forward with ssh -L",
+      "lang": "bash",
+      "runtime": "bash",
+      "entry": "./scripts/open-local-forward.sh",
+      "env": {
+        "SSH_HOST": { "required": true, "description": "Remote SSH host anchoring the tunnel" },
+        "SSH_USER": { "required": false, "description": "Remote username" },
+        "SSH_LOCAL_PORT": { "required": true, "description": "Local listening port" },
+        "SSH_DEST_HOST": { "required": true, "description": "Destination host reached from the remote side" },
+        "SSH_DEST_PORT": { "required": true, "description": "Destination TCP port reached from the remote side" },
+        "SSH_BIND_ADDRESS": { "required": false, "description": "Optional local bind address" },
+        "SSH_BACKGROUND": { "required": false, "default": "false", "description": "Background the tunnel after setup" }
+      },
+      "packages": ["openssh-client"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "host": { "type": "string", "description": "Remote SSH host" },
+        "user": { "type": "string", "description": "Remote username" },
+        "localPort": { "type": "integer", "description": "Local listening port" },
+        "destinationHost": { "type": "string", "description": "Destination host reached from the remote side" },
+        "destinationPort": { "type": "integer", "description": "Destination TCP port" },
+        "bindAddress": { "type": "string", "description": "Optional local bind address" },
+        "background": { "type": "boolean", "default": false, "description": "Background the tunnel after setup" }
+      },
+      "required": ["host", "localPort", "destinationHost", "destinationPort"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "mode": { "type": "string", "const": "local", "description": "Tunnel mode" },
+        "forwardSpec": { "type": "string", "description": "Forwarding specification passed to ssh -L" },
+        "exitCode": { "type": "integer", "description": "Exit code from ssh" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "ssh/tunnel", "reason": "This is a specialized wrapper around the general SSH tunnel skill" }
+  ],
+  "more": {
+    "docs": "https://man.openbsd.org/ssh"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, SREs, AI agents",
+    "estimated_reading_time": "3 min",
+    "prerequisites": ["ssh/tunnel"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

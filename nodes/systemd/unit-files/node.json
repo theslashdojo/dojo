@@ -1,0 +1,87 @@
+{
+  "name": "unit-files",
+  "version": "1.0.0",
+  "uri": "systemd/unit-files",
+  "type": "context",
+  "context": "Understand unit file locations, precedence, drop-ins, templates, and override rules before editing systemd",
+  "info": "This context node explains how systemd finds and merges unit files. It covers the priority-ordered search paths for system and user managers, how `[Unit]`, type-specific sections such as `[Service]`, and `[Install]` fit together, how `.d` drop-ins override existing units without editing vendor files, how `.wants/` and `.requires/` create dependencies, and how templates and `systemd-escape` help when a single unit definition needs multiple instances. Agents need this knowledge whenever a unit seems to load the wrong file, an override is not taking effect, or a new unit must be placed in the right directory for the intended manager scope.",
+  "parent": "systemd",
+  "tags": ["unit-files", "load-path", "drop-ins", "templates", "overrides", "wants", "requires", "systemd-escape", "fragmentpath"],
+  "aliases": [
+    "systemd unit files",
+    "where do systemd units live",
+    "systemd load path",
+    "drop in override",
+    "service.d",
+    "template service",
+    "unit file precedence",
+    "fragment path"
+  ],
+  "triggers": [
+    "where should i put a systemd unit file",
+    "why is systemd loading the wrong file",
+    "create a drop-in override for a service",
+    "understand systemd template units",
+    "find user service paths"
+  ],
+  "content_type": "guide",
+  "body": "# Unit Files\n\nUnit files are INI-style files loaded from a priority-ordered search path. For system units, `/etc/systemd/system` overrides `/run/systemd/system`, which in turn overrides files installed by the distribution under `/usr/lib/systemd/system`. For user units, `~/.config/systemd/user` has the highest everyday precedence.\n\nUse the actual manager state, not guesses, to confirm what is loaded:\n\n```bash\nsystemd-analyze unit-paths\nsystemctl show my-app.service -p FragmentPath -p UnitFileState --value\n```\n\nUse drop-ins when editing packaged units instead of modifying vendor files in place. A directory such as `/etc/systemd/system/my-app.service.d/` can add or replace directives after the main file is parsed. Templates such as `worker@.service` create instances like `worker@alpha.service`, and `%i` expands to the instance name. If you need to turn paths into legal unit identifiers, use `systemd-escape --path`.\n\nThis node points to [[systemd/services]] and [[systemd/timers]] for authoring, and to [[systemd/troubleshooting#overrides-and-stale-config]] when overrides do not behave as expected.",
+  "sections": [
+    {
+      "id": "load-path",
+      "title": "Load path",
+      "body": "System managers load units from a precedence-ordered path that starts with `/etc/systemd/system`, then runtime and generator paths, then `/usr/local/lib/systemd/system` and `/usr/lib/systemd/system`. User managers use `~/.config/systemd/user`, `/etc/systemd/user`, runtime paths, and installed user-unit directories. Earlier paths override later ones. `systemd-analyze unit-paths` shows compiled paths; `systemctl show -p UnitPath --value` shows what the running manager actually uses.",
+      "tags": ["load-path", "system", "user", "precedence", "unitpath"]
+    },
+    {
+      "id": "structure",
+      "title": "Structure and dependencies",
+      "body": "Most units use `[Unit]` for description and dependencies, a type-specific section such as `[Service]` or `[Timer]`, and `[Install]` for enablement targets and aliases. Dependency directories such as `foo.service.wants/` and `foo.service.requires/` are another way to attach units without editing the unit file directly. `systemctl enable` creates install symlinks from `[Install]` metadata.",
+      "tags": ["structure", "unit", "install", "wants", "requires", "aliases"]
+    },
+    {
+      "id": "overrides-and-dropins",
+      "title": "Overrides and drop-ins",
+      "body": "Drop-ins live in `NAME.service.d/*.conf` and are merged after the main unit file. They are the correct place for local changes to packaged services. Higher-precedence drop-ins in `/etc` beat drop-ins in `/run`, which beat drop-ins in `/usr/lib`. Use drop-ins instead of editing vendor files directly so updates do not erase your changes.",
+      "tags": ["drop-ins", "overrides", "vendor-units", "service-d", "precedence"]
+    },
+    {
+      "id": "templates-and-escaping",
+      "title": "Templates and escaping",
+      "body": "A template unit ends with `@.service` and gains an instance string between `@` and the suffix when activated, for example `worker@alpha.service`. Inside the file, specifiers such as `%i` expose the instance name. Use `systemd-escape` when arbitrary strings or filesystem paths must become safe unit names. Masking a unit is implemented by an empty file or a symlink to `/dev/null` so the manager cannot load or activate it.",
+      "tags": ["templates", "instances", "percent-i", "systemd-escape", "mask"]
+    }
+  ],
+  "links": [
+    { "uri": "systemd/services", "context": "Author new service units once the load path and precedence rules are clear" },
+    { "uri": "systemd/timers", "context": "Apply the same path and override rules to timer units" },
+    { "uri": "systemd/systemctl#introspection", "context": "Use FragmentPath and UnitFileState to confirm what the manager loaded" },
+    { "uri": "systemd/analyze#verify", "context": "Verify unit files and overrides before daemon-reload" },
+    { "uri": "systemd/troubleshooting#overrides-and-stale-config", "context": "Debug cases where a drop-in or override is not taking effect" }
+  ],
+  "related": [
+    { "uri": "systemd/services", "relation": "prerequisite", "note": "Correct file placement and override strategy matter before authoring services" },
+    { "uri": "systemd/timers", "relation": "prerequisite", "note": "Timer units follow the same loading and override rules" },
+    { "uri": "systemd/systemctl", "relation": "see-also", "note": "systemctl exposes the loaded FragmentPath and enablement state" }
+  ],
+  "more": {
+    "docs": "https://www.freedesktop.org/software/systemd/man/latest/systemd.unit.html",
+    "escape": "https://www.freedesktop.org/software/systemd/man/latest/systemd-escape.html"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "AI agents, linux operators",
+    "estimated_reading_time": "5 min",
+    "prerequisites": ["systemd"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://github.com/systemd/systemd",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

@@ -1,0 +1,162 @@
+{
+  "name": "ssl",
+  "version": "1.0.0",
+  "uri": "nginx/ssl",
+  "type": "skill",
+  "context": "Configure SSL/TLS certificates, HTTPS termination, and secure cipher suites on nginx",
+  "info": "This skill covers enabling HTTPS on nginx: installing SSL/TLS certificates, configuring secure protocol versions and cipher suites, setting up OCSP stapling, managing session caching for performance, automating certificate provisioning with certbot/Let's Encrypt, and implementing HTTP-to-HTTPS redirects. Nginx handles SSL termination at the proxy layer so backend servers don't need to manage certificates. The key directives are `ssl_certificate`, `ssl_certificate_key`, `ssl_protocols`, and `ssl_ciphers` inside a `server` block with `listen 443 ssl`. Agents use this skill to secure any site with HTTPS — from self-signed certs in development to production Let's Encrypt automation. See [[nginx/config]] for server block structure and [[nginx/reverse-proxy]] for proxying HTTPS-terminated traffic to backends.",
+  "parent": "nginx",
+  "tags": ["nginx", "ssl", "tls", "https", "certificate", "letsencrypt", "certbot", "encryption", "security"],
+  "aliases": [
+    "nginx ssl",
+    "nginx tls",
+    "nginx https",
+    "nginx certificate",
+    "nginx cert",
+    "ssl certificate nginx",
+    "nginx letsencrypt",
+    "nginx lets encrypt",
+    "nginx certbot",
+    "enable https nginx",
+    "nginx ssl termination",
+    "nginx secure",
+    "ssl_certificate",
+    "ssl_protocols"
+  ],
+  "triggers": [
+    "enable HTTPS on nginx",
+    "configure SSL for nginx",
+    "set up SSL certificate",
+    "install TLS certificate on nginx",
+    "nginx letsencrypt setup",
+    "certbot nginx",
+    "secure nginx with HTTPS",
+    "nginx ssl configuration",
+    "redirect HTTP to HTTPS",
+    "generate self-signed certificate",
+    "nginx ssl cipher suites",
+    "configure TLS on nginx",
+    "renew ssl certificate"
+  ],
+  "body": "# Nginx SSL/TLS Configuration\n\nSSL/TLS encrypts traffic between clients and nginx. Nginx handles SSL termination — decrypting incoming HTTPS requests and forwarding plain HTTP to backends. This is the standard pattern for production deployments.\n\n## Quick Start: HTTPS with Let's Encrypt\n\n```bash\n# Install certbot\nsudo apt install certbot python3-certbot-nginx\n\n# Obtain certificate and auto-configure nginx\nsudo certbot --nginx -d example.com -d www.example.com\n\n# Auto-renewal is set up via systemd timer\nsudo systemctl status certbot.timer\n```\n\n## Manual SSL Configuration\n\n```nginx\nserver {\n    listen 443 ssl;\n    listen [::]:443 ssl;\n    server_name example.com;\n\n    # Certificates\n    ssl_certificate /etc/letsencrypt/live/example.com/fullchain.pem;\n    ssl_certificate_key /etc/letsencrypt/live/example.com/privkey.pem;\n\n    # Protocols — only TLS 1.2 and 1.3\n    ssl_protocols TLSv1.2 TLSv1.3;\n\n    # Ciphers\n    ssl_ciphers HIGH:!aNULL:!MD5;\n    ssl_prefer_server_ciphers off;  # let client choose for TLS 1.3\n\n    # Session caching\n    ssl_session_cache shared:SSL:10m;\n    ssl_session_timeout 10m;\n    ssl_session_tickets on;\n\n    # OCSP stapling\n    ssl_stapling on;\n    ssl_stapling_verify on;\n    ssl_trusted_certificate /etc/letsencrypt/live/example.com/chain.pem;\n    resolver 8.8.8.8 8.8.4.4 valid=300s;\n    resolver_timeout 5s;\n\n    # HSTS (1 year, include subdomains)\n    add_header Strict-Transport-Security \"max-age=31536000; includeSubDomains\" always;\n\n    # Proxy to backend\n    location / {\n        proxy_pass http://127.0.0.1:3000;\n        proxy_set_header Host $host;\n        proxy_set_header X-Real-IP $remote_addr;\n        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;\n        proxy_set_header X-Forwarded-Proto $scheme;\n    }\n}\n\n# HTTP → HTTPS redirect\nserver {\n    listen 80;\n    listen [::]:80;\n    server_name example.com www.example.com;\n    return 301 https://$host$request_uri;\n}\n```\n\n## SSL Directives Reference\n\n| Directive | Default | Description |\n|-----------|---------|-------------|\n| `ssl_certificate` | — | Path to certificate file (PEM) with chain |\n| `ssl_certificate_key` | — | Path to private key file (PEM) |\n| `ssl_protocols` | `TLSv1.2 TLSv1.3` | Allowed TLS protocol versions |\n| `ssl_ciphers` | `HIGH:!aNULL:!MD5` | Allowed cipher suites |\n| `ssl_prefer_server_ciphers` | `off` | Prefer server's cipher order |\n| `ssl_session_cache` | `none` | Session cache type and size |\n| `ssl_session_timeout` | `5m` | Session reuse duration |\n| `ssl_session_tickets` | `on` | TLS session ticket resumption |\n| `ssl_stapling` | `off` | OCSP stapling |\n| `ssl_stapling_verify` | `off` | Verify OCSP responses |\n| `ssl_trusted_certificate` | — | CA chain for OCSP and client verification |\n| `ssl_dhparam` | — | DH parameters file |\n| `ssl_ecdh_curve` | `auto` | ECDH curves |\n| `ssl_buffer_size` | `16k` | SSL send buffer (smaller = lower TTFB) |\n| `ssl_early_data` | `off` | TLS 1.3 0-RTT (replay risk) |\n\n## Certificate File Formats\n\n```\nssl_certificate = server cert + intermediate cert(s) concatenated\nssl_certificate_key = private key only\nssl_trusted_certificate = intermediate + root CA (for OCSP stapling)\n```\n\nLet's Encrypt provides:\n- `fullchain.pem` → use as `ssl_certificate`\n- `privkey.pem` → use as `ssl_certificate_key`\n- `chain.pem` → use as `ssl_trusted_certificate`\n\n## Self-Signed Certificate (Development)\n\n```bash\n# Generate self-signed cert valid for 365 days\nopenssl req -x509 -nodes -days 365 -newkey rsa:2048 \\\n  -keyout /etc/nginx/ssl/selfsigned.key \\\n  -out /etc/nginx/ssl/selfsigned.crt \\\n  -subj \"/C=US/ST=State/L=City/O=Dev/CN=localhost\"\n\n# Generate DH parameters (optional, for extra security)\nopenssl dhparam -out /etc/nginx/ssl/dhparam.pem 2048\n```\n\n## Dual Certificate (RSA + ECDSA)\n\n```nginx\nserver {\n    listen 443 ssl;\n    server_name example.com;\n\n    # RSA certificate\n    ssl_certificate /etc/nginx/ssl/example.com.rsa.crt;\n    ssl_certificate_key /etc/nginx/ssl/example.com.rsa.key;\n\n    # ECDSA certificate\n    ssl_certificate /etc/nginx/ssl/example.com.ecdsa.crt;\n    ssl_certificate_key /etc/nginx/ssl/example.com.ecdsa.key;\n\n    ssl_protocols TLSv1.2 TLSv1.3;\n}\n```\n\n## Security Headers\n\n```nginx\n# Add alongside SSL configuration\nadd_header Strict-Transport-Security \"max-age=31536000; includeSubDomains; preload\" always;\nadd_header X-Content-Type-Options nosniff always;\nadd_header X-Frame-Options DENY always;\nadd_header X-XSS-Protection \"1; mode=block\" always;\nadd_header Referrer-Policy strict-origin-when-cross-origin always;\n```\n\n## Let's Encrypt Automation\n\n```bash\n# Initial setup\nsudo certbot --nginx -d example.com -d www.example.com --non-interactive --agree-tos -m admin@example.com\n\n# Test renewal\nsudo certbot renew --dry-run\n\n# Force renewal\nsudo certbot renew --force-renewal\n\n# Certificate locations\nls /etc/letsencrypt/live/example.com/\n# cert.pem  chain.pem  fullchain.pem  privkey.pem\n\n# Certbot auto-adds reload hook: nginx -s reload\n```\n\n## Testing SSL Configuration\n\n```bash\n# Check certificate details\nopenssl s_client -connect example.com:443 -servername example.com </dev/null 2>/dev/null | openssl x509 -text -noout\n\n# Check expiration date\nopenssl s_client -connect example.com:443 -servername example.com </dev/null 2>/dev/null | openssl x509 -enddate -noout\n\n# Test specific TLS version\nopenssl s_client -connect example.com:443 -tls1_2\nopenssl s_client -connect example.com:443 -tls1_3\n\n# Full SSL test\ncurl -vI https://example.com 2>&1 | grep -E 'SSL|TLS|certificate'\n```\n",
+  "sections": [
+    {
+      "id": "certificates",
+      "title": "Certificate setup",
+      "body": "SSL requires two files: `ssl_certificate` (the server certificate + intermediate chain, concatenated in PEM format) and `ssl_certificate_key` (the private key in PEM format). For Let's Encrypt, use `fullchain.pem` as the certificate and `privkey.pem` as the key. Multiple certificate pairs can be specified (since nginx 1.11.0) for dual RSA+ECDSA setups — nginx automatically selects the right one based on the client's cipher preference. The `listen` directive must include `ssl`: `listen 443 ssl`.",
+      "tags": ["certificate", "pem", "fullchain", "private-key", "letsencrypt"]
+    },
+    {
+      "id": "protocols-ciphers",
+      "title": "Protocol versions and cipher suites",
+      "body": "Set `ssl_protocols TLSv1.2 TLSv1.3` — never enable SSLv3, TLSv1.0, or TLSv1.1. The default cipher string `HIGH:!aNULL:!MD5` is reasonable. For TLS 1.3, `ssl_prefer_server_ciphers off` is recommended since TLS 1.3 ciphers are all strong and client preference is fine. Check available ciphers with `openssl ciphers`. For maximum compatibility with older clients, keep TLSv1.2; for maximum security, use TLSv1.3 only.",
+      "tags": ["protocols", "tls12", "tls13", "ciphers", "security"]
+    },
+    {
+      "id": "session-caching",
+      "title": "Session caching and performance",
+      "body": "SSL handshakes are CPU-intensive. Enable session caching to allow clients to resume sessions: `ssl_session_cache shared:SSL:10m` creates a 10MB shared cache across all workers (~40,000 sessions). Set `ssl_session_timeout 10m` for reuse duration. Enable `ssl_session_tickets on` for TLS session ticket resumption (RFC 5077). For reduced time-to-first-byte, set `ssl_buffer_size 4k` (default 16k sends larger TLS records).",
+      "tags": ["session-cache", "performance", "tickets", "ttfb", "buffer-size"]
+    },
+    {
+      "id": "ocsp-stapling",
+      "title": "OCSP stapling",
+      "body": "OCSP stapling attaches the certificate's revocation status to the TLS handshake, eliminating the client's need to contact the CA. Enable with `ssl_stapling on` and `ssl_stapling_verify on`. Requires `ssl_trusted_certificate` pointing to the intermediate + root CA chain and a `resolver` directive for DNS lookups to the OCSP responder. Let's Encrypt's `chain.pem` works as the trusted certificate. Verify with: `openssl s_client -connect example.com:443 -status`.",
+      "tags": ["ocsp", "stapling", "revocation", "resolver", "chain"]
+    },
+    {
+      "id": "letsencrypt",
+      "title": "Let's Encrypt with certbot",
+      "body": "Certbot automates certificate provisioning from Let's Encrypt. Install with `apt install certbot python3-certbot-nginx`. Run `certbot --nginx -d example.com` to obtain a certificate and auto-configure nginx. Certbot modifies the server block to add SSL directives and creates a renewal timer. Certificates are stored in `/etc/letsencrypt/live/domain/`. Renewal is automatic via `certbot renew` (systemd timer). Rate limits: 50 certs per domain per week, 5 duplicate certs per week. Use `--staging` for testing to avoid rate limits.",
+      "tags": ["letsencrypt", "certbot", "automation", "renewal", "free-certificate"]
+    },
+    {
+      "id": "http-redirect",
+      "title": "HTTP to HTTPS redirect",
+      "body": "Always redirect HTTP to HTTPS with a separate server block: `server { listen 80; server_name example.com; return 301 https://$host$request_uri; }`. Use `301` (permanent) not `302` (temporary) for SEO. Add HSTS header (`Strict-Transport-Security`) on the HTTPS server block to tell browsers to always use HTTPS. Include `preload` in HSTS if submitting to the browser preload list. The redirect server block must allow the `/.well-known/acme-challenge/` path for certbot HTTP-01 validation.",
+      "tags": ["redirect", "http-to-https", "hsts", "301", "preload"]
+    },
+    {
+      "id": "security-headers",
+      "title": "Security headers",
+      "body": "Add security headers alongside SSL configuration: `Strict-Transport-Security` (HSTS, max-age=31536000), `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY` (or SAMEORIGIN), `X-XSS-Protection: 1; mode=block`, `Referrer-Policy: strict-origin-when-cross-origin`, and `Content-Security-Policy`. Use `always` parameter so headers are sent even on error responses. These headers protect against clickjacking, MIME sniffing, and XSS attacks.",
+      "tags": ["hsts", "security-headers", "x-frame-options", "csp", "xss"]
+    }
+  ],
+  "links": [
+    { "uri": "nginx/config", "context": "Server block structure where SSL directives are configured" },
+    { "uri": "nginx/reverse-proxy", "context": "Proxy HTTPS-terminated traffic to backend servers" },
+    { "uri": "nginx/troubleshooting", "context": "Debug SSL handshake failures and certificate issues" },
+    { "uri": "nginx", "context": "Nginx ecosystem overview" }
+  ],
+  "related": [
+    { "uri": "nginx/config", "relation": "prerequisite", "note": "SSL configuration lives inside server blocks" },
+    { "uri": "nginx/reverse-proxy", "relation": "see-also", "note": "SSL termination is typically combined with reverse proxying to backends" },
+    { "uri": "nginx/troubleshooting", "relation": "see-also", "note": "SSL handshake errors and certificate problems are common troubleshooting scenarios" }
+  ],
+  "scripts": [
+    {
+      "id": "setup-ssl",
+      "name": "Setup SSL",
+      "description": "Configure SSL/TLS on nginx with Let's Encrypt or self-signed certificates",
+      "lang": "bash",
+      "runtime": "bash>=4",
+      "entry": "./scripts/setup-ssl.sh",
+      "env": {
+        "SERVER_NAME": { "required": true, "description": "Server hostname (e.g., example.com)" },
+        "SSL_MODE": { "required": false, "default": "letsencrypt", "description": "Certificate mode: letsencrypt or selfsigned" },
+        "EMAIL": { "required": false, "description": "Email for Let's Encrypt registration" },
+        "CERT_PATH": { "required": false, "description": "Custom certificate file path (overrides auto-detection)" },
+        "KEY_PATH": { "required": false, "description": "Custom private key file path (overrides auto-detection)" },
+        "NGINX_CONF_DIR": { "required": false, "default": "/etc/nginx", "description": "Nginx config directory" }
+      }
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "server_name": { "type": "string", "description": "Server hostname" },
+        "ssl_mode": { "type": "string", "enum": ["letsencrypt", "selfsigned", "custom"], "default": "letsencrypt" },
+        "email": { "type": "string", "description": "Email for Let's Encrypt" },
+        "cert_path": { "type": "string", "description": "Path to certificate file (for custom mode)" },
+        "key_path": { "type": "string", "description": "Path to private key file (for custom mode)" }
+      },
+      "required": ["server_name"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "cert_path": { "type": "string", "description": "Path to SSL certificate" },
+        "key_path": { "type": "string", "description": "Path to private key" },
+        "config_path": { "type": "string", "description": "Path to nginx config with SSL" },
+        "valid": { "type": "boolean", "description": "Whether nginx -t passed" },
+        "expiry": { "type": "string", "description": "Certificate expiration date" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "nginx/config", "reason": "SSL directives are added to server blocks" }
+  ],
+  "more": {
+    "docs": "https://nginx.org/en/docs/http/ngx_http_ssl_module.html",
+    "letsencrypt": "https://letsencrypt.org/docs/",
+    "certbot": "https://certbot.eff.org/instructions",
+    "wiki": "https://wiki.mozilla.org/Security/Server_Side_TLS"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, devops, AI agents",
+    "estimated_reading_time": "6 min",
+    "prerequisites": ["nginx/config"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

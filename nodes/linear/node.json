@@ -1,0 +1,80 @@
+{
+  "name": "linear",
+  "version": "1.0.0",
+  "uri": "linear",
+  "type": "ecosystem",
+  "context": "Project management API for issue tracking, project planning, and workflow automation with Linear",
+  "info": "Linear is a modern project management tool built for software teams. Its GraphQL API at https://api.linear.app/graphql provides full CRUD access to issues, projects, teams, cycles, labels, and users. The @linear/sdk TypeScript package wraps the API with strongly-typed models. Authentication uses either personal API keys or OAuth 2.0. Agents use this ecosystem to automate issue triage, sync project state across tools, create issues from code or CI failures, track sprint progress, and build custom integrations. Linear's webhook system enables real-time event-driven workflows. All API interactions are GraphQL — there is no REST API.",
+  "parent": null,
+  "tags": ["linear", "project-management", "issue-tracking", "graphql", "agile", "sprint", "workflow"],
+  "aliases": [
+    "linear",
+    "linear app",
+    "linear.app",
+    "linear api",
+    "linear sdk",
+    "linear issue tracker",
+    "linear project management"
+  ],
+  "triggers": [
+    "create a linear issue",
+    "manage linear projects",
+    "integrate with linear",
+    "track issues in linear",
+    "set up linear webhooks",
+    "query linear api",
+    "automate linear workflow"
+  ],
+  "body": "# Linear\n\nLinear is a streamlined issue tracker and project management tool designed for software development teams. Unlike legacy tools, Linear's API is GraphQL-only, providing a single endpoint for all operations.\n\n## Architecture\n\nLinear's data model is hierarchical:\n\n- **Workspace** → top-level organization\n  - **Teams** → organizational units (engineering, design, etc.)\n    - **Issues** → work items with states, assignees, labels, priorities\n    - **Cycles** → time-boxed sprints\n    - **Projects** → cross-team initiatives spanning multiple cycles\n  - **Labels** → shared or team-scoped categorization\n  - **Workflow States** → customizable issue lifecycle (Backlog → Todo → In Progress → Done → Cancelled)\n\n## API Surface\n\n**Endpoint:** `https://api.linear.app/graphql`\n\nAll interactions use GraphQL queries and mutations. The API supports introspection, so you can explore the schema dynamically.\n\n```bash\ncurl -X POST https://api.linear.app/graphql \\\n  -H \"Content-Type: application/json\" \\\n  -H \"Authorization: <API_KEY>\" \\\n  -d '{\"query\": \"{ viewer { id name email } }\"}'\n```\n\n## SDK\n\nThe official TypeScript SDK wraps the GraphQL API:\n\n```bash\nnpm install @linear/sdk\n```\n\n```typescript\nimport { LinearClient } from \"@linear/sdk\";\n\nconst client = new LinearClient({ apiKey: process.env.LINEAR_API_KEY });\nconst me = await client.viewer;\nconsole.log(me.name, me.email);\n```\n\n## Key Concepts\n\n| Concept | Description |\n|---------|-------------|\n| **Team** | Organizational unit; issues belong to exactly one team |\n| **Issue** | Work item with title, description, state, priority, assignee |\n| **Project** | Cross-team initiative grouping related issues |\n| **Cycle** | Time-boxed sprint within a team |\n| **Label** | Categorization tag (workspace or team-scoped) |\n| **Workflow State** | Issue lifecycle state (customizable per team) |\n| **Priority** | 0 (none) through 4 (urgent) |\n\n## Environment Variables\n\n| Variable | Purpose |\n|----------|----------|\n| `LINEAR_API_KEY` | Personal API key from Settings → Security → API |\n| `LINEAR_OAUTH_ACCESS_TOKEN` | OAuth 2.0 access token for integrations |\n| `LINEAR_WEBHOOK_SECRET` | Signing secret for webhook signature verification |\n\n## Rate Limits\n\nLinear rate-limits API calls to ensure equitable access. When polling, order queries by recently modified items. Prefer webhooks over polling for real-time updates.\n\nSee [[linear/auth]] for authentication setup, [[linear/issues]] for issue management, [[linear/projects]] for project tracking, [[linear/teams]] for team operations, and [[linear/webhooks]] for event-driven automation.",
+  "sections": [
+    {
+      "id": "graphql-api",
+      "title": "GraphQL API",
+      "body": "Linear exposes a single GraphQL endpoint at `https://api.linear.app/graphql`. All queries and mutations go through this endpoint. Authentication is via `Authorization` header — either a bare API key or `Bearer <token>` for OAuth. The API supports introspection, cursor-based pagination (Relay-style with `nodes`, `edges`, `pageInfo`), and filtering on most collection fields. Archived resources are excluded by default; pass `includeArchived: true` to include them.",
+      "tags": ["graphql", "api", "endpoint", "pagination", "filtering"]
+    },
+    {
+      "id": "sdk",
+      "title": "TypeScript SDK",
+      "body": "The `@linear/sdk` package provides strongly-typed models and operations generated from the GraphQL schema. Install with `npm install @linear/sdk`. Initialize with `new LinearClient({ apiKey })` or `new LinearClient({ accessToken })`. All operations return model objects that expose methods for related resources — e.g., an Issue model has `.assignee`, `.team`, `.project` accessors. The SDK works in any JavaScript environment.",
+      "tags": ["sdk", "typescript", "npm", "linear-client"]
+    },
+    {
+      "id": "data-model",
+      "title": "Data model",
+      "body": "Issues belong to exactly one team and have a workflow state, priority (0-4), optional assignee, labels, and optional project/cycle associations. Projects span teams and group related issues. Cycles are time-boxed sprints scoped to a single team. Labels can be workspace-wide or team-scoped. Workflow states are customizable per team and follow a type system: backlog, unstarted, started, completed, cancelled.",
+      "tags": ["data-model", "issues", "projects", "teams", "cycles", "labels", "workflow"]
+    }
+  ],
+  "links": [
+    { "uri": "linear/auth", "context": "Authentication setup for API keys and OAuth" },
+    { "uri": "linear/issues", "context": "Create, update, search, and manage issues" },
+    { "uri": "linear/projects", "context": "Track cross-team initiatives and milestones" },
+    { "uri": "linear/teams", "context": "Understand team structure and workflow states" },
+    { "uri": "linear/webhooks", "context": "React to issue and project events in real time" }
+  ],
+  "related": [
+    { "uri": "github/issues", "relation": "alternative", "note": "GitHub Issues is an alternative issue tracker — Linear can sync with GitHub" },
+    { "uri": "github/webhooks", "relation": "see-also", "note": "Similar webhook pattern for event-driven automation" }
+  ],
+  "more": {
+    "docs": "https://linear.app/developers",
+    "api": "https://api.linear.app/graphql",
+    "sdk": "https://www.npmjs.com/package/@linear/sdk",
+    "schema": "https://studio.apollographql.com/public/Linear-API/variant/current/schema/reference"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "5 min",
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

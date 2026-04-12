@@ -1,0 +1,153 @@
+{
+  "name": "dev-server",
+  "version": "1.0.0",
+  "uri": "vite/dev-server",
+  "type": "skill",
+  "context": "Start and configure Vite's dev server — host, port, proxy, HMR, HTTPS, CORS, warmup, middleware mode, and file system restrictions",
+  "info": "Vite's dev server is the core development experience, powered by native ES modules and instant Hot Module Replacement. Configuration lives under the `server` key in vite.config.ts. `server.host` defaults to localhost; set to `0.0.0.0` or `true` to expose on all network interfaces (required for Docker/WSL2). `server.port` defaults to 5173; if taken Vite auto-increments unless `server.strictPort` is true. `server.https` enables TLS and HTTP/2 — pass key/cert paths or use `@vitejs/plugin-basic-ssl` for self-signed certs. `server.open` auto-opens the browser on startup (accepts a path string). `server.proxy` defines custom proxy rules for API backends, supporting path rewriting, regex matching, WebSocket proxying, and per-route `configure` hooks — powered by http-proxy under the hood. `server.cors` controls CORS headers (defaults to allowing all origins). `server.headers` sets custom response headers on all served files. `server.hmr` configures the HMR WebSocket connection: protocol (ws/wss), host, port, clientPort (for reverse proxies), overlay (error overlay toggle), and timeout. `server.warmup` accepts `clientFiles` and `ssrFiles` glob arrays to pre-transform frequently used modules at startup for faster initial loads. `server.watch` passes options to chokidar; by default `.git/` and `node_modules/` are excluded. `server.middlewareMode` disables the built-in HTTP server so Vite can be mounted as middleware in Express, Connect, Koa, or Fastify apps — essential for custom SSR setups. `server.fs.strict` (default true in Vite 6+) restricts file serving to the project root and workspace; `server.fs.allow` adds extra allowed directories; `server.fs.deny` blocks specific patterns (defaults to dotfiles). `server.origin` sets the origin of served asset URLs during dev. `server.allowedHosts` restricts which hostnames the server responds to, preventing DNS rebinding attacks. `server.forwardConsole` (experimental) forwards server-side console logs to the browser.",
+  "parent": "vite",
+  "tags": ["dev-server", "hmr", "proxy", "https", "middleware", "hot-reload", "cors", "warmup", "websocket", "chokidar"],
+  "aliases": [
+    "vite dev server",
+    "vite serve",
+    "vite dev",
+    "dev server",
+    "vite server",
+    "hot module replacement",
+    "vite hmr",
+    "vite proxy",
+    "vite development server"
+  ],
+  "triggers": [
+    "start vite dev server",
+    "configure vite proxy",
+    "vite hmr not working",
+    "expose vite to network",
+    "vite https",
+    "vite middleware mode",
+    "vite proxy api requests",
+    "run vite on a different port",
+    "vite dev server in docker",
+    "set up vite with express",
+    "vite cors configuration",
+    "vite hmr websocket error",
+    "vite warmup files"
+  ],
+  "body": "# Vite Dev Server\n\nVite's dev server provides instant startup and sub-millisecond HMR by serving source files as native ES modules. All server options live under the `server` key in [[vite/config]].\n\n## Starting the Dev Server\n\n```bash\n# All three are equivalent\nvite\nvite dev\nvite serve\n\n# Common flags\nvite --host 0.0.0.0      # expose to network\nvite --port 3000         # custom port\nvite --open              # open browser on start\nvite --open /login       # open specific path\nvite --force             # re-bundle dependencies\nvite --strictPort        # fail if port is taken\n```\n\n## Configuring Host and Port\n\n```typescript\n// vite.config.ts\nimport { defineConfig } from 'vite'\n\nexport default defineConfig({\n  server: {\n    host: '0.0.0.0',    // expose to all interfaces (default: 'localhost')\n    port: 3000,          // default: 5173\n    strictPort: true,    // fail if port in use (default: false — auto-increments)\n    open: true,          // open browser on start\n  }\n})\n```\n\nSet `host: true` as shorthand for `0.0.0.0`. Required when running inside Docker, WSL2, or Codespaces to make the server reachable from the host machine.\n\n## Proxy Configuration\n\nProxy API requests to a backend server during development. Uses [http-proxy](https://github.com/http-party/node-http-proxy) under the hood.\n\n```typescript\nexport default defineConfig({\n  server: {\n    proxy: {\n      // Simple: /api/users -> http://localhost:4000/api/users\n      '/api': 'http://localhost:4000',\n\n      // Rewrite path: /api/users -> http://localhost:4000/users\n      '/api': {\n        target: 'http://localhost:4000',\n        changeOrigin: true,\n        rewrite: (path) => path.replace(/^\\/api/, ''),\n      },\n\n      // WebSocket proxy\n      '/socket.io': {\n        target: 'ws://localhost:4000',\n        ws: true,\n      },\n\n      // Regex matching: /fallback/any/path -> http://localhost:4000/any/path\n      '^/fallback/.*': {\n        target: 'http://localhost:4000',\n        changeOrigin: true,\n        rewrite: (path) => path.replace(/^\\/fallback/, ''),\n      },\n\n      // Secure backend with self-signed cert\n      '/secure-api': {\n        target: 'https://localhost:4443',\n        secure: false,           // accept self-signed certs\n        changeOrigin: true,\n      },\n\n      // Access the proxy instance for custom logic\n      '/custom': {\n        target: 'http://localhost:4000',\n        configure: (proxy, options) => {\n          proxy.on('proxyReq', (proxyReq, req, res) => {\n            proxyReq.setHeader('X-Forwarded-For', req.socket.remoteAddress)\n          })\n        },\n      },\n    }\n  }\n})\n```\n\nProxy rules only apply to the dev server. For production, configure your reverse proxy (nginx, Caddy) or API gateway.\n\n## HMR Configuration\n\nHot Module Replacement updates modules in-place without a full page reload. It works automatically for CSS, Vue SFCs, React (with `@vitejs/plugin-react`), and Svelte.\n\n```typescript\nexport default defineConfig({\n  server: {\n    hmr: {\n      protocol: 'ws',        // 'ws' or 'wss' (default: auto-detected)\n      host: 'localhost',     // HMR WebSocket host\n      port: 5173,            // HMR WebSocket port (default: server port)\n      clientPort: 443,       // port the browser connects to (for reverse proxies)\n      overlay: true,         // show error overlay (default: true)\n      timeout: 30000,        // connection timeout in ms\n    }\n  }\n})\n```\n\n### HMR Troubleshooting\n\n| Symptom | Fix |\n|---------|-----|\n| HMR not connecting | Check `server.hmr.host` and firewall rules; behind a reverse proxy, set `clientPort` |\n| Full page reloads instead of HMR | Module lacks HMR boundary — check that framework plugin is installed ([[vite/plugins]]) |\n| HMR slow on large projects | Use `server.warmup.clientFiles` to pre-transform hot paths |\n| WebSocket blocked by proxy | Set `server.hmr.protocol: 'wss'` and `server.hmr.clientPort: 443` |\n| Overlay covers app in production-like env | Set `server.hmr.overlay: false` |\n\nTo disable HMR entirely: `server.hmr: false`.\n\n## HTTPS Setup\n\nEnable TLS for local HTTPS development (required for testing Service Workers, Secure Cookies, and HTTP/2).\n\n```typescript\nimport fs from 'node:fs'\n\nexport default defineConfig({\n  server: {\n    https: {\n      key: fs.readFileSync('certs/localhost-key.pem'),\n      cert: fs.readFileSync('certs/localhost-cert.pem'),\n    }\n  }\n})\n```\n\n### Quick Self-Signed Certs with mkcert\n\n```bash\n# Install mkcert and create a local CA\nbrew install mkcert      # or: choco install mkcert / scoop install mkcert\nmkcert -install\n\n# Generate certs in your project\nmkdir -p certs\nmkcert -key-file certs/localhost-key.pem -cert-file certs/localhost-cert.pem localhost 127.0.0.1 ::1\n```\n\nAlternatively, use the `@vitejs/plugin-basic-ssl` plugin for zero-config self-signed certs:\n\n```typescript\nimport basicSsl from '@vitejs/plugin-basic-ssl'\n\nexport default defineConfig({\n  plugins: [basicSsl()],\n})\n```\n\nWhen HTTPS is enabled, Vite automatically upgrades to HTTP/2.\n\n## Middleware Mode\n\nMount Vite as middleware in an existing Express, Connect, Koa, or Fastify server. Essential for custom SSR setups and complex backend integrations.\n\n```typescript\nimport express from 'express'\nimport { createServer as createViteServer } from 'vite'\n\nasync function startServer() {\n  const app = express()\n\n  const vite = await createViteServer({\n    server: { middlewareMode: true },\n    appType: 'custom',          // disable built-in HTML serving\n  })\n\n  // Use Vite's connect-compatible middleware\n  app.use(vite.middlewares)\n\n  // Custom API routes\n  app.get('/api/data', (req, res) => {\n    res.json({ hello: 'world' })\n  })\n\n  // SSR: transform and render on every request\n  app.use('*', async (req, res) => {\n    const url = req.originalUrl\n    const template = await vite.transformIndexHtml(url, \n      fs.readFileSync('index.html', 'utf-8'))\n    const { render } = await vite.ssrLoadModule('/src/entry-server.tsx')\n    const html = template.replace('<!--ssr-outlet-->', await render(url))\n    res.status(200).set({ 'Content-Type': 'text/html' }).end(html)\n  })\n\n  app.listen(3000)\n}\nstartServer()\n```\n\nIn middleware mode, Vite does not start its own HTTP server or open a browser. Call `vite.close()` on shutdown to clean up.\n\n## File System Restrictions\n\nVite restricts which files can be served to prevent accidental exposure of sensitive files outside the project.\n\n```typescript\nexport default defineConfig({\n  server: {\n    fs: {\n      strict: true,             // only serve files within allowed dirs (default: true)\n      allow: [\n        '/path/to/shared-lib',  // allow files outside project root\n      ],\n      deny: [\n        '.env',                 // block specific patterns\n        '.env.*',\n        '*.pem',\n        '**/.git/**',\n      ],\n    }\n  }\n})\n```\n\nBy default `server.fs.allow` includes the project root, workspace root (if in a monorepo), and any symlinked dependencies. The `deny` list is checked before `allow` and defaults to blocking dotfiles.\n\n## Warmup\n\nPre-transform frequently used modules at server start to avoid transformation waterfalls on first page load.\n\n```typescript\nexport default defineConfig({\n  server: {\n    warmup: {\n      clientFiles: [\n        './src/main.tsx',\n        './src/components/Layout.tsx',\n        './src/pages/Home.tsx',\n      ],\n      ssrFiles: [\n        './src/entry-server.tsx',\n      ],\n    }\n  }\n})\n```\n\nAccepts glob patterns: `./src/components/**/*.tsx`. Only warm up files that are actually imported early — warming too many files wastes startup time.\n\n## CORS\n\n```typescript\nexport default defineConfig({\n  server: {\n    cors: true,                       // default: allow all origins\n    // or fine-grained:\n    cors: {\n      origin: 'http://localhost:3000',\n      methods: ['GET', 'POST'],\n      credentials: true,\n    }\n  }\n})\n```\n\n## Custom Response Headers\n\n```typescript\nexport default defineConfig({\n  server: {\n    headers: {\n      'X-Custom-Header': 'value',\n      'Cross-Origin-Embedder-Policy': 'require-corp',\n      'Cross-Origin-Opener-Policy': 'same-origin',\n    }\n  }\n})\n```\n\nThe `COEP` and `COOP` headers above enable `SharedArrayBuffer`, required by some WASM workloads.\n\n## Allowed Hosts\n\nRestrict which hostnames the dev server responds to, preventing DNS rebinding attacks:\n\n```typescript\nexport default defineConfig({\n  server: {\n    allowedHosts: ['myapp.local', '.example.com'],  // dot prefix matches subdomains\n  }\n})\n```\n\n## Environment Variables\n\n| Variable | Purpose |\n|----------|----------|\n| `HOST` | Override `server.host` from command line |\n| `PORT` | Override `server.port` from command line |\n| `HTTPS` | Enable HTTPS when set to a truthy value |\n\nSee [[vite/env]] for the full env variable system.\n\n## Watch Options\n\n```typescript\nexport default defineConfig({\n  server: {\n    watch: {\n      // Chokidar options\n      usePolling: true,           // needed on network file systems / Docker bind mounts\n      interval: 100,              // polling interval in ms\n      ignored: ['**/coverage/**'], // additional ignore patterns\n    }\n  }\n})\n```\n\nSet `usePolling: true` when file watching doesn't work (common in Docker with bind mounts, some NFS setups, and WSL2 cross-filesystem access).\n",
+  "sections": [
+    {
+      "id": "starting-server",
+      "title": "Starting the dev server",
+      "body": "Run `vite`, `vite dev`, or `vite serve` to start the development server. Default port is 5173; it auto-increments if taken unless `server.strictPort` is set. Common CLI flags: `--host` (network exposure), `--port` (custom port), `--open` (auto-open browser), `--force` (re-bundle deps), `--config <file>` (custom config). The server uses native ES modules and only transforms files on demand, giving sub-second cold starts even on large projects.",
+      "tags": ["start", "cli", "port", "strictPort", "open", "force"]
+    },
+    {
+      "id": "proxy-config",
+      "title": "Proxy configuration for API backends",
+      "body": "Define proxy rules under `server.proxy` in [[vite/config]]. Supports simple string targets (`'/api': 'http://localhost:4000'`), path rewriting with `rewrite`, WebSocket proxying with `ws: true`, regex path matching, custom headers via `configure` hook, and `secure: false` for self-signed backend certs. Powered by http-proxy. Only applies during development — configure your reverse proxy (nginx, Caddy) for production.",
+      "tags": ["proxy", "api", "rewrite", "websocket", "http-proxy", "backend"]
+    },
+    {
+      "id": "hmr",
+      "title": "Hot Module Replacement (HMR)",
+      "body": "HMR updates changed modules in the browser without a full reload. Works out of the box for CSS, Vue SFCs, React (via [[vite/plugins]]), and Svelte. Configure the HMR WebSocket connection via `server.hmr`: set `protocol` (ws/wss), `host`, `port`, `clientPort` (for reverse proxies), `overlay` (error overlay), and `timeout`. Disable entirely with `server.hmr: false`. Common issues: firewall blocking WebSocket, reverse proxy not forwarding upgrade requests, missing framework plugin creating no HMR boundary.",
+      "tags": ["hmr", "hot-reload", "websocket", "overlay", "module-replacement"]
+    },
+    {
+      "id": "https-setup",
+      "title": "HTTPS and HTTP/2",
+      "body": "Enable HTTPS by passing `key` and `cert` to `server.https`. Generate trusted local certs with mkcert (`mkcert -install && mkcert localhost`). For quick self-signed certs, use the `@vitejs/plugin-basic-ssl` plugin. When HTTPS is enabled, Vite automatically upgrades to HTTP/2. HTTPS is required for testing Service Workers, Secure Cookies, and APIs that enforce secure contexts.",
+      "tags": ["https", "tls", "http2", "mkcert", "ssl", "certificates"]
+    },
+    {
+      "id": "middleware-mode",
+      "title": "Middleware mode for Express/Connect",
+      "body": "Set `server.middlewareMode: true` and `appType: 'custom'` to use Vite as middleware in an existing Node.js server. Access the connect-compatible middleware stack via `vite.middlewares`. Use `vite.transformIndexHtml()` and `vite.ssrLoadModule()` for custom SSR pipelines. Vite does not start its own HTTP server in this mode. Call `vite.close()` on shutdown. Works with Express, Connect, Koa (via adapter), and Fastify.",
+      "tags": ["middleware", "express", "connect", "ssr", "custom-server", "koa", "fastify"]
+    },
+    {
+      "id": "file-restrictions",
+      "title": "File system serving restrictions",
+      "body": "Vite restricts file serving to prevent exposing sensitive files. `server.fs.strict` (default true) limits serving to the project root and workspace root. Add extra directories with `server.fs.allow`. Block specific patterns with `server.fs.deny` (dotfiles blocked by default). The deny list is checked before allow. In monorepos, workspace root is auto-detected and allowed. Symlinked dependencies are also allowed by default.",
+      "tags": ["security", "fs", "strict", "allow", "deny", "monorepo"]
+    },
+    {
+      "id": "warmup",
+      "title": "Warmup for faster initial loads",
+      "body": "Pre-transform frequently used modules at server start with `server.warmup.clientFiles` and `server.warmup.ssrFiles`. Accepts file paths or glob patterns. Reduces the transformation waterfall on first page load by processing modules before the browser requests them. Only warm up files that are imported early in the module graph — warming too many files wastes startup time.",
+      "tags": ["warmup", "performance", "pre-transform", "cold-start"]
+    }
+  ],
+  "links": [
+    { "uri": "vite/config", "context": "Server options are defined in vite.config.ts under the server key" },
+    { "uri": "vite/plugins", "context": "Framework plugins (React, Vue) provide HMR boundaries" },
+    { "uri": "vite/env", "context": "Environment variables for host, port, and HTTPS overrides" },
+    { "uri": "vite/troubleshooting", "context": "Debug HMR failures, slow starts, and CORS issues" },
+    { "uri": "vite/build", "context": "Production build configuration — proxy rules do not apply" }
+  ],
+  "related": [
+    { "uri": "vite/config", "relation": "prerequisite", "note": "Server options are set under the server key in vite.config.ts" },
+    { "uri": "vite/troubleshooting", "relation": "see-also", "note": "Common dev server issues: HMR failures, CORS, port conflicts, Docker networking" },
+    { "uri": "vite/plugins", "relation": "see-also", "note": "Framework plugins provide the HMR boundaries that make hot reload work" }
+  ],
+  "scripts": [
+    {
+      "id": "start-dev",
+      "name": "Start Dev Server",
+      "description": "Start the Vite dev server with configurable host, port, and browser-open behavior",
+      "lang": "bash",
+      "runtime": "bash",
+      "entry": "./scripts/start-dev.sh",
+      "env": {
+        "PROJECT_DIR": { "required": true, "secret": false, "description": "Path to the Vite project root" },
+        "HOST": { "required": false, "secret": false, "description": "Server host (default: localhost)" },
+        "PORT": { "required": false, "secret": false, "description": "Server port (default: 5173)" },
+        "OPEN": { "required": false, "secret": false, "description": "Open browser on start (default: true)" }
+      },
+      "packages": ["vite"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "host": { "type": "string", "default": "localhost", "description": "Server host — use 0.0.0.0 for network exposure" },
+        "port": { "type": "integer", "default": 5173, "description": "Server port" },
+        "proxy_target": { "type": "string", "description": "Backend URL to proxy API requests to (e.g. http://localhost:4000)" },
+        "open": { "type": "boolean", "default": true, "description": "Open browser on server start" },
+        "https": { "type": "boolean", "default": false, "description": "Enable HTTPS with auto-generated self-signed cert" }
+      },
+      "required": []
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "url": { "type": "string", "description": "Full URL the dev server is listening on (e.g. http://localhost:5173)" },
+        "port": { "type": "integer", "description": "Actual port the server bound to (may differ if auto-incremented)" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "vite/config", "reason": "Server options are set in vite.config.ts under the server key" }
+  ],
+  "more": {
+    "docs": "https://vite.dev/config/server-options",
+    "api": "https://vite.dev/guide/api-javascript#devserver",
+    "proxy": "https://github.com/http-party/node-http-proxy#options"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "8 min",
+    "prerequisites": ["vite/config"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

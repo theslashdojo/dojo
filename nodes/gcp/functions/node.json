@@ -1,0 +1,145 @@
+{
+  "name": "functions",
+  "version": "1.0.0",
+  "uri": "gcp/functions",
+  "type": "skill",
+  "context": "Deploy event-driven serverless functions on Google Cloud Functions — HTTP triggers, Pub/Sub, GCS events, and Cloud Eventarc",
+  "info": "This skill covers Google Cloud Functions for serverless compute: writing functions in Python, Node.js, Go, or Java; deploying with HTTP triggers or event triggers (Cloud Storage, Pub/Sub, Firestore, Eventarc); configuring memory, timeout, concurrency, and environment variables; and managing function versions and traffic splitting. Cloud Functions v2 (built on Cloud Run) is the current generation, offering longer timeouts (up to 60 minutes), larger instances (up to 32 GiB RAM), concurrency, and Eventarc integration. Agents use this skill to deploy webhooks, process file uploads, handle queue messages, and run scheduled jobs. See [[gcp/iam]] for required roles (roles/cloudfunctions.developer) and [[gcp/gcloud]] for CLI setup.",
+  "parent": "gcp",
+  "tags": ["functions", "serverless", "cloud-functions", "gcf", "faas", "http-trigger", "event-driven", "pubsub", "eventarc"],
+  "aliases": [
+    "cloud functions",
+    "gcf",
+    "google cloud functions",
+    "gcp functions",
+    "gcp serverless",
+    "gcloud functions",
+    "google serverless functions",
+    "cloud functions v2",
+    "cloud functions gen2",
+    "faas gcp"
+  ],
+  "triggers": [
+    "deploy a cloud function",
+    "create a serverless function on gcp",
+    "set up an http cloud function",
+    "trigger a function from pubsub",
+    "deploy a python cloud function",
+    "deploy a nodejs cloud function",
+    "create a gcs event function",
+    "google cloud function tutorial",
+    "cloud functions http endpoint",
+    "run serverless code on google cloud"
+  ],
+  "body": "# Google Cloud Functions\n\nCloud Functions is Google's serverless compute platform for event-driven code. Write a function, deploy it, and Google handles the servers, scaling, and availability. Cloud Functions v2 (2nd gen) is built on Cloud Run and is the recommended version.\n\n## Cloud Functions v1 vs v2\n\n| Feature | v1 (1st gen) | v2 (2nd gen) |\n|---------|-------------|-------------|\n| Max timeout | 9 min | 60 min |\n| Max memory | 8 GiB | 32 GiB |\n| Max instances | 3,000 | 1,000 (configurable) |\n| Concurrency | 1 per instance | Up to 1,000 per instance |\n| Event sources | Native GCS/Pub/Sub | Eventarc (90+ sources) |\n| Min instances | Yes | Yes |\n| Traffic splitting | No | Yes |\n| Built on | Custom | Cloud Run |\n\n## HTTP Function (Python)\n\n```python\n# main.py\nimport functions_framework\nfrom flask import jsonify\n\n@functions_framework.http\ndef hello(request):\n    \"\"\"HTTP Cloud Function.\"\"\"\n    name = request.args.get(\"name\", \"World\")\n    return jsonify({\"message\": f\"Hello, {name}!\"})\n```\n\n```txt\n# requirements.txt\nfunctions-framework==3.*\n```\n\n```bash\n# Deploy v2 HTTP function\ngcloud functions deploy hello \\\n  --gen2 \\\n  --runtime=python312 \\\n  --region=us-central1 \\\n  --source=. \\\n  --entry-point=hello \\\n  --trigger-http \\\n  --allow-unauthenticated \\\n  --memory=256Mi \\\n  --timeout=60s\n```\n\n## HTTP Function (Node.js)\n\n```javascript\n// index.js\nconst functions = require('@google-cloud/functions-framework');\n\nfunctions.http('hello', (req, res) => {\n  const name = req.query.name || 'World';\n  res.json({ message: `Hello, ${name}!` });\n});\n```\n\n```json\n// package.json\n{\n  \"dependencies\": {\n    \"@google-cloud/functions-framework\": \"^3.0.0\"\n  }\n}\n```\n\n```bash\n# Deploy v2 HTTP function (Node.js)\ngcloud functions deploy hello \\\n  --gen2 \\\n  --runtime=nodejs20 \\\n  --region=us-central1 \\\n  --source=. \\\n  --entry-point=hello \\\n  --trigger-http \\\n  --allow-unauthenticated\n```\n\n## Cloud Storage Event Function\n\n```python\n# main.py\nimport functions_framework\nfrom cloudevents.http import CloudEvent\n\n@functions_framework.cloud_event\ndef process_upload(cloud_event: CloudEvent):\n    \"\"\"Triggered by a GCS object finalize event.\"\"\"\n    data = cloud_event.data\n    bucket = data[\"bucket\"]\n    name = data[\"name\"]\n    print(f\"Processing file: gs://{bucket}/{name}\")\n    print(f\"Content type: {data.get('contentType', 'unknown')}\")\n    print(f\"Size: {data.get('size', 'unknown')} bytes\")\n```\n\n```bash\n# Deploy GCS event function\ngcloud functions deploy process-upload \\\n  --gen2 \\\n  --runtime=python312 \\\n  --region=us-central1 \\\n  --source=. \\\n  --entry-point=process_upload \\\n  --trigger-event-filters=\"type=google.cloud.storage.object.v1.finalized\" \\\n  --trigger-event-filters=\"bucket=my-uploads-bucket\"\n```\n\n## Pub/Sub Event Function\n\n```python\n# main.py\nimport base64\nimport functions_framework\nfrom cloudevents.http import CloudEvent\n\n@functions_framework.cloud_event\ndef process_message(cloud_event: CloudEvent):\n    \"\"\"Triggered by a Pub/Sub message.\"\"\"\n    data = base64.b64decode(cloud_event.data[\"message\"][\"data\"]).decode(\"utf-8\")\n    print(f\"Received message: {data}\")\n```\n\n```bash\n# Deploy Pub/Sub function\ngcloud functions deploy process-message \\\n  --gen2 \\\n  --runtime=python312 \\\n  --region=us-central1 \\\n  --source=. \\\n  --entry-point=process_message \\\n  --trigger-topic=my-topic\n```\n\n## Function Management\n\n```bash\n# List functions\ngcloud functions list --gen2 --region=us-central1\n\n# Describe a function\ngcloud functions describe hello --gen2 --region=us-central1\n\n# View logs\ngcloud functions logs read hello --gen2 --region=us-central1 --limit=50\n\n# Delete a function\ngcloud functions delete hello --gen2 --region=us-central1 --quiet\n\n# Set environment variables\ngcloud functions deploy hello \\\n  --gen2 \\\n  --runtime=python312 \\\n  --region=us-central1 \\\n  --source=. \\\n  --entry-point=hello \\\n  --trigger-http \\\n  --set-env-vars=\"DATABASE_URL=postgres://...,API_KEY=secret123\"\n\n# Set secrets from Secret Manager\ngcloud functions deploy hello \\\n  --gen2 \\\n  --runtime=python312 \\\n  --region=us-central1 \\\n  --source=. \\\n  --entry-point=hello \\\n  --trigger-http \\\n  --set-secrets=\"API_KEY=projects/my-project/secrets/api-key:latest\"\n```\n\n## Local Development\n\n```bash\n# Python — local dev with functions-framework\npip install functions-framework\nfunctions-framework --target=hello --port=8080 --debug\n\n# Node.js — local dev\nnpx @google-cloud/functions-framework --target=hello --port=8080\n\n# Test locally\ncurl http://localhost:8080?name=Agent\n```\n\n## Environment Variables\n\n| Variable | Purpose |\n|----------|----------|\n| `GOOGLE_CLOUD_PROJECT` | Project ID (auto-set in Cloud Functions) |\n| `FUNCTION_TARGET` | Entry point function name |\n| `FUNCTION_SIGNATURE_TYPE` | http or cloudevent |\n| `PORT` | HTTP port (default 8080) |\n",
+  "sections": [
+    {
+      "id": "http-functions",
+      "title": "HTTP functions",
+      "body": "HTTP functions respond to HTTP requests at a URL endpoint. Use `@functions_framework.http` (Python) or `functions.http()` (Node.js). Deploy with `--trigger-http`. Add `--allow-unauthenticated` for public access; omit it to require IAM authentication (Bearer token). The function URL is `https://REGION-PROJECT_ID.cloudfunctions.net/FUNCTION_NAME`. HTTP functions are ideal for webhooks, REST APIs, and web endpoints.",
+      "tags": ["http", "trigger", "webhook", "rest-api", "endpoint", "unauthenticated"]
+    },
+    {
+      "id": "event-functions",
+      "title": "Event-driven functions",
+      "body": "Event functions trigger on Cloud Events from GCS, Pub/Sub, Firestore, Firebase Auth, and 90+ Eventarc sources. Use `@functions_framework.cloud_event` (Python) or `functions.cloudEvent()` (Node.js). Deploy with `--trigger-event-filters` for v2 or `--trigger-event` for v1. The CloudEvent object contains `data` (event payload), `source`, `type`, and `subject`. GCS events: `google.cloud.storage.object.v1.finalized`, `.deleted`, `.archived`, `.metadataUpdated`.",
+      "tags": ["event", "cloudevent", "gcs-trigger", "pubsub-trigger", "eventarc", "firestore"]
+    },
+    {
+      "id": "configuration",
+      "title": "Function configuration",
+      "body": "Key settings: `--memory` (128Mi to 32Gi), `--timeout` (up to 3600s for v2), `--min-instances` (avoid cold starts), `--max-instances` (limit scaling), `--concurrency` (v2 only, requests per instance). Set environment variables with `--set-env-vars` or secrets with `--set-secrets` (reads from Secret Manager). Runtimes: python312, python311, nodejs20, nodejs18, go122, java21.",
+      "tags": ["memory", "timeout", "concurrency", "min-instances", "max-instances", "runtime", "secrets"]
+    },
+    {
+      "id": "local-dev",
+      "title": "Local development and testing",
+      "body": "Use `functions-framework` to run functions locally. Python: `pip install functions-framework && functions-framework --target=FUNCTION --port=8080`. Node.js: `npx @google-cloud/functions-framework --target=FUNCTION --port=8080`. Test with curl or any HTTP client. The functions framework replicates the production runtime for both HTTP and CloudEvent functions. Use `--debug` for auto-reload on code changes.",
+      "tags": ["local-dev", "testing", "functions-framework", "debug", "emulator"]
+    },
+    {
+      "id": "deployment",
+      "title": "Deployment and management",
+      "body": "Deploy with `gcloud functions deploy NAME --gen2 --runtime=RUNTIME --region=REGION --source=. --entry-point=FUNCTION`. View logs with `gcloud functions logs read NAME`. Delete with `gcloud functions delete NAME`. For v2, functions are backed by Cloud Run services — you can view them in the Cloud Run console. Traffic splitting lets you canary new versions: deploy, then shift traffic gradually.",
+      "tags": ["deploy", "logs", "delete", "traffic-splitting", "canary", "cloud-run"]
+    }
+  ],
+  "links": [
+    { "uri": "gcp", "context": "GCP ecosystem overview and authentication" },
+    { "uri": "gcp/iam", "context": "IAM roles required for Cloud Functions deployment" },
+    { "uri": "gcp/gcloud", "context": "gcloud CLI setup for function deployment" },
+    { "uri": "gcp/storage", "context": "GCS events trigger Cloud Functions" },
+    { "uri": "gcp/compute", "context": "VMs for long-running workloads that exceed function limits" }
+  ],
+  "related": [
+    { "uri": "gcp/iam", "relation": "prerequisite", "note": "Requires roles/cloudfunctions.developer for deployment" },
+    { "uri": "gcp/gcloud", "relation": "prerequisite", "note": "gcloud CLI must be installed and authenticated" },
+    { "uri": "gcp/storage", "relation": "see-also", "note": "GCS object events are a primary trigger source for Cloud Functions" },
+    { "uri": "gcp/compute", "relation": "alternative", "note": "Use Compute Engine for workloads that exceed function time/memory limits" }
+  ],
+  "scripts": [
+    {
+      "id": "deploy-function",
+      "name": "Deploy Cloud Function",
+      "description": "Deploy an HTTP or event-driven Cloud Function (v2) with configurable runtime, memory, and triggers",
+      "lang": "bash",
+      "runtime": "bash>=4",
+      "entry": "./scripts/deploy-function.sh",
+      "env": {
+        "GOOGLE_CLOUD_PROJECT": { "required": true, "secret": false, "description": "GCP project ID" },
+        "CLOUDSDK_COMPUTE_REGION": { "required": false, "secret": false, "default": "us-central1", "description": "Deployment region" }
+      },
+      "packages": ["google-cloud-sdk"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "action": { "type": "string", "enum": ["deploy", "list", "describe", "logs", "delete", "call"], "description": "Operation to perform" },
+        "function_name": { "type": "string", "description": "Name of the Cloud Function" },
+        "runtime": { "type": "string", "default": "python312", "description": "Runtime (python312, nodejs20, go122, java21)" },
+        "entry_point": { "type": "string", "description": "Function entry point name" },
+        "trigger_type": { "type": "string", "enum": ["http", "gcs", "pubsub"], "default": "http", "description": "Trigger type" },
+        "source": { "type": "string", "default": ".", "description": "Source directory path" },
+        "region": { "type": "string", "default": "us-central1", "description": "Deployment region" },
+        "memory": { "type": "string", "default": "256Mi", "description": "Memory allocation" },
+        "timeout": { "type": "integer", "default": 60, "description": "Timeout in seconds" },
+        "allow_unauthenticated": { "type": "boolean", "default": false, "description": "Allow public access (HTTP functions)" }
+      },
+      "required": ["action", "function_name"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "function_url": { "type": "string", "description": "HTTP URL of the deployed function" },
+        "status": { "type": "string", "description": "Deployment status" },
+        "version": { "type": "string", "description": "Function version/revision" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "gcp/gcloud", "reason": "gcloud CLI must be installed and configured" },
+    { "uri": "gcp/iam", "reason": "Requires roles/cloudfunctions.developer for deployment" }
+  ],
+  "more": {
+    "docs": "https://cloud.google.com/functions/docs",
+    "api": "https://cloud.google.com/functions/docs/reference/rest",
+    "examples": "https://cloud.google.com/functions/docs/samples"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "7 min",
+    "prerequisites": ["gcp/gcloud", "gcp/iam"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

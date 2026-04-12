@@ -1,0 +1,144 @@
+{
+  "name": "plan",
+  "version": "1.0.0",
+  "uri": "terraform/plan",
+  "type": "skill",
+  "context": "Preview infrastructure changes by computing the diff between Terraform configuration and real-world state",
+  "info": "terraform plan reads the current state, refreshes it against live infrastructure, and computes what actions Terraform would take to make reality match your configuration. It never modifies infrastructure — it only produces a read-only execution plan showing resources to add, change, or destroy. Plans can be saved to a file with -out for later application via terraform apply, which is the recommended workflow for safety. The plan command supports three modes: normal (converge to config), destroy (tear down everything), and refresh-only (update state without changing infra). Targeted plans with -target focus on specific resources. The -detailed-exitcode flag returns exit code 2 when changes are detected, enabling CI gates. See [[terraform/init]] for initialization and [[terraform/apply]] for executing plans.",
+  "parent": "terraform",
+  "tags": ["terraform", "plan", "preview", "diff", "changes", "execution-plan", "dry-run", "drift"],
+  "aliases": [
+    "terraform plan",
+    "tf plan",
+    "terraform preview",
+    "terraform diff",
+    "terraform dry run",
+    "terraform what-if",
+    "terraform execution plan",
+    "terraform plan output",
+    "tfplan"
+  ],
+  "triggers": [
+    "preview terraform changes",
+    "run terraform plan",
+    "what will terraform change",
+    "terraform plan output",
+    "save terraform plan to file",
+    "terraform plan with variables",
+    "terraform plan targeted resource",
+    "terraform plan destroy",
+    "check terraform drift",
+    "terraform detailed exit code"
+  ],
+  "body": "# Terraform Plan\n\n`terraform plan` computes an execution plan that shows what Terraform will do when you run `terraform apply`. It reads the current state, refreshes resource attributes from live infrastructure, and diffs the result against your configuration. No infrastructure is modified.\n\n## Basic Usage\n\n```bash\n# Preview changes\nterraform plan\n\n# Save plan to file for later apply\nterraform plan -out=tfplan\n\n# Plan with variable overrides\nterraform plan -var='environment=staging' -var='instance_count=3'\n\n# Plan using a variable file\nterraform plan -var-file=prod.tfvars\n\n# Plan destruction of all resources\nterraform plan -destroy\n\n# Refresh state only (no infra changes)\nterraform plan -refresh-only\n```\n\n## Planning Modes\n\n### Normal Mode (default)\nComputes changes needed to converge real infrastructure to match configuration. This is the standard workflow.\n\n### Destroy Mode (`-destroy`)\nPlans the removal of every resource in state. Equivalent to running `terraform destroy` but only showing the plan without executing:\n\n```bash\nterraform plan -destroy -out=destroy.tfplan\nterraform apply destroy.tfplan\n```\n\n### Refresh-Only Mode (`-refresh-only`)\nUpdates state to reflect external changes (manual console edits, drift) without planning any infrastructure modifications:\n\n```bash\n# Detect drift\nterraform plan -refresh-only\n\n# Apply drift reconciliation to state\nterraform plan -refresh-only -out=refresh.tfplan\nterraform apply refresh.tfplan\n```\n\n## Saved Plans\n\nAlways save plans in production workflows:\n\n```bash\n# Save the plan\nterraform plan -out=tfplan\n\n# Apply the exact saved plan (no confirmation prompt)\nterraform apply tfplan\n\n# Clean up\nrm tfplan\n```\n\nSaved plans capture the full configuration snapshot. The plan file is an opaque binary — do not name it with `.tf` extension. It may contain sensitive values in cleartext; treat it as a sensitive artifact.\n\n## Targeting Specific Resources\n\nFocus planning on individual resources and their dependencies:\n\n```bash\n# Plan changes to a single resource\nterraform plan -target=aws_instance.web\n\n# Plan changes to a module\nterraform plan -target=module.vpc\n\n# Plan replacement of a degraded resource\nterraform plan -replace=aws_instance.web\n\n# Multiple targets\nterraform plan -target=aws_instance.web -target=aws_security_group.web\n```\n\n**Warning**: targeting should be used only for recovery or debugging. Regular use causes configuration drift because untargeted resources are ignored.\n\n## Exit Codes with `-detailed-exitcode`\n\nUseful in CI/CD pipelines to gate on whether changes exist:\n\n```bash\nterraform plan -detailed-exitcode -out=tfplan\nEXIT_CODE=$?\n\ncase $EXIT_CODE in\n  0) echo \"No changes needed\" ;;\n  1) echo \"Error during plan\" ; exit 1 ;;\n  2) echo \"Changes detected — review and apply\" ;;\nesac\n```\n\n| Exit Code | Meaning |\n|-----------|---------|\n| 0 | Success, no changes |\n| 1 | Error |\n| 2 | Success, changes present |\n\n## All Flags\n\n| Flag | Purpose |\n|------|----------|\n| `-out=FILENAME` | Save plan to file for later `terraform apply` |\n| `-var='KEY=VALUE'` | Set an input variable (repeatable) |\n| `-var-file=FILE` | Load variables from a `.tfvars` file (repeatable) |\n| `-target=ADDRESS` | Plan only this resource and its dependencies (repeatable) |\n| `-replace=ADDRESS` | Force replacement of a resource (repeatable) |\n| `-destroy` | Plan to destroy all resources |\n| `-refresh-only` | Only update state from live infrastructure |\n| `-refresh=false` | Skip state refresh (faster but may miss drift) |\n| `-detailed-exitcode` | Return exit code 2 when changes are present |\n| `-parallelism=N` | Max concurrent provider operations (default: 10) |\n| `-input=false` | Disable interactive prompts |\n| `-no-color` | Disable colored output |\n| `-json` | Machine-readable JSON output |\n| `-compact-warnings` | Show warning summaries only |\n| `-lock=false` | Disable state locking (dangerous) |\n| `-lock-timeout=DURATION` | Wait for state lock (e.g., `30s`) |\n\n## Environment Variables\n\n| Variable | Purpose |\n|----------|----------|\n| `TF_VAR_<name>` | Set input variable `<name>` |\n| `TF_CLI_ARGS_plan` | Extra arguments for every `terraform plan` invocation |\n| `TF_IN_AUTOMATION` | Adjust output for CI/CD |\n| `TF_INPUT` | Set to `0` to disable prompts |\n| `TF_LOG` | Debug logging: TRACE, DEBUG, INFO, WARN, ERROR |\n\n## Reading Plan Output\n\nTerraform plan output uses symbols to indicate actions:\n\n```\n  + create       — new resource will be created\n  - destroy      — existing resource will be destroyed\n  ~ update       — resource will be modified in-place\n-/+ replace      — resource will be destroyed and recreated\n  <= read        — data source will be read\n```\n\nThe plan summary at the end shows totals:\n```\nPlan: 3 to add, 1 to change, 0 to destroy.\n```\n",
+  "sections": [
+    {
+      "id": "planning-modes",
+      "title": "Planning modes",
+      "body": "Normal mode (default) converges infrastructure to match configuration. Destroy mode (`-destroy`) plans removal of all managed resources. Refresh-only mode (`-refresh-only`) updates state to reflect external changes without modifying infrastructure. These modes are mutually exclusive. Destroy and refresh-only plans can be saved with `-out` and applied later.",
+      "tags": ["normal", "destroy", "refresh-only", "modes", "drift"]
+    },
+    {
+      "id": "saved-plans",
+      "title": "Saving and applying plans",
+      "body": "Use `-out=tfplan` to save an execution plan to a binary file. Apply it with `terraform apply tfplan` — this skips the confirmation prompt because the plan was already reviewed. Saved plans are the recommended workflow for production: plan, review, apply. Plan files contain sensitive data in cleartext and should be treated as secrets. Never name plan files with `.tf` extension.",
+      "tags": ["save", "out", "binary", "apply", "production", "sensitive"]
+    },
+    {
+      "id": "targeting",
+      "title": "Targeted planning",
+      "body": "Use `-target=ADDRESS` to focus on specific resources (e.g., `aws_instance.web`, `module.vpc`). Terraform plans the targeted resource plus its dependencies. Use `-replace=ADDRESS` to force resource replacement even when no config change is detected. Targeting is for recovery and debugging only — regular use causes drift because non-targeted resources are silently skipped.",
+      "tags": ["target", "replace", "specific", "recovery", "dependencies"]
+    },
+    {
+      "id": "ci-cd-gating",
+      "title": "CI/CD gating with exit codes",
+      "body": "Use `-detailed-exitcode` to gate CI/CD pipelines: exit 0 means no changes, exit 1 means error, exit 2 means changes detected. Combine with `-out` to save the plan and `-json` for machine-readable output. In GitHub Actions, check the exit code to decide whether to proceed to apply or skip.",
+      "tags": ["ci-cd", "exit-code", "gating", "github-actions", "automation", "json"]
+    }
+  ],
+  "links": [
+    { "uri": "terraform/init", "context": "Initialize working directory before planning" },
+    { "uri": "terraform/apply", "context": "Apply a saved plan to execute infrastructure changes" },
+    { "uri": "terraform/state", "context": "State is refreshed during planning to detect drift" },
+    { "uri": "terraform/providers", "context": "Providers execute the refresh and diff during plan" },
+    { "uri": "terraform/modules", "context": "Module resources appear in plan output with module prefix" },
+    { "uri": "terraform", "context": "Terraform ecosystem root with core workflow" }
+  ],
+  "related": [
+    { "uri": "terraform/init", "relation": "prerequisite", "note": "Working directory must be initialized before planning" },
+    { "uri": "terraform/apply", "relation": "see-also", "note": "Apply executes the changes computed by plan" },
+    { "uri": "terraform/state", "relation": "see-also", "note": "Plan reads and refreshes state to compute diffs" }
+  ],
+  "scripts": [
+    {
+      "id": "terraform-plan",
+      "name": "Terraform Plan",
+      "description": "Run terraform plan with variable files, targets, and saved plan output",
+      "lang": "bash",
+      "runtime": "terraform>=1.0",
+      "entry": "scripts/terraform-plan.sh",
+      "env": {
+        "TF_WORKING_DIR": { "required": false, "secret": false, "default": ".", "description": "Path to Terraform configuration directory" },
+        "TF_PLAN_FILE": { "required": false, "secret": false, "default": "tfplan", "description": "Output file name for saved plan" },
+        "TF_VAR_FILE": { "required": false, "secret": false, "description": "Path to .tfvars file" },
+        "TF_TARGETS": { "required": false, "secret": false, "description": "Comma-separated resource addresses to target" },
+        "TF_PLAN_MODE": { "required": false, "secret": false, "default": "normal", "description": "Planning mode: normal, destroy, or refresh-only" }
+      }
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "workingDir": { "type": "string", "description": "Path to Terraform configuration directory" },
+        "planFile": { "type": "string", "description": "Output file name for saved plan" },
+        "varFile": { "type": "string", "description": "Path to .tfvars file" },
+        "vars": {
+          "type": "object",
+          "additionalProperties": { "type": "string" },
+          "description": "Key-value pairs for input variables"
+        },
+        "targets": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Resource addresses to target"
+        },
+        "mode": { "type": "string", "enum": ["normal", "destroy", "refresh-only"], "default": "normal", "description": "Planning mode" },
+        "detailedExitcode": { "type": "boolean", "default": false, "description": "Return exit code 2 when changes exist" }
+      }
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "hasChanges": { "type": "boolean", "description": "Whether the plan contains changes" },
+        "toAdd": { "type": "integer", "description": "Number of resources to create" },
+        "toChange": { "type": "integer", "description": "Number of resources to modify" },
+        "toDestroy": { "type": "integer", "description": "Number of resources to destroy" },
+        "planFile": { "type": "string", "description": "Path to saved plan file (if -out was used)" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "terraform/init", "reason": "Working directory must be initialized before planning" }
+  ],
+  "more": {
+    "docs": "https://developer.hashicorp.com/terraform/cli/commands/plan",
+    "repo": "https://github.com/hashicorp/terraform"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, DevOps engineers, AI agents",
+    "estimated_reading_time": "6 min",
+    "prerequisites": ["terraform/init"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

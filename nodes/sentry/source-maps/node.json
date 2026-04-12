@@ -1,0 +1,143 @@
+{
+  "name": "source-maps",
+  "version": "1.0.0",
+  "uri": "sentry/source-maps",
+  "type": "skill",
+  "context": "Upload source maps to Sentry for readable production stack traces using build plugins or sentry-cli",
+  "info": "This skill covers source map uploading to Sentry so that minified production stack traces resolve to original source code. There are three upload methods: build tool plugins (@sentry/vite-plugin, @sentry/webpack-plugin, @sentry/rollup-plugin, @sentry/esbuild-plugin) that inject Debug IDs and upload automatically during builds; the sentry-cli for manual uploads in CI pipelines; and the @sentry/wizard for automated setup. Source maps must be associated with a release version that matches the `release` option in `Sentry.init()`. The auth token (SENTRY_AUTH_TOKEN) requires 'Project: Read & Write' and 'Release: Admin' scopes. After upload, delete source maps from your deployment to avoid exposing original source code. See [[sentry/setup]] for setting the release identifier and [[sentry/config]] for the release option.",
+  "parent": "sentry",
+  "tags": ["sentry", "source-maps", "sourcemaps", "debug-ids", "upload", "sentry-cli", "webpack", "vite", "rollup", "esbuild"],
+  "aliases": [
+    "sentry source maps",
+    "sentry sourcemaps",
+    "upload source maps",
+    "sentry source map upload",
+    "sentry debug ids",
+    "sentry-cli sourcemaps",
+    "sentry vite plugin",
+    "sentry webpack plugin",
+    "sentry release artifacts",
+    "source map upload sentry",
+    "readable stack traces sentry"
+  ],
+  "triggers": [
+    "upload source maps to sentry",
+    "configure sentry source maps",
+    "set up source map uploads",
+    "sentry stack traces are minified",
+    "sentry showing minified code",
+    "add sentry vite plugin",
+    "add sentry webpack plugin",
+    "sentry-cli sourcemaps upload",
+    "source maps not working in sentry",
+    "fix sentry source maps"
+  ],
+  "body": "# Source Map Uploads\n\nWithout source maps, Sentry shows minified stack traces like `a.js:1:42389` instead of `checkout.ts:142 in processPayment`. Source maps bridge the gap between production bundles and original source code.\n\n## Method 1: Build Tool Plugins (Recommended)\n\nBuild plugins inject Debug IDs into your bundles and upload source maps automatically during production builds.\n\n### Vite\n\n```bash\nnpm install @sentry/vite-plugin --save-dev\n```\n\n```javascript\n// vite.config.js\nimport { defineConfig } from \"vite\";\nimport { sentryVitePlugin } from \"@sentry/vite-plugin\";\n\nexport default defineConfig({\n  build: {\n    sourcemap: \"hidden\", // generate but don't expose in production\n  },\n  plugins: [\n    // Sentry plugin MUST be last\n    sentryVitePlugin({\n      org: process.env.SENTRY_ORG,\n      project: process.env.SENTRY_PROJECT,\n      authToken: process.env.SENTRY_AUTH_TOKEN,\n      sourcemaps: {\n        filesToDeleteAfterUpload: [\"./**/*.map\"],\n      },\n    }),\n  ],\n});\n```\n\n### Webpack\n\n```bash\nnpm install @sentry/webpack-plugin --save-dev\n```\n\n```javascript\n// webpack.config.js\nconst { sentryWebpackPlugin } = require(\"@sentry/webpack-plugin\");\n\nmodule.exports = {\n  devtool: \"source-map\",\n  plugins: [\n    sentryWebpackPlugin({\n      org: process.env.SENTRY_ORG,\n      project: process.env.SENTRY_PROJECT,\n      authToken: process.env.SENTRY_AUTH_TOKEN,\n    }),\n  ],\n};\n```\n\n### Rollup\n\n```bash\nnpm install @sentry/rollup-plugin --save-dev\n```\n\n```javascript\n// rollup.config.js\nimport { sentryRollupPlugin } from \"@sentry/rollup-plugin\";\n\nexport default {\n  output: { sourcemap: \"hidden\" },\n  plugins: [\n    sentryRollupPlugin({\n      org: process.env.SENTRY_ORG,\n      project: process.env.SENTRY_PROJECT,\n      authToken: process.env.SENTRY_AUTH_TOKEN,\n    }),\n  ],\n};\n```\n\n### esbuild\n\n```bash\nnpm install @sentry/esbuild-plugin --save-dev\n```\n\n```javascript\nconst { sentryEsbuildPlugin } = require(\"@sentry/esbuild-plugin\");\n\nrequire(\"esbuild\").build({\n  sourcemap: true,\n  plugins: [\n    sentryEsbuildPlugin({\n      org: process.env.SENTRY_ORG,\n      project: process.env.SENTRY_PROJECT,\n      authToken: process.env.SENTRY_AUTH_TOKEN,\n    }),\n  ],\n});\n```\n\n## Method 2: sentry-cli\n\nFor CI pipelines or build tools without plugin support:\n\n```bash\n# Install sentry-cli\nnpm install @sentry/cli --save-dev\n# Or globally\ncurl -sL https://sentry.io/get-cli/ | sh\n\n# Set environment variables\nexport SENTRY_AUTH_TOKEN=\"sntrys_...\"\nexport SENTRY_ORG=\"my-org\"\nexport SENTRY_PROJECT=\"my-project\"\n\n# Inject Debug IDs into source files and maps\nsentry-cli sourcemaps inject ./dist\n\n# Upload source maps\nsentry-cli sourcemaps upload ./dist\n```\n\nWith explicit release:\n\n```bash\nVERSION=$(sentry-cli releases propose-version)\nsentry-cli releases new \"$VERSION\"\nsentry-cli releases set-commits \"$VERSION\" --auto\nsentry-cli sourcemaps inject ./dist\nsentry-cli sourcemaps upload --release=\"$VERSION\" ./dist\nsentry-cli releases finalize \"$VERSION\"\nsentry-cli deploys new --release=\"$VERSION\" -e production\n```\n\n## Method 3: Sentry Wizard\n\nThe wizard auto-detects your build tool and configures everything:\n\n```bash\nnpx @sentry/wizard@latest -i sourcemaps\n```\n\n## Auth Token Setup\n\nCreate an auth token at `sentry.io/settings/auth-tokens/` with scopes:\n- **Project: Read & Write**\n- **Release: Admin**\n\nStore as `SENTRY_AUTH_TOKEN` environment variable. For CI, add to your pipeline's secrets.\n\nAlternatively, create a `.env.sentry-build-plugin` file (do NOT commit):\n\n```\nSENTRY_AUTH_TOKEN=sntrys_YOUR_TOKEN_HERE\n```\n\n## Important: Delete Source Maps After Upload\n\nSource maps contain your original source code. Delete them from your deployment:\n\n```javascript\n// In build plugin config\nsentryVitePlugin({\n  sourcemaps: {\n    filesToDeleteAfterUpload: [\"./**/*.map\"],\n  },\n});\n```\n\nOr use `sourcemap: \"hidden\"` in your build config to generate maps without `//# sourceMappingURL` references.\n\n## Troubleshooting\n\n| Symptom | Cause | Fix |\n|---------|-------|-----|\n| Minified stack traces | Source maps not uploaded | Run upload after build |\n| \"No source maps found\" | Wrong upload path | Verify `./dist` contains `.map` files |\n| \"Authentication failed\" | Bad or expired token | Regenerate at sentry.io/settings/auth-tokens/ |\n| Maps uploaded but not applied | Release mismatch | Ensure `release` in `Sentry.init()` matches the upload release |\n| \"Debug IDs not found\" | Inject step skipped | Run `sentry-cli sourcemaps inject` before upload |\n\n## Environment Variables\n\n| Variable | Purpose | Required |\n|----------|---------|----------|\n| `SENTRY_AUTH_TOKEN` | Auth token for upload API (secret) | Yes |\n| `SENTRY_ORG` | Organization slug | Yes |\n| `SENTRY_PROJECT` | Project slug | Yes |\n| `SENTRY_RELEASE` | Release version to associate maps with | Recommended |\n",
+  "sections": [
+    {
+      "id": "build-plugins",
+      "title": "Build tool plugins",
+      "body": "Build plugins are the recommended upload method. Install `@sentry/vite-plugin`, `@sentry/webpack-plugin`, `@sentry/rollup-plugin`, or `@sentry/esbuild-plugin` as dev dependencies. Configure with `org`, `project`, and `authToken`. The plugin injects Debug IDs into bundles during build and uploads matching source maps to Sentry. The Sentry plugin must be the last plugin in the plugin array to ensure all other transformations are captured. Plugins automatically skip uploads during development/watch mode. Use `sourcemaps.filesToDeleteAfterUpload` to remove `.map` files from your deployment.",
+      "tags": ["vite", "webpack", "rollup", "esbuild", "build-plugin", "debug-ids"]
+    },
+    {
+      "id": "sentry-cli",
+      "title": "sentry-cli uploads",
+      "body": "Use `sentry-cli` for CI pipelines or unsupported build tools. The two-step process is: `sentry-cli sourcemaps inject ./dist` (adds Debug IDs to source files and maps) then `sentry-cli sourcemaps upload ./dist`. For release-based association, wrap with `sentry-cli releases new VERSION` and `sentry-cli releases finalize VERSION`. Key flags: `--release` to specify version, `--dist` for build variants, `--url-prefix '~/'` to match deployed URL paths, `--validate` to verify map validity, and `--strip-common-prefix` to normalize paths.",
+      "tags": ["sentry-cli", "cli", "ci", "upload", "inject", "release"]
+    },
+    {
+      "id": "auth-token",
+      "title": "Auth token configuration",
+      "body": "Source map uploads require a Sentry auth token with 'Project: Read & Write' and 'Release: Admin' scopes. Create tokens at sentry.io/settings/auth-tokens/. Organization-level tokens are preferred over personal tokens for CI. Store as `SENTRY_AUTH_TOKEN` environment variable in your CI secrets. Build plugins also accept a `.env.sentry-build-plugin` file in your project root — never commit this file. The token format starts with `sntrys_`.",
+      "tags": ["auth-token", "authentication", "ci-secrets", "permissions"]
+    },
+    {
+      "id": "security",
+      "title": "Source map security",
+      "body": "Source maps contain your original source code including comments and variable names. Never deploy `.map` files to production servers accessible to users. Use `sourcemap: 'hidden'` in your build config to generate maps without `//# sourceMappingURL` comments in the output. Use `filesToDeleteAfterUpload` in build plugins to remove maps after upload. Verify your deployment does not serve `.map` files by checking `https://your-app.com/assets/main.js.map` returns 404.",
+      "tags": ["security", "hidden", "delete", "deployment"]
+    },
+    {
+      "id": "troubleshooting",
+      "title": "Troubleshooting source maps",
+      "body": "If stack traces are still minified: (1) verify source maps were uploaded — check Sentry Settings → Source Maps for your release, (2) ensure the `release` in `Sentry.init()` matches the release used during upload, (3) check that Debug IDs are injected — search your built JS files for `//# debugId=`, (4) run `sentry-cli sourcemaps upload --validate` to verify maps are valid, (5) enable `debug: true` in Sentry.init() and check console for upload errors. Timing matters — source maps must be uploaded before the first error is captured for that release.",
+      "tags": ["troubleshooting", "debug", "minified", "release-mismatch"]
+    }
+  ],
+  "links": [
+    { "uri": "sentry/setup", "context": "Set the release identifier during SDK initialization" },
+    { "uri": "sentry/config", "context": "The release option must match the upload release" },
+    { "uri": "sentry/capture", "context": "Captured errors use source maps for readable stack traces" },
+    { "uri": "vite/config", "context": "Vite build configuration for source map generation" }
+  ],
+  "related": [
+    { "uri": "sentry/setup", "relation": "prerequisite", "note": "The release set in Sentry.init() must match source map uploads" },
+    { "uri": "sentry/config", "relation": "see-also", "note": "release option in config determines which source maps apply" },
+    { "uri": "vite/build", "relation": "see-also", "note": "Vite builds with @sentry/vite-plugin for automatic uploads" }
+  ],
+  "scripts": [
+    {
+      "id": "upload-sourcemaps",
+      "name": "Upload Source Maps",
+      "description": "Upload source maps to Sentry using sentry-cli with release management",
+      "lang": "bash",
+      "runtime": "bash",
+      "entry": "./scripts/upload-sourcemaps.sh",
+      "env": {
+        "SENTRY_AUTH_TOKEN": { "required": true, "secret": true, "description": "Sentry auth token with Release:Admin and Project:Read&Write scopes" },
+        "SENTRY_ORG": { "required": true, "secret": false, "description": "Sentry organization slug" },
+        "SENTRY_PROJECT": { "required": true, "secret": false, "description": "Sentry project slug" },
+        "BUILD_DIR": { "required": false, "secret": false, "default": "./dist", "description": "Path to build output directory containing source maps" },
+        "SENTRY_RELEASE": { "required": false, "secret": false, "description": "Release version (auto-detected from git if omitted)" }
+      },
+      "packages": ["@sentry/cli"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "buildDir": { "type": "string", "default": "./dist", "description": "Path to build output with source maps" },
+        "org": { "type": "string", "description": "Sentry organization slug" },
+        "project": { "type": "string", "description": "Sentry project slug" },
+        "release": { "type": "string", "description": "Release version (auto-detected if omitted)" },
+        "environment": { "type": "string", "description": "Deployment environment for deploy tracking" },
+        "deleteAfterUpload": { "type": "boolean", "default": true, "description": "Delete .map files after upload" }
+      },
+      "required": ["org", "project"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "release": { "type": "string", "description": "Release version that source maps were uploaded to" },
+        "filesUploaded": { "type": "integer", "description": "Number of source map files uploaded" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "sentry/setup", "reason": "Release identifier in Sentry.init() must match the upload release" }
+  ],
+  "more": {
+    "docs": "https://docs.sentry.io/platforms/javascript/sourcemaps/",
+    "cli": "https://docs.sentry.io/cli/releases/",
+    "vite-plugin": "https://docs.sentry.io/platforms/javascript/sourcemaps/uploading/vite/",
+    "webpack-plugin": "https://docs.sentry.io/platforms/javascript/sourcemaps/uploading/webpack/",
+    "troubleshooting": "https://docs.sentry.io/platforms/javascript/sourcemaps/troubleshooting_js/"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, DevOps engineers, AI agents",
+    "estimated_reading_time": "5 min",
+    "prerequisites": ["sentry/setup"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

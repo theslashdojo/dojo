@@ -1,0 +1,76 @@
+{
+  "name": "auth",
+  "version": "1.0.0",
+  "uri": "resend/auth",
+  "type": "context",
+  "content_type": "guide",
+  "context": "Create and manage Resend API keys with permission scoping and domain restrictions",
+  "info": "Resend authenticates all API requests via Bearer tokens. API keys are created in the Resend dashboard or via the API itself. Each key starts with the `re_` prefix and supports two permission levels: Full Access (all CRUD operations on any resource) and Sending Access (email sending only, optionally restricted to a specific domain). Keys should be stored in the `RESEND_API_KEY` environment variable and never committed to source control. This context node teaches agents how to create, rotate, and scope API keys for secure email operations. See [[resend]] for the ecosystem overview and [[resend/send]] for using authenticated keys to send email.",
+  "parent": "resend",
+  "tags": ["auth", "api-key", "authentication", "bearer-token", "resend-auth", "permissions"],
+  "aliases": [
+    "resend auth",
+    "resend api key",
+    "resend authentication",
+    "resend token",
+    "resend bearer token",
+    "resend credentials",
+    "RESEND_API_KEY"
+  ],
+  "triggers": [
+    "set up resend authentication",
+    "create a resend api key",
+    "configure resend credentials",
+    "resend api key permissions",
+    "rotate resend api key",
+    "restrict resend api key to domain"
+  ],
+  "body": "# Resend Authentication\n\nEvery Resend API call requires an API key passed as a Bearer token in the `Authorization` header.\n\n## API Key Format\n\n```\nre_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n```\n\nAll Resend API keys start with `re_`.\n\n## Authorization Header\n\n```bash\ncurl -X POST https://api.resend.com/emails \\\n  -H 'Authorization: Bearer re_xxxxxxxxxxxx' \\\n  -H 'Content-Type: application/json' \\\n  -d '{\"from\":\"you@yourdomain.com\",\"to\":[\"user@example.com\"],\"subject\":\"Hello\",\"html\":\"<p>Hi</p>\"}'\n```\n\n## SDK Initialization\n\n### Node.js\n\n```typescript\nimport { Resend } from 'resend';\nconst resend = new Resend(process.env.RESEND_API_KEY);\n```\n\n### Python\n\n```python\nimport os\nimport resend\n\nresend.api_key = os.environ[\"RESEND_API_KEY\"]\n```\n\n## Creating API Keys\n\nCreate keys in the [Resend dashboard](https://resend.com/api-keys) or via the API:\n\n```bash\ncurl -X POST https://api.resend.com/api-keys \\\n  -H 'Authorization: Bearer re_xxxxxxxxxxxx' \\\n  -H 'Content-Type: application/json' \\\n  -d '{\"name\": \"production-key\", \"permission\": \"full_access\"}'\n```\n\nResponse:\n```json\n{\n  \"id\": \"dacf4072-4119-4d88-932f-6202748ac7c8\",\n  \"token\": \"re_c1tpEyD8_NKFusih9vKVQknRAQfmFcWCv\"\n}\n```\n\n## Permission Levels\n\n| Permission | Scope | Use Case |\n|------------|-------|-----------|\n| `full_access` | Create, delete, get, update any resource | Admin, CI/CD pipelines |\n| `sending_access` | Send emails only | Application servers, edge functions |\n\n## Domain-Restricted Keys\n\nWhen using `sending_access`, you can restrict a key to a specific domain:\n\n```json\n{\n  \"name\": \"marketing-key\",\n  \"permission\": \"sending_access\",\n  \"domain_id\": \"d91cd9bd-1176-453e-8fc1-35364d380206\"\n}\n```\n\nThis ensures the key can only send from that verified domain — useful for multi-tenant setups or isolating production from staging.\n\n## API Key Management\n\n```bash\n# List all keys\ncurl https://api.resend.com/api-keys \\\n  -H 'Authorization: Bearer re_xxxxxxxxxxxx'\n\n# Delete a key\ncurl -X DELETE https://api.resend.com/api-keys/dacf4072-4119-4d88-932f-6202748ac7c8 \\\n  -H 'Authorization: Bearer re_xxxxxxxxxxxx'\n```\n\n## Security Best Practices\n\n1. **Never hardcode keys** — use environment variables (`RESEND_API_KEY`)\n2. **Use least privilege** — prefer `sending_access` over `full_access` for app servers\n3. **Restrict by domain** — scope keys to specific verified domains when possible\n4. **Rotate regularly** — create new keys and delete old ones periodically\n5. **Separate environments** — use different keys for development, staging, and production\n\n## Environment Variables\n\n| Variable | Required | Description |\n|----------|----------|-------------|\n| `RESEND_API_KEY` | Yes | API key starting with `re_` |\n",
+  "sections": [
+    {
+      "id": "api-key-format",
+      "title": "API key format and header",
+      "body": "Resend API keys always start with the `re_` prefix. Pass them as Bearer tokens: `Authorization: Bearer re_xxxxxxxxxxxx`. The Node.js SDK accepts the key in the constructor: `new Resend(process.env.RESEND_API_KEY)`. The Python SDK uses `resend.api_key = os.environ['RESEND_API_KEY']`.",
+      "tags": ["api-key", "bearer", "header", "format"]
+    },
+    {
+      "id": "permissions",
+      "title": "Permission levels",
+      "body": "Two levels: `full_access` grants CRUD on all resources (domains, API keys, emails, contacts). `sending_access` restricts to email sending only. Use `sending_access` for application code and `full_access` only for admin scripts and CI/CD. When using `sending_access`, optionally pass `domain_id` to restrict sending to a single verified domain.",
+      "tags": ["permissions", "full-access", "sending-access", "domain-restriction"]
+    },
+    {
+      "id": "key-management",
+      "title": "Creating and rotating keys",
+      "body": "Create keys via `POST /api-keys` with `name` and `permission`. The response includes a `token` field — this is the only time the full key is shown. List keys with `GET /api-keys` and delete with `DELETE /api-keys/:id`. Rotate by creating a new key, updating your environment, then deleting the old key.",
+      "tags": ["create", "rotate", "delete", "manage"]
+    }
+  ],
+  "links": [
+    { "uri": "resend", "context": "Resend ecosystem overview" },
+    { "uri": "resend/send", "context": "Use authenticated keys to send emails" },
+    { "uri": "resend/domains", "context": "Domain IDs needed for domain-restricted keys" }
+  ],
+  "related": [
+    { "uri": "resend/send", "relation": "see-also", "note": "Authentication is required before sending any email" },
+    { "uri": "resend/domains", "relation": "see-also", "note": "Domain IDs are used to restrict sending-only API keys" }
+  ],
+  "more": {
+    "docs": "https://resend.com/docs/api-reference/api-keys/create-api-key"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "3 min",
+    "prerequisites": [],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

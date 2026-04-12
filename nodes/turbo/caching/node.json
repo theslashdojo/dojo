@@ -1,0 +1,99 @@
+{
+  "name": "caching",
+  "version": "1.0.0",
+  "uri": "turbo/caching",
+  "type": "context",
+  "content_type": "explainer",
+  "context": "Understand Turborepo caching — local cache, remote cache, cache keys, inputs, outputs, and invalidation",
+  "info": "This context node explains how Turborepo's caching system works: local file-based caching in .turbo/cache, remote caching via Vercel or self-hosted servers, how cache keys (hashes) are computed from inputs (source files, env vars, dependencies), how outputs are stored and restored, cache invalidation triggers, and strategies for debugging cache misses. Agents should read this node to understand why builds are or aren't cached, how to configure inputs/outputs for optimal cache hit rates, and how to set up remote caching for CI. See [[turbo/config]] for cache-related configuration fields, [[turbo/pipelines]] for task-level cache settings, and [[turbo/troubleshooting]] for cache debugging.",
+  "parent": "turbo",
+  "tags": ["caching", "cache", "remote-cache", "cache-key", "hash", "inputs", "outputs", "invalidation", "turbo-cache", "local-cache"],
+  "aliases": [
+    "turbo cache",
+    "turbo caching",
+    "turborepo cache",
+    "remote cache",
+    "turbo remote cache",
+    "cache miss",
+    "cache hit",
+    "turbo cache key",
+    "turbo hash",
+    "build cache",
+    "turbo local cache"
+  ],
+  "triggers": [
+    "how does turbo caching work",
+    "why is turbo not caching my build",
+    "set up remote caching in turbo",
+    "turbo cache miss",
+    "how to invalidate turbo cache",
+    "clear turbo cache",
+    "configure turbo cache inputs",
+    "turbo cache outputs",
+    "share turbo cache across CI",
+    "turbo cache not working"
+  ],
+  "body": "# Turborepo Caching\n\nTurborepo's caching system is its core value proposition. By fingerprinting task inputs and storing outputs, it avoids re-executing work that has already been done. A build that took 5 minutes becomes a 200ms cache restore.\n\n## How Caching Works\n\n1. **Hash computation**: Before running a task, Turborepo computes a hash from all inputs\n2. **Cache lookup**: Checks local cache (`.turbo/cache/`), then remote cache if configured\n3. **Cache hit**: Restores cached outputs and replays logs — task completes instantly\n4. **Cache miss**: Runs the task, stores outputs and logs in cache for next time\n\n## What Goes Into the Hash\n\nTurborepo generates two hashes that together form the cache key:\n\n### Global Hash (affects ALL tasks)\n- Root and workspace `turbo.json` configuration\n- Root `package.json` lockfile changes\n- Files listed in `globalDependencies`\n- Variables listed in `globalEnv`\n- CLI flags like `--cache-dir`\n- Passthrough arguments (`turbo build -- --arg=value`)\n\n### Task Hash (per-task)\n- Source files in the workspace (or custom `inputs` patterns)\n- Package `package.json` changes\n- Workspace lockfile dependencies\n- Environment variables listed in `env`\n- The `dependsOn` resolution (hashes of upstream tasks)\n\n## Local Cache\n\nStored in `.turbo/cache/` at the repo root by default (configurable via `cacheDir`). Each cached task gets a compressed archive of its outputs and a log file.\n\n```bash\n# View cache directory\nls .turbo/cache/\n\n# Clear local cache\nrm -rf .turbo/cache/\n\n# Or use --force to skip cache\nturbo build --force\n\n# Control cache size\n# In turbo.json:\n# \"cacheMaxAge\": \"7d\"\n# \"cacheMaxSize\": \"10GB\"\n```\n\n**Git worktree sharing**: Turborepo automatically shares local cache between git worktrees. This is disabled if you set a custom `cacheDir`.\n\n## Remote Cache\n\nRemote caching shares build artifacts across machines — developers, CI runners, and deployment pipelines all benefit from each other's work.\n\n### Vercel Remote Cache (default)\n\n```bash\n# Authenticate\nnpx turbo login\n\n# Link repo to team\nnpx turbo link\n\n# Now remote cache is active\nturbo build  # Pushes to remote cache\n```\n\n### CI Configuration\n\n```bash\n# Set environment variables in CI\nexport TURBO_TOKEN=\"your-vercel-token\"\nexport TURBO_TEAM=\"your-team-slug\"\n\n# Or pass as flags\nturbo build --token=xxx --team=my-team\n```\n\n### Cache Read/Write Control\n\n```bash\n# Read from remote, don't write (save bandwidth)\nturbo build --cache=local:rw,remote:r\n\n# Write to remote, read from local only\nturbo build --cache=local:rw,remote:w\n\n# Disable all caching\nturbo build --cache=off\n```\n\n### Self-Hosted Remote Cache\n\nImplement the Turborepo Remote Caching API to host your own cache server:\n\n```json\n{\n  \"remoteCache\": {\n    \"enabled\": true,\n    \"apiUrl\": \"https://cache.example.com\",\n    \"signature\": true,\n    \"timeout\": 30,\n    \"uploadTimeout\": 60\n  }\n}\n```\n\n### Artifact Signing\n\nEnable signature verification for cache integrity:\n\n```bash\nexport TURBO_REMOTE_CACHE_SIGNATURE_KEY=\"your-secret-key\"\n```\n\n```json\n{\n  \"remoteCache\": {\n    \"signature\": true\n  }\n}\n```\n\n## Configuring Inputs and Outputs\n\n### Outputs (what to cache)\n\n```json\n{\n  \"tasks\": {\n    \"build\": {\n      \"outputs\": [\"dist/**\", \".next/**\", \"!.next/cache/**\"]\n    }\n  }\n}\n```\n\n**If you don't declare outputs, Turborepo caches nothing for that task** (the exit code and logs are still cached).\n\n### Inputs (what triggers invalidation)\n\n```json\n{\n  \"tasks\": {\n    \"test\": {\n      \"inputs\": [\"src/**\", \"tests/**\", \"jest.config.*\"]\n    }\n  }\n}\n```\n\nDefault inputs: all git-tracked files minus declared outputs. Use `$TURBO_DEFAULT$` to start from defaults:\n\n```json\n{\n  \"build\": {\n    \"inputs\": [\"$TURBO_DEFAULT$\", \"!README.md\", \"!docs/**\"]\n  }\n}\n```\n\n### Environment Variables\n\n```json\n{\n  \"tasks\": {\n    \"build\": {\n      \"env\": [\"NODE_ENV\", \"API_URL\", \"DATABASE_*\"],\n      \"passThroughEnv\": [\"AWS_SECRET_ACCESS_KEY\"]\n    }\n  }\n}\n```\n\n- `env`: Variables included in the cache hash (changes invalidate cache)\n- `passThroughEnv`: Variables available at runtime but NOT in the hash\n\n## Disabling Cache\n\n### Per-task (permanent)\n```json\n{\n  \"deploy\": {\n    \"cache\": false\n  }\n}\n```\n\n### Per-run\n```bash\nturbo build --cache=off\nturbo build --force  # Re-run but still write to cache\n```\n\n## Cache Debugging\n\n### Dry Run\n```bash\nturbo build --dry=json\n```\nShows task hashes, inputs, outputs, and dependencies without executing.\n\n### Run Summary\n```bash\nturbo build --summarize\n# Creates .turbo/runs/<run-id>.json\n```\nCompare summaries between runs to identify why cache was invalidated.\n\n### Common Cache Miss Causes\n\n1. **Undeclared env var changed**: Add to `env` or `globalEnv` in [[turbo/config]]\n2. **Source file changed**: Expected — inputs changed\n3. **Lockfile changed**: Dependency updates invalidate all caches\n4. **globalDependencies changed**: Files like .env or tsconfig.base.json\n5. **Different machine/OS**: Hash includes platform info\n6. **--force flag**: Explicitly skips cache\n7. **turbo.json changed**: Configuration changes invalidate caches\n\n## When NOT to Cache\n\n- **Dev servers**: Persistent tasks — set `cache: false`\n- **Deploy commands**: Side effects — set `cache: false`\n- **Extremely fast tasks**: Cache overhead exceeds task runtime\n- **Tasks with internal caching**: Tools like Webpack/Next.js have their own caches\n- **Tasks producing huge artifacts**: Cache storage/restore takes longer than rebuild\n",
+  "sections": [
+    {
+      "id": "how-it-works",
+      "title": "How caching works",
+      "body": "Turborepo computes a hash from all task inputs (source files, env vars, lockfile, turbo.json config, upstream task hashes). It checks local cache first (.turbo/cache/), then remote cache. On a hit, it restores outputs and replays logs. On a miss, it runs the task and stores the result. The hash has two components: a global hash (affects all tasks) and a per-task hash (specific to each workspace + task combination).",
+      "tags": ["hash", "fingerprint", "cache-lookup", "hit", "miss"]
+    },
+    {
+      "id": "local-cache",
+      "title": "Local file cache",
+      "body": "Local cache lives in .turbo/cache/ by default (configurable via cacheDir in turbo.json). Contains compressed archives of task outputs and log files. Shared automatically between git worktrees (disabled with custom cacheDir). Clear with `rm -rf .turbo/cache/` or skip with `--force`. Manage size with `cacheMaxAge` (TTL) and `cacheMaxSize` (disk limit).",
+      "tags": ["local-cache", "turbo-cache-dir", "cache-dir", "worktree"]
+    },
+    {
+      "id": "remote-cache",
+      "title": "Remote caching",
+      "body": "Remote cache shares artifacts across machines via Vercel (default) or self-hosted server. Authenticate with `turbo login` + `turbo link`, or set TURBO_TOKEN + TURBO_TEAM env vars for CI. Control read/write with `--cache=local:rw,remote:r` syntax. Enable artifact signing with TURBO_REMOTE_CACHE_SIGNATURE_KEY. Self-host by implementing the Remote Caching API and setting remoteCache.apiUrl in turbo.json.",
+      "tags": ["remote-cache", "vercel", "ci", "self-hosted", "turbo-token", "signing"]
+    },
+    {
+      "id": "inputs-outputs",
+      "title": "Configuring inputs and outputs",
+      "body": "Outputs define what files to cache (dist/**, .next/**). Inputs define what changes trigger cache invalidation. Default inputs are all git-tracked files minus outputs. Override with explicit patterns or use $TURBO_DEFAULT$ as a base. Environment variables in the env array are hashed; passThroughEnv vars are available but not hashed. Narrow inputs = more cache hits (e.g., exclude README.md from build inputs).",
+      "tags": ["inputs", "outputs", "env", "pass-through", "turbo-default", "patterns"]
+    },
+    {
+      "id": "debugging",
+      "title": "Cache debugging",
+      "body": "Use `turbo build --dry=json` to see computed hashes without running tasks. Use `turbo build --summarize` to generate detailed run metadata in .turbo/runs/. Compare summaries between runs to find why cache was invalidated. Common causes: undeclared env vars, lockfile changes, globalDependencies changes, turbo.json edits, or --force flag. Check [[turbo/troubleshooting]] for systematic cache debugging.",
+      "tags": ["debug", "dry-run", "summarize", "cache-miss", "troubleshooting"]
+    }
+  ],
+  "links": [
+    { "uri": "turbo", "context": "Parent Turborepo ecosystem" },
+    { "uri": "turbo/config", "context": "Cache-related configuration in turbo.json" },
+    { "uri": "turbo/pipelines", "context": "Task-level cache settings (outputs, inputs, env)" },
+    { "uri": "turbo/troubleshooting", "context": "Systematic cache debugging guide" }
+  ],
+  "related": [
+    { "uri": "turbo/config", "relation": "see-also", "note": "globalDependencies, globalEnv, cacheDir, cacheMaxAge are cache configuration" },
+    { "uri": "turbo/pipelines", "relation": "see-also", "note": "Task-level outputs, inputs, env, and cache fields control per-task caching" },
+    { "uri": "turbo/troubleshooting", "relation": "see-also", "note": "Troubleshooting guide includes cache debugging section" }
+  ],
+  "more": {
+    "docs": "https://turborepo.dev/repo/docs/crafting-your-repository/caching",
+    "remote-cache-api": "https://turborepo.dev/repo/docs/reference/remote-cache-api"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents, DevOps engineers",
+    "estimated_reading_time": "7 min",
+    "prerequisites": ["turbo/config", "turbo/pipelines"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

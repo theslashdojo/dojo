@@ -1,0 +1,156 @@
+{
+  "name": "pods",
+  "version": "1.0.0",
+  "uri": "kubernetes/pods",
+  "type": "skill",
+  "context": "Create, inspect, debug, and manage Kubernetes Pods — the smallest deployable unit in a cluster",
+  "info": "Pods are the atomic unit of deployment in Kubernetes. A Pod encapsulates one or more containers that share the same network namespace (localhost), storage volumes, and lifecycle. Agents interact with Pods to deploy containers, read logs, exec into running containers for debugging, port-forward for local access, and diagnose failures like CrashLoopBackOff and OOMKilled. Pods are rarely created directly — they are managed by higher-level controllers like [[kubernetes/deployments]] and [[kubernetes/jobs]]. This skill covers Pod specs, multi-container patterns (sidecar, init containers), resource requests/limits, probes (liveness, readiness, startup), and the full debugging workflow.",
+  "parent": "kubernetes",
+  "tags": ["pods", "containers", "logs", "exec", "port-forward", "debugging", "probes", "init-containers", "sidecar"],
+  "aliases": [
+    "kubernetes pods",
+    "k8s pods",
+    "pod",
+    "kubectl pods",
+    "container pods",
+    "pod spec",
+    "pod template",
+    "init container",
+    "sidecar container",
+    "pod logs"
+  ],
+  "triggers": [
+    "create a kubernetes pod",
+    "get pod logs",
+    "exec into a pod",
+    "debug a crashing pod",
+    "port-forward to a pod",
+    "check pod status",
+    "pod is in CrashLoopBackOff",
+    "pod is OOMKilled",
+    "add an init container",
+    "add a sidecar container"
+  ],
+  "body": "# Pods\n\nA Pod is the smallest deployable unit in Kubernetes — one or more containers sharing network, storage, and a lifecycle. Pods run on worker nodes, scheduled by the Kubernetes scheduler.\n\n## Pod Spec\n\n```yaml\napiVersion: v1\nkind: Pod\nmetadata:\n  name: my-app\n  namespace: default\n  labels:\n    app: my-app\n    version: v1\nspec:\n  containers:\n    - name: app\n      image: myregistry/my-app:v1.2.0\n      ports:\n        - containerPort: 8080\n          name: http\n      env:\n        - name: DATABASE_URL\n          valueFrom:\n            secretKeyRef:\n              name: db-secret\n              key: url\n      resources:\n        requests:\n          cpu: 100m\n          memory: 128Mi\n        limits:\n          cpu: 500m\n          memory: 512Mi\n      livenessProbe:\n        httpGet:\n          path: /healthz\n          port: 8080\n        initialDelaySeconds: 10\n        periodSeconds: 15\n      readinessProbe:\n        httpGet:\n          path: /ready\n          port: 8080\n        initialDelaySeconds: 5\n        periodSeconds: 10\n  restartPolicy: Always\n```\n\n## Pod Lifecycle\n\n| Phase | Description |\n|-------|-------------|\n| `Pending` | Accepted but not yet scheduled to a node |\n| `Running` | Bound to a node, at least one container running |\n| `Succeeded` | All containers terminated successfully (exit 0) |\n| `Failed` | All containers terminated, at least one failed |\n| `Unknown` | Pod state cannot be determined (node communication lost) |\n\n## kubectl Pod Commands\n\n```bash\n# List pods\nkubectl get pods -n my-namespace\nkubectl get pods -l app=my-app -o wide\nkubectl get pods --all-namespaces\n\n# Describe (events, conditions, container statuses)\nkubectl describe pod my-app -n my-namespace\n\n# Logs\nkubectl logs my-app -n my-namespace\nkubectl logs my-app -c sidecar --tail=100 -f\nkubectl logs my-app --previous  # logs from previous crash\n\n# Exec into a running container\nkubectl exec -it my-app -- /bin/sh\nkubectl exec -it my-app -c sidecar -- /bin/bash\n\n# Port-forward for local access\nkubectl port-forward pod/my-app 8080:8080\nkubectl port-forward svc/my-service 3000:80\n\n# Copy files\nkubectl cp my-app:/app/logs/error.log ./error.log\nkubectl cp ./config.yaml my-app:/app/config.yaml\n\n# Delete\nkubectl delete pod my-app\nkubectl delete pod my-app --grace-period=0 --force\n```\n\n## Resource Requests and Limits\n\nEvery container should specify resource requests (scheduling guarantee) and limits (hard ceiling):\n\n```yaml\nresources:\n  requests:\n    cpu: 100m      # 0.1 CPU cores — scheduler uses this\n    memory: 128Mi  # 128 MiB — scheduler uses this\n  limits:\n    cpu: 500m      # 0.5 CPU cores — throttled above this\n    memory: 512Mi  # 512 MiB — OOMKilled above this\n```\n\n- **CPU** is measured in millicores (1000m = 1 core). Exceeding limits causes throttling, not termination.\n- **Memory** is measured in bytes (Mi = mebibytes). Exceeding limits causes OOMKill.\n- Set requests = limits for guaranteed QoS. Set requests < limits for burstable QoS.\n\n## Probes\n\nKubernetes uses three probes to manage container health:\n\n| Probe | Purpose | Failure Action |\n|-------|---------|----------------|\n| `livenessProbe` | Is the process healthy? | Restart the container |\n| `readinessProbe` | Can it accept traffic? | Remove from Service endpoints |\n| `startupProbe` | Has it finished starting? | Block liveness/readiness until success |\n\nProbe types: `httpGet`, `tcpSocket`, `exec`, `grpc`.\n\n```yaml\nlivenessProbe:\n  httpGet:\n    path: /healthz\n    port: 8080\n  initialDelaySeconds: 10\n  periodSeconds: 15\n  failureThreshold: 3\n\nreadinessProbe:\n  httpGet:\n    path: /ready\n    port: 8080\n  initialDelaySeconds: 5\n  periodSeconds: 10\n\nstartupProbe:\n  httpGet:\n    path: /healthz\n    port: 8080\n  failureThreshold: 30\n  periodSeconds: 10\n```\n\n## Multi-Container Patterns\n\n### Init Containers\n\nRun to completion before app containers start. Use for setup tasks:\n\n```yaml\nspec:\n  initContainers:\n    - name: init-db\n      image: busybox:1.36\n      command: ['sh', '-c', 'until nslookup db-service; do echo waiting for db; sleep 2; done']\n    - name: init-migrations\n      image: myregistry/migrator:latest\n      command: ['./migrate', 'up']\n  containers:\n    - name: app\n      image: myregistry/my-app:v1.2.0\n```\n\n### Sidecar Containers\n\nRun alongside the main container for cross-cutting concerns:\n\n```yaml\nspec:\n  containers:\n    - name: app\n      image: myregistry/my-app:v1.2.0\n      ports:\n        - containerPort: 8080\n    - name: log-shipper\n      image: fluent/fluent-bit:latest\n      volumeMounts:\n        - name: app-logs\n          mountPath: /var/log/app\n  volumes:\n    - name: app-logs\n      emptyDir: {}\n```\n\nCommon sidecars: log shippers, metrics exporters, service mesh proxies (Envoy/Istio), auth proxies.\n\n## Environment Variables\n\n| Variable | Purpose |\n|----------|----------|\n| `KUBECONFIG` | Path to kubeconfig file |\n| `KUBE_NAMESPACE` | Default namespace for kubectl commands |\n",
+  "sections": [
+    {
+      "id": "lifecycle",
+      "title": "Pod lifecycle phases",
+      "body": "Pods transition through phases: Pending (scheduling), Running (at least one container up), Succeeded (all exited 0), Failed (at least one exited non-zero), Unknown (node unreachable). Use `kubectl get pods` to see phase and `kubectl describe pod` for detailed conditions and events. ContainerStatuses show Waiting (reason: CrashLoopBackOff, ImagePullBackOff), Running, or Terminated (reason: Completed, OOMKilled, Error).",
+      "tags": ["lifecycle", "phases", "pending", "running", "succeeded", "failed", "crashloopbackoff"]
+    },
+    {
+      "id": "resources",
+      "title": "Resource requests and limits",
+      "body": "Set `resources.requests` for scheduling guarantees (how much CPU/memory the scheduler reserves) and `resources.limits` for hard ceilings (container is throttled or OOMKilled beyond this). CPU in millicores (100m = 0.1 core), memory in MiB/GiB. QoS classes: Guaranteed (requests == limits), Burstable (requests < limits), BestEffort (no requests/limits). Always set at least requests to prevent node overcommit.",
+      "tags": ["resources", "requests", "limits", "cpu", "memory", "qos", "oomkilled"]
+    },
+    {
+      "id": "probes",
+      "title": "Health probes",
+      "body": "Three probe types: livenessProbe (restart on failure), readinessProbe (remove from [[kubernetes/services]] endpoints), startupProbe (gate liveness/readiness during slow startup). Probe methods: httpGet (path + port), tcpSocket (port), exec (command), grpc (port + service). Key fields: initialDelaySeconds, periodSeconds, failureThreshold, successThreshold, timeoutSeconds.",
+      "tags": ["probes", "liveness", "readiness", "startup", "health-check", "httpget", "tcpsocket"]
+    },
+    {
+      "id": "multi-container",
+      "title": "Multi-container patterns",
+      "body": "Init containers run sequentially to completion before app containers start — use for migrations, config generation, and dependency checks. Sidecar containers run alongside the main container for cross-cutting concerns: log shipping, metrics, service mesh proxies, auth proxies. All containers in a Pod share localhost networking and can share volumes via emptyDir or projected volumes.",
+      "tags": ["init-containers", "sidecar", "multi-container", "emptydir", "shared-volumes"]
+    },
+    {
+      "id": "debugging",
+      "title": "Debugging Pods",
+      "body": "Debug workflow: 1) `kubectl get pods` — check STATUS column. 2) `kubectl describe pod <name>` — read Events section at bottom. 3) `kubectl logs <name> --previous` — logs from crashed container. 4) `kubectl exec -it <name> -- /bin/sh` — interactive shell. 5) `kubectl port-forward pod/<name> 8080:8080` — local access. Common issues: ImagePullBackOff (wrong image/registry auth), CrashLoopBackOff (app crash — check logs), OOMKilled (increase memory limits), Pending (insufficient resources — check node capacity). See [[kubernetes/troubleshooting]] for deeper diagnosis.",
+      "tags": ["debugging", "logs", "exec", "describe", "events", "imagepullbackoff", "crashloopbackoff"]
+    }
+  ],
+  "links": [
+    { "uri": "kubernetes/deployments", "context": "Deployments manage Pods through ReplicaSets" },
+    { "uri": "kubernetes/services", "context": "Services route traffic to Pod endpoints" },
+    { "uri": "kubernetes/configmaps", "context": "Inject configuration into Pods via env vars and volumes" },
+    { "uri": "kubernetes/volumes", "context": "Mount persistent storage into Pod containers" },
+    { "uri": "kubernetes/troubleshooting", "context": "In-depth debugging for failing Pods" },
+    { "uri": "kubernetes/jobs", "context": "Jobs create Pods for batch work" },
+    { "uri": "kubernetes/hpa", "context": "HPA scales Pod replicas based on metrics" },
+    { "uri": "docker/images", "context": "Build the container images that Pods run" }
+  ],
+  "related": [
+    { "uri": "kubernetes/deployments", "relation": "see-also", "note": "Deployments are the standard way to manage Pod replicas — rarely create Pods directly" },
+    { "uri": "kubernetes/services", "relation": "see-also", "note": "Services provide stable networking for Pods" },
+    { "uri": "kubernetes/troubleshooting", "relation": "see-also", "note": "Troubleshooting covers advanced Pod debugging techniques" },
+    { "uri": "docker/containers", "relation": "similar", "note": "Pods are the Kubernetes equivalent of Docker containers" }
+  ],
+  "scripts": [
+    {
+      "id": "pod-status",
+      "name": "Get Pod Status",
+      "description": "List all pods in a namespace with their status, restarts, and age",
+      "lang": "bash",
+      "runtime": "kubectl",
+      "entry": "./scripts/pod-status.sh",
+      "inline": "#!/bin/bash\nset -euo pipefail\nNS=${KUBE_NAMESPACE:-default}\necho \"Pods in namespace: $NS\"\nkubectl get pods -n \"$NS\" -o wide\necho \"\"\necho \"Pod events (last 10 minutes):\"\nkubectl get events -n \"$NS\" --sort-by=.metadata.creationTimestamp --field-selector type!=Normal | tail -20",
+      "env": {
+        "KUBECONFIG": { "required": false, "secret": false, "default": "~/.kube/config", "description": "Path to kubeconfig file" },
+        "KUBE_NAMESPACE": { "required": false, "secret": false, "default": "default", "description": "Target namespace" }
+      },
+      "packages": []
+    },
+    {
+      "id": "pod-debug",
+      "name": "Debug Pod",
+      "description": "Describe a pod, show recent logs, and display events for debugging",
+      "lang": "bash",
+      "runtime": "kubectl",
+      "entry": "./scripts/pod-debug.sh",
+      "inline": "#!/bin/bash\nset -euo pipefail\nPOD=${1:?Usage: pod-debug.sh <pod-name>}\nNS=${KUBE_NAMESPACE:-default}\necho \"=== Pod Description ===\"\nkubectl describe pod \"$POD\" -n \"$NS\"\necho \"\"\necho \"=== Recent Logs (last 50 lines) ===\"\nkubectl logs \"$POD\" -n \"$NS\" --tail=50 2>/dev/null || echo \"No logs available\"\necho \"\"\necho \"=== Previous Container Logs ===\"\nkubectl logs \"$POD\" -n \"$NS\" --previous --tail=30 2>/dev/null || echo \"No previous logs\"",
+      "env": {
+        "KUBECONFIG": { "required": false, "secret": false, "default": "~/.kube/config", "description": "Path to kubeconfig file" },
+        "KUBE_NAMESPACE": { "required": false, "secret": false, "default": "default", "description": "Target namespace" }
+      },
+      "packages": []
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "description": "Pod name" },
+        "namespace": { "type": "string", "default": "default", "description": "Target namespace" },
+        "image": { "type": "string", "description": "Container image (e.g., nginx:1.25)" },
+        "command": { "type": "array", "items": { "type": "string" }, "description": "Container command override" }
+      },
+      "required": ["name", "image"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "podName": { "type": "string", "description": "Name of the created/queried pod" },
+        "phase": { "type": "string", "enum": ["Pending", "Running", "Succeeded", "Failed", "Unknown"], "description": "Current pod phase" },
+        "containerStatuses": { "type": "array", "description": "Status of each container in the pod" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "docker/images", "reason": "Pods run container images — the image must exist in a registry the cluster can pull from" }
+  ],
+  "more": {
+    "docs": "https://kubernetes.io/docs/concepts/workloads/pods/",
+    "api": "https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.31/#pod-v1-core",
+    "spec": "https://kubernetes.io/docs/reference/kubernetes-api/workload-resources/pod-v1/"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, DevOps engineers, SREs, AI agents",
+    "estimated_reading_time": "6 min",
+    "prerequisites": ["docker/images"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

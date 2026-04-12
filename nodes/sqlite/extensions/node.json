@@ -1,0 +1,108 @@
+{
+  "name": "extensions",
+  "version": "1.0.0",
+  "uri": "sqlite/extensions",
+  "type": "context",
+  "content_type": "reference",
+  "context": "SQLite extensions — FTS5 full-text search, JSON functions, R-Tree spatial indexing, math functions, and loadable modules",
+  "info": "SQLite ships with several powerful built-in extensions and supports loading third-party extensions at runtime. FTS5 provides full-text search with BM25 ranking, snippet extraction, and multiple tokenizers. JSON functions (json_extract, ->, ->>, json_each, json_set) enable first-class JSON column support. R-Tree provides spatial indexing for geographic and range queries. Math functions (sin, cos, log, sqrt) are available since SQLite 3.35.0. Custom extensions can be loaded from shared libraries (.so/.dylib/.dll) to add user-defined functions, virtual tables, collating sequences, and VFS implementations. Agents use this knowledge when they need full-text search, JSON column operations, spatial queries, or custom database functions. See [[sqlite/queries]] for JSON query syntax and [[sqlite/schema]] for creating FTS5 virtual tables.",
+  "parent": "sqlite",
+  "tags": ["extensions", "fts5", "json", "rtree", "full-text-search", "virtual-table", "loadable", "math", "functions"],
+  "aliases": [
+    "sqlite extensions",
+    "sqlite fts5",
+    "sqlite full text search",
+    "sqlite fulltext",
+    "sqlite json",
+    "sqlite json functions",
+    "sqlite rtree",
+    "sqlite r-tree",
+    "sqlite spatial",
+    "sqlite math functions",
+    "sqlite loadable extensions",
+    "sqlite virtual tables",
+    "sqlite modules",
+    "sqlite plugins",
+    "load_extension sqlite"
+  ],
+  "triggers": [
+    "full-text search in sqlite",
+    "search text in sqlite",
+    "sqlite fts",
+    "use json in sqlite",
+    "sqlite json extract",
+    "spatial index sqlite",
+    "load a sqlite extension",
+    "sqlite custom functions",
+    "fts5 sqlite",
+    "sqlite search engine",
+    "sqlite json columns",
+    "write a sqlite extension",
+    "sqlite generate_series",
+    "sqlite math functions"
+  ],
+  "body": "# SQLite Extensions\n\nSQLite ships with powerful built-in extensions and supports loading custom extensions at runtime. This reference covers the most important ones.\n\n## FTS5 — Full-Text Search\n\nFTS5 is SQLite's full-text search engine. It creates a virtual table with an inverted index, enabling fast text search with ranking.\n\n### Create an FTS5 Table\n\n```sql\n-- Basic FTS5 table\nCREATE VIRTUAL TABLE articles_fts USING fts5(\n  title,\n  body,\n  content='articles',           -- external content table\n  content_rowid='id'             -- map to source table's PK\n);\n\n-- Standalone FTS5 table (stores its own content)\nCREATE VIRTUAL TABLE search_index USING fts5(title, body);\n\n-- With tokenizer configuration\nCREATE VIRTUAL TABLE docs USING fts5(\n  title,\n  content,\n  tokenize='porter unicode61 remove_diacritics 1'\n);\n\n-- With prefix indexes for fast prefix queries\nCREATE VIRTUAL TABLE docs USING fts5(\n  title,\n  content,\n  prefix='2 3'\n);\n```\n\n### Query FTS5\n\n```sql\n-- Basic search\nSELECT * FROM articles_fts WHERE articles_fts MATCH 'database optimization';\n\n-- Search specific column\nSELECT * FROM articles_fts WHERE title MATCH 'sqlite';\n\n-- Boolean operators (AND is implicit, OR and NOT explicit)\nSELECT * FROM articles_fts WHERE articles_fts MATCH 'sqlite AND performance NOT slow';\n\n-- Phrase search\nSELECT * FROM articles_fts WHERE articles_fts MATCH '\"write ahead log\"';\n\n-- Prefix search\nSELECT * FROM articles_fts WHERE articles_fts MATCH 'optim*';\n\n-- NEAR proximity search\nSELECT * FROM articles_fts WHERE articles_fts MATCH 'NEAR(sqlite performance, 5)';\n\n-- Ranked results with BM25\nSELECT *, rank FROM articles_fts\nWHERE articles_fts MATCH 'database'\nORDER BY rank;\n\n-- Weighted BM25 (title=10x, body=1x)\nSELECT *, bm25(articles_fts, 10.0, 1.0) as score\nFROM articles_fts\nWHERE articles_fts MATCH 'query'\nORDER BY score;\n```\n\n### Highlight and Snippet\n\n```sql\n-- Highlight matching terms\nSELECT highlight(articles_fts, 0, '<b>', '</b>') as title,\n       highlight(articles_fts, 1, '<b>', '</b>') as body\nFROM articles_fts WHERE articles_fts MATCH 'sqlite';\n\n-- Extract snippets with context\nSELECT snippet(articles_fts, 1, '<mark>', '</mark>', '...', 32) as excerpt\nFROM articles_fts WHERE articles_fts MATCH 'performance';\n```\n\n### Sync FTS5 with Source Table\n\n```sql\n-- Keep FTS5 index in sync using triggers\nCREATE TRIGGER articles_ai AFTER INSERT ON articles BEGIN\n  INSERT INTO articles_fts(rowid, title, body) VALUES (new.id, new.title, new.body);\nEND;\n\nCREATE TRIGGER articles_ad AFTER DELETE ON articles BEGIN\n  INSERT INTO articles_fts(articles_fts, rowid, title, body)\n  VALUES('delete', old.id, old.title, old.body);\nEND;\n\nCREATE TRIGGER articles_au AFTER UPDATE ON articles BEGIN\n  INSERT INTO articles_fts(articles_fts, rowid, title, body)\n  VALUES('delete', old.id, old.title, old.body);\n  INSERT INTO articles_fts(rowid, title, body) VALUES (new.id, new.title, new.body);\nEND;\n```\n\n### FTS5 Maintenance\n\n```sql\n-- Optimize the index (merge segments)\nINSERT INTO articles_fts(articles_fts) VALUES('optimize');\n\n-- Rebuild from content table\nINSERT INTO articles_fts(articles_fts) VALUES('rebuild');\n\n-- Integrity check\nINSERT INTO articles_fts(articles_fts) VALUES('integrity-check');\n```\n\n### FTS5 Tokenizers\n\n| Tokenizer | Description | Use Case |\n|-----------|-------------|----------|\n| `unicode61` | Default, Unicode-aware | General text |\n| `porter` | Stemming (running→run) | English text search |\n| `trigram` | 3-character subsequences | Substring matching, LIKE replacement |\n| `ascii` | ASCII-only tokenization | Simple English text |\n\n## JSON Functions\n\nSQLite has built-in JSON support. No extension loading needed (compiled in since 3.9.0, always-on since 3.38.0).\n\n### Extract Values\n\n```sql\n-- Arrow operators (recommended, SQLite 3.38.0+)\nSELECT data->>'$.name' as name FROM profiles;        -- returns SQL value\nSELECT data->'$.address' as addr FROM profiles;      -- returns JSON text\n\n-- json_extract function\nSELECT json_extract(data, '$.name') FROM profiles;\nSELECT json_extract(data, '$.tags[0]') FROM profiles;\nSELECT json_extract(data, '$.nested.deep.value') FROM profiles;\n```\n\n### Modify JSON\n\n```sql\n-- Set a value (insert or replace)\nUPDATE profiles SET data = json_set(data, '$.verified', json('true'));\n\n-- Insert only (skip if exists)\nUPDATE profiles SET data = json_insert(data, '$.new_field', 'value');\n\n-- Replace only (skip if missing)\nUPDATE profiles SET data = json_replace(data, '$.name', 'New Name');\n\n-- Remove a key\nUPDATE profiles SET data = json_remove(data, '$.old_field');\n```\n\n### Build JSON\n\n```sql\n-- Create JSON objects\nSELECT json_object('id', id, 'name', name) FROM users;\n\n-- Create JSON arrays\nSELECT json_array(1, 'two', 3.0, null);\n\n-- Aggregate into JSON array\nSELECT json_group_array(name) FROM users;\n-- → '[\"Alice\",\"Bob\",\"Carol\"]'\n\n-- Aggregate into JSON object\nSELECT json_group_object(key, value) FROM settings;\n-- → '{\"theme\":\"dark\",\"lang\":\"en\"}'\n```\n\n### Iterate JSON Arrays\n\n```sql\n-- Expand JSON array into rows\nSELECT posts.id, tag.value as tag\nFROM posts, json_each(posts.tags) as tag;\n\n-- Filter by JSON array contents\nSELECT * FROM posts\nWHERE EXISTS (\n  SELECT 1 FROM json_each(posts.tags) WHERE value = 'sqlite'\n);\n\n-- Deep traversal with json_tree\nSELECT fullkey, value, type\nFROM json_tree('{\"a\":{\"b\":[1,2,3]}}');\n```\n\n### JSON Path Syntax\n\n| Path | Meaning |\n|------|---------|\n| `$` | Root element |\n| `$.key` | Object property |\n| `$.arr[0]` | Array index (0-based) |\n| `$.arr[#-1]` | Last array element |\n| `$.arr[#]` | Append position (insert/set only) |\n| `$.a.b.c` | Nested access |\n\n### JSONB (Binary JSON, SQLite 3.45.0+)\n\n```sql\n-- Store as JSONB for faster operations\nINSERT INTO docs (data) VALUES (jsonb('{\"key\": \"value\"}'));\n\n-- All json_* functions accept JSONB input\n-- Use jsonb_* variants to return JSONB output\nUPDATE docs SET data = jsonb_set(data, '$.key', '\"new\"');\n```\n\n## R-Tree — Spatial Indexing\n\nR-Tree provides efficient spatial queries for bounding-box lookups:\n\n```sql\n-- Create R-Tree virtual table\nCREATE VIRTUAL TABLE spatial_idx USING rtree(\n  id,\n  min_x, max_x,\n  min_y, max_y\n);\n\n-- Insert bounding boxes\nINSERT INTO spatial_idx VALUES (1, -80.0, -79.6, 35.0, 35.2);\n\n-- Query: find all objects overlapping a region\nSELECT * FROM spatial_idx\nWHERE min_x <= -79.5 AND max_x >= -80.0\nAND min_y <= 35.5 AND max_y >= 35.0;\n```\n\nUse cases: geographic queries, range searches, collision detection, nearest-neighbor.\n\n## Math Functions (SQLite 3.35.0+)\n\nBuilt-in since 3.35.0, no extension needed:\n\n```sql\nSELECT\n  abs(-5),           -- 5\n  ceil(4.2),         -- 5\n  floor(4.8),        -- 4\n  round(3.14159, 2), -- 3.14\n  sqrt(16),          -- 4.0\n  log(100),          -- 2.0 (log base 10)\n  ln(2.718),         -- ~1.0\n  pow(2, 10),        -- 1024.0\n  pi(),              -- 3.14159...\n  sin(0), cos(0),    -- 0.0, 1.0\n  random(),          -- random 64-bit integer\n  sign(-5);          -- -1\n```\n\n## generate_series (Table-Valued Function)\n\n```sql\n-- Generate a sequence of numbers\nSELECT value FROM generate_series(1, 10);\n\n-- With step\nSELECT value FROM generate_series(0, 100, 5);\n\n-- Generate dates\nSELECT date('2026-01-01', '+' || value || ' days') as date\nFROM generate_series(0, 364);\n```\n\n## Loading Custom Extensions\n\n```sql\n-- Load from shared library\n.load ./my_extension\n\n-- Or via SQL function\nSELECT load_extension('./my_extension');\n\n-- With explicit entry point\nSELECT load_extension('./my_extension', 'sqlite3_my_extension_init');\n```\n\n### Writing a Custom Extension (C)\n\n```c\n#include <sqlite3ext.h>\nSQLITE_EXTENSION_INIT1\n\nstatic void my_upper(sqlite3_context *ctx, int argc, sqlite3_value **argv) {\n  const char *input = (const char *)sqlite3_value_text(argv[0]);\n  // ... transform to uppercase ...\n  sqlite3_result_text(ctx, result, -1, SQLITE_TRANSIENT);\n}\n\nint sqlite3_myext_init(sqlite3 *db, char **err, const sqlite3_api_routines *api) {\n  SQLITE_EXTENSION_INIT2(api);\n  sqlite3_create_function(db, \"my_upper\", 1, SQLITE_UTF8, 0, my_upper, 0, 0);\n  return SQLITE_OK;\n}\n```\n\nCompile:\n```bash\n# Linux\ngcc -g -fPIC -shared my_extension.c -o my_extension.so\n\n# macOS\ngcc -g -fPIC -dynamiclib my_extension.c -o my_extension.dylib\n```\n\n### Security Note\n\nExtension loading is **disabled by default** in the C API. Enable with:\n```c\nsqlite3_db_config(db, SQLITE_DBCONFIG_ENABLE_LOAD_EXTENSION, 1, NULL);\n```\n\nThe `sqlite3` CLI enables extension loading automatically.\n\n## Common Extensions Ecosystem\n\n| Extension | Purpose | Source |\n|-----------|---------|--------|\n| `sqlean` | 60+ functions (crypto, text, regex, stats) | github.com/nalgeon/sqlean |\n| `sqlite-vec` | Vector similarity search | github.com/asg017/sqlite-vec |\n| `sqlite-vss` | Vector search (FAISS-based) | github.com/asg017/sqlite-vss |\n| `spatialite` | Full GIS/spatial support | gaia-gis.it/fossil/libspatialite |\n| `sqlite-http` | HTTP requests from SQL | github.com/asg017/sqlite-http |\n| `sqlite-regex` | Regular expressions | github.com/nicholasgasior/sqlite-regex |\n| `cr-sqlite` | CRDTs for sync/replication | github.com/vlcn-io/cr-sqlite |\n",
+  "sections": [
+    {
+      "id": "fts5",
+      "title": "FTS5 full-text search",
+      "body": "Create FTS5 virtual tables for full-text search. Query with MATCH operator and boolean logic (AND, OR, NOT). Rank results with bm25(). Extract snippets with snippet() and highlight matches with highlight(). Tokenizers: unicode61 (default), porter (stemming), trigram (substring matching). Sync with source tables using triggers. Maintain with optimize and rebuild commands.",
+      "tags": ["fts5", "full-text-search", "match", "bm25", "snippet", "highlight", "tokenizer"]
+    },
+    {
+      "id": "json",
+      "title": "JSON functions and operators",
+      "body": "Extract with ->> (SQL value) and -> (JSON text) operators, or json_extract(). Modify with json_set(), json_insert(), json_replace(), json_remove(). Build with json_object(), json_array(), json_group_array(), json_group_object(). Iterate arrays with json_each(), traverse deeply with json_tree(). Validate with json_valid(). JSONB (3.45.0+) stores binary JSON for faster processing. See [[sqlite/queries]] for JSON query patterns.",
+      "tags": ["json", "json-extract", "json-set", "json-each", "jsonb", "arrow-operator"]
+    },
+    {
+      "id": "rtree",
+      "title": "R-Tree spatial indexing",
+      "body": "R-Tree provides efficient bounding-box queries for spatial data. Create with CREATE VIRTUAL TABLE USING rtree(id, minX, maxX, minY, maxY). Query with range conditions on the coordinate columns. Use cases: geographic lookup, range queries, collision detection, nearest-neighbor searches. Supports 1-5 dimensions.",
+      "tags": ["rtree", "spatial", "geographic", "bounding-box", "range-query"]
+    },
+    {
+      "id": "math",
+      "title": "Math functions",
+      "body": "Built-in since SQLite 3.35.0: abs(), ceil(), floor(), round(), sqrt(), log(), ln(), pow(), pi(), sin(), cos(), tan(), asin(), acos(), atan(), atan2(), sign(), random(). No extension loading needed. Use for calculations, statistics, and geometric operations directly in SQL.",
+      "tags": ["math", "functions", "sqrt", "log", "sin", "cos", "round"]
+    },
+    {
+      "id": "loadable",
+      "title": "Loading and writing custom extensions",
+      "body": "Load extensions with .load (CLI), load_extension() (SQL), or sqlite3_load_extension() (C API). Extension loading is disabled by default for security — enable via sqlite3_db_config(). Write extensions in C using sqlite3ext.h. Register functions with sqlite3_create_function(), virtual tables with sqlite3_create_module(). Compile to .so (Linux), .dylib (macOS), .dll (Windows). Popular ecosystem: sqlean, sqlite-vec, spatialite, cr-sqlite.",
+      "tags": ["loadable", "custom", "extension", "shared-library", "so", "dylib", "dll", "c-api"]
+    }
+  ],
+  "links": [
+    { "uri": "sqlite/queries", "context": "JSON query patterns and FTS5 MATCH queries" },
+    { "uri": "sqlite/schema", "context": "CREATE VIRTUAL TABLE for FTS5 and R-Tree" },
+    { "uri": "sqlite/performance", "context": "FTS5 solves LIKE '%pattern%' performance issues" },
+    { "uri": "sqlite", "context": "SQLite ecosystem overview" }
+  ],
+  "related": [
+    { "uri": "sqlite/queries", "relation": "see-also", "note": "JSON operators and FTS5 MATCH are used in query contexts" },
+    { "uri": "sqlite/schema", "relation": "see-also", "note": "FTS5 and R-Tree are created as virtual tables in the schema" },
+    { "uri": "sqlite/performance", "relation": "see-also", "note": "FTS5 replaces slow LIKE queries; R-Tree replaces slow range scans" }
+  ],
+  "more": {
+    "docs": "https://www.sqlite.org/loadext.html",
+    "spec": "https://www.sqlite.org/fts5.html",
+    "examples": "https://www.sqlite.org/json1.html"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "7 min",
+    "prerequisites": ["sqlite"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

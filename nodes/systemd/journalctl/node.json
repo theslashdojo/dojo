@@ -1,0 +1,145 @@
+{
+  "name": "journalctl",
+  "version": "1.0.0",
+  "uri": "systemd/journalctl",
+  "type": "skill",
+  "context": "Query, tail, filter, export, and maintain structured logs stored in the systemd journal",
+  "info": "This skill covers `journalctl`, the primary interface to logs stored by journald. It includes unit-focused inspection with `--unit`, boot-aware debugging with `--boot`, filtering by time, priority, identifier, grep pattern, or structured `FIELD=VALUE` matches, and output modes ranging from concise text to JSON and export streams. It also covers maintenance operations such as disk-usage checks, verification, rotation, flushing, and vacuuming old journal files. Agents use this skill to diagnose failed services, compare current and previous boots, extract machine-readable logs, and keep journal storage under control.",
+  "parent": "systemd",
+  "tags": ["journalctl", "journald", "logs", "structured-logs", "previous-boot", "follow", "vacuum", "verify", "disk-usage"],
+  "aliases": [
+    "journalctl",
+    "journald logs",
+    "systemd logs",
+    "show unit logs",
+    "tail systemd service logs",
+    "previous boot logs",
+    "journal vacuum",
+    "structured journal output"
+  ],
+  "triggers": [
+    "show logs for a systemd service",
+    "tail journald for a unit",
+    "inspect previous boot logs",
+    "query systemd logs as json",
+    "rotate or vacuum the journal",
+    "verify journal files"
+  ],
+  "body": "# journalctl\n\njournald stores structured logs from system and user services. `journalctl` can read by unit, boot, time range, priority, or arbitrary `FIELD=VALUE` matches. For service debugging, start narrow with `-u UNIT -n 100 --no-pager` and expand only when needed.\n\n```bash\njournalctl -u my-app.service -n 200 --no-pager\njournalctl -u my-app.service -b -1 -p err..alert --no-pager\njournalctl --since '2026-04-11 12:00:00' --until '2026-04-11 13:00:00' -o short-full\njournalctl -u my-app.service -o json --no-pager\njournalctl -u my-app.service -f\n```\n\nMaintenance commands are part of the same CLI:\n\n```bash\njournalctl --disk-usage\njournalctl --rotate\njournalctl --vacuum-time=14d\njournalctl --verify\n```\n\nPermissions matter. By default, users can read their own journals, but full system journals are usually limited to root or users in groups such as `systemd-journal`, `adm`, or `wheel`. Pair this skill with [[systemd/systemctl]] to identify the unit and [[systemd/troubleshooting#failed-service]] when logs explain a startup failure.",
+  "sections": [
+    {
+      "id": "filters",
+      "title": "Filters",
+      "body": "The highest-value filters are `--unit=`, `--boot=`, `--since=`, `--until=`, `--priority=`, and `--grep=`. Structured matching also works through raw fields such as `_SYSTEMD_UNIT=my-app.service` or `SYSLOG_IDENTIFIER=my-app`. Multiple different fields are ANDed together; multiple matches on the same field are ORed.",
+      "tags": ["unit", "boot", "since", "until", "priority", "grep", "field-matches"]
+    },
+    {
+      "id": "output-modes",
+      "title": "Output modes",
+      "body": "Use `short-iso` or `short-full` for readable timestamps, `with-unit` when instance names matter, `json` for machine processing, and `export` for backup or transport-oriented streams. `-f` follows new entries, `-n` limits lines, and `-r` shows newest entries first.",
+      "tags": ["output", "json", "export", "follow", "lines", "reverse"]
+    },
+    {
+      "id": "maintenance",
+      "title": "Maintenance",
+      "body": "`journalctl --disk-usage` reports total storage, `--rotate` forces a new journal file, `--vacuum-time=`, `--vacuum-size=`, and `--vacuum-files=` trim retention, and `--verify` checks consistency. Use `--flush` to move runtime data from `/run` into `/var` when persistent storage is configured.",
+      "tags": ["disk-usage", "rotate", "vacuum", "flush", "verify", "retention"]
+    },
+    {
+      "id": "permissions",
+      "title": "Permissions and scope",
+      "body": "Use `--system` for system logs and `--user` for the current user's journal. Reading the full system journal generally requires root or membership in privileged log-reading groups. For a failing service, check that you are querying the same scope the unit runs in before concluding that logs are missing.",
+      "tags": ["permissions", "system", "user", "adm", "wheel", "systemd-journal"]
+    }
+  ],
+  "links": [
+    { "uri": "systemd/systemctl#introspection", "context": "Identify the unit and current state before reading logs" },
+    { "uri": "systemd/services#install-flow", "context": "Validate new services by inspecting their first start logs" },
+    { "uri": "systemd/timers#inspection", "context": "Read the paired service logs when a timer fires or is missed" },
+    { "uri": "systemd/troubleshooting#failed-service", "context": "Map common log patterns to next debugging steps" },
+    { "uri": "systemd/analyze#boot-debugging", "context": "Move from logs into dependency and boot timing analysis" }
+  ],
+  "related": [
+    { "uri": "systemd/systemctl", "relation": "see-also", "note": "systemctl status and show identify the unit and loaded file before log inspection" },
+    { "uri": "systemd/troubleshooting", "relation": "extends", "note": "Troubleshooting patterns are grounded in journal evidence" },
+    { "uri": "shell/processes", "relation": "see-also", "note": "Raw process inspection can complement journal analysis" }
+  ],
+  "scripts": [
+    {
+      "id": "journal-ops",
+      "name": "Journal Operations",
+      "description": "Run filtered journal queries and maintenance actions such as vacuum, rotate, and verify",
+      "lang": "bash",
+      "runtime": "bash>=4.0",
+      "entry": "./scripts/journal-ops.sh",
+      "env": {
+        "SYSTEMD_JOURNAL_ACTION": { "required": false, "default": "query", "description": "Action such as query, disk-usage, verify, vacuum-time, rotate, or list-boots" },
+        "SYSTEMD_JOURNAL_SCOPE": { "required": false, "default": "all", "description": "Journal scope: all, system, or user" },
+        "SYSTEMD_JOURNAL_UNIT": { "required": false, "description": "System unit filter for `--unit=`" },
+        "SYSTEMD_JOURNAL_USER_UNIT": { "required": false, "description": "User unit filter for `--user-unit=`" },
+        "SYSTEMD_JOURNAL_BOOT": { "required": false, "description": "Boot selector such as 0 or -1" },
+        "SYSTEMD_JOURNAL_SINCE": { "required": false, "description": "Lower time bound for `--since=`" },
+        "SYSTEMD_JOURNAL_UNTIL": { "required": false, "description": "Upper time bound for `--until=`" },
+        "SYSTEMD_JOURNAL_PRIORITY": { "required": false, "description": "Priority or range such as err..alert" },
+        "SYSTEMD_JOURNAL_OUTPUT": { "required": false, "default": "short-iso", "description": "Output mode such as short-full, json, or export" },
+        "SYSTEMD_JOURNAL_MATCHES": { "required": false, "description": "Newline-separated FIELD=VALUE match expressions" },
+        "SYSTEMD_JOURNAL_GREP": { "required": false, "description": "Regex for MESSAGE filtering" },
+        "SYSTEMD_JOURNAL_LINES": { "required": false, "description": "Line limit for queries or follow mode" }
+      }
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "operation": {
+          "type": "string",
+          "enum": ["query", "disk-usage", "verify", "list-boots", "rotate", "flush", "sync", "vacuum-time", "vacuum-size", "vacuum-files"],
+          "description": "journalctl verb or maintenance mode"
+        },
+        "scope": { "type": "string", "enum": ["all", "system", "user"], "default": "all", "description": "Journal scope" },
+        "unit": { "type": "string", "description": "Unit name for `--unit=`" },
+        "boot": { "type": "string", "description": "Boot selector such as 0 or -1" },
+        "since": { "type": "string", "description": "Lower time bound" },
+        "until": { "type": "string", "description": "Upper time bound" },
+        "priority": { "type": "string", "description": "Priority or range" },
+        "output": { "type": "string", "description": "Output mode such as short-full or json" },
+        "matches": { "type": "array", "items": { "type": "string" }, "description": "FIELD=VALUE matches" }
+      },
+      "required": ["operation"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "operation": { "type": "string" },
+        "scope": { "type": "string" },
+        "unit": { "type": "string" },
+        "output": { "type": "string" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "shell/bash", "reason": "The wrapper is a bash script that invokes journalctl" },
+    { "uri": "systemd/systemctl", "reason": "Unit discovery and state inspection usually happen before log queries", "optional": true }
+  ],
+  "more": {
+    "docs": "https://www.freedesktop.org/software/systemd/man/latest/journalctl.html",
+    "journal-format": "https://systemd.io/JOURNAL_EXPORT_FORMATS/"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "AI agents, linux operators",
+    "estimated_reading_time": "5 min",
+    "prerequisites": ["systemd/systemctl"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://github.com/systemd/systemd",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

@@ -1,0 +1,128 @@
+{
+  "name": "jobs",
+  "version": "1.0.0",
+  "uri": "kubernetes/jobs",
+  "type": "skill",
+  "context": "Run batch workloads and scheduled tasks in Kubernetes with Jobs and CronJobs",
+  "info": "Jobs run one-off or batch workloads to completion. Unlike [[kubernetes/deployments]] which keep Pods running indefinitely, Jobs create Pods that execute a task and terminate. CronJobs run Jobs on a recurring schedule. Agents use Jobs for database migrations, data processing, backups, report generation, and any task that runs to completion. CronJobs automate recurring tasks like nightly backups, cache warming, and periodic cleanup. This skill covers Job manifests, parallelism, completions, backoff limits, CronJob schedules, concurrency policies, and failure handling.",
+  "parent": "kubernetes",
+  "tags": ["jobs", "cronjobs", "batch", "scheduled", "one-off", "migration", "backup", "cron"],
+  "aliases": [
+    "kubernetes jobs",
+    "k8s jobs",
+    "job",
+    "kubernetes cronjob",
+    "k8s cronjob",
+    "cron job",
+    "batch job",
+    "one-off task",
+    "kubernetes migration",
+    "scheduled task kubernetes"
+  ],
+  "triggers": [
+    "create a kubernetes job",
+    "run a one-off task in kubernetes",
+    "create a cronjob",
+    "schedule a recurring task",
+    "run a database migration in kubernetes",
+    "run a batch job",
+    "job is stuck or failing",
+    "set up a cron schedule in kubernetes"
+  ],
+  "body": "# Jobs and CronJobs\n\nJobs run Pods that execute a task and terminate. CronJobs run Jobs on a schedule.\n\n## Job\n\n```yaml\napiVersion: batch/v1\nkind: Job\nmetadata:\n  name: db-migrate\n  namespace: production\nspec:\n  completions: 1            # number of successful completions needed\n  parallelism: 1            # number of Pods running concurrently\n  backoffLimit: 3            # retry attempts before marking as failed\n  activeDeadlineSeconds: 600 # timeout — kill after 10 minutes\n  ttlSecondsAfterFinished: 3600  # auto-delete Job 1 hour after completion\n  template:\n    spec:\n      restartPolicy: Never   # REQUIRED: Never or OnFailure\n      containers:\n        - name: migrate\n          image: myregistry/migrator:v1.2.0\n          command: [\"./migrate\", \"up\"]\n          env:\n            - name: DATABASE_URL\n              valueFrom:\n                secretKeyRef:\n                  name: db-credentials\n                  key: connection-string\n          resources:\n            requests:\n              cpu: 200m\n              memory: 256Mi\n            limits:\n              cpu: 1000m\n              memory: 1Gi\n```\n\n## Parallel Jobs\n\nFor batch processing with multiple workers:\n\n```yaml\napiVersion: batch/v1\nkind: Job\nmetadata:\n  name: process-data\nspec:\n  completions: 10     # need 10 successful completions\n  parallelism: 3      # run 3 Pods at a time\n  backoffLimit: 5\n  template:\n    spec:\n      restartPolicy: Never\n      containers:\n        - name: processor\n          image: myregistry/data-processor:latest\n          command: [\"./process\", \"--batch-index=$(JOB_COMPLETION_INDEX)\"]\n          env:\n            - name: JOB_COMPLETION_INDEX\n              valueFrom:\n                fieldRef:\n                  fieldPath: metadata.annotations['batch.kubernetes.io/job-completion-index']\n```\n\nWith `completionMode: Indexed`, each Pod gets a unique index (0 to completions-1) for work partitioning.\n\n## CronJob\n\n```yaml\napiVersion: batch/v1\nkind: CronJob\nmetadata:\n  name: nightly-backup\n  namespace: production\nspec:\n  schedule: \"0 2 * * *\"           # 2:00 AM daily\n  timeZone: \"America/New_York\"     # k8s 1.27+\n  concurrencyPolicy: Forbid        # don't run if previous is still running\n  successfulJobsHistoryLimit: 3    # keep last 3 successful Jobs\n  failedJobsHistoryLimit: 3        # keep last 3 failed Jobs\n  startingDeadlineSeconds: 300     # skip if missed by more than 5 minutes\n  jobTemplate:\n    spec:\n      backoffLimit: 2\n      activeDeadlineSeconds: 3600\n      template:\n        spec:\n          restartPolicy: OnFailure\n          containers:\n            - name: backup\n              image: myregistry/backup-tool:latest\n              command: [\"./backup.sh\"]\n              env:\n                - name: S3_BUCKET\n                  value: my-backups\n                - name: AWS_REGION\n                  value: us-east-1\n              resources:\n                requests:\n                  cpu: 500m\n                  memory: 512Mi\n```\n\n## Cron Schedule Syntax\n\n```\n┌───────── minute (0-59)\n│ ┌─────── hour (0-23)\n│ │ ┌───── day of month (1-31)\n│ │ │ ┌─── month (1-12)\n│ │ │ │ ┌─ day of week (0-6, Sun=0)\n│ │ │ │ │\n* * * * *\n```\n\n| Schedule | Meaning |\n|----------|----------|\n| `*/5 * * * *` | Every 5 minutes |\n| `0 * * * *` | Every hour |\n| `0 2 * * *` | Daily at 2:00 AM |\n| `0 0 * * 0` | Weekly on Sunday midnight |\n| `0 0 1 * *` | Monthly on the 1st at midnight |\n| `0 9 * * 1-5` | Weekdays at 9:00 AM |\n\n## Concurrency Policies\n\n| Policy | Behavior |\n|--------|----------|\n| `Allow` | Multiple Jobs can run concurrently (default) |\n| `Forbid` | Skip new Job if previous is still running |\n| `Replace` | Cancel running Job and start new one |\n\n## kubectl Commands\n\n```bash\n# Create a Job\nkubectl apply -f job.yaml\n\n# Create a quick one-off Job\nkubectl create job test-job --image=busybox -- echo \"Hello from Job\"\n\n# Create a Job from a CronJob template (trigger manually)\nkubectl create job manual-backup --from=cronjob/nightly-backup\n\n# List Jobs\nkubectl get jobs -n production\nkubectl get cronjobs -n production\n\n# Watch Job progress\nkubectl get jobs -w\n\n# View Job logs\nkubectl logs job/db-migrate\n\n# Describe (shows events, completion status)\nkubectl describe job db-migrate\nkubectl describe cronjob nightly-backup\n\n# Delete completed Jobs\nkubectl delete job db-migrate\nkubectl delete jobs --field-selector status.successful=1\n```\n\n## Restart Policies\n\n| Policy | Behavior | Use When |\n|--------|----------|----------|\n| `Never` | Create a new Pod on failure | Logs from each attempt are preserved |\n| `OnFailure` | Restart container in same Pod | Save resources, but lose logs from previous attempts |\n\n**Do not use** `Always` (the default for Deployments) — Jobs require `Never` or `OnFailure`.\n\n## Environment Variables\n\n| Variable | Purpose |\n|----------|----------|\n| `KUBECONFIG` | Path to kubeconfig file |\n| `KUBE_NAMESPACE` | Default namespace |\n",
+  "sections": [
+    {
+      "id": "jobs",
+      "title": "Jobs",
+      "body": "Jobs create Pods that run to completion. Set `completions` for how many successful Pod runs are needed. Set `parallelism` for concurrent Pods. Set `backoffLimit` for max retries. Set `activeDeadlineSeconds` for a timeout. Set `ttlSecondsAfterFinished` for automatic cleanup. restartPolicy must be Never or OnFailure. Use Indexed completionMode for work partitioning.",
+      "tags": ["job", "completions", "parallelism", "backoff", "deadline", "ttl", "indexed"]
+    },
+    {
+      "id": "cronjobs",
+      "title": "CronJobs",
+      "body": "CronJobs create Jobs on a cron schedule. Schedule uses standard cron syntax (minute, hour, day, month, weekday). Set `concurrencyPolicy` to control overlap: Allow (default), Forbid (skip if running), Replace (cancel and restart). Set `startingDeadlineSeconds` to skip missed runs. Set `successfulJobsHistoryLimit` and `failedJobsHistoryLimit` to control how many completed Jobs are kept. Manually trigger with `kubectl create job <name> --from=cronjob/<cronjob>`.",
+      "tags": ["cronjob", "schedule", "cron", "concurrency", "history", "manual-trigger"]
+    },
+    {
+      "id": "failure-handling",
+      "title": "Failure handling",
+      "body": "When a Job Pod fails: with restartPolicy=Never, a new Pod is created (up to backoffLimit). With restartPolicy=OnFailure, the container restarts in the same Pod. After backoffLimit failures, the Job is marked Failed. activeDeadlineSeconds provides a hard timeout. For CronJobs, failed runs are tracked via failedJobsHistoryLimit. Debug failed Jobs with `kubectl describe job <name>` and `kubectl logs job/<name>`.",
+      "tags": ["failure", "backoff", "restart", "timeout", "debug", "failed"]
+    }
+  ],
+  "links": [
+    { "uri": "kubernetes/pods", "context": "Jobs create Pods that run to completion" },
+    { "uri": "kubernetes/configmaps", "context": "Jobs use ConfigMaps and Secrets for configuration" },
+    { "uri": "kubernetes/volumes", "context": "Jobs can mount volumes for data processing" },
+    { "uri": "kubernetes/namespaces", "context": "Jobs are namespaced resources" },
+    { "uri": "kubernetes/troubleshooting", "context": "Debug failed Jobs" }
+  ],
+  "related": [
+    { "uri": "kubernetes/deployments", "relation": "alternative", "note": "Use Deployments for long-running services, Jobs for run-to-completion tasks" },
+    { "uri": "kubernetes/pods", "relation": "see-also", "note": "Jobs manage Pod lifecycle for batch work" }
+  ],
+  "scripts": [
+    {
+      "id": "run-job",
+      "name": "Run One-Off Job",
+      "description": "Create and run a one-off Job, wait for completion, show logs",
+      "lang": "bash",
+      "runtime": "kubectl",
+      "entry": "./scripts/run-job.sh",
+      "inline": "#!/bin/bash\nset -euo pipefail\nNAME=${1:?Usage: run-job.sh <name> <image> <command...>}\nIMAGE=${2:?Usage: run-job.sh <name> <image> <command...>}\nshift 2\nNS=${KUBE_NAMESPACE:-default}\n\necho \"Creating Job $NAME with image $IMAGE in namespace $NS\"\nkubectl create job \"$NAME\" --image=\"$IMAGE\" -n \"$NS\" -- \"$@\"\n\necho \"Waiting for Job to complete...\"\nkubectl wait --for=condition=complete job/\"$NAME\" -n \"$NS\" --timeout=300s 2>/dev/null || {\n  echo \"Job did not complete successfully. Checking status...\"\n  kubectl describe job \"$NAME\" -n \"$NS\" | tail -20\n}\n\necho \"\"\necho \"=== Job Logs ===\"\nkubectl logs job/\"$NAME\" -n \"$NS\"",
+      "env": {
+        "KUBECONFIG": { "required": false, "secret": false, "default": "~/.kube/config", "description": "Path to kubeconfig file" },
+        "KUBE_NAMESPACE": { "required": false, "secret": false, "default": "default", "description": "Target namespace" }
+      },
+      "packages": []
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "description": "Job name" },
+        "namespace": { "type": "string", "default": "default" },
+        "image": { "type": "string", "description": "Container image" },
+        "command": { "type": "array", "items": { "type": "string" }, "description": "Command to execute" },
+        "completions": { "type": "integer", "default": 1 },
+        "parallelism": { "type": "integer", "default": 1 },
+        "backoffLimit": { "type": "integer", "default": 3 },
+        "schedule": { "type": "string", "description": "Cron schedule (for CronJobs only)" }
+      },
+      "required": ["name", "image"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "jobName": { "type": "string" },
+        "succeeded": { "type": "integer" },
+        "failed": { "type": "integer" },
+        "status": { "type": "string", "enum": ["Running", "Complete", "Failed"] }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "kubernetes/pods", "reason": "Jobs create Pods to execute batch work" }
+  ],
+  "more": {
+    "docs": "https://kubernetes.io/docs/concepts/workloads/controllers/job/",
+    "cronjobs": "https://kubernetes.io/docs/concepts/workloads/controllers/cron-jobs/",
+    "api": "https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.31/#job-v1-batch"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, DevOps engineers, SREs, AI agents",
+    "estimated_reading_time": "5 min",
+    "prerequisites": ["kubernetes/pods"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

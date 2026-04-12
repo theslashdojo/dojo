@@ -1,0 +1,132 @@
+{
+  "name": "webhooks",
+  "version": "1.0.0",
+  "uri": "linear/webhooks",
+  "type": "skill",
+  "context": "Configure Linear webhooks for real-time event-driven automation on issues, projects, and comments",
+  "info": "Linear webhooks push real-time notifications when resources change. Supported resources include issues, comments, projects, project updates, labels, cycles, documents, initiatives, customers, and users. Each event includes an action (create, update, remove), the full entity data, the actor who made the change, and for updates, the previous values. Webhooks can target all public teams or a single team. Security is enforced via HMAC-SHA256 signature verification using the webhook signing secret. Agents use this skill to build automated triage bots, sync Linear state to external systems, trigger CI/CD pipelines on issue events, and post notifications to Slack or other channels. See [[linear/auth]] for authentication and [[linear/issues]] for the primary webhook target.",
+  "parent": "linear",
+  "tags": ["webhooks", "events", "real-time", "automation", "notifications", "hmac"],
+  "aliases": [
+    "linear webhooks",
+    "linear webhook",
+    "linear events",
+    "linear notifications",
+    "linear webhook api",
+    "linear real-time",
+    "linear event listener",
+    "webhookCreate"
+  ],
+  "triggers": [
+    "set up linear webhooks",
+    "listen for linear events",
+    "create a linear webhook",
+    "react to issue changes in linear",
+    "build a linear webhook handler",
+    "automate linear with webhooks",
+    "verify linear webhook signature"
+  ],
+  "body": "# Linear Webhooks\n\nWebhooks enable real-time event-driven automation. When resources change in Linear, an HTTP POST is sent to your endpoint with the event payload.\n\n## Creating a Webhook\n\n### Via GraphQL API\n\n```graphql\nmutation CreateWebhook {\n  webhookCreate(input: {\n    url: \"https://your-app.com/webhooks/linear\"\n    resourceTypes: [\"Issue\", \"Comment\", \"Project\"]\n    teamId: \"TEAM_UUID\"\n    label: \"My Integration\"\n  }) {\n    success\n    webhook {\n      id\n      url\n      enabled\n      secret\n    }\n  }\n}\n```\n\nOmit `teamId` to receive events for all public teams.\n\n### Via Linear Settings\n\n1. Go to Settings → API → Webhooks\n2. Click **New webhook**\n3. Enter your endpoint URL\n4. Select resource types\n5. Optionally scope to a specific team\n6. Save — note the signing secret\n\n## Supported Resource Types\n\n| Resource | Events | Description |\n|----------|--------|-------------|\n| `Issue` | create, update, remove | Issue lifecycle events |\n| `Comment` | create, update, remove | Issue comments |\n| `IssueLabel` | create, update, remove | Label changes |\n| `Project` | create, update, remove | Project lifecycle |\n| `ProjectUpdate` | create, update, remove | Project status updates |\n| `Cycle` | create, update, remove | Sprint/cycle events |\n| `Reaction` | create, remove | Comment reactions |\n| `Document` | create, update, remove | Document changes |\n| `Initiative` | create, update, remove | Initiative events |\n| `InitiativeUpdate` | create, update, remove | Initiative status updates |\n| `Customer` | create, update, remove | Customer records |\n| `CustomerRequest` | create, update, remove | Customer requests |\n| `User` | update | User profile changes |\n| `IssueSLA` | — | SLA-related events |\n\n## Payload Structure\n\n```json\n{\n  \"action\": \"create\",\n  \"type\": \"Issue\",\n  \"createdAt\": \"2026-04-11T10:30:00.000Z\",\n  \"webhookTimestamp\": 1744367400000,\n  \"data\": {\n    \"id\": \"issue-uuid\",\n    \"identifier\": \"ENG-42\",\n    \"title\": \"Bug: login fails on Safari\",\n    \"priority\": 2,\n    \"state\": { \"id\": \"state-uuid\", \"name\": \"In Progress\", \"type\": \"started\" },\n    \"assignee\": { \"id\": \"user-uuid\", \"name\": \"Jane Dev\" },\n    \"team\": { \"id\": \"team-uuid\", \"key\": \"ENG\" },\n    \"labelIds\": [\"label-uuid\"],\n    \"url\": \"https://linear.app/my-org/issue/ENG-42\"\n  },\n  \"actor\": {\n    \"id\": \"user-uuid\",\n    \"name\": \"Jane Dev\",\n    \"type\": \"user\"\n  },\n  \"updatedFrom\": null\n}\n```\n\nFor `update` actions, `updatedFrom` contains the previous values of changed fields.\n\n## HTTP Headers\n\n| Header | Purpose |\n|--------|----------|\n| `Linear-Delivery` | Unique UUID for this delivery |\n| `Linear-Event` | Resource type (e.g., `Issue`) |\n| `Linear-Signature` | HMAC-SHA256 signature for verification |\n| `Content-Type` | `application/json` |\n\n## Signature Verification\n\nVerify that payloads are genuinely from Linear using HMAC-SHA256:\n\n```typescript\nimport { createHmac, timingSafeEqual } from \"crypto\";\n\nfunction verifyWebhookSignature(\n  body: string,\n  signature: string,\n  secret: string\n): boolean {\n  const hmac = createHmac(\"sha256\", secret);\n  hmac.update(body);\n  const digest = hmac.digest(\"hex\");\n\n  const sigBuffer = Buffer.from(signature, \"utf8\");\n  const digestBuffer = Buffer.from(digest, \"utf8\");\n\n  if (sigBuffer.length !== digestBuffer.length) return false;\n  return timingSafeEqual(sigBuffer, digestBuffer);\n}\n```\n\n**Also verify the timestamp** — reject payloads where `webhookTimestamp` is more than 60 seconds old to prevent replay attacks.\n\n## Express.js Webhook Handler\n\n```typescript\nimport express from \"express\";\nimport { createHmac, timingSafeEqual } from \"crypto\";\n\nconst app = express();\nconst WEBHOOK_SECRET = process.env.LINEAR_WEBHOOK_SECRET!;\n\napp.post(\"/webhooks/linear\", express.raw({ type: \"application/json\" }), (req, res) => {\n  const signature = req.headers[\"linear-signature\"] as string;\n  const body = req.body.toString();\n\n  // Verify signature\n  const hmac = createHmac(\"sha256\", WEBHOOK_SECRET);\n  hmac.update(body);\n  const digest = hmac.digest(\"hex\");\n\n  const sigBuf = Buffer.from(signature, \"utf8\");\n  const digBuf = Buffer.from(digest, \"utf8\");\n\n  if (sigBuf.length !== digBuf.length || !timingSafeEqual(sigBuf, digBuf)) {\n    return res.status(401).send(\"Invalid signature\");\n  }\n\n  // Verify timestamp (reject if > 60s old)\n  const payload = JSON.parse(body);\n  const age = Date.now() - payload.webhookTimestamp;\n  if (age > 60_000) {\n    return res.status(401).send(\"Stale webhook\");\n  }\n\n  // Process the event\n  const { action, type, data } = payload;\n  console.log(`${type} ${action}: ${data.identifier || data.id}`);\n\n  switch (type) {\n    case \"Issue\":\n      if (action === \"create\") {\n        console.log(`New issue: ${data.identifier} — ${data.title}`);\n      } else if (action === \"update\" && payload.updatedFrom?.stateId) {\n        console.log(`Issue ${data.identifier} state changed to ${data.state.name}`);\n      }\n      break;\n    case \"Comment\":\n      if (action === \"create\") {\n        console.log(`New comment on ${data.issue?.identifier}`);\n      }\n      break;\n  }\n\n  res.status(200).send(\"OK\");\n});\n\napp.listen(3000, () => console.log(\"Webhook handler listening on :3000\"));\n```\n\n## Requirements\n\n- Endpoint must be **publicly accessible via HTTPS**\n- Must respond with **HTTP 200** within **5 seconds**\n- Failed deliveries retry at 1 minute, 1 hour, and 6 hours\n- Persistent failures may disable the webhook automatically\n\n## Linear IP Addresses\n\nFor IP allowlisting, Linear sends webhooks from:\n- `35.231.147.226`\n- `35.243.134.228`\n- `34.140.253.14`\n- `34.38.87.206`\n- `34.134.222.122`\n- `35.222.25.142`\n\n## Environment Variables\n\n| Variable | Purpose |\n|----------|----------|\n| `LINEAR_API_KEY` | API key for creating webhooks via GraphQL |\n| `LINEAR_WEBHOOK_SECRET` | Signing secret for signature verification |\n| `LINEAR_WEBHOOK_URL` | Your webhook endpoint URL |\n",
+  "sections": [
+    {
+      "id": "create",
+      "title": "Creating webhooks",
+      "body": "Create webhooks via the `webhookCreate` mutation or Linear Settings → API → Webhooks. Specify `url` (HTTPS endpoint), `resourceTypes` (array of resource names), optional `teamId` (scope to one team), and `label`. The response includes the webhook `id`, `url`, `enabled` status, and `secret` for signature verification. Omit `teamId` to receive events for all public teams.",
+      "tags": ["create", "setup", "configure", "webhookcreate"]
+    },
+    {
+      "id": "events",
+      "title": "Event types and payloads",
+      "body": "Events have `action` (create/update/remove), `type` (resource name), `data` (full entity), `actor` (who triggered it), `createdAt`, and `webhookTimestamp`. For updates, `updatedFrom` contains previous field values. Headers include `Linear-Delivery` (UUID), `Linear-Event` (type), and `Linear-Signature` (HMAC).",
+      "tags": ["events", "payload", "action", "data", "headers"]
+    },
+    {
+      "id": "security",
+      "title": "Signature verification",
+      "body": "Compute HMAC-SHA256 of the raw request body using the webhook signing secret. Compare against the `Linear-Signature` header using constant-time comparison (`timingSafeEqual`) to prevent timing attacks. Also verify `webhookTimestamp` is within 60 seconds of current time to prevent replay attacks. Optionally allowlist Linear's IP addresses.",
+      "tags": ["security", "hmac", "signature", "verification", "replay-protection"]
+    },
+    {
+      "id": "delivery",
+      "title": "Delivery requirements and retries",
+      "body": "Endpoints must be publicly accessible over HTTPS, respond with HTTP 200 within 5 seconds. Failed deliveries retry at 1 minute, 1 hour, then 6 hours. Persistent failures cause automatic webhook disabling. Check Linear Settings → API → Webhooks for delivery status and error logs.",
+      "tags": ["delivery", "retries", "timeout", "requirements"]
+    }
+  ],
+  "links": [
+    { "uri": "linear", "context": "Linear ecosystem overview" },
+    { "uri": "linear/issues", "context": "Issues are the most common webhook resource" },
+    { "uri": "linear/projects", "context": "Project events available via webhooks" },
+    { "uri": "linear/auth", "context": "API key needed to create webhooks via GraphQL" },
+    { "uri": "linear/teams", "context": "Scope webhooks to a specific team" }
+  ],
+  "related": [
+    { "uri": "linear/auth", "relation": "prerequisite", "note": "API key required to create webhooks programmatically" },
+    { "uri": "linear/issues", "relation": "see-also", "note": "Issue events are the most common webhook use case" },
+    { "uri": "github/webhooks", "relation": "similar", "note": "GitHub webhooks follow a similar pattern with HMAC signature verification" }
+  ],
+  "scripts": [
+    {
+      "id": "webhook-handler",
+      "name": "Linear Webhook Handler",
+      "description": "Express.js server that receives and verifies Linear webhook events",
+      "lang": "typescript",
+      "runtime": "node>=18",
+      "entry": "./scripts/webhook-handler.ts",
+      "env": {
+        "LINEAR_WEBHOOK_SECRET": { "required": true, "secret": true, "description": "Webhook signing secret from Linear" },
+        "PORT": { "required": false, "default": "3000", "description": "Port for the webhook server" }
+      },
+      "packages": ["express", "@types/express"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "description": "Webhook payload from Linear",
+      "properties": {
+        "action": { "type": "string", "enum": ["create", "update", "remove"], "description": "Event action" },
+        "type": { "type": "string", "description": "Resource type (Issue, Comment, Project, etc.)" },
+        "data": { "type": "object", "description": "Full entity data" },
+        "actor": {
+          "type": "object",
+          "properties": {
+            "id": { "type": "string" },
+            "name": { "type": "string" },
+            "type": { "type": "string" }
+          }
+        },
+        "webhookTimestamp": { "type": "integer", "description": "UNIX milliseconds when sent" },
+        "updatedFrom": { "type": ["object", "null"], "description": "Previous values for update actions" }
+      },
+      "required": ["action", "type", "data"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "status": { "type": "integer", "description": "HTTP status code (200 for success)" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "linear/auth", "reason": "API key needed to create webhooks via GraphQL", "optional": true }
+  ],
+  "more": {
+    "docs": "https://linear.app/developers"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "5 min",
+    "prerequisites": ["linear/auth"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

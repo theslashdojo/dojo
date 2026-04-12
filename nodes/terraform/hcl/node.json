@@ -1,0 +1,104 @@
+{
+  "name": "hcl",
+  "version": "1.0.0",
+  "uri": "terraform/hcl",
+  "type": "standard",
+  "context": "HashiCorp Configuration Language — the declarative syntax for writing Terraform infrastructure-as-code configs",
+  "info": "HCL (HashiCorp Configuration Language) is the primary language for writing Terraform configurations. It uses a block-based, declarative syntax designed to describe infrastructure resources, data sources, variables, outputs, and providers. HCL files use the .tf extension and are parsed together within a module directory. The language supports arguments (key = value), blocks (labeled containers), expressions, comments (# and /* */), and interpolation. HCL is purpose-built for infrastructure definition — more readable than JSON, more structured than YAML. Terraform also accepts JSON-based .tf.json files as an alternative syntax. See [[terraform/hcl/variables]] for input/output data flow, [[terraform/hcl/expressions]] for computation and logic, and [[terraform/hcl/functions]] for built-in callable functions.",
+  "parent": "terraform",
+  "sub": [
+    "terraform/hcl/variables",
+    "terraform/hcl/expressions",
+    "terraform/hcl/functions"
+  ],
+  "tags": ["hcl", "terraform", "infrastructure-as-code", "iac", "declarative", "configuration", "hashicorp", "tf-files", "block-syntax"],
+  "aliases": [
+    "hcl",
+    "hashicorp configuration language",
+    "terraform syntax",
+    "terraform hcl",
+    "terraform language",
+    "tf syntax",
+    "terraform config",
+    "hcl2",
+    ".tf files",
+    "terraform file format"
+  ],
+  "triggers": [
+    "how to write terraform configs",
+    "terraform syntax basics",
+    "what is HCL",
+    "how does terraform file structure work",
+    "write a terraform resource block",
+    "terraform block types",
+    "explain terraform hcl syntax",
+    "terraform file format",
+    "how to structure terraform code"
+  ],
+  "body": "# HCL — HashiCorp Configuration Language\n\nHCL is the declarative language used to write Terraform configurations. Every `.tf` file in a directory is parsed as part of the same module. HCL uses a block-based syntax that is both human-readable and machine-friendly.\n\n## Basic Syntax\n\nHCL consists of **arguments** and **blocks**:\n\n```hcl\n# Arguments assign a value to a name\nami = \"ami-0c55b159cbfafe1f0\"\n\n# Blocks are containers with a type, optional labels, and a body\nresource \"aws_instance\" \"web\" {\n  ami           = \"ami-0c55b159cbfafe1f0\"\n  instance_type = \"t2.micro\"\n  tags = {\n    Name = \"web-server\"\n  }\n}\n```\n\nBlocks have a **type** (e.g. `resource`), zero or more **labels** (e.g. `\"aws_instance\"` `\"web\"`), and a body enclosed in `{ }`. Arguments inside blocks use `=` to assign values.\n\n## Block Types\n\nTerraform defines these top-level block types:\n\n```hcl\n# terraform — settings, required providers, backend config\nterraform {\n  required_version = \">= 1.5.0\"\n  required_providers {\n    aws = {\n      source  = \"hashicorp/aws\"\n      version = \"~> 5.0\"\n    }\n  }\n  backend \"s3\" {\n    bucket = \"my-tf-state\"\n    key    = \"prod/terraform.tfstate\"\n    region = \"us-east-1\"\n  }\n}\n\n# provider — configure a provider (AWS, GCP, Azure, etc.)\nprovider \"aws\" {\n  region = \"us-east-1\"\n}\n\n# resource — declare an infrastructure object\nresource \"aws_instance\" \"web\" {\n  ami           = \"ami-0c55b159cbfafe1f0\"\n  instance_type = \"t2.micro\"\n  tags = {\n    Name = \"web-server\"\n  }\n}\n\n# data — read from an existing resource or external source\ndata \"aws_ami\" \"ubuntu\" {\n  most_recent = true\n  owners      = [\"099720109477\"]\n  filter {\n    name   = \"name\"\n    values = [\"ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*\"]\n  }\n}\n\n# variable — declare an input variable\nvariable \"instance_type\" {\n  type        = string\n  default     = \"t2.micro\"\n  description = \"EC2 instance type\"\n}\n\n# output — expose a value from the module\noutput \"instance_ip\" {\n  value       = aws_instance.web.public_ip\n  description = \"Public IP of the web server\"\n}\n\n# locals — define computed local values\nlocals {\n  common_tags = {\n    Environment = var.environment\n    Project     = \"my-app\"\n    ManagedBy   = \"terraform\"\n  }\n}\n\n# module — call a child module\nmodule \"vpc\" {\n  source  = \"terraform-aws-modules/vpc/aws\"\n  version = \"5.1.0\"\n  cidr    = \"10.0.0.0/16\"\n}\n```\n\n## Comments\n\nHCL supports three comment styles:\n\n```hcl\n# Single-line comment (most common)\n// Single-line comment (alternative)\n/* Multi-line\n   comment block */\n```\n\n## File Structure\n\nA typical Terraform project organizes files by purpose:\n\n```\nproject/\n  main.tf          # Primary resource definitions\n  variables.tf     # Input variable declarations\n  outputs.tf       # Output value declarations\n  providers.tf     # Provider configuration\n  terraform.tf     # Terraform settings and backend\n  terraform.tfvars # Variable values (not committed for secrets)\n  modules/         # Local reusable modules\n    vpc/\n      main.tf\n      variables.tf\n      outputs.tf\n```\n\nAll `.tf` files in a directory are merged — file names are for human organization, not Terraform parsing. The `.tfvars` files provide variable values and are loaded automatically when named `terraform.tfvars` or `*.auto.tfvars`.\n\n## Value Types\n\nHCL supports these primitive and complex types:\n\n```hcl\n# Primitive types\nname    = \"web-server\"      # string\ncount   = 3                  # number\nenabled = true               # bool\n\n# Complex types\ntags    = { Name = \"web\" }   # map/object\nsubnets = [\"subnet-a\", \"subnet-b\"]  # list/tuple\ncidrs   = toset([\"10.0.1.0/24\", \"10.0.2.0/24\"])  # set\n```\n\nSee [[terraform/hcl/variables]] for type constraints and [[terraform/hcl/expressions]] for how to reference and compute values.\n",
+  "sections": [
+    {
+      "id": "basic-syntax",
+      "title": "Basic syntax — arguments and blocks",
+      "body": "HCL files contain arguments (`key = value`) and blocks (`type \"label\" { ... }`). Blocks have a type keyword, zero or more string labels, and a body in braces. Arguments inside blocks assign values to that block's attributes. Nesting blocks inside blocks is supported for sub-configurations (e.g. `filter` inside `data`, `backend` inside `terraform`).",
+      "tags": ["syntax", "arguments", "blocks", "labels", "nesting"]
+    },
+    {
+      "id": "block-types",
+      "title": "Terraform block types",
+      "body": "The eight top-level block types are: `terraform` (settings, required_providers, backend), `provider` (provider configuration), `resource` (infrastructure objects to create/manage), `data` (read-only data sources), `variable` (input parameters — see [[terraform/hcl/variables]]), `output` (exported values), `locals` (computed helper values), and `module` (calls to reusable child modules). Each block type has specific label requirements — `resource` and `data` take two labels (type and name), `variable` and `output` take one.",
+      "tags": ["terraform", "resource", "data", "variable", "output", "locals", "module", "provider"]
+    },
+    {
+      "id": "comments",
+      "title": "Comments",
+      "body": "Three comment syntaxes: `#` for single-line (idiomatic), `//` for single-line (alternative), and `/* ... */` for multi-line blocks. The `#` style is preferred by `terraform fmt`.",
+      "tags": ["comments", "documentation", "fmt"]
+    },
+    {
+      "id": "file-structure",
+      "title": "File structure and organization",
+      "body": "All `.tf` files in a directory form one module. Common convention: `main.tf` for resources, `variables.tf` for inputs, `outputs.tf` for exports, `providers.tf` for provider config, `terraform.tf` for settings/backend. File names are cosmetic — Terraform merges them all. Variable values go in `terraform.tfvars` or `*.auto.tfvars`. The `.terraform/` directory (created by `terraform init`) holds provider plugins and module cache — add it to `.gitignore`.",
+      "tags": ["file-structure", "organization", "tfvars", "modules", "gitignore", "terraform-init"]
+    },
+    {
+      "id": "value-types",
+      "title": "Value types",
+      "body": "Primitives: `string`, `number`, `bool`. Collections: `list(type)`, `set(type)`, `map(type)`. Structural: `object({...})`, `tuple([...])`. The `any` keyword accepts any type. Use type constraints in variable blocks to enforce expected shapes. See [[terraform/hcl/variables]] for details on type declarations and [[terraform/hcl/functions]] for type conversion functions like `tostring`, `tolist`, `tomap`.",
+      "tags": ["types", "string", "number", "bool", "list", "map", "set", "object", "tuple"]
+    }
+  ],
+  "links": [
+    { "uri": "terraform/hcl/variables", "context": "Input variables, locals, and outputs for data flow" },
+    { "uri": "terraform/hcl/expressions", "context": "References, interpolation, conditionals, and iteration" },
+    { "uri": "terraform/hcl/functions", "context": "Built-in functions callable from HCL expressions" },
+    { "uri": "aws/cloudformation", "context": "AWS-native IaC alternative to Terraform" }
+  ],
+  "related": [
+    { "uri": "terraform/hcl/variables", "relation": "see-also", "note": "Variables, locals, and outputs define data flow within HCL configs" },
+    { "uri": "terraform/hcl/expressions", "relation": "see-also", "note": "Expressions provide the computation layer on top of HCL syntax" },
+    { "uri": "terraform/hcl/functions", "relation": "see-also", "note": "Functions extend expressions with string, numeric, collection, and encoding operations" },
+    { "uri": "aws/cloudformation", "relation": "alternative", "note": "AWS CloudFormation is an AWS-native alternative to Terraform for IaC" }
+  ],
+  "more": {
+    "docs": "https://developer.hashicorp.com/terraform/language",
+    "spec": "https://github.com/hashicorp/hcl/blob/main/hclsyntax/spec.md",
+    "examples": "https://developer.hashicorp.com/terraform/tutorials",
+    "repo": "https://github.com/hashicorp/terraform"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents, DevOps engineers, SREs",
+    "estimated_reading_time": "6 min",
+    "prerequisites": [],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

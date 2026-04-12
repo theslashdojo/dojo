@@ -1,0 +1,139 @@
+{
+  "name": "hpa",
+  "version": "1.0.0",
+  "uri": "kubernetes/hpa",
+  "type": "skill",
+  "context": "Auto-scale Kubernetes workloads with HorizontalPodAutoscaler — scale Pods based on CPU, memory, or custom metrics",
+  "info": "The HorizontalPodAutoscaler (HPA) automatically scales the number of Pod replicas in a [[kubernetes/deployments]] based on observed metrics. HPA watches CPU utilization, memory usage, or custom/external metrics and adjusts replicas to meet target thresholds. Agents use HPA to ensure applications scale under load and scale down during quiet periods to save resources. This skill covers HPA manifests, metric types (resource, custom, external), scaling behavior, stabilization windows, and the relationship with the metrics-server.",
+  "parent": "kubernetes",
+  "tags": ["hpa", "autoscaling", "horizontal-pod-autoscaler", "scaling", "metrics", "cpu", "memory", "custom-metrics"],
+  "aliases": [
+    "kubernetes hpa",
+    "k8s hpa",
+    "horizontal pod autoscaler",
+    "autoscaling",
+    "auto scale",
+    "autoscaler",
+    "pod autoscaler",
+    "scale automatically",
+    "kubernetes autoscaling"
+  ],
+  "triggers": [
+    "set up autoscaling in kubernetes",
+    "create an hpa",
+    "auto-scale a deployment",
+    "scale based on cpu usage",
+    "scale based on memory",
+    "configure horizontal pod autoscaler",
+    "pods are not scaling",
+    "set min and max replicas"
+  ],
+  "body": "# HorizontalPodAutoscaler (HPA)\n\nHPA automatically adjusts the number of Pod replicas based on metrics. More traffic → more Pods. Less traffic → fewer Pods.\n\n## Prerequisites\n\nHPA requires a metrics source. Install metrics-server for CPU/memory metrics:\n\n```bash\n# Install metrics-server (required for CPU/memory HPA)\nkubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml\n\n# Verify it's running\nkubectl get pods -n kube-system -l k8s-app=metrics-server\n\n# Test: check node/pod metrics\nkubectl top nodes\nkubectl top pods -n production\n```\n\nFor custom metrics, install Prometheus Adapter or KEDA.\n\n## Basic HPA (CPU-based)\n\n```yaml\napiVersion: autoscaling/v2\nkind: HorizontalPodAutoscaler\nmetadata:\n  name: web-app-hpa\n  namespace: production\nspec:\n  scaleTargetRef:\n    apiVersion: apps/v1\n    kind: Deployment\n    name: web-app\n  minReplicas: 3\n  maxReplicas: 20\n  metrics:\n    - type: Resource\n      resource:\n        name: cpu\n        target:\n          type: Utilization\n          averageUtilization: 70    # scale up when avg CPU > 70%\n```\n\n## CPU + Memory HPA\n\n```yaml\napiVersion: autoscaling/v2\nkind: HorizontalPodAutoscaler\nmetadata:\n  name: web-app-hpa\n  namespace: production\nspec:\n  scaleTargetRef:\n    apiVersion: apps/v1\n    kind: Deployment\n    name: web-app\n  minReplicas: 3\n  maxReplicas: 20\n  metrics:\n    - type: Resource\n      resource:\n        name: cpu\n        target:\n          type: Utilization\n          averageUtilization: 70\n    - type: Resource\n      resource:\n        name: memory\n        target:\n          type: Utilization\n          averageUtilization: 80\n```\n\nWhen multiple metrics are specified, HPA calculates the desired replica count for each metric and uses the **highest** value.\n\n## Scaling Behavior\n\nControl how fast HPA scales up and down:\n\n```yaml\napiVersion: autoscaling/v2\nkind: HorizontalPodAutoscaler\nmetadata:\n  name: web-app-hpa\n  namespace: production\nspec:\n  scaleTargetRef:\n    apiVersion: apps/v1\n    kind: Deployment\n    name: web-app\n  minReplicas: 3\n  maxReplicas: 50\n  metrics:\n    - type: Resource\n      resource:\n        name: cpu\n        target:\n          type: Utilization\n          averageUtilization: 70\n  behavior:\n    scaleUp:\n      stabilizationWindowSeconds: 60    # wait 60s before scaling up again\n      policies:\n        - type: Percent\n          value: 100                     # can double replica count\n          periodSeconds: 60\n        - type: Pods\n          value: 5                       # or add up to 5 pods\n          periodSeconds: 60\n      selectPolicy: Max                  # use whichever allows more scaling\n    scaleDown:\n      stabilizationWindowSeconds: 300   # wait 5 min before scaling down\n      policies:\n        - type: Percent\n          value: 10                      # remove max 10% of replicas\n          periodSeconds: 60\n      selectPolicy: Min                  # scale down conservatively\n```\n\n## kubectl Commands\n\n```bash\n# Create HPA imperatively\nkubectl autoscale deployment web-app \\\n  --min=3 --max=20 --cpu-percent=70 \\\n  -n production\n\n# Create from manifest\nkubectl apply -f hpa.yaml\n\n# List HPAs\nkubectl get hpa -n production\n\n# Describe (shows current metrics, desired replicas, events)\nkubectl describe hpa web-app-hpa -n production\n\n# Watch HPA decisions in real-time\nkubectl get hpa -n production -w\n\n# Check current pod metrics\nkubectl top pods -n production -l app=web-app\n\n# Delete HPA\nkubectl delete hpa web-app-hpa -n production\n```\n\n## How HPA Calculates Replicas\n\n```\ndesiredReplicas = ceil(currentReplicas × (currentMetricValue / targetMetricValue))\n```\n\nExample: 5 replicas at 90% CPU with target 70%:\n```\ndesiredReplicas = ceil(5 × (90 / 70)) = ceil(6.43) = 7\n```\n\nHPA checks metrics every 15 seconds (configurable via `--horizontal-pod-autoscaler-sync-period`).\n\n## Custom Metrics\n\nScale based on application-specific metrics (requires Prometheus Adapter or similar):\n\n```yaml\nmetrics:\n  - type: Pods\n    pods:\n      metric:\n        name: http_requests_per_second\n      target:\n        type: AverageValue\n        averageValue: 1000    # scale when avg RPS > 1000 per pod\n  - type: Object\n    object:\n      describedObject:\n        apiVersion: networking.k8s.io/v1\n        kind: Ingress\n        name: web-app\n      metric:\n        name: requests_per_second\n      target:\n        type: Value\n        value: 5000\n```\n\n## Important Notes\n\n- **Pods MUST have resource requests** defined for CPU/memory HPA to work. Without requests, HPA cannot calculate utilization percentages.\n- HPA and manual `kubectl scale` conflict — HPA will override manual scaling.\n- HPA scales [[kubernetes/deployments]], StatefulSets, and ReplicaSets.\n- For event-driven autoscaling (queue depth, etc.), consider KEDA (Kubernetes Event-Driven Autoscaler).\n- For vertical scaling (resize CPU/memory), use Vertical Pod Autoscaler (VPA) — but do not use VPA and HPA on the same metric.\n\n## Environment Variables\n\n| Variable | Purpose |\n|----------|----------|\n| `KUBECONFIG` | Path to kubeconfig file |\n| `KUBE_NAMESPACE` | Default namespace |\n",
+  "sections": [
+    {
+      "id": "resource-metrics",
+      "title": "CPU and memory metrics",
+      "body": "HPA scales on `type: Resource` metrics (cpu, memory) from metrics-server. Target types: `Utilization` (percentage of request, e.g., 70%), `AverageValue` (absolute value per pod, e.g., 200m CPU). Pods MUST have resource requests set for Utilization to work. Install metrics-server: `kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml`. Verify with `kubectl top pods`.",
+      "tags": ["cpu", "memory", "utilization", "metrics-server", "resource-requests", "top"]
+    },
+    {
+      "id": "scaling-behavior",
+      "title": "Scaling behavior and stabilization",
+      "body": "Control scaling speed with `spec.behavior`. `stabilizationWindowSeconds` prevents flapping — HPA considers the highest (scale-up) or lowest (scale-down) recommendation in the window. Policies define max change per period: `type: Percent` (e.g., double replicas), `type: Pods` (e.g., add 5 pods). `selectPolicy: Max` picks the most aggressive policy, `Min` picks the most conservative. Default: scale up immediately, scale down after 5 min stabilization.",
+      "tags": ["behavior", "stabilization", "flapping", "policies", "scale-up", "scale-down"]
+    },
+    {
+      "id": "custom-metrics",
+      "title": "Custom and external metrics",
+      "body": "Scale on application metrics (RPS, queue depth, latency) via custom metrics API. Requires Prometheus Adapter, Datadog Cluster Agent, or similar. Metric types: `Pods` (per-pod average), `Object` (from a specific Kubernetes object), `External` (from outside the cluster, e.g., cloud queue depth). KEDA provides event-driven autoscaling with 60+ scalers (Kafka, RabbitMQ, AWS SQS, etc.).",
+      "tags": ["custom-metrics", "prometheus", "keda", "external-metrics", "rps", "queue-depth"]
+    }
+  ],
+  "links": [
+    { "uri": "kubernetes/deployments", "context": "HPA scales Deployment replicas" },
+    { "uri": "kubernetes/pods", "context": "Pods must have resource requests for HPA to work" },
+    { "uri": "kubernetes/namespaces", "context": "HPA is a namespaced resource" },
+    { "uri": "kubernetes/troubleshooting", "context": "Debug HPA not scaling" }
+  ],
+  "related": [
+    { "uri": "kubernetes/deployments", "relation": "prerequisite", "note": "HPA targets Deployments (or StatefulSets) for scaling" },
+    { "uri": "kubernetes/pods", "relation": "see-also", "note": "Pods must have resource requests defined for metric-based scaling" }
+  ],
+  "scripts": [
+    {
+      "id": "create-hpa",
+      "name": "Create HPA",
+      "description": "Create a HorizontalPodAutoscaler for a Deployment",
+      "lang": "bash",
+      "runtime": "kubectl",
+      "entry": "./scripts/create-hpa.sh",
+      "inline": "#!/bin/bash\nset -euo pipefail\nDEPLOYMENT=${1:?Usage: create-hpa.sh <deployment> [min] [max] [cpu-target]}\nMIN=${2:-3}\nMAX=${3:-20}\nCPU=${4:-70}\nNS=${KUBE_NAMESPACE:-default}\n\necho \"Creating HPA for $DEPLOYMENT (min=$MIN, max=$MAX, CPU target=${CPU}%)\"\nkubectl autoscale deployment \"$DEPLOYMENT\" \\\n  --min=\"$MIN\" \\\n  --max=\"$MAX\" \\\n  --cpu-percent=\"$CPU\" \\\n  -n \"$NS\"\n\necho \"\"\nkubectl get hpa -n \"$NS\"\necho \"\"\necho \"Monitor with: kubectl get hpa -n $NS -w\"",
+      "env": {
+        "KUBECONFIG": { "required": false, "secret": false, "default": "~/.kube/config", "description": "Path to kubeconfig file" },
+        "KUBE_NAMESPACE": { "required": false, "secret": false, "default": "default", "description": "Target namespace" }
+      },
+      "packages": []
+    },
+    {
+      "id": "hpa-status",
+      "name": "HPA Status",
+      "description": "Show current HPA status, metrics, and scaling decisions",
+      "lang": "bash",
+      "runtime": "kubectl",
+      "entry": "./scripts/hpa-status.sh",
+      "inline": "#!/bin/bash\nset -euo pipefail\nNS=${KUBE_NAMESPACE:-default}\n\necho \"=== HPAs in namespace $NS ===\"\nkubectl get hpa -n \"$NS\" -o wide\necho \"\"\n\nfor HPA in $(kubectl get hpa -n \"$NS\" -o jsonpath='{.items[*].metadata.name}'); do\n  echo \"=== $HPA ===\"\n  kubectl describe hpa \"$HPA\" -n \"$NS\" | grep -A 5 'Metrics:\\|Min replicas:\\|Conditions:'\n  echo \"\"\ndone\n\necho \"=== Pod Resource Usage ===\"\nkubectl top pods -n \"$NS\" 2>/dev/null || echo \"metrics-server not available\"",
+      "env": {
+        "KUBECONFIG": { "required": false, "secret": false, "default": "~/.kube/config", "description": "Path to kubeconfig file" },
+        "KUBE_NAMESPACE": { "required": false, "secret": false, "default": "default", "description": "Target namespace" }
+      },
+      "packages": []
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "deployment": { "type": "string", "description": "Target Deployment name" },
+        "namespace": { "type": "string", "default": "default" },
+        "minReplicas": { "type": "integer", "default": 3, "description": "Minimum replica count" },
+        "maxReplicas": { "type": "integer", "default": 20, "description": "Maximum replica count" },
+        "cpuTargetPercent": { "type": "integer", "default": 70, "description": "Target CPU utilization percentage" },
+        "memoryTargetPercent": { "type": "integer", "description": "Target memory utilization percentage" }
+      },
+      "required": ["deployment"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "hpaName": { "type": "string" },
+        "currentReplicas": { "type": "integer" },
+        "desiredReplicas": { "type": "integer" },
+        "currentCPU": { "type": "string", "description": "Current CPU utilization" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "kubernetes/deployments", "reason": "HPA targets Deployments for replica scaling" },
+    { "uri": "kubernetes/pods", "reason": "Pods must have resource requests for metric-based autoscaling" }
+  ],
+  "more": {
+    "docs": "https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/",
+    "api": "https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.31/#horizontalpodautoscaler-v2-autoscaling",
+    "walkthrough": "https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale-walkthrough/"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, DevOps engineers, SREs, AI agents",
+    "estimated_reading_time": "5 min",
+    "prerequisites": ["kubernetes/deployments"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

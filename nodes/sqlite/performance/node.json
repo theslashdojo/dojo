@@ -1,0 +1,114 @@
+{
+  "name": "performance",
+  "version": "1.0.0",
+  "uri": "sqlite/performance",
+  "type": "context",
+  "content_type": "guide",
+  "context": "SQLite performance tuning — PRAGMAs, indexing strategy, EXPLAIN QUERY PLAN, and bulk operation patterns",
+  "info": "This node covers everything an agent needs to make SQLite fast: connection-time PRAGMAs (journal_mode, synchronous, cache_size, mmap_size, temp_store), indexing strategy (composite, partial, covering, expression indexes), query analysis with EXPLAIN QUERY PLAN, bulk insert optimization (transactions, prepared statements), VACUUM and ANALYZE for maintenance, and common performance antipatterns to avoid. SQLite can handle millions of rows and thousands of queries per second when properly tuned — the defaults are conservative for safety, not speed. The single biggest win is enabling WAL mode (see [[sqlite/wal]]). After that, proper indexing and PRAGMA tuning are the next most impactful changes. Agents use this knowledge when databases are slow, queries take too long, or bulk operations need optimization.",
+  "parent": "sqlite",
+  "tags": ["performance", "pragma", "optimization", "indexing", "explain", "cache", "mmap", "vacuum", "analyze", "bulk-insert", "tuning"],
+  "aliases": [
+    "sqlite performance",
+    "sqlite optimization",
+    "sqlite tuning",
+    "sqlite pragmas",
+    "sqlite slow",
+    "sqlite fast",
+    "optimize sqlite",
+    "sqlite speed",
+    "sqlite benchmark",
+    "sqlite cache size",
+    "sqlite mmap",
+    "explain query plan",
+    "sqlite bulk insert",
+    "sqlite vacuum"
+  ],
+  "triggers": [
+    "make sqlite faster",
+    "optimize sqlite performance",
+    "sqlite is slow",
+    "tune sqlite pragmas",
+    "best sqlite pragmas",
+    "explain query plan sqlite",
+    "sqlite indexing strategy",
+    "speed up sqlite inserts",
+    "bulk insert sqlite",
+    "sqlite cache size",
+    "sqlite mmap size",
+    "vacuum sqlite database",
+    "analyze sqlite",
+    "sqlite production settings"
+  ],
+  "body": "# SQLite Performance Tuning\n\nSQLite's defaults prioritize safety and compatibility over speed. With proper configuration, SQLite can handle millions of rows and thousands of queries per second on modern hardware.\n\n## The Performance PRAGMA Stack\n\nApply these PRAGMAs when opening every connection:\n\n```sql\n-- === MUST HAVE ===\nPRAGMA journal_mode = WAL;            -- concurrent readers + writers (see [[sqlite/wal]])\nPRAGMA synchronous = NORMAL;          -- safe with WAL, 5-10x faster writes\nPRAGMA foreign_keys = ON;             -- enforce referential integrity\nPRAGMA busy_timeout = 5000;           -- wait 5s on lock contention\n\n-- === SHOULD HAVE ===\nPRAGMA cache_size = -64000;           -- 64MB page cache (default is 2MB)\nPRAGMA temp_store = MEMORY;           -- keep temp tables in RAM\n\n-- === NICE TO HAVE ===\nPRAGMA mmap_size = 268435456;         -- 256MB memory-mapped I/O\nPRAGMA page_size = 4096;              -- default, good for most workloads\n```\n\n### Python Example\n\n```python\nimport sqlite3\n\ndef open_db(path: str) -> sqlite3.Connection:\n    conn = sqlite3.connect(path)\n    conn.execute('PRAGMA journal_mode=WAL')\n    conn.execute('PRAGMA synchronous=NORMAL')\n    conn.execute('PRAGMA foreign_keys=ON')\n    conn.execute('PRAGMA busy_timeout=5000')\n    conn.execute('PRAGMA cache_size=-64000')\n    conn.execute('PRAGMA temp_store=MEMORY')\n    conn.execute('PRAGMA mmap_size=268435456')\n    return conn\n```\n\n### Node.js Example (better-sqlite3)\n\n```javascript\nimport Database from 'better-sqlite3';\n\nfunction openDb(path) {\n  const db = new Database(path);\n  db.pragma('journal_mode = WAL');\n  db.pragma('synchronous = NORMAL');\n  db.pragma('foreign_keys = ON');\n  db.pragma('busy_timeout = 5000');\n  db.pragma('cache_size = -64000');\n  db.pragma('temp_store = MEMORY');\n  db.pragma('mmap_size = 268435456');\n  return db;\n}\n```\n\n## PRAGMA Reference\n\n| PRAGMA | Default | Recommended | Impact |\n|--------|---------|-------------|--------|\n| `journal_mode` | DELETE | WAL | Unlocks concurrent reads during writes |\n| `synchronous` | FULL | NORMAL | 5-10x faster writes (safe with WAL) |\n| `cache_size` | -2000 (2MB) | -64000 (64MB) | Fewer disk reads for repeated queries |\n| `temp_store` | DEFAULT | MEMORY | Faster sorts, GROUP BY, DISTINCT |\n| `mmap_size` | 0 | 268435456 (256MB) | Faster reads via memory-mapped I/O |\n| `busy_timeout` | 0 | 5000 | Auto-retry on lock instead of failing |\n| `page_size` | 4096 | 4096 | Rarely needs changing |\n| `auto_vacuum` | NONE | INCREMENTAL | Reclaim space from deletes |\n\n## EXPLAIN QUERY PLAN\n\nUse `EXPLAIN QUERY PLAN` to understand how SQLite executes a query:\n\n```sql\nEXPLAIN QUERY PLAN\nSELECT u.name, COUNT(o.id)\nFROM users u\nLEFT JOIN orders o ON o.user_id = u.id\nWHERE u.active = 1\nGROUP BY u.id;\n```\n\nLook for these in the output:\n\n| Output | Meaning | Action |\n|--------|---------|--------|\n| `SCAN TABLE` | Full table scan | Add an index |\n| `SEARCH TABLE ... USING INDEX` | Index lookup | Good |\n| `USING COVERING INDEX` | Index-only query | Optimal |\n| `USE TEMP B-TREE FOR ORDER BY` | Sorting without index | Add index matching ORDER BY |\n| `USE TEMP B-TREE FOR GROUP BY` | Grouping without index | Add index matching GROUP BY |\n\n### Index Design Rules\n\n1. **Index columns in WHERE clauses** — `CREATE INDEX idx ON table(column)`\n2. **Composite index order matters** — put equality conditions first, range conditions last\n3. **Cover ORDER BY** — include ORDER BY columns at the end of composite indexes\n4. **Partial indexes save space** — `CREATE INDEX idx ON users(email) WHERE active = 1`\n5. **Covering indexes avoid table lookups** — include all SELECTed columns in the index\n6. **Don't over-index** — each index slows down writes\n\n```sql\n-- BAD: Full table scan\nSELECT * FROM orders WHERE user_id = 42 AND status = 'pending';\n\n-- FIX: Composite index (equality columns first)\nCREATE INDEX idx_orders_user_status ON orders(user_id, status);\n\n-- BETTER: Covering index (avoids table lookup)\nCREATE INDEX idx_orders_covering ON orders(user_id, status, total, created_at);\n```\n\n## Bulk Insert Optimization\n\nDefault: ~50 inserts/second. Optimized: ~100,000+ inserts/second.\n\n### The Key: Transactions\n\nEvery INSERT outside a transaction is an implicit single-row transaction with a full fsync. Batch inserts in explicit transactions:\n\n```sql\n-- SLOW: 10,000 implicit transactions (one per row)\nINSERT INTO logs (message) VALUES ('msg1');\nINSERT INTO logs (message) VALUES ('msg2');\n-- ... 10,000 times → ~50 rows/sec\n\n-- FAST: 1 transaction for all rows\nBEGIN;\nINSERT INTO logs (message) VALUES ('msg1');\nINSERT INTO logs (message) VALUES ('msg2');\n-- ... 10,000 times → ~100,000+ rows/sec\nCOMMIT;\n```\n\n### Prepared Statements\n\n```python\n# Python — prepare once, execute many\nconn.execute('BEGIN')\nstmt = 'INSERT INTO logs (level, message, created_at) VALUES (?, ?, ?)'\nconn.executemany(stmt, [\n    ('INFO', 'started', '2026-04-11 12:00:00'),\n    ('ERROR', 'failed', '2026-04-11 12:00:01'),\n    # ... thousands more\n])\nconn.execute('COMMIT')\n```\n\n```javascript\n// Node.js (better-sqlite3) — transaction helper\nconst insert = db.prepare('INSERT INTO logs (level, message) VALUES (?, ?)');\nconst insertMany = db.transaction((rows) => {\n  for (const row of rows) insert.run(row.level, row.message);\n});\ninsertMany(rows); // automatically wrapped in BEGIN/COMMIT\n```\n\n### Extreme Bulk Loading\n\nFor loading millions of rows (CSV import, initial data load):\n\n```sql\nPRAGMA synchronous = OFF;             -- DANGEROUS: no crash safety\nPRAGMA journal_mode = MEMORY;         -- no journal file\nPRAGMA cache_size = -256000;          -- 256MB cache\nBEGIN;\n-- ... bulk inserts ...\nCOMMIT;\n-- RESTORE SAFE SETTINGS IMMEDIATELY\nPRAGMA journal_mode = WAL;\nPRAGMA synchronous = NORMAL;\n```\n\n## VACUUM and ANALYZE\n\n### VACUUM\n\nRebuild the database file, reclaiming space from deleted rows:\n\n```sql\n-- Full vacuum (locks database, requires 2x disk space temporarily)\nVACUUM;\n\n-- Incremental vacuum (if auto_vacuum=INCREMENTAL)\nPRAGMA incremental_vacuum(1000);      -- free up to 1000 pages\n```\n\nWhen to VACUUM:\n- After deleting a large portion of data\n- Database file is much larger than expected\n- Want to defragment for sequential read performance\n\n### ANALYZE\n\nCollect statistics for the query planner:\n\n```sql\n-- Analyze all tables\nANALYZE;\n\n-- Analyze specific table\nANALYZE users;\n\n-- Let SQLite decide what needs analysis (recommended)\nPRAGMA optimize;\n```\n\nRun `PRAGMA optimize` periodically (hourly/daily) and before closing long-lived connections.\n\n## Common Performance Antipatterns\n\n| Antipattern | Impact | Fix |\n|-------------|--------|-----|\n| No WAL mode | Readers block writers | `PRAGMA journal_mode=WAL` |\n| synchronous=FULL with WAL | Unnecessary fsync per commit | `PRAGMA synchronous=NORMAL` |\n| No busy_timeout | Immediate SQLITE_BUSY errors | `PRAGMA busy_timeout=5000` |\n| Inserts without transaction | ~50 rows/sec vs ~100K/sec | Wrap in BEGIN/COMMIT |\n| Missing indexes on WHERE columns | Full table scans | Add targeted indexes |\n| SELECT * when only need 2 columns | Wasted I/O | Select only needed columns |\n| No EXPLAIN QUERY PLAN | Blind optimization | Always check the plan |\n| AUTOINCREMENT on primary key | Slight overhead, rarely needed | Use INTEGER PRIMARY KEY |\n| String comparison without index | Full scan | Create expression index on lower() |\n| LIKE '%pattern%' | Cannot use index | Use FTS5 (see [[sqlite/extensions]]) |\n\n## Benchmarking\n\n```bash\n# Time a query from CLI\ntime sqlite3 myapp.db \"SELECT COUNT(*) FROM large_table WHERE status = 'active';\"\n\n# SQLite built-in timer\nsqlite3 myapp.db\n.timer on\nSELECT COUNT(*) FROM large_table WHERE status = 'active';\n```\n\n## Database Size Limits\n\n| Limit | Value |\n|-------|-------|\n| Max database size | 281 TB |\n| Max row size | 1 GB |\n| Max columns per table | 2,000 |\n| Max tables | No hard limit |\n| Max SQL length | 1,000,000,000 bytes |\n| Max attached databases | 125 |\n",
+  "sections": [
+    {
+      "id": "pragma-stack",
+      "title": "The performance PRAGMA stack",
+      "body": "Apply on every connection: journal_mode=WAL (concurrency), synchronous=NORMAL (fast writes), busy_timeout=5000 (lock retry), cache_size=-64000 (64MB cache), temp_store=MEMORY (fast temp ops), mmap_size=268435456 (256MB mmap). These are safe defaults for production. See [[sqlite/wal]] for WAL details.",
+      "tags": ["pragma", "configuration", "connection-setup", "defaults"]
+    },
+    {
+      "id": "explain-query-plan",
+      "title": "EXPLAIN QUERY PLAN",
+      "body": "Prefix any SELECT with EXPLAIN QUERY PLAN to see how SQLite will execute it. Look for SCAN TABLE (bad — needs index), SEARCH USING INDEX (good), USING COVERING INDEX (optimal). If you see USE TEMP B-TREE, add an index matching the ORDER BY or GROUP BY. Always check plans for queries on large tables.",
+      "tags": ["explain", "query-plan", "scan", "search", "covering-index"]
+    },
+    {
+      "id": "indexing",
+      "title": "Indexing strategy",
+      "body": "Index columns in WHERE, JOIN ON, ORDER BY, GROUP BY. Composite index column order: equality conditions first, then range conditions, then ORDER BY. Partial indexes filter rows (WHERE clause on the index). Covering indexes include all columns the query selects, avoiding the table lookup. Expression indexes enable indexed lookups on lower(), json_extract(), etc. Don't over-index — each index adds write overhead. See [[sqlite/schema]] for CREATE INDEX syntax.",
+      "tags": ["index", "composite", "partial", "covering", "expression", "strategy"]
+    },
+    {
+      "id": "bulk-operations",
+      "title": "Bulk insert optimization",
+      "body": "Individual inserts outside transactions: ~50 rows/sec (each is a full fsync). Batched in a transaction: ~100,000+ rows/sec. Always wrap bulk operations in BEGIN/COMMIT. Use prepared statements with executemany() (Python) or transaction() (better-sqlite3). For extreme loading, temporarily use synchronous=OFF and journal_mode=MEMORY, then restore safe settings immediately after.",
+      "tags": ["bulk-insert", "batch", "transaction", "prepared-statement", "executemany"]
+    },
+    {
+      "id": "maintenance",
+      "title": "VACUUM and ANALYZE",
+      "body": "VACUUM rebuilds the database file, reclaiming space and defragmenting. Requires 2x disk space temporarily. Use PRAGMA auto_vacuum=INCREMENTAL and PRAGMA incremental_vacuum for lighter-weight space reclamation. ANALYZE collects statistics for the query planner. PRAGMA optimize runs ANALYZE only on tables that need it — call periodically (hourly/daily) and at connection close.",
+      "tags": ["vacuum", "analyze", "optimize", "maintenance", "defragment"]
+    },
+    {
+      "id": "antipatterns",
+      "title": "Common performance antipatterns",
+      "body": "No WAL mode (readers block writers). synchronous=FULL with WAL (unnecessary overhead). No busy_timeout (instant SQLITE_BUSY failures). Inserts without explicit transactions (~50 vs ~100K rows/sec). Missing indexes on WHERE columns. SELECT * when only two columns needed. LIKE '%pattern%' instead of FTS5 ([[sqlite/extensions]]). AUTOINCREMENT when INTEGER PRIMARY KEY suffices.",
+      "tags": ["antipatterns", "mistakes", "troubleshooting", "common-errors"]
+    }
+  ],
+  "links": [
+    { "uri": "sqlite/wal", "context": "WAL mode is the foundation of performance tuning" },
+    { "uri": "sqlite/schema", "context": "Index design is defined in the schema" },
+    { "uri": "sqlite/queries", "context": "Query patterns that benefit from tuning" },
+    { "uri": "sqlite/extensions", "context": "FTS5 replaces slow LIKE patterns for full-text search" },
+    { "uri": "sqlite", "context": "SQLite ecosystem overview" }
+  ],
+  "related": [
+    { "uri": "sqlite/wal", "relation": "prerequisite", "note": "WAL mode is the single most impactful performance setting" },
+    { "uri": "sqlite/schema", "relation": "see-also", "note": "Index design directly determines query performance" },
+    { "uri": "sqlite/extensions", "relation": "see-also", "note": "FTS5 solves the LIKE '%pattern%' performance problem" }
+  ],
+  "more": {
+    "docs": "https://www.sqlite.org/pragma.html",
+    "spec": "https://www.sqlite.org/queryplanner.html",
+    "examples": "https://www.sqlite.org/eqp.html"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "6 min",
+    "prerequisites": ["sqlite", "sqlite/wal"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

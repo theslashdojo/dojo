@@ -1,0 +1,164 @@
+{
+  "name": "processes",
+  "version": "1.0.0",
+  "uri": "shell/processes",
+  "type": "skill",
+  "context": "Launch, monitor, signal, background, and terminate processes from the shell",
+  "info": "Process management is essential for agents that run services, manage long-running tasks, or need to inspect system state. This skill covers the full process lifecycle: launching processes (foreground, background, nohup), monitoring them (ps, top, htop, pgrep), sending signals (kill, pkill, trap), managing job control (jobs, bg, fg, disown, wait), inspecting process relationships (pstree, /proc), and checking resource usage (lsof, /proc/PID/status). Agents use this skill to start development servers, manage background workers, detect hanging processes, clean up after failed commands, and coordinate parallel execution. See [[shell/bash]] for command execution, [[shell/environment]] for process environment inheritance, and [[shell/pipes]] for inter-process communication via pipes.",
+  "parent": "shell",
+  "tags": ["processes", "kill", "ps", "signals", "background", "jobs", "pid", "daemon"],
+  "aliases": [
+    "process management",
+    "processes",
+    "kill process",
+    "background process",
+    "ps",
+    "top",
+    "htop",
+    "pgrep",
+    "pkill",
+    "jobs",
+    "nohup",
+    "daemon",
+    "pid",
+    "signals",
+    "sigterm",
+    "sigkill"
+  ],
+  "triggers": [
+    "kill a process",
+    "run a process in the background",
+    "list running processes",
+    "find which process is using a port",
+    "check if a process is running",
+    "send a signal to a process",
+    "stop a background job",
+    "monitor system processes",
+    "wait for a process to finish",
+    "detach a process from the terminal"
+  ],
+  "body": "# Process Management\n\nProcesses are running instances of programs. Every command an agent runs spawns a process with a PID, environment, open file descriptors, and a parent-child relationship.\n\n## Launching Processes\n\n```bash\n# Foreground (blocks until complete)\ncommand arg1 arg2\n\n# Background (returns immediately, shell gets PID)\ncommand arg1 arg2 &\nbg_pid=$!                        # PID of last background process\n\n# Background with output suppressed\ncommand > /dev/null 2>&1 &\n\n# Survive terminal close (detach from session)\nnohup command > output.log 2>&1 &\n\n# Replace current shell with process\nexec python app.py               # PID stays the same\n\n# Run with modified environment (single command)\nenv PORT=8080 DEBUG=true command\nPORT=8080 DEBUG=true command     # Bash shorthand\n\n# Run with timeout\ntimeout 30 long_running_command  # Kill after 30 seconds\ntimeout -s SIGKILL 30 command    # Force kill after 30s\n```\n\n## Listing and Finding Processes\n\n```bash\n# List all processes (full format)\nps aux                           # BSD-style: all users, full\nps -ef                           # POSIX-style: every process, full\n\n# Find process by name\nps aux | grep '[n]ode'           # Brackets trick excludes grep itself\npgrep -f 'node server'          # Pattern match on full command line\npgrep -la node                   # List PIDs and command names\n\n# Process tree\npstree -p                        # Show hierarchy with PIDs\npstree -p $(pgrep -f 'node')    # Tree rooted at specific process\n\n# Interactive process monitor\ntop                              # Real-time process viewer\nhtop                             # Improved interactive viewer (if installed)\n\n# Find process using a port\nlsof -i :3000                    # What's listening on port 3000\nfuser 3000/tcp                   # PIDs using port 3000\nss -tlnp | grep :3000            # Socket statistics\nnetstat -tlnp | grep :3000       # Legacy equivalent\n\n# Find process using a file\nlsof /path/to/file               # Processes with file open\nfuser /path/to/file              # PIDs using file\n```\n\n## Signals\n\nSignals are how the kernel and processes communicate. Key signals:\n\n| Signal | Number | Default | Purpose |\n|--------|--------|---------|---------|\n| `SIGHUP` | 1 | Terminate | Terminal hangup — often used to reload config |\n| `SIGINT` | 2 | Terminate | Interrupt (Ctrl-C) |\n| `SIGQUIT` | 3 | Core dump | Quit with core dump (Ctrl-\\\\) |\n| `SIGKILL` | 9 | Terminate | Force kill — cannot be caught or ignored |\n| `SIGTERM` | 15 | Terminate | Graceful termination (default for `kill`) |\n| `SIGSTOP` | 19 | Stop | Pause process — cannot be caught |\n| `SIGCONT` | 18 | Continue | Resume stopped process |\n| `SIGUSR1` | 10 | Terminate | User-defined signal 1 |\n| `SIGUSR2` | 12 | Terminate | User-defined signal 2 |\n\n```bash\n# Send signals\nkill PID                          # SIGTERM (graceful)\nkill -9 PID                       # SIGKILL (force)\nkill -HUP PID                     # SIGHUP (reload config)\nkill -STOP PID                    # Pause process\nkill -CONT PID                    # Resume process\n\n# Kill by name\npkill node                         # SIGTERM to all 'node' processes\npkill -9 -f 'node server.js'      # SIGKILL matching full command\nkillall python                     # SIGTERM to all 'python' processes\n\n# Kill process group (all children)\nkill -- -PGID                      # Negative PID = process group\nkill -TERM -- -$(ps -o pgid= -p PID | tr -d ' ')  # Kill group of PID\n```\n\n## Job Control\n\n```bash\n# Start background job\ncommand &\n\n# List jobs in current shell\njobs                    # Show all jobs\njobs -l                 # Include PIDs\n\n# Suspend foreground process\n# Press Ctrl-Z (sends SIGTSTP)\n\n# Resume in background/foreground\nbg %1                   # Resume job 1 in background\nfg %1                   # Bring job 1 to foreground\n\n# Detach job from shell (survives shell exit)\ndisown %1               # Detach job 1\ndisown -h %1            # Detach but keep in job table\n\n# Wait for background jobs\nwait                    # Wait for ALL background jobs\nwait $pid               # Wait for specific PID\nwait -n                 # Wait for ANY single job (Bash 4.3+)\n```\n\n## Process Information (Linux /proc)\n\n```bash\n# Process status\ncat /proc/PID/status              # Name, state, memory, threads\ncat /proc/PID/cmdline | tr '\\0' ' '  # Full command line\ncat /proc/PID/environ | tr '\\0' '\\n'  # Environment variables\nls -l /proc/PID/fd                # Open file descriptors\ncat /proc/PID/limits              # Resource limits\n\n# System-wide\ncat /proc/loadavg                 # Load averages\ncat /proc/meminfo                 # Memory statistics\ncat /proc/cpuinfo                 # CPU information\nuptime                            # Load averages + uptime\nfree -h                           # Memory usage summary\n```\n\n## Common Agent Patterns\n\n```bash\n# Start server, wait for ready, then continue\nnode server.js &\nserver_pid=$!\n\n# Wait for port to be open\nfor i in $(seq 1 30); do\n  if ss -tlnp | grep -q ':3000'; then\n    echo \"Server ready\"\n    break\n  fi\n  sleep 1\ndone\n\n# Cleanup on exit\ntrap \"kill $server_pid 2>/dev/null\" EXIT\n\n# Run with timeout and cleanup\ntimeout 60 long_command || {\n  echo \"Command timed out\" >&2\n  exit 1\n}\n\n# Parallel execution with wait\ncommand1 &\ncommand2 &\ncommand3 &\nwait  # Wait for all to finish\n\n# Check if port is available before starting\nif ss -tlnp | grep -q ':3000'; then\n  echo \"Port 3000 already in use\" >&2\n  lsof -i :3000\n  exit 1\nfi\n```\n",
+  "sections": [
+    {
+      "id": "signals",
+      "title": "Signals and kill",
+      "body": "Signals are asynchronous notifications sent to processes. `kill PID` sends SIGTERM (15) — the process can catch it and shut down gracefully. `kill -9 PID` sends SIGKILL — cannot be caught, kernel terminates immediately. `pkill` and `killall` kill by name/pattern. `trap 'cleanup' SIGTERM` in scripts catches signals for graceful shutdown. Always try SIGTERM first, wait a few seconds, then SIGKILL if still alive. Signal 0 (`kill -0 PID`) checks if process exists without sending a signal.",
+      "tags": ["signals", "kill", "sigterm", "sigkill", "sighup", "sigint", "trap", "pkill", "killall"]
+    },
+    {
+      "id": "job-control",
+      "title": "Job control",
+      "body": "Job control manages processes within a shell session. `command &` starts in background. `Ctrl-Z` suspends foreground. `bg` resumes suspended job in background. `fg` brings job to foreground. `jobs -l` lists jobs with PIDs. `disown` detaches from shell (survives logout). `wait` blocks until background jobs finish — `wait $pid` for specific PID, `wait -n` for any one job (Bash 4.3+). `$!` holds PID of last background process. `nohup` prevents SIGHUP on terminal close.",
+      "tags": ["jobs", "bg", "fg", "disown", "wait", "nohup", "background", "foreground", "suspend"]
+    },
+    {
+      "id": "finding-processes",
+      "title": "Finding and inspecting processes",
+      "body": "`ps aux` lists all processes (BSD style). `ps -ef` is the POSIX equivalent. `pgrep -f pattern` finds PIDs matching a pattern in the full command line. `pstree -p` shows the process hierarchy. `lsof -i :PORT` finds what's listening on a port. `fuser PORT/tcp` does the same. `ss -tlnp` shows all listening TCP sockets. On Linux, `/proc/PID/status` has detailed process info: state, memory, threads, capabilities. `/proc/PID/fd/` shows open file descriptors.",
+      "tags": ["ps", "pgrep", "pstree", "lsof", "fuser", "ss", "netstat", "proc", "top", "htop"]
+    },
+    {
+      "id": "port-management",
+      "title": "Port and network process management",
+      "body": "Agents frequently need to start servers and manage ports. Check if a port is in use: `ss -tlnp | grep :PORT` or `lsof -i :PORT`. Find the PID: `fuser PORT/tcp` or parse `lsof` output. Kill the process on a port: `fuser -k PORT/tcp`. Wait for a port to become available: poll with `ss` or use `nc -z localhost PORT` in a retry loop. Common ports: 3000 (React dev), 5173 (Vite), 8080 (generic), 5432 (PostgreSQL), 6379 (Redis), 27017 (MongoDB).",
+      "tags": ["port", "lsof", "fuser", "ss", "netstat", "listen", "network", "server"]
+    }
+  ],
+  "links": [
+    { "uri": "shell", "context": "Parent shell ecosystem" },
+    { "uri": "shell/bash", "context": "Bash command execution for launching processes" },
+    { "uri": "shell/environment", "context": "Processes inherit environment variables" },
+    { "uri": "shell/pipes", "context": "Pipes connect process stdout to stdin" },
+    { "uri": "shell/scripting", "context": "Script process orchestration with trap and wait" },
+    { "uri": "shell/files", "context": "lsof reveals process-file relationships" }
+  ],
+  "related": [
+    { "uri": "shell/bash", "relation": "prerequisite", "note": "Process commands are executed through bash" },
+    { "uri": "shell/pipes", "relation": "see-also", "note": "Pipes are the primary inter-process communication mechanism" },
+    { "uri": "shell/environment", "relation": "see-also", "note": "Child processes inherit the parent's environment" },
+    { "uri": "shell/scripting", "relation": "extends", "note": "Scripts use trap, wait, and job control for process orchestration" }
+  ],
+  "scripts": [
+    {
+      "id": "find-port-process",
+      "name": "Find Process on Port",
+      "description": "Find which process is listening on a given TCP port and return its PID and command",
+      "lang": "bash",
+      "runtime": "bash>=4.0",
+      "entry": "./scripts/find-port-process.sh",
+      "env": {}
+    },
+    {
+      "id": "graceful-kill",
+      "name": "Graceful Kill",
+      "description": "Send SIGTERM, wait for graceful shutdown, escalate to SIGKILL if needed",
+      "lang": "bash",
+      "runtime": "bash>=4.0",
+      "entry": "./scripts/graceful-kill.sh",
+      "env": {}
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "operation": {
+          "type": "string",
+          "enum": ["launch", "find", "signal", "wait", "port-check"],
+          "description": "Process operation to perform"
+        },
+        "command": { "type": "string", "description": "Command to launch (for launch operation)" },
+        "pid": { "type": "integer", "description": "Target process ID" },
+        "signal": { "type": "string", "description": "Signal name or number (e.g., 'SIGTERM', '15')", "default": "SIGTERM" },
+        "port": { "type": "integer", "description": "TCP port number (for port-check operation)" },
+        "pattern": { "type": "string", "description": "Process name/pattern for find operation" },
+        "background": { "type": "boolean", "description": "Run in background", "default": false },
+        "timeout": { "type": "integer", "description": "Timeout in seconds for wait operation" }
+      },
+      "required": ["operation"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "pid": { "type": "integer", "description": "Process ID" },
+        "exit_code": { "type": "integer", "description": "Exit code of terminated process" },
+        "processes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "pid": { "type": "integer" },
+              "command": { "type": "string" },
+              "user": { "type": "string" },
+              "cpu": { "type": "number" },
+              "memory": { "type": "number" }
+            }
+          },
+          "description": "List of matching processes"
+        }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "shell/bash", "reason": "Process commands are executed through bash" }
+  ],
+  "more": {
+    "docs": "https://www.gnu.org/software/coreutils/manual/coreutils.html",
+    "signals": "https://man7.org/linux/man-pages/man7/signal.7.html",
+    "proc": "https://man7.org/linux/man-pages/man5/proc.5.html"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "AI agents, developers",
+    "estimated_reading_time": "6 min",
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

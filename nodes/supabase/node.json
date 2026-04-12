@@ -1,0 +1,98 @@
+{
+  "name": "supabase",
+  "version": "1.0.0",
+  "uri": "supabase",
+  "type": "ecosystem",
+  "context": "Supabase platform — Postgres database, auth, storage, realtime, edge functions, and vector embeddings",
+  "info": "The Supabase ecosystem covers the open-source Firebase alternative built on Postgres: authentication with 20+ OAuth providers and magic links, a full Postgres database exposed via auto-generated REST and GraphQL APIs (PostgREST), Row Level Security for fine-grained access control, S3-compatible file storage with image transformations, realtime subscriptions via WebSocket channels (Postgres changes, broadcast, presence), Deno-based edge functions for server-side logic, and pgvector for AI embedding storage and similarity search. The @supabase/supabase-js SDK is the primary client. The Supabase CLI handles local development, migrations, and deployment. All services share a single Postgres instance as the source of truth — auth tables, storage metadata, and realtime config all live in Postgres schemas.",
+  "parent": null,
+  "tags": ["supabase", "postgres", "auth", "storage", "realtime", "edge-functions", "baas", "backend", "serverless", "pgvector", "rls"],
+  "aliases": [
+    "supabase",
+    "supa",
+    "supabase platform",
+    "supabase backend",
+    "supabase api",
+    "supabase database",
+    "open source firebase",
+    "firebase alternative",
+    "supabase project"
+  ],
+  "triggers": [
+    "set up supabase",
+    "create a supabase project",
+    "add supabase to my app",
+    "connect to supabase",
+    "supabase authentication",
+    "supabase database query",
+    "upload files to supabase",
+    "supabase realtime subscriptions",
+    "deploy supabase edge function",
+    "supabase vector embeddings",
+    "use supabase with nextjs",
+    "supabase row level security"
+  ],
+  "body": "# Supabase Ecosystem\n\nSupabase is an open-source backend-as-a-service built on Postgres. Every Supabase project is a full Postgres database with auto-generated APIs, authentication, file storage, realtime subscriptions, edge functions, and vector search — all managed through a unified dashboard, CLI, and client SDK.\n\n## Architecture\n\nEvery Supabase project runs these services around a single Postgres instance:\n\n| Service | Component | Purpose |\n|---------|-----------|----------|\n| Database | Postgres 15+ | Primary data store, source of truth for everything |\n| API | PostgREST | Auto-generated REST API from your Postgres schema |\n| Auth | GoTrue | User authentication and JWT issuance |\n| Storage | S3-compatible | File uploads with policies and image transformations |\n| Realtime | Elixir server | WebSocket subscriptions for Postgres changes, broadcast, presence |\n| Edge Functions | Deno Deploy | Server-side TypeScript/JavaScript functions |\n| Vectors | pgvector | Embedding storage and similarity search |\n| CLI | [[supabase/cli]] | Local dev, migrations, deployment, type generation |\n| Client | [[supabase/client]] | @supabase/supabase-js SDK for all services |\n\n## Agent Jobs\n\n- **Initialize a project** — Use [[supabase/cli]] to run `supabase init` and `supabase start` for local development\n- **Authenticate users** — Implement sign-up, sign-in, OAuth, and magic links with [[supabase/auth]]\n- **Query data** — Select, insert, update, delete with filters via [[supabase/database]]\n- **Secure data** — Write Row Level Security policies with [[supabase/rls]]\n- **Manage schema** — Create and run migrations with [[supabase/migrations]]\n- **Upload files** — Manage buckets and upload files with [[supabase/storage]]\n- **Subscribe to changes** — Listen for database changes, broadcast messages, track presence via [[supabase/realtime]]\n- **Run server code** — Deploy Deno edge functions with [[supabase/edge-functions]]\n- **Store embeddings** — Use pgvector for AI similarity search via [[supabase/vectors]]\n- **Use the SDK** — Initialize and configure @supabase/supabase-js via [[supabase/client]]\n\n## Environment Variables\n\nEvery Supabase integration requires these variables:\n\n| Variable | Required | Purpose |\n|----------|----------|----------|\n| `SUPABASE_URL` | Yes | Project API URL (`https://<ref>.supabase.co`) |\n| `SUPABASE_ANON_KEY` | Yes | Public anon key for client-side access (safe to expose, guarded by RLS) |\n| `SUPABASE_SERVICE_ROLE_KEY` | Server only | Bypasses RLS — never expose to clients |\n| `SUPABASE_DB_URL` | Optional | Direct Postgres connection string for migrations/ORMs |\n| `SUPABASE_ACCESS_TOKEN` | CLI only | Personal access token for CLI and Management API |\n\nFor Next.js and other frameworks, prefix with `NEXT_PUBLIC_`:\n```bash\nNEXT_PUBLIC_SUPABASE_URL=https://abcdefgh.supabase.co\nNEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIs...\n```\n\n## Client Initialization\n\n```typescript\nimport { createClient } from '@supabase/supabase-js';\n\nconst supabase = createClient(\n  process.env.SUPABASE_URL!,\n  process.env.SUPABASE_ANON_KEY!\n);\n```\n\n## Project Structure\n\nA typical Supabase project directory:\n\n```\nmy-app/\n├── supabase/\n│   ├── config.toml          # Local dev configuration\n│   ├── migrations/           # SQL migration files\n│   │   └── 20240101000000_init.sql\n│   ├── functions/            # Edge functions\n│   │   └── hello/\n│   │       └── index.ts\n│   └── seed.sql              # Seed data\n├── src/\n│   └── lib/\n│       └── supabase.ts       # Client initialization\n├── .env.local                # Environment variables\n└── package.json\n```\n\n## Key Concepts\n\n- **Anon key vs Service role key**: The anon key is safe for client-side code because Row Level Security controls access. The service role key bypasses all RLS and must only be used server-side.\n- **PostgREST**: Supabase auto-generates a REST API from your Postgres schema. Every table, view, and function becomes an API endpoint. No code generation needed.\n- **Postgres is the platform**: Auth users live in `auth.users`, storage metadata in `storage.objects`, realtime config in `realtime.*`. You can join across all of them with standard SQL.\n",
+  "sections": [
+    {
+      "id": "architecture",
+      "title": "Platform architecture",
+      "body": "Supabase wraps a standard Postgres 15+ instance with GoTrue (auth), PostgREST (REST API), Realtime (Elixir WebSocket server), Storage (S3-compatible), and Deno-based edge functions. All services share the same Postgres database. Auth tables live in `auth.*`, storage metadata in `storage.*`. The client SDK @supabase/supabase-js provides a unified interface to all services. Local development uses Docker containers via `supabase start`.",
+      "tags": ["architecture", "postgrest", "gotrue", "realtime", "platform"]
+    },
+    {
+      "id": "env-vars",
+      "title": "Environment variables",
+      "body": "`SUPABASE_URL` and `SUPABASE_ANON_KEY` are required for all client-side usage. The anon key is safe to expose because [[supabase/rls]] controls data access. `SUPABASE_SERVICE_ROLE_KEY` bypasses RLS and must only be used server-side (edge functions, API routes, cron jobs). `SUPABASE_DB_URL` provides a direct Postgres connection for ORMs like [[prisma]] or Drizzle. `SUPABASE_ACCESS_TOKEN` authenticates the CLI and Management API.",
+      "tags": ["env", "configuration", "anon-key", "service-role", "secrets"]
+    },
+    {
+      "id": "local-dev",
+      "title": "Local development",
+      "body": "Run `supabase init` to scaffold a project, then `supabase start` to launch local Docker containers (Postgres, GoTrue, PostgREST, Studio, etc.). Local Studio runs at `http://localhost:54323`. The local Postgres runs on port 54322. Use `supabase db reset` to drop and recreate the local database from migrations + seed. Use `supabase status` to see all local service URLs and keys.",
+      "tags": ["local", "docker", "development", "studio", "init"]
+    }
+  ],
+  "links": [
+    { "uri": "supabase/cli", "context": "CLI for project setup, local dev, migrations, and deployment" },
+    { "uri": "supabase/client", "context": "JavaScript/TypeScript SDK for all Supabase services" },
+    { "uri": "supabase/auth", "context": "User authentication — sign-up, sign-in, OAuth, magic links" },
+    { "uri": "supabase/database", "context": "Query data — select, insert, update, delete, filters, RPC" },
+    { "uri": "supabase/rls", "context": "Row Level Security policies for fine-grained access control" },
+    { "uri": "supabase/migrations", "context": "Schema management — create tables, alter, migrate" },
+    { "uri": "supabase/storage", "context": "File uploads — buckets, signed URLs, transformations" },
+    { "uri": "supabase/realtime", "context": "Subscriptions — Postgres changes, broadcast, presence" },
+    { "uri": "supabase/edge-functions", "context": "Server-side Deno functions" },
+    { "uri": "supabase/vectors", "context": "pgvector for AI embedding storage and similarity search" }
+  ],
+  "related": [
+    { "uri": "postgres", "relation": "prerequisite", "note": "Supabase is built on Postgres — understanding SQL and Postgres features is essential" },
+    { "uri": "nextjs", "relation": "see-also", "note": "Next.js is the most common framework used with Supabase via @supabase/ssr" },
+    { "uri": "prisma", "relation": "see-also", "note": "Prisma can connect directly to Supabase Postgres via SUPABASE_DB_URL" },
+    { "uri": "vercel", "relation": "see-also", "note": "Vercel has a native Supabase integration for environment variable injection" },
+    { "uri": "cloudflare", "relation": "alternative", "note": "Cloudflare D1 + Workers + R2 is an alternative full-stack platform" }
+  ],
+  "more": {
+    "docs": "https://supabase.com/docs",
+    "repo": "https://github.com/supabase/supabase",
+    "api": "https://supabase.com/docs/reference/javascript",
+    "examples": "https://github.com/supabase/supabase/tree/master/examples",
+    "wiki": "https://supabase.com/docs/guides"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents, full-stack engineers",
+    "estimated_reading_time": "6 min",
+    "prerequisites": [],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://github.com/supabase/supabase",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

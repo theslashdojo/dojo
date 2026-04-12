@@ -1,0 +1,152 @@
+{
+  "name": "schema",
+  "version": "1.0.0",
+  "uri": "prisma/schema",
+  "type": "skill",
+  "context": "Define Prisma data models, datasources, generators, relations, and enums in schema.prisma",
+  "info": "The Prisma schema file (`prisma/schema.prisma`) is the single source of truth for your database structure. It defines three block types: `datasource` (database connection), `generator` (client output), and `model` (tables/collections). Models declare fields with scalar types (String, Int, Boolean, DateTime, Float, Decimal, BigInt, Bytes, Json), field modifiers (`?` for optional, `[]` for lists), and attributes (`@id`, `@unique`, `@default`, `@relation`, `@map`, `@updatedAt`, `@db.*`). Block-level attributes (`@@id`, `@@unique`, `@@index`, `@@map`, `@@fulltext`) define composite constraints and indexes. Enums define fixed value sets. After editing the schema, run `npx prisma migrate dev` to generate migrations or `npx prisma db push` for prototyping. See [[prisma/migrate]] for migration workflow and [[prisma/client]] for querying.",
+  "parent": "prisma",
+  "tags": ["schema", "prisma-schema", "data-model", "orm", "models", "enums", "datasource"],
+  "aliases": [
+    "prisma schema",
+    "schema.prisma",
+    "prisma model",
+    "prisma data model",
+    "prisma models",
+    "prisma enum",
+    "prisma datasource",
+    "define prisma model",
+    "prisma schema file"
+  ],
+  "triggers": [
+    "create a prisma schema",
+    "define a prisma model",
+    "add a model to prisma",
+    "write schema.prisma",
+    "add a field to a prisma model",
+    "create an enum in prisma",
+    "set up prisma datasource",
+    "configure prisma generator",
+    "add an index to prisma model",
+    "create a composite key in prisma"
+  ],
+  "body": "# Prisma Schema\n\nThe schema file at `prisma/schema.prisma` defines your entire data model. Every model, relation, enum, and database connection lives here.\n\n## File Structure\n\n```prisma\n// ─── Datasource ─────────────────────────────────\ndatasource db {\n  provider = \"postgresql\"  // postgresql | mysql | sqlite | sqlserver | mongodb | cockroachdb\n  url      = env(\"DATABASE_URL\")\n}\n\n// ─── Generator ──────────────────────────────────\ngenerator client {\n  provider = \"prisma-client-js\"\n}\n\n// ─── Models ─────────────────────────────────────\nmodel User {\n  id        Int      @id @default(autoincrement())\n  email     String   @unique\n  name      String?\n  role      Role     @default(USER)\n  posts     Post[]\n  profile   Profile?\n  createdAt DateTime @default(now())\n  updatedAt DateTime @updatedAt\n}\n\nmodel Post {\n  id        Int      @id @default(autoincrement())\n  title     String\n  content   String?\n  published Boolean  @default(false)\n  author    User     @relation(fields: [authorId], references: [id])\n  authorId  Int\n  tags      Tag[]\n  createdAt DateTime @default(now())\n\n  @@index([authorId])\n  @@index([published, createdAt])\n}\n\nmodel Profile {\n  id     Int    @id @default(autoincrement())\n  bio    String?\n  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)\n  userId Int    @unique\n}\n\nmodel Tag {\n  id    Int    @id @default(autoincrement())\n  name  String @unique\n  posts Post[]\n}\n\n// ─── Enums ──────────────────────────────────────\nenum Role {\n  USER\n  ADMIN\n  MODERATOR\n}\n```\n\n## Scalar Types\n\n| Prisma Type | PostgreSQL | MySQL | SQLite |\n|-------------|-----------|-------|--------|\n| `String` | `text` | `varchar(191)` | `TEXT` |\n| `Int` | `integer` | `int` | `INTEGER` |\n| `Boolean` | `boolean` | `tinyint(1)` | `INTEGER` |\n| `DateTime` | `timestamp(3)` | `datetime(3)` | `NUMERIC` |\n| `Float` | `double precision` | `double` | `REAL` |\n| `Decimal` | `decimal(65,30)` | `decimal(65,30)` | `NUMERIC` |\n| `BigInt` | `bigint` | `bigint` | `INTEGER` |\n| `Bytes` | `bytea` | `longblob` | `BLOB` |\n| `Json` | `jsonb` | `json` | N/A |\n\n## Field Attributes\n\n| Attribute | Purpose | Example |\n|-----------|---------|--------|\n| `@id` | Primary key | `id Int @id` |\n| `@unique` | Unique constraint | `email String @unique` |\n| `@default(value)` | Default value | `@default(now())`, `@default(autoincrement())`, `@default(uuid())`, `@default(cuid())` |\n| `@updatedAt` | Auto-update timestamp | `updatedAt DateTime @updatedAt` |\n| `@relation` | Define relation | `@relation(fields: [userId], references: [id])` |\n| `@map(\"name\")` | Map to DB column name | `@map(\"user_name\")` |\n| `@db.Type` | Native type annotation | `@db.VarChar(255)`, `@db.Text`, `@db.SmallInt` |\n| `@ignore` | Exclude from client | Used for unsupported column types |\n\n## Block-Level Attributes\n\n| Attribute | Purpose | Example |\n|-----------|---------|--------|\n| `@@id([fields])` | Composite primary key | `@@id([postId, tagId])` |\n| `@@unique([fields])` | Composite unique | `@@unique([firstName, lastName])` |\n| `@@index([fields])` | Database index | `@@index([authorId, createdAt])` |\n| `@@map(\"name\")` | Map to DB table name | `@@map(\"blog_posts\")` |\n| `@@fulltext([fields])` | Fulltext index (MySQL) | `@@fulltext([title, content])` |\n| `@@ignore` | Exclude entire model | Used for views or unsupported tables |\n\n## Default Value Functions\n\n| Function | Generates |\n|----------|----------|\n| `autoincrement()` | Auto-incrementing integer |\n| `uuid()` | UUID v4 string |\n| `cuid()` | Collision-resistant unique ID |\n| `now()` | Current timestamp |\n| `dbgenerated(\"expr\")` | Database-level expression |\n\n## Relations\n\nSee [[prisma/client/relations]] for detailed relation patterns. Quick reference:\n\n```prisma\n// One-to-many: User has many Posts\nmodel User {\n  id    Int    @id @default(autoincrement())\n  posts Post[]\n}\nmodel Post {\n  id       Int  @id @default(autoincrement())\n  author   User @relation(fields: [authorId], references: [id])\n  authorId Int\n}\n\n// One-to-one: User has one Profile\nmodel Profile {\n  id     Int  @id @default(autoincrement())\n  user   User @relation(fields: [userId], references: [id])\n  userId Int  @unique  // @unique makes it one-to-one\n}\n\n// Many-to-many (implicit): Prisma manages the join table\nmodel Post {\n  tags Tag[]\n}\nmodel Tag {\n  posts Post[]\n}\n```\n\n## Referential Actions\n\nSet on `@relation` with `onDelete` and `onUpdate`:\n\n| Action | Behavior |\n|--------|----------|\n| `Cascade` | Delete/update dependents automatically |\n| `Restrict` | Prevent if dependents exist |\n| `NoAction` | Like Restrict, checked after all commands |\n| `SetNull` | Set FK to null (field must be optional) |\n| `SetDefault` | Set FK to its default value |\n\n```prisma\nmodel Post {\n  author   User @relation(fields: [authorId], references: [id], onDelete: Cascade)\n  authorId Int\n}\n```\n\n## CLI Commands\n\n```bash\nnpx prisma validate    # Check schema syntax\nnpx prisma format      # Auto-format schema file\nnpx prisma format --check  # CI check (exit 1 if unformatted)\n```\n\n## Environment Variables\n\n| Variable | Purpose |\n|----------|--------|\n| `DATABASE_URL` | Database connection string used in `datasource.url` |\n\nUse `env(\"DATABASE_URL\")` in the schema to reference it:\n```prisma\ndatasource db {\n  provider = \"postgresql\"\n  url      = env(\"DATABASE_URL\")\n}\n```\n",
+  "sections": [
+    {
+      "id": "datasource",
+      "title": "Datasource configuration",
+      "body": "The `datasource` block sets the database provider and connection URL. Only one datasource block is allowed. Use `env(\"DATABASE_URL\")` to read the connection string from environment variables. Supported providers: `postgresql`, `mysql`, `sqlite`, `sqlserver`, `mongodb`, `cockroachdb`.",
+      "tags": ["datasource", "connection", "provider", "database-url"]
+    },
+    {
+      "id": "generator",
+      "title": "Generator configuration",
+      "body": "The `generator` block configures what client to generate. The standard generator is `prisma-client-js`. You can set `output` to customize the output directory. Run `npx prisma generate` after schema changes to regenerate the client. Multiple generators are supported (e.g., for generating a DBML diagram).",
+      "tags": ["generator", "prisma-client-js", "generate", "output"]
+    },
+    {
+      "id": "models",
+      "title": "Model definitions",
+      "body": "Models map to database tables (or MongoDB collections). Each model must have at least one field marked `@id` or a `@@id` composite key. Fields have a name, type, optional modifier (`?` for nullable, `[]` for list), and attributes. Use `@map` and `@@map` to customize the underlying database column and table names without changing the Prisma API surface.",
+      "tags": ["models", "fields", "types", "nullable", "primary-key"]
+    },
+    {
+      "id": "enums",
+      "title": "Enum types",
+      "body": "Enums define a fixed set of allowed values for a field. Declare with `enum Name { VALUE1 VALUE2 }`. Enums map to native database enums on PostgreSQL and MySQL, and to string checks on SQLite. Use enums for role types, status fields, and any constrained value set.",
+      "tags": ["enums", "enum", "role", "status", "constrained-values"]
+    },
+    {
+      "id": "indexes",
+      "title": "Indexes and constraints",
+      "body": "Add `@@index([field1, field2])` for composite indexes to speed up queries. Use `@@unique([field1, field2])` for composite unique constraints. For fulltext search on MySQL, use `@@fulltext([field1, field2])`. Place indexes on fields used in `where`, `orderBy`, and relation foreign keys for best query performance.",
+      "tags": ["indexes", "unique", "fulltext", "composite", "performance"]
+    }
+  ],
+  "sub": [],
+  "links": [
+    { "uri": "prisma/migrate", "context": "Apply schema changes to the database via migrations" },
+    { "uri": "prisma/client", "context": "Query the database using the generated client" },
+    { "uri": "prisma/client/relations", "context": "Detailed relation patterns and querying" },
+    { "uri": "prisma/troubleshooting", "context": "Fix schema validation errors (P1012)" }
+  ],
+  "related": [
+    { "uri": "prisma/migrate", "relation": "see-also", "note": "After editing the schema, run migrate dev to apply changes" },
+    { "uri": "prisma/client", "relation": "see-also", "note": "The schema defines the types available in the generated client" },
+    { "uri": "prisma/client/relations", "relation": "see-also", "note": "Relation fields in the schema determine include/connect behavior in queries" }
+  ],
+  "scripts": [
+    {
+      "id": "init-schema",
+      "name": "Initialize Prisma Schema",
+      "description": "Initialize Prisma in a project with a datasource provider and generate a starter schema with common models",
+      "lang": "bash",
+      "runtime": "bash",
+      "entry": "./scripts/init-schema.sh",
+      "env": {
+        "DATABASE_URL": { "required": true, "secret": true, "description": "Database connection string (e.g., postgresql://user:pass@localhost:5432/mydb)" },
+        "PRISMA_PROVIDER": { "required": false, "default": "postgresql", "description": "Database provider: postgresql, mysql, sqlite, sqlserver, mongodb, cockroachdb" }
+      },
+      "packages": ["prisma", "@prisma/client"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "provider": { "type": "string", "enum": ["postgresql", "mysql", "sqlite", "sqlserver", "mongodb", "cockroachdb"], "default": "postgresql", "description": "Database provider" },
+        "models": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": { "type": "string", "description": "Model name (PascalCase)" },
+              "fields": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "name": { "type": "string" },
+                    "type": { "type": "string" },
+                    "attributes": { "type": "array", "items": { "type": "string" } }
+                  },
+                  "required": ["name", "type"]
+                }
+              }
+            },
+            "required": ["name"]
+          },
+          "description": "Models to add to the schema"
+        }
+      },
+      "required": ["provider"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "schemaPath": { "type": "string", "description": "Path to the generated schema.prisma file" },
+        "provider": { "type": "string", "description": "Database provider configured" }
+      }
+    }
+  },
+  "depends": [],
+  "more": {
+    "docs": "https://www.prisma.io/docs/orm/prisma-schema",
+    "spec": "https://www.prisma.io/docs/orm/reference/prisma-schema-reference"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "5 min",
+    "prerequisites": [],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

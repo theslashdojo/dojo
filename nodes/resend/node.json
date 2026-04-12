@@ -1,0 +1,90 @@
+{
+  "name": "resend",
+  "version": "1.0.0",
+  "uri": "resend",
+  "type": "ecosystem",
+  "context": "Send transactional and marketing emails via the Resend API with React Email templates and verified domains",
+  "info": "Resend is the modern email API for developers. It provides a clean REST API and official SDKs (Node.js, Python, Go, Ruby, PHP, Java, .NET, Rust, Elixir) for sending transactional emails, managing sender domains with DNS verification, and building email templates with React components. Agents use this ecosystem to send welcome emails, password resets, invoices, notifications, and marketing broadcasts. Resend handles deliverability (SPF, DKIM, DMARC), provides webhooks for delivery tracking, and integrates natively with React Email for component-based template authoring. The key child skills are [[resend/send]] for dispatching emails, [[resend/domains]] for domain verification and DNS setup, [[resend/react-email]] for building templates with React components, and [[resend/auth]] for API key management and authentication.",
+  "parent": null,
+  "tags": ["email", "resend", "transactional-email", "email-api", "react-email", "smtp", "deliverability"],
+  "aliases": [
+    "resend",
+    "resend email",
+    "resend api",
+    "resend.com",
+    "email api",
+    "transactional email",
+    "send email programmatically",
+    "email service",
+    "email delivery"
+  ],
+  "triggers": [
+    "send an email with resend",
+    "set up resend",
+    "send transactional emails",
+    "configure email sending",
+    "send email from my app",
+    "set up email for my project",
+    "use resend to send email",
+    "email api integration"
+  ],
+  "body": "# Resend\n\nResend is the email API for developers. It replaces legacy email services (SendGrid, Mailgun, SES) with a modern developer experience: clean SDKs, React Email templates, and first-class deliverability.\n\n## Architecture\n\n```\n┌─────────────┐     ┌──────────────┐     ┌──────────────┐\n│  Your App   │────▶│  Resend API  │────▶│  Recipient   │\n│  (SDK/API)  │     │  api.resend  │     │  Inbox       │\n└─────────────┘     └──────────────┘     └──────────────┘\n       │                    │\n       │                    ▼\n       │            ┌──────────────┐\n       │            │  Webhooks    │\n       │            │  (delivery,  │\n       │            │   bounce,    │\n       │            │   open,      │\n       │            │   click)     │\n       │            └──────────────┘\n       ▼\n┌─────────────┐\n│ React Email │\n│ Templates   │\n└─────────────┘\n```\n\n## Quick Start\n\n```bash\nnpm install resend\n```\n\n```typescript\nimport { Resend } from 'resend';\nconst resend = new Resend(process.env.RESEND_API_KEY);\n\nconst { data, error } = await resend.emails.send({\n  from: 'Acme <hello@yourdomain.com>',\n  to: ['user@example.com'],\n  subject: 'Welcome to Acme',\n  html: '<h1>Welcome!</h1><p>Thanks for signing up.</p>',\n});\n```\n\n## Skills\n\n- **[[resend/send]]** — Send emails via the API (HTML, text, or React templates)\n- **[[resend/domains]]** — Add and verify sending domains with DNS records\n- **[[resend/react-email]]** — Build email templates with React components\n- **[[resend/auth]]** — API key creation, permissions, and authentication\n\n## Environment Variables\n\n| Variable | Purpose |\n|----------|----------|\n| `RESEND_API_KEY` | API key starting with `re_` — required for all operations |\n\n## SDKs\n\n| Language | Package | Install |\n|----------|---------|----------|\n| Node.js | `resend` | `npm install resend` |\n| Python | `resend` | `pip install resend` |\n| Go | `github.com/resend/resend-go/v2` | `go get` |\n| Ruby | `resend` | `gem install resend` |\n| PHP | `resend/resend-php` | `composer require resend/resend-php` |\n| Java | `com.resend:resend-java` | Maven/Gradle |\n| .NET | `Resend` | `dotnet add package Resend` |\n| Rust | `resend-rs` | `cargo add resend-rs` |\n| Elixir | `resend` | `mix deps.get` |\n\n## API Base URL\n\n```\nhttps://api.resend.com\n```\n\nAll requests require `Authorization: Bearer re_xxxxxxxxxxxx` header.\n",
+  "sections": [
+    {
+      "id": "overview",
+      "title": "What is Resend",
+      "body": "Resend is a modern email API built for developers. It provides REST endpoints and SDKs for sending transactional emails (welcome, password reset, invoices, notifications) and marketing broadcasts. Key differentiators: native React Email support for component-based templates, automatic deliverability optimization (SPF, DKIM, DMARC), real-time webhooks for delivery events, and a clean SDK design with `{ data, error }` response patterns.",
+      "tags": ["overview", "introduction", "what-is-resend"]
+    },
+    {
+      "id": "authentication",
+      "title": "Authentication",
+      "body": "All Resend API calls require an API key passed as a Bearer token: `Authorization: Bearer re_xxxxxxxxxxxx`. Keys are created in the Resend dashboard. Two permission levels: **Full Access** (create, delete, get, update any resource) and **Sending Access** (can only send emails, optionally restricted to a specific domain). Store keys in `RESEND_API_KEY` environment variable. See [[resend/auth]] for details.",
+      "tags": ["auth", "api-key", "bearer-token", "permissions"]
+    },
+    {
+      "id": "sending",
+      "title": "Sending emails",
+      "body": "The core operation is `POST /emails` which accepts `from`, `to`, `subject`, and one of `html`, `text`, or `react` for content. Additional options: `cc`, `bcc`, `replyTo`, `scheduledAt`, `headers`, `tags`, `attachments`. The Node.js SDK wraps this as `resend.emails.send()` returning `{ data, error }`. See [[resend/send]] for full details and [[resend/react-email]] for React templates.",
+      "tags": ["send", "email", "api", "transactional"]
+    },
+    {
+      "id": "domains",
+      "title": "Domain management",
+      "body": "Before sending from a custom domain, you must verify it by adding DNS records: SPF (TXT record), DKIM (TXT record with public key), and optionally DMARC. Resend recommends using subdomains (e.g., `send.yourdomain.com`) to isolate sending reputation. Domain status progresses through: `not_started` → `pending` → `verified`. See [[resend/domains]] for the full verification workflow.",
+      "tags": ["domains", "dns", "spf", "dkim", "dmarc", "verification"]
+    }
+  ],
+  "sub": ["resend/send", "resend/domains", "resend/react-email", "resend/auth"],
+  "links": [
+    { "uri": "resend/send", "context": "Send emails via the Resend API" },
+    { "uri": "resend/domains", "context": "Add and verify sending domains" },
+    { "uri": "resend/react-email", "context": "Build email templates with React components" },
+    { "uri": "resend/auth", "context": "API key management and authentication" }
+  ],
+  "related": [
+    { "uri": "nextjs/api-routes", "relation": "see-also", "note": "Resend is commonly used in Next.js API routes for email sending" },
+    { "uri": "typescript", "relation": "see-also", "note": "Resend SDK is TypeScript-first with full type definitions" }
+  ],
+  "more": {
+    "docs": "https://resend.com/docs/introduction",
+    "api": "https://api.resend.com",
+    "repo": "https://github.com/resend/resend-node",
+    "examples": "https://github.com/resend/resend-examples",
+    "wiki": "https://resend.com/docs/llms.txt"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "3 min",
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

@@ -1,0 +1,98 @@
+{
+  "name": "config",
+  "version": "1.0.0",
+  "uri": "nextjs/config",
+  "type": "context",
+  "content_type": "reference",
+  "context": "Next.js configuration reference — next.config.js/mjs options for images, redirects, rewrites, headers, webpack, and output modes",
+  "info": "The `next.config.js` (or `next.config.mjs` / `next.config.ts`) file at the project root configures Next.js build and runtime behavior. Key configuration areas include: image optimization domains and loaders, URL redirects and rewrites, custom response headers, environment variables, webpack customization, Turbopack settings, output modes (standalone for Docker, export for static HTML), base path and trailing slash settings, TypeScript and ESLint configuration, React Strict Mode, compiler options (SWC transforms), and experimental features. The config file is evaluated at build time in a Node.js environment. Agents frequently modify this file when adding image domains, setting up redirects, enabling experimental features, or configuring deployment targets.",
+  "parent": "nextjs",
+  "tags": ["config", "next-config", "configuration", "images", "redirects", "rewrites", "headers", "webpack", "turbopack", "nextjs"],
+  "aliases": [
+    "next.config.js",
+    "next.config.mjs",
+    "next.config.ts",
+    "next config",
+    "nextjs config",
+    "nextjs configuration",
+    "next.js configuration",
+    "next settings",
+    "next build config"
+  ],
+  "triggers": [
+    "configure next.js",
+    "add image domain to next.config",
+    "set up redirects in next",
+    "add custom headers",
+    "configure webpack in next.js",
+    "enable standalone output",
+    "set basePath in next.js",
+    "add rewrites in next.config",
+    "configure turbopack",
+    "next.js environment variables",
+    "enable experimental features"
+  ],
+  "body": "# Configuration\n\n`next.config.js` (or `.mjs` / `.ts`) at the project root controls Next.js build and runtime behavior.\n\n## Basic Config\n\n```js\n// next.config.mjs\n/** @type {import('next').NextConfig} */\nconst nextConfig = {\n  // Options here\n}\n\nexport default nextConfig\n```\n\n```ts\n// next.config.ts\nimport type { NextConfig } from 'next'\n\nconst nextConfig: NextConfig = {\n  // Options here\n}\n\nexport default nextConfig\n```\n\n## Image Optimization\n\n```js\nconst nextConfig = {\n  images: {\n    remotePatterns: [\n      {\n        protocol: 'https',\n        hostname: 'images.example.com',\n        port: '',\n        pathname: '/uploads/**',\n      },\n      {\n        protocol: 'https',\n        hostname: '**.amazonaws.com',\n      },\n    ],\n    // Custom loader (for Cloudinary, Imgix, etc.)\n    loader: 'custom',\n    loaderFile: './lib/image-loader.ts',\n    // Device sizes for responsive images\n    deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],\n    imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],\n    formats: ['image/avif', 'image/webp'],\n  },\n}\n```\n\n## Redirects\n\n```js\nconst nextConfig = {\n  async redirects() {\n    return [\n      {\n        source: '/old-blog/:slug',\n        destination: '/blog/:slug',\n        permanent: true, // 308 status code\n      },\n      {\n        source: '/old-page',\n        destination: '/new-page',\n        permanent: false, // 307 status code\n      },\n      {\n        // Regex support\n        source: '/blog/:slug(\\\\d{4}-\\\\d{2}-\\\\d{2})',\n        destination: '/archive/:slug',\n        permanent: true,\n      },\n    ]\n  },\n}\n```\n\n## Rewrites\n\n```js\nconst nextConfig = {\n  async rewrites() {\n    return [\n      // Proxy API requests to external backend\n      {\n        source: '/api/external/:path*',\n        destination: 'https://api.example.com/:path*',\n      },\n      // Rewrite for A/B testing\n      {\n        source: '/about',\n        destination: '/about-v2',\n        has: [{ type: 'cookie', key: 'ab-test', value: 'variant' }],\n      },\n    ]\n  },\n}\n```\n\n## Custom Headers\n\n```js\nconst nextConfig = {\n  async headers() {\n    return [\n      {\n        source: '/(.*)',\n        headers: [\n          { key: 'X-Frame-Options', value: 'DENY' },\n          { key: 'X-Content-Type-Options', value: 'nosniff' },\n          { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },\n          {\n            key: 'Strict-Transport-Security',\n            value: 'max-age=63072000; includeSubDomains; preload',\n          },\n        ],\n      },\n      {\n        source: '/api/:path*',\n        headers: [\n          { key: 'Access-Control-Allow-Origin', value: '*' },\n          { key: 'Access-Control-Allow-Methods', value: 'GET, POST, PUT, DELETE' },\n        ],\n      },\n    ]\n  },\n}\n```\n\n## Environment Variables\n\n```js\nconst nextConfig = {\n  env: {\n    CUSTOM_KEY: 'my-value', // Available as process.env.CUSTOM_KEY\n  },\n}\n```\n\nPreferred: Use `.env` files instead:\n\n```bash\n# .env.local (git-ignored, local overrides)\nDATABASE_URL=postgresql://localhost:5432/mydb\nAPI_SECRET=secret-key\n\n# .env (committed, defaults)\nNEXT_PUBLIC_APP_URL=https://myapp.com\n\n# .env.production (production overrides)\nNEXT_PUBLIC_APP_URL=https://production.myapp.com\n```\n\nVariables prefixed with `NEXT_PUBLIC_` are exposed to the browser. All others are server-only.\n\n## Output Modes\n\n```js\nconst nextConfig = {\n  // Standalone: self-contained Node.js server (ideal for Docker)\n  output: 'standalone',\n\n  // Export: static HTML files (no server required)\n  output: 'export',\n}\n```\n\nSee [[nextjs/deployment]] for deployment details.\n\n## Base Path and Trailing Slash\n\n```js\nconst nextConfig = {\n  basePath: '/app',        // Serve from /app/* instead of /*\n  trailingSlash: true,     // /about/ instead of /about\n}\n```\n\n## React Strict Mode\n\n```js\nconst nextConfig = {\n  reactStrictMode: true, // Enables React strict mode (recommended)\n}\n```\n\n## Webpack Customization\n\n```js\nconst nextConfig = {\n  webpack: (config, { buildId, dev, isServer, defaultLoaders, webpack }) => {\n    // Add custom plugin\n    config.plugins.push(new webpack.DefinePlugin({ 'process.env.BUILD_ID': JSON.stringify(buildId) }))\n\n    // Add custom loader\n    config.module.rules.push({\n      test: /\\.svg$/,\n      use: ['@svgr/webpack'],\n    })\n\n    return config\n  },\n}\n```\n\n## Turbopack\n\n```js\nconst nextConfig = {\n  turbopack: {\n    rules: {\n      '*.svg': {\n        loaders: ['@svgr/webpack'],\n        as: '*.js',\n      },\n    },\n    resolveAlias: {\n      underscore: 'lodash',\n    },\n  },\n}\n```\n\nEnable with `next dev --turbopack`.\n\n## TypeScript\n\n```js\nconst nextConfig = {\n  typescript: {\n    ignoreBuildErrors: false, // Set true to skip type checking during build (not recommended)\n  },\n}\n```\n\n## ESLint\n\n```js\nconst nextConfig = {\n  eslint: {\n    ignoreDuringBuilds: false, // Set true to skip ESLint during build\n    dirs: ['app', 'lib', 'components'], // Directories to lint\n  },\n}\n```\n\n## Server Actions\n\n```js\nconst nextConfig = {\n  serverActions: {\n    bodySizeLimit: '2mb', // Max body size for Server Actions (default: 1mb)\n    allowedOrigins: ['my-proxy.example.com'], // Extra allowed origins for CSRF\n  },\n}\n```\n\n## Compiler Options (SWC)\n\n```js\nconst nextConfig = {\n  compiler: {\n    removeConsole: { exclude: ['error', 'warn'] }, // Remove console.log in production\n    styledComponents: true, // Enable styled-components SWC transform\n  },\n}\n```\n\n## Common Config Recipes\n\n### Docker-Ready\n\n```js\nconst nextConfig = {\n  output: 'standalone',\n  images: {\n    remotePatterns: [\n      { protocol: 'https', hostname: '**.example.com' },\n    ],\n  },\n}\n```\n\n### Static Export\n\n```js\nconst nextConfig = {\n  output: 'export',\n  images: { unoptimized: true }, // Required for static export\n  trailingSlash: true,\n}\n```\n\n### Monorepo\n\n```js\nconst nextConfig = {\n  transpilePackages: ['@myorg/ui', '@myorg/utils'],\n}\n```\n\n## All Config Options Reference\n\n| Option | Type | Description |\n|--------|------|-------------|\n| `output` | `'standalone'` \\| `'export'` | Output mode |\n| `basePath` | `string` | URL base path prefix |\n| `trailingSlash` | `boolean` | Add trailing slashes to URLs |\n| `reactStrictMode` | `boolean` | Enable React strict mode |\n| `images` | `object` | Image optimization config |\n| `redirects()` | `async function` | URL redirects |\n| `rewrites()` | `async function` | URL rewrites |\n| `headers()` | `async function` | Custom response headers |\n| `env` | `object` | Build-time environment variables |\n| `webpack()` | `function` | Webpack config modifier |\n| `turbopack` | `object` | Turbopack config |\n| `typescript` | `object` | TypeScript build options |\n| `eslint` | `object` | ESLint build options |\n| `compiler` | `object` | SWC compiler options |\n| `serverActions` | `object` | Server Actions config |\n| `transpilePackages` | `string[]` | Packages to transpile |\n| `experimental` | `object` | Experimental features |\n| `logging` | `object` | Logging configuration |\n",
+  "sections": [
+    {
+      "id": "images",
+      "title": "Image optimization",
+      "body": "Configure `images.remotePatterns` to allow external image domains for the `<Image>` component. Each pattern specifies `protocol`, `hostname` (supports wildcards with `**`), `port`, and `pathname`. For custom CDN loaders (Cloudinary, Imgix), set `images.loader: 'custom'` and `images.loaderFile`. Configure `deviceSizes` and `imageSizes` for responsive breakpoints. For static export, set `images.unoptimized: true`.",
+      "tags": ["images", "optimization", "remote-patterns", "loader", "responsive"]
+    },
+    {
+      "id": "redirects-rewrites",
+      "title": "Redirects and rewrites",
+      "body": "Define `redirects()` and `rewrites()` as async functions returning arrays of rules. Redirects change the browser URL (`permanent: true` for 308, `permanent: false` for 307). Rewrites serve content from a different path without changing the URL — useful for proxying external APIs. Both support `:param` path matching and `has` conditions for headers, cookies, and query parameters. Redirects and rewrites are evaluated at request time.",
+      "tags": ["redirects", "rewrites", "proxy", "url-rules", "permanent"]
+    },
+    {
+      "id": "output-modes",
+      "title": "Output modes",
+      "body": "`output: 'standalone'` creates a self-contained build with all dependencies included — ideal for Docker deployments. The output goes to `.next/standalone/` with a minimal `server.js`. `output: 'export'` generates static HTML files in `out/` — no Node.js server needed, deployable to any static host. Static export has limitations: no Server Components, no API routes, no middleware, no ISR. See [[nextjs/deployment]] for deployment guides.",
+      "tags": ["standalone", "export", "static", "docker", "output"]
+    },
+    {
+      "id": "env-vars",
+      "title": "Environment variables",
+      "body": "Next.js loads `.env.local`, `.env.development`, `.env.production`, and `.env` files automatically. Variables prefixed with `NEXT_PUBLIC_` are inlined at build time and exposed to the browser. Server-only variables (no prefix) are available in Server Components, API routes, middleware, and `getServerSideProps`. Use `.env.local` for secrets (git-ignored by default). Build-time env vars via `next.config.js` `env` option are an alternative but `.env` files are preferred.",
+      "tags": ["env", "environment-variables", "next-public", "secrets", "dotenv"]
+    },
+    {
+      "id": "webpack-turbopack",
+      "title": "Webpack and Turbopack",
+      "body": "Customize webpack via the `webpack(config, context)` function in next.config. The `context` includes `buildId`, `dev`, `isServer`, `defaultLoaders`, and `webpack` instance. Common uses: adding SVG loaders, custom plugins, alias resolution. Turbopack is configured via the `turbopack` key with `rules` (loader mapping) and `resolveAlias`. Enable Turbopack with `next dev --turbopack` for faster development builds.",
+      "tags": ["webpack", "turbopack", "loaders", "plugins", "bundler"]
+    }
+  ],
+  "links": [
+    { "uri": "nextjs/deployment", "context": "Output modes affect deployment strategy" },
+    { "uri": "nextjs/middleware", "context": "Middleware can handle redirects and headers dynamically" },
+    { "uri": "nextjs/app-router", "context": "App Router behavior is influenced by config options" },
+    { "uri": "nextjs/server-actions", "context": "Server Actions body size and origins are configurable" }
+  ],
+  "related": [
+    { "uri": "nextjs/deployment", "relation": "see-also", "note": "Output mode in config directly determines deployment strategy" },
+    { "uri": "nextjs/middleware", "relation": "alternative", "note": "Dynamic redirects and headers can be handled in middleware instead of config" },
+    { "uri": "typescript", "relation": "see-also", "note": "TypeScript build behavior is configurable in next.config" }
+  ],
+  "more": {
+    "docs": "https://nextjs.org/docs/app/api-reference/config/next-config-js",
+    "env": "https://nextjs.org/docs/app/guides/environment-variables"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "8 min",
+    "prerequisites": ["nextjs"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

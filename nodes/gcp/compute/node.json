@@ -1,0 +1,144 @@
+{
+  "name": "compute",
+  "version": "1.0.0",
+  "uri": "gcp/compute",
+  "type": "skill",
+  "context": "Create, configure, and manage Google Compute Engine VMs — instances, disks, images, and machine types",
+  "info": "This skill covers the full Compute Engine lifecycle: creating VM instances with specific machine types, boot disks, and network configs; connecting via SSH; starting, stopping, and deleting instances; managing persistent disks and snapshots; and using instance templates and managed instance groups for scaling. All operations use the gcloud CLI or the Compute Engine REST API via client libraries. Agents use this skill to provision development environments, run batch workloads, host services, and manage infrastructure. See [[gcp/iam]] for IAM roles needed (roles/compute.admin, roles/compute.instanceAdmin.v1) and [[gcp/gcloud]] for CLI setup.",
+  "parent": "gcp",
+  "tags": ["compute", "vm", "instance", "gce", "virtual-machine", "machine-type", "disk", "ssh", "compute-engine"],
+  "aliases": [
+    "compute engine",
+    "gce",
+    "google compute engine",
+    "gcp vm",
+    "gcp instance",
+    "google cloud vm",
+    "virtual machine gcp",
+    "gcloud compute",
+    "create vm gcp",
+    "gcp server"
+  ],
+  "triggers": [
+    "create a vm on gcp",
+    "launch a compute engine instance",
+    "ssh into a gcp vm",
+    "start a google cloud instance",
+    "stop a gcp vm",
+    "create a gce instance",
+    "resize a compute engine machine",
+    "attach a disk to a gcp vm",
+    "list compute engine instances",
+    "set up a gcp virtual machine"
+  ],
+  "body": "# Compute Engine\n\nGoogle Compute Engine (GCE) provides scalable virtual machines running on Google's infrastructure. VMs support Linux and Windows, custom machine types, local SSDs, GPUs, and preemptible/spot pricing.\n\n## Creating an Instance\n\n```bash\n# Create a basic instance\ngcloud compute instances create my-vm \\\n  --zone=us-central1-a \\\n  --machine-type=e2-medium \\\n  --image-family=debian-12 \\\n  --image-project=debian-cloud \\\n  --boot-disk-size=50GB \\\n  --boot-disk-type=pd-balanced \\\n  --tags=http-server,https-server\n\n# Create with a startup script\ngcloud compute instances create web-server \\\n  --zone=us-central1-a \\\n  --machine-type=e2-standard-2 \\\n  --image-family=ubuntu-2404-lts-amd64 \\\n  --image-project=ubuntu-os-cloud \\\n  --metadata-from-file=startup-script=./startup.sh \\\n  --scopes=cloud-platform\n\n# Create a spot (preemptible) instance for cost savings\ngcloud compute instances create batch-worker \\\n  --zone=us-central1-a \\\n  --machine-type=n2-standard-4 \\\n  --provisioning-model=SPOT \\\n  --instance-termination-action=STOP \\\n  --image-family=debian-12 \\\n  --image-project=debian-cloud\n```\n\n## Machine Types\n\n| Family | Example | vCPUs | Memory | Use Case |\n|--------|---------|-------|--------|----------|\n| E2 | e2-medium | 2 | 4 GB | General purpose, cost-effective |\n| N2 | n2-standard-4 | 4 | 16 GB | Balanced compute |\n| C3 | c3-highcpu-8 | 8 | 16 GB | Compute-intensive |\n| M3 | m3-megamem-64 | 64 | 896 GB | Memory-intensive |\n| A2/A3 | a2-highgpu-1g | 12 | 85 GB | GPU workloads (NVIDIA) |\n| Custom | custom-4-8192 | 4 | 8 GB | Exact vCPU/memory specs |\n\n```bash\n# List available machine types in a zone\ngcloud compute machine-types list --zones=us-central1-a\n\n# Create a custom machine type\ngcloud compute instances create custom-vm \\\n  --zone=us-central1-a \\\n  --custom-cpu=6 \\\n  --custom-memory=24GB\n```\n\n## SSH Access\n\n```bash\n# SSH into an instance (auto-generates keys if needed)\ngcloud compute ssh my-vm --zone=us-central1-a\n\n# SSH with a specific user\ngcloud compute ssh user@my-vm --zone=us-central1-a\n\n# Run a command remotely\ngcloud compute ssh my-vm --zone=us-central1-a --command=\"uname -a\"\n\n# SCP files to/from an instance\ngcloud compute scp ./local-file.txt my-vm:~/remote-file.txt --zone=us-central1-a\ngcloud compute scp my-vm:~/remote-file.txt ./local-copy.txt --zone=us-central1-a\n```\n\n## Instance Lifecycle\n\n```bash\n# List instances\ngcloud compute instances list\n\n# Stop an instance (still billed for disk)\ngcloud compute instances stop my-vm --zone=us-central1-a\n\n# Start a stopped instance\ngcloud compute instances start my-vm --zone=us-central1-a\n\n# Delete an instance\ngcloud compute instances delete my-vm --zone=us-central1-a --quiet\n\n# Describe instance details\ngcloud compute instances describe my-vm --zone=us-central1-a --format=json\n```\n\n## Persistent Disks\n\n```bash\n# Create a persistent disk\ngcloud compute disks create data-disk \\\n  --zone=us-central1-a \\\n  --size=200GB \\\n  --type=pd-ssd\n\n# Attach a disk to an instance\ngcloud compute instances attach-disk my-vm \\\n  --disk=data-disk \\\n  --zone=us-central1-a\n\n# Create a snapshot\ngcloud compute disks snapshot data-disk \\\n  --zone=us-central1-a \\\n  --snapshot-names=data-disk-snap-$(date +%Y%m%d)\n```\n\n## Firewall Rules\n\n```bash\n# Allow HTTP traffic\ngcloud compute firewall-rules create allow-http \\\n  --direction=INGRESS \\\n  --action=ALLOW \\\n  --rules=tcp:80 \\\n  --target-tags=http-server\n\n# Allow HTTPS traffic\ngcloud compute firewall-rules create allow-https \\\n  --direction=INGRESS \\\n  --action=ALLOW \\\n  --rules=tcp:443 \\\n  --target-tags=https-server\n\n# Allow SSH from specific IP\ngcloud compute firewall-rules create allow-ssh-office \\\n  --direction=INGRESS \\\n  --action=ALLOW \\\n  --rules=tcp:22 \\\n  --source-ranges=203.0.113.0/24\n```\n\n## Python Client Library\n\n```python\nfrom google.cloud import compute_v1\n\ndef create_instance(project_id: str, zone: str, instance_name: str) -> compute_v1.Instance:\n    client = compute_v1.InstancesClient()\n    instance = compute_v1.Instance()\n    instance.name = instance_name\n    instance.machine_type = f\"zones/{zone}/machineTypes/e2-medium\"\n\n    disk = compute_v1.AttachedDisk()\n    disk.auto_delete = True\n    disk.boot = True\n    init = compute_v1.AttachedDiskInitializeParams()\n    init.source_image = \"projects/debian-cloud/global/images/family/debian-12\"\n    init.disk_size_gb = 50\n    disk.initialize_params = init\n    instance.disks = [disk]\n\n    network_interface = compute_v1.NetworkInterface()\n    network_interface.name = \"global/networks/default\"\n    access = compute_v1.AccessConfig()\n    access.name = \"External NAT\"\n    access.type_ = \"ONE_TO_ONE_NAT\"\n    network_interface.access_configs = [access]\n    instance.network_interfaces = [network_interface]\n\n    op = client.insert(project=project_id, zone=zone, instance_resource=instance)\n    op.result()  # Wait for completion\n    return client.get(project=project_id, zone=zone, instance=instance_name)\n```\n\n## Environment Variables\n\n| Variable | Purpose |\n|----------|----------|\n| `GOOGLE_CLOUD_PROJECT` | Default project ID |\n| `CLOUDSDK_COMPUTE_ZONE` | Default compute zone |\n| `CLOUDSDK_COMPUTE_REGION` | Default compute region |\n| `GOOGLE_APPLICATION_CREDENTIALS` | Path to service account key file |\n",
+  "sections": [
+    {
+      "id": "create-instance",
+      "title": "Creating instances",
+      "body": "Use `gcloud compute instances create NAME` with `--zone`, `--machine-type`, `--image-family`, and `--image-project`. Common image families: `debian-12` (debian-cloud), `ubuntu-2404-lts-amd64` (ubuntu-os-cloud), `centos-stream-9` (centos-cloud), `windows-2022` (windows-cloud). Set `--boot-disk-size` and `--boot-disk-type` (pd-standard, pd-balanced, pd-ssd). Add `--tags` for firewall targeting. Use `--metadata-from-file=startup-script=FILE` for boot-time configuration. See [[gcp/iam]] for required role: `roles/compute.instanceAdmin.v1`.",
+      "tags": ["create", "instance", "machine-type", "image", "boot-disk", "startup-script"]
+    },
+    {
+      "id": "machine-types",
+      "title": "Machine types and sizing",
+      "body": "GCE offers predefined machine types in families: E2 (cost-effective), N2/N2D (balanced), C3 (compute-optimized), M3 (memory-optimized), A2/A3 (GPU). Custom machine types let you specify exact vCPU/memory: `--custom-cpu=6 --custom-memory=24GB`. Use `gcloud compute machine-types list --zones=ZONE` to see available types. Spot VMs (`--provisioning-model=SPOT`) cost 60-91% less but can be preempted.",
+      "tags": ["machine-type", "e2", "n2", "c3", "custom", "spot", "preemptible", "gpu"]
+    },
+    {
+      "id": "ssh-access",
+      "title": "SSH and file transfer",
+      "body": "Use `gcloud compute ssh INSTANCE --zone=ZONE` for SSH access — gcloud manages key generation and OS Login automatically. Transfer files with `gcloud compute scp LOCAL INSTANCE:REMOTE --zone=ZONE`. For tunneling: `gcloud compute ssh INSTANCE --zone=ZONE -- -L 8080:localhost:80`. OS Login (`--metadata=enable-oslogin=TRUE`) maps IAM identities to Linux accounts for centralized access control.",
+      "tags": ["ssh", "scp", "file-transfer", "tunnel", "os-login", "remote-access"]
+    },
+    {
+      "id": "disks-snapshots",
+      "title": "Persistent disks and snapshots",
+      "body": "Create disks with `gcloud compute disks create NAME --size=SIZE --type=TYPE --zone=ZONE`. Disk types: pd-standard (HDD), pd-balanced, pd-ssd, pd-extreme. Attach to running instances with `gcloud compute instances attach-disk`. Inside the VM, format (`mkfs.ext4`) and mount the disk. Create snapshots for backups: `gcloud compute disks snapshot DISK --snapshot-names=NAME`. Snapshots are incremental and cross-regional.",
+      "tags": ["disk", "persistent-disk", "snapshot", "ssd", "hdd", "backup"]
+    },
+    {
+      "id": "networking",
+      "title": "Networking and firewall",
+      "body": "Instances launch in the default VPC unless you specify `--network` and `--subnet`. Create firewall rules with `gcloud compute firewall-rules create` targeting instances by `--target-tags`. Use `--source-ranges` to restrict ingress by IP. For internal-only VMs, omit the external access config. Static external IPs: `gcloud compute addresses create NAME --region=REGION` then `--address=IP` on instance creation.",
+      "tags": ["firewall", "vpc", "network", "ip", "ingress", "egress", "static-ip"]
+    }
+  ],
+  "links": [
+    { "uri": "gcp", "context": "GCP ecosystem overview and authentication" },
+    { "uri": "gcp/iam", "context": "IAM roles required for Compute Engine operations" },
+    { "uri": "gcp/gcloud", "context": "gcloud CLI setup and configuration" },
+    { "uri": "gcp/storage", "context": "Use Cloud Storage for VM data persistence beyond disks" },
+    { "uri": "gcp/functions", "context": "Serverless alternative to VMs for event-driven workloads" }
+  ],
+  "related": [
+    { "uri": "gcp/iam", "relation": "prerequisite", "note": "Requires roles/compute.instanceAdmin.v1 or roles/compute.admin" },
+    { "uri": "gcp/gcloud", "relation": "prerequisite", "note": "gcloud CLI must be installed and authenticated" },
+    { "uri": "gcp/functions", "relation": "alternative", "note": "Cloud Functions is a serverless alternative for short-lived workloads" },
+    { "uri": "terraform/providers/gcp", "relation": "see-also", "note": "Terraform can manage Compute Engine resources declaratively" }
+  ],
+  "scripts": [
+    {
+      "id": "manage-instance",
+      "name": "Manage Compute Engine Instance",
+      "description": "Create, list, start, stop, or delete Compute Engine VM instances via gcloud CLI",
+      "lang": "bash",
+      "runtime": "bash>=4",
+      "entry": "./scripts/manage-instance.sh",
+      "env": {
+        "GOOGLE_CLOUD_PROJECT": { "required": true, "secret": false, "description": "GCP project ID" },
+        "CLOUDSDK_COMPUTE_ZONE": { "required": false, "secret": false, "default": "us-central1-a", "description": "Default compute zone" }
+      },
+      "packages": ["google-cloud-sdk"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "action": { "type": "string", "enum": ["create", "list", "start", "stop", "delete", "describe", "ssh"], "description": "Operation to perform" },
+        "instance_name": { "type": "string", "description": "Name of the VM instance" },
+        "zone": { "type": "string", "default": "us-central1-a", "description": "GCP zone" },
+        "machine_type": { "type": "string", "default": "e2-medium", "description": "Machine type (e.g., e2-medium, n2-standard-4)" },
+        "image_family": { "type": "string", "default": "debian-12", "description": "OS image family" },
+        "image_project": { "type": "string", "default": "debian-cloud", "description": "Project hosting the image family" },
+        "disk_size_gb": { "type": "integer", "default": 50, "description": "Boot disk size in GB" }
+      },
+      "required": ["action"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "instance_name": { "type": "string", "description": "Name of the instance" },
+        "status": { "type": "string", "description": "Instance status (RUNNING, STOPPED, TERMINATED)" },
+        "external_ip": { "type": "string", "description": "External IP address if assigned" },
+        "internal_ip": { "type": "string", "description": "Internal IP address" },
+        "zone": { "type": "string", "description": "Zone the instance is in" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "gcp/gcloud", "reason": "gcloud CLI must be installed and configured" },
+    { "uri": "gcp/iam", "reason": "Requires compute.instanceAdmin.v1 or compute.admin role" }
+  ],
+  "more": {
+    "docs": "https://cloud.google.com/compute/docs",
+    "api": "https://cloud.google.com/compute/docs/reference/rest/v1",
+    "examples": "https://cloud.google.com/compute/docs/samples"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents, DevOps engineers",
+    "estimated_reading_time": "6 min",
+    "prerequisites": ["gcp/gcloud", "gcp/iam"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

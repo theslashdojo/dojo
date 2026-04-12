@@ -1,0 +1,104 @@
+{
+  "name": "cloudflare",
+  "version": "1.0.0",
+  "uri": "cloudflare",
+  "type": "ecosystem",
+  "context": "Cloudflare platform — Workers edge compute, KV, R2 storage, D1 database, Pages, DNS, and Wrangler CLI",
+  "info": "The Cloudflare ecosystem covers edge-first application deployment and infrastructure management. Workers run JavaScript/TypeScript/Wasm at the edge in V8 isolates with sub-millisecond cold starts. KV provides globally distributed key-value storage. R2 offers S3-compatible object storage with zero egress fees. D1 is serverless SQLite for relational data. Pages deploys static and full-stack applications with automatic Git integration. The Wrangler CLI is the primary development and deployment interface. The Cloudflare REST API (v4) at api.cloudflare.com provides programmatic access to all services. Agents use this ecosystem to deploy applications, manage DNS, store data, and orchestrate edge infrastructure.",
+  "parent": null,
+  "tags": ["cloudflare", "workers", "edge", "cdn", "kv", "r2", "d1", "pages", "dns", "wrangler", "serverless"],
+  "aliases": [
+    "cloudflare",
+    "cf",
+    "cloudflare workers",
+    "cloudflare platform",
+    "cloudflare api",
+    "cloudflare edge",
+    "cloudflare developer platform",
+    "cf workers",
+    "cloudflare ecosystem"
+  ],
+  "triggers": [
+    "deploy to cloudflare",
+    "create a cloudflare worker",
+    "deploy to the edge",
+    "manage cloudflare dns",
+    "use cloudflare kv",
+    "upload to r2",
+    "query d1 database",
+    "deploy to cloudflare pages",
+    "set up wrangler",
+    "cloudflare api integration"
+  ],
+  "body": "# Cloudflare Ecosystem\n\nCloudflare is an edge-first platform where agents deploy applications, manage DNS, store data, and run compute globally in 300+ data centers. Unlike container-based serverless (AWS Lambda, Vercel Functions), Workers use V8 isolates — the same engine as Chrome — with sub-millisecond cold starts and no container overhead.\n\n## Architecture\n\nCloudflare's developer platform is built around Workers as the compute primitive. Every other service — KV, R2, D1, Queues, Durable Objects — connects to Workers through **bindings**, which are zero-latency references configured in `wrangler.toml`.\n\n```\nRequest → Cloudflare Edge (300+ PoPs)\n            ↓\n        Worker (V8 isolate)\n            ↓\n    ┌───────┼───────┐\n    KV      R2      D1\n  (k/v)  (objects) (SQL)\n```\n\n## Services\n\n- **[[cloudflare/workers]]** — Edge compute: JavaScript/TypeScript/Wasm functions running in V8 isolates\n- **[[cloudflare/kv]]** — Workers KV: globally distributed, eventually consistent key-value storage\n- **[[cloudflare/r2]]** — R2: S3-compatible object storage with zero egress fees\n- **[[cloudflare/d1]]** — D1: serverless SQLite database with automatic replication\n- **[[cloudflare/pages]]** — Pages: deploy static and full-stack applications from Git\n- **[[cloudflare/dns]]** — DNS: authoritative DNS management with sub-10ms global resolution\n- **[[cloudflare/wrangler]]** — Wrangler CLI: develop, test, and deploy locally and to production\n\n## Cross-Cutting Concerns\n\n- **[[cloudflare/auth]]** — API tokens, Global API Key, and permissions for API access\n- **[[cloudflare/troubleshooting]]** — Common errors, debugging, limits, and observability\n\n## Environment Variables\n\n| Variable | Purpose |\n|----------|----------|\n| `CLOUDFLARE_API_TOKEN` | API token with scoped permissions (preferred) |\n| `CLOUDFLARE_ACCOUNT_ID` | Account identifier for API calls |\n| `CLOUDFLARE_API_KEY` | Legacy Global API Key (use API tokens instead) |\n| `CLOUDFLARE_EMAIL` | Account email (only with Global API Key) |\n\n## API\n\nAll Cloudflare services are accessible via the REST API v4 at `https://api.cloudflare.com/client/v4/`. Authentication is via Bearer token in the `Authorization` header. Responses follow a standard envelope:\n\n```json\n{\n  \"success\": true,\n  \"errors\": [],\n  \"messages\": [],\n  \"result\": { ... }\n}\n```\n\n## Libraries\n\n- **wrangler** — Official CLI (`npm install -g wrangler`)\n- **cloudflare** — Official Node.js SDK (`npm install cloudflare`)\n- **@cloudflare/workers-types** — TypeScript types for Workers runtime APIs\n- **miniflare** — Local Workers simulator (bundled with Wrangler)\n- **python-cloudflare** — Python SDK for the Cloudflare API\n\n## Agent Jobs\n\nThe primary tasks an agent performs in this ecosystem:\n\n- **Deploy a Worker** — Write and deploy edge functions. See [[cloudflare/workers]].\n- **Store key-value data** — Read/write to globally distributed KV. See [[cloudflare/kv]].\n- **Upload files** — Store and serve objects via R2. See [[cloudflare/r2]].\n- **Query a database** — Run SQL against D1 serverless SQLite. See [[cloudflare/d1]].\n- **Deploy a site** — Ship static or full-stack apps via Pages. See [[cloudflare/pages]].\n- **Manage DNS** — Add, update, delete DNS records for domains. See [[cloudflare/dns]].\n",
+  "sections": [
+    {
+      "id": "architecture",
+      "title": "Platform architecture",
+      "body": "Cloudflare's developer platform uses Workers as the compute primitive. Workers run in V8 isolates at the edge — not containers, not VMs. Every storage service (KV, R2, D1) connects to Workers through bindings configured in `wrangler.toml`. Bindings are zero-latency references injected into the Worker's `env` object at runtime. This architecture means compute and data co-locate at the edge, minimizing latency. See [[cloudflare/workers#bindings]] for binding configuration.",
+      "tags": ["architecture", "v8", "isolates", "bindings", "edge"]
+    },
+    {
+      "id": "api-overview",
+      "title": "API overview",
+      "body": "The Cloudflare REST API v4 (`https://api.cloudflare.com/client/v4/`) provides programmatic access to all services. Authenticate with a Bearer token via the `Authorization` header. All responses use a standard envelope with `success`, `errors`, `messages`, and `result` fields. Pagination uses `page` and `per_page` query parameters. Rate limits vary by endpoint but are generally 1,200 requests per 5 minutes. See [[cloudflare/auth]] for token setup.",
+      "tags": ["api", "rest", "v4", "authentication", "pagination", "rate-limits"]
+    },
+    {
+      "id": "wrangler-toml",
+      "title": "wrangler.toml configuration",
+      "body": "Every Cloudflare project uses `wrangler.toml` as the central configuration file. It defines the Worker name, entry point, compatibility date, account ID, and all service bindings. Key fields: `name` (worker name), `main` (entry file), `compatibility_date` (runtime version), `account_id`, and binding blocks like `[[kv_namespaces]]`, `[[r2_buckets]]`, `[[d1_databases]]`. See [[cloudflare/wrangler]] for full CLI usage.",
+      "tags": ["wrangler-toml", "configuration", "bindings", "compatibility-date"]
+    },
+    {
+      "id": "pricing",
+      "title": "Pricing model",
+      "body": "Workers Free plan: 100,000 requests/day, 10ms CPU time. Workers Paid ($5/mo): 10 million requests/month included, then $0.50/million. KV: 100k reads/day free, $0.50/million reads paid. R2: 10GB storage free, zero egress always. D1: 5 million rows read/day free. Pages: unlimited sites and requests on free plan. Most agents operate well within free tier limits for development and small production workloads.",
+      "tags": ["pricing", "free-tier", "limits", "costs"]
+    }
+  ],
+  "links": [
+    { "uri": "cloudflare/workers", "context": "Deploy and manage edge compute functions" },
+    { "uri": "cloudflare/kv", "context": "Key-value storage for Workers" },
+    { "uri": "cloudflare/r2", "context": "S3-compatible object storage with zero egress" },
+    { "uri": "cloudflare/d1", "context": "Serverless SQLite database" },
+    { "uri": "cloudflare/pages", "context": "Deploy static and full-stack applications" },
+    { "uri": "cloudflare/dns", "context": "Manage DNS zones and records" },
+    { "uri": "cloudflare/wrangler", "context": "CLI for development and deployment" },
+    { "uri": "cloudflare/auth", "context": "API tokens and authentication setup" },
+    { "uri": "cloudflare/troubleshooting", "context": "Common errors, limits, and debugging" },
+    { "uri": "cloudflare/workers/routes", "context": "Configure Worker routes and custom domains" },
+    { "uri": "cloudflare/workers/bindings", "context": "Connect Workers to KV, R2, D1, and Queues" }
+  ],
+  "related": [
+    { "uri": "cloudflare/workers", "relation": "see-also", "note": "Workers are the compute primitive for the entire platform" },
+    { "uri": "cloudflare/auth", "relation": "prerequisite", "note": "API tokens are required for all programmatic access" },
+    { "uri": "cloudflare/wrangler", "relation": "see-also", "note": "Wrangler is the primary development and deployment interface" },
+    { "uri": "vercel", "relation": "alternative", "note": "Vercel is an alternative deployment platform, less edge-native" },
+    { "uri": "aws/lambda", "relation": "alternative", "note": "Lambda is container-based serverless, Workers are V8 isolate-based" },
+    { "uri": "aws/s3", "relation": "alternative", "note": "S3 is the alternative to R2, but R2 has zero egress fees" }
+  ],
+  "more": {
+    "docs": "https://developers.cloudflare.com",
+    "api": "https://developers.cloudflare.com/api",
+    "repo": "https://github.com/cloudflare",
+    "examples": "https://developers.cloudflare.com/workers/examples",
+    "wiki": "https://developers.cloudflare.com/learning-paths"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents, DevOps engineers",
+    "estimated_reading_time": "6 min",
+    "prerequisites": [],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://github.com/cloudflare",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

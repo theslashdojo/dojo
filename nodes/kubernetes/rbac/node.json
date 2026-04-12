@@ -1,0 +1,162 @@
+{
+  "name": "rbac",
+  "version": "1.0.0",
+  "uri": "kubernetes/rbac",
+  "type": "skill",
+  "context": "Control access to Kubernetes resources with RBAC — Roles, ClusterRoles, RoleBindings, and ServiceAccounts",
+  "info": "Role-Based Access Control (RBAC) governs who can do what in a Kubernetes cluster. Roles define permissions (verbs on resources), RoleBindings grant those permissions to users, groups, or ServiceAccounts. Namespace-scoped Roles and RoleBindings control access within a namespace. Cluster-scoped ClusterRoles and ClusterRoleBindings control cluster-wide access. Agents use RBAC to restrict CI/CD pipelines to specific namespaces, grant read-only access for monitoring, limit Pod creation permissions, and secure ServiceAccounts for workloads. This skill covers Roles, ClusterRoles, RoleBindings, ClusterRoleBindings, ServiceAccounts, and common RBAC patterns.",
+  "parent": "kubernetes",
+  "tags": ["rbac", "roles", "clusterroles", "rolebindings", "serviceaccounts", "access-control", "security", "permissions"],
+  "aliases": [
+    "kubernetes rbac",
+    "k8s rbac",
+    "role based access control",
+    "kubernetes roles",
+    "kubernetes permissions",
+    "service account",
+    "cluster role",
+    "role binding",
+    "kubectl auth"
+  ],
+  "triggers": [
+    "set up rbac in kubernetes",
+    "create a kubernetes role",
+    "grant access to a namespace",
+    "create a service account",
+    "restrict permissions in kubernetes",
+    "check who can access a resource",
+    "create a read-only role",
+    "bind a role to a user"
+  ],
+  "body": "# RBAC (Role-Based Access Control)\n\nRBAC controls access to Kubernetes resources. The model: **Roles** define what actions are allowed, **Bindings** grant those roles to subjects (users, groups, ServiceAccounts).\n\n## RBAC Resources\n\n| Resource | Scope | Purpose |\n|----------|-------|---------|\n| `Role` | Namespace | Permissions within a single namespace |\n| `ClusterRole` | Cluster | Permissions across all namespaces or on cluster-scoped resources |\n| `RoleBinding` | Namespace | Grants a Role or ClusterRole within a namespace |\n| `ClusterRoleBinding` | Cluster | Grants a ClusterRole across the entire cluster |\n| `ServiceAccount` | Namespace | Identity for Pods and workloads |\n\n## Role (namespace-scoped)\n\n```yaml\napiVersion: rbac.authorization.k8s.io/v1\nkind: Role\nmetadata:\n  name: pod-reader\n  namespace: production\nrules:\n  - apiGroups: [\"\"]           # core API group\n    resources: [\"pods\", \"pods/log\"]\n    verbs: [\"get\", \"list\", \"watch\"]\n  - apiGroups: [\"\"]  \n    resources: [\"services\", \"endpoints\"]\n    verbs: [\"get\", \"list\"]\n  - apiGroups: [\"apps\"]\n    resources: [\"deployments\"]\n    verbs: [\"get\", \"list\", \"watch\"]\n```\n\n## ClusterRole (cluster-scoped)\n\n```yaml\napiVersion: rbac.authorization.k8s.io/v1\nkind: ClusterRole\nmetadata:\n  name: namespace-admin\nrules:\n  - apiGroups: [\"\", \"apps\", \"batch\"]\n    resources: [\"*\"]\n    verbs: [\"*\"]\n  - apiGroups: [\"networking.k8s.io\"]\n    resources: [\"ingresses\"]\n    verbs: [\"get\", \"list\", \"create\", \"update\", \"delete\"]\n```\n\n## RoleBinding\n\n```yaml\napiVersion: rbac.authorization.k8s.io/v1\nkind: RoleBinding\nmetadata:\n  name: read-pods-binding\n  namespace: production\nsubjects:\n  - kind: User\n    name: alice@example.com\n    apiGroup: rbac.authorization.k8s.io\n  - kind: ServiceAccount\n    name: ci-deployer\n    namespace: ci\n  - kind: Group\n    name: backend-team\n    apiGroup: rbac.authorization.k8s.io\nroleRef:\n  kind: Role\n  name: pod-reader\n  apiGroup: rbac.authorization.k8s.io\n```\n\n## ClusterRoleBinding\n\n```yaml\napiVersion: rbac.authorization.k8s.io/v1\nkind: ClusterRoleBinding\nmetadata:\n  name: cluster-monitoring\nsubjects:\n  - kind: ServiceAccount\n    name: prometheus\n    namespace: monitoring\nroleRef:\n  kind: ClusterRole\n  name: view                  # built-in read-only ClusterRole\n  apiGroup: rbac.authorization.k8s.io\n```\n\n## ServiceAccounts\n\n```yaml\napiVersion: v1\nkind: ServiceAccount\nmetadata:\n  name: ci-deployer\n  namespace: ci\n  annotations:\n    eks.amazonaws.com/role-arn: arn:aws:iam::123456789:role/ci-deployer  # AWS IAM role\n```\n\n```bash\n# Create a ServiceAccount\nkubectl create serviceaccount ci-deployer -n ci\n\n# Generate a token for the ServiceAccount\nkubectl create token ci-deployer -n ci --duration=1h\n\n# Use in Pod spec\n```\n\n```yaml\nspec:\n  serviceAccountName: ci-deployer\n  containers:\n    - name: deploy\n      image: bitnami/kubectl:latest\n```\n\n## Built-in ClusterRoles\n\n| ClusterRole | Permissions |\n|-------------|------------|\n| `cluster-admin` | Full access to everything (superuser) |\n| `admin` | Full access within a namespace (when bound via RoleBinding) |\n| `edit` | Read/write to most resources in a namespace (no RBAC, no quotas) |\n| `view` | Read-only access to most resources in a namespace |\n\n```bash\n# Grant read-only access to a namespace\nkubectl create rolebinding alice-view \\\n  --clusterrole=view \\\n  --user=alice@example.com \\\n  --namespace=production\n\n# Grant full namespace admin\nkubectl create rolebinding alice-admin \\\n  --clusterrole=admin \\\n  --user=alice@example.com \\\n  --namespace=staging\n```\n\n## RBAC Verbs\n\n| Verb | HTTP Method | Description |\n|------|-------------|-------------|\n| `get` | GET | Read a single resource |\n| `list` | GET | List resources |\n| `watch` | GET (streaming) | Watch for changes |\n| `create` | POST | Create a resource |\n| `update` | PUT | Update a resource |\n| `patch` | PATCH | Partially update a resource |\n| `delete` | DELETE | Delete a resource |\n| `deletecollection` | DELETE | Delete multiple resources |\n\n## Checking Permissions\n\n```bash\n# Can I do X?\nkubectl auth can-i create deployments -n production\nkubectl auth can-i delete pods --all-namespaces\n\n# Can a ServiceAccount do X?\nkubectl auth can-i get secrets -n production \\\n  --as=system:serviceaccount:ci:ci-deployer\n\n# Who can do X? (requires kubectl-who-can plugin)\nkubectl who-can create pods -n production\n```\n\n## Common Patterns\n\n### CI/CD Deployer\n```yaml\n# Role: can manage deployments and services in a namespace\napiVersion: rbac.authorization.k8s.io/v1\nkind: Role\nmetadata:\n  name: deployer\n  namespace: production\nrules:\n  - apiGroups: [\"apps\"]\n    resources: [\"deployments\"]\n    verbs: [\"get\", \"list\", \"create\", \"update\", \"patch\"]\n  - apiGroups: [\"\"]\n    resources: [\"services\", \"configmaps\"]\n    verbs: [\"get\", \"list\", \"create\", \"update\", \"patch\"]\n  - apiGroups: [\"\"]\n    resources: [\"pods\", \"pods/log\"]\n    verbs: [\"get\", \"list\", \"watch\"]\n```\n\n### Read-Only Monitoring\n```yaml\n# Bind the built-in 'view' ClusterRole\napiVersion: rbac.authorization.k8s.io/v1\nkind: ClusterRoleBinding\nmetadata:\n  name: monitoring-view\nsubjects:\n  - kind: ServiceAccount\n    name: monitoring\n    namespace: monitoring\nroleRef:\n  kind: ClusterRole\n  name: view\n  apiGroup: rbac.authorization.k8s.io\n```\n\n## Environment Variables\n\n| Variable | Purpose |\n|----------|----------|\n| `KUBECONFIG` | Path to kubeconfig file |\n| `KUBE_NAMESPACE` | Default namespace |\n",
+  "sections": [
+    {
+      "id": "roles",
+      "title": "Roles and ClusterRoles",
+      "body": "Roles define permissions as a list of rules. Each rule specifies apiGroups (e.g., '' for core, 'apps' for Deployments), resources (e.g., 'pods', 'deployments'), and verbs (e.g., 'get', 'list', 'create', 'delete'). Roles are namespace-scoped. ClusterRoles are cluster-scoped — they can also define permissions on cluster-scoped resources (nodes, namespaces, PVs). ClusterRoles can be bound per-namespace via RoleBinding or cluster-wide via ClusterRoleBinding.",
+      "tags": ["role", "clusterrole", "rules", "apigroups", "resources", "verbs"]
+    },
+    {
+      "id": "bindings",
+      "title": "RoleBindings and ClusterRoleBindings",
+      "body": "Bindings connect Roles to subjects. RoleBinding grants a Role (or ClusterRole) within a single namespace. ClusterRoleBinding grants a ClusterRole across the entire cluster. Subjects: User (username from auth provider), Group (group from auth provider), ServiceAccount (namespace/name). A common pattern: define a ClusterRole once, bind it per-namespace with RoleBindings.",
+      "tags": ["rolebinding", "clusterrolebinding", "subjects", "user", "group", "serviceaccount"]
+    },
+    {
+      "id": "service-accounts",
+      "title": "ServiceAccounts",
+      "body": "ServiceAccounts provide identity for Pods. Every namespace has a 'default' ServiceAccount auto-mounted into Pods. Create custom ServiceAccounts for workloads that need specific permissions. Bind RBAC Roles to ServiceAccounts via RoleBindings. Generate tokens with `kubectl create token <sa>`. On cloud providers, ServiceAccounts can be linked to cloud IAM roles (AWS IRSA, GCP Workload Identity) for accessing cloud services without static credentials.",
+      "tags": ["serviceaccount", "token", "pod-identity", "irsa", "workload-identity", "default-sa"]
+    },
+    {
+      "id": "checking-access",
+      "title": "Checking and debugging permissions",
+      "body": "Use `kubectl auth can-i <verb> <resource>` to check your own permissions. Add `--as=system:serviceaccount:<ns>:<name>` to impersonate a ServiceAccount. Use `kubectl auth can-i --list` to see all allowed actions. Install kubectl-who-can plugin to find all subjects with a given permission. Debug 403 errors by checking: 1) correct ServiceAccount on Pod, 2) RoleBinding exists, 3) Role has the right verbs/resources/apiGroups.",
+      "tags": ["can-i", "auth", "impersonate", "debug", "403", "permissions-check"]
+    }
+  ],
+  "links": [
+    { "uri": "kubernetes/namespaces", "context": "RBAC Roles and RoleBindings are namespace-scoped" },
+    { "uri": "kubernetes/configmaps", "context": "RBAC controls who can read Secrets" },
+    { "uri": "kubernetes/pods", "context": "Pods run as ServiceAccounts" },
+    { "uri": "kubernetes/deployments", "context": "RBAC controls who can create/update Deployments" },
+    { "uri": "kubernetes/helm", "context": "Helm releases may need RBAC for their ServiceAccounts" }
+  ],
+  "related": [
+    { "uri": "kubernetes/namespaces", "relation": "see-also", "note": "Namespaces and RBAC together provide multi-tenancy" },
+    { "uri": "kubernetes/configmaps", "relation": "see-also", "note": "RBAC controls Secret access — critical for security" }
+  ],
+  "scripts": [
+    {
+      "id": "check-permissions",
+      "name": "Check Permissions",
+      "description": "Check what a user or ServiceAccount can do in a namespace",
+      "lang": "bash",
+      "runtime": "kubectl",
+      "entry": "./scripts/check-permissions.sh",
+      "inline": "#!/bin/bash\nset -euo pipefail\nSUBJECT=${1:-}\nNS=${KUBE_NAMESPACE:-default}\n\nif [ -z \"$SUBJECT\" ]; then\n  echo \"Checking YOUR permissions in namespace $NS:\"\n  kubectl auth can-i --list -n \"$NS\"\nelse\n  echo \"Checking permissions for $SUBJECT in namespace $NS:\"\n  kubectl auth can-i --list -n \"$NS\" --as=\"$SUBJECT\"\nfi",
+      "env": {
+        "KUBECONFIG": { "required": false, "secret": false, "default": "~/.kube/config", "description": "Path to kubeconfig file" },
+        "KUBE_NAMESPACE": { "required": false, "secret": false, "default": "default", "description": "Target namespace" }
+      },
+      "packages": []
+    },
+    {
+      "id": "create-deployer-sa",
+      "name": "Create Deployer ServiceAccount",
+      "description": "Create a ServiceAccount with deployment permissions for CI/CD",
+      "lang": "bash",
+      "runtime": "kubectl",
+      "entry": "./scripts/create-deployer-sa.sh",
+      "inline": "#!/bin/bash\nset -euo pipefail\nSA_NAME=${1:-ci-deployer}\nNS=${KUBE_NAMESPACE:-default}\n\necho \"Creating ServiceAccount $SA_NAME in namespace $NS\"\nkubectl create serviceaccount \"$SA_NAME\" -n \"$NS\" --dry-run=client -o yaml | kubectl apply -f -\n\necho \"Creating deployer Role...\"\ncat <<EOF | kubectl apply -f -\napiVersion: rbac.authorization.k8s.io/v1\nkind: Role\nmetadata:\n  name: ${SA_NAME}-role\n  namespace: ${NS}\nrules:\n  - apiGroups: [\"apps\"]\n    resources: [\"deployments\"]\n    verbs: [\"get\", \"list\", \"create\", \"update\", \"patch\"]\n  - apiGroups: [\"\"]\n    resources: [\"services\", \"configmaps\"]\n    verbs: [\"get\", \"list\", \"create\", \"update\", \"patch\"]\n  - apiGroups: [\"\"]\n    resources: [\"pods\", \"pods/log\"]\n    verbs: [\"get\", \"list\", \"watch\"]\nEOF\n\necho \"Creating RoleBinding...\"\nkubectl create rolebinding \"${SA_NAME}-binding\" \\\n  --role=\"${SA_NAME}-role\" \\\n  --serviceaccount=\"${NS}:${SA_NAME}\" \\\n  -n \"$NS\" \\\n  --dry-run=client -o yaml | kubectl apply -f -\n\necho \"\"\necho \"ServiceAccount $SA_NAME configured with deployer permissions in $NS\"\necho \"Generate a token with: kubectl create token $SA_NAME -n $NS\"",
+      "env": {
+        "KUBECONFIG": { "required": false, "secret": false, "default": "~/.kube/config", "description": "Path to kubeconfig file" },
+        "KUBE_NAMESPACE": { "required": false, "secret": false, "default": "default", "description": "Target namespace" }
+      },
+      "packages": []
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "roleName": { "type": "string", "description": "Role name" },
+        "namespace": { "type": "string", "default": "default" },
+        "rules": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "apiGroups": { "type": "array", "items": { "type": "string" } },
+              "resources": { "type": "array", "items": { "type": "string" } },
+              "verbs": { "type": "array", "items": { "type": "string" } }
+            }
+          }
+        },
+        "subjects": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "kind": { "type": "string", "enum": ["User", "Group", "ServiceAccount"] },
+              "name": { "type": "string" },
+              "namespace": { "type": "string" }
+            }
+          }
+        }
+      },
+      "required": ["roleName"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "roleName": { "type": "string" },
+        "bindingName": { "type": "string" },
+        "subjects": { "type": "array", "items": { "type": "string" } }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "kubernetes/namespaces", "reason": "Roles and RoleBindings are namespace-scoped" }
+  ],
+  "more": {
+    "docs": "https://kubernetes.io/docs/reference/access-authn-authz/rbac/",
+    "api": "https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.31/#role-v1-rbac-authorization-k8s-io",
+    "sa": "https://kubernetes.io/docs/concepts/security/service-accounts/"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, DevOps engineers, SREs, AI agents",
+    "estimated_reading_time": "5 min",
+    "prerequisites": ["kubernetes/namespaces"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

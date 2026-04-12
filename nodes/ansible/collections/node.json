@@ -1,0 +1,241 @@
+{
+  "name": "collections",
+  "version": "1.0.0",
+  "uri": "ansible/collections",
+  "type": "skill",
+  "context": "Install, list, verify, and scaffold Ansible collections so required modules and plugins are present",
+  "info": "Collections are Ansible's distribution unit for modules, plugins, roles, and playbooks. This skill covers the operational collection lifecycle an autonomous agent actually needs: install exact collection versions, consume a `requirements.yml`, verify signed or expected content, inspect installed collections, and scaffold a new collection namespace with `ansible-galaxy`. It matters because playbooks fail fast when required collections are missing or unexpectedly upgraded, and because version pinning plus verification is the difference between reproducible automation and environmental drift on the control node.",
+  "parent": "ansible",
+  "sub": [],
+  "tags": [
+    "ansible",
+    "collections",
+    "ansible-galaxy",
+    "requirements-yml",
+    "modules",
+    "plugins",
+    "version-pinning",
+    "verification"
+  ],
+  "aliases": [
+    "ansible collections",
+    "ansible-galaxy",
+    "install collection",
+    "requirements.yml",
+    "galaxy collection",
+    "collection verify",
+    "scaffold ansible collection"
+  ],
+  "triggers": [
+    "install ansible collections",
+    "pin an ansible collection version",
+    "install from requirements.yml with ansible-galaxy",
+    "list installed ansible collections",
+    "verify an ansible collection",
+    "create a new ansible collection"
+  ],
+  "body": "# Ansible Collections\n\nCollections package namespaced content such as modules, plugins, roles, and even playbooks. The control node needs the right collections installed before [[ansible/playbooks]] or [[ansible/ad-hoc]] can resolve fully qualified module names like `community.general.ufw` or `amazon.aws.ec2_instance`.\n\n## Install and Pin Versions\n\n```bash\nansible-galaxy collection install community.general\nansible-galaxy collection install 'amazon.aws:>=8.0.0,<9.0.0'\n```\n\n## Install from requirements.yml\n\n```yaml\ncollections:\n  - name: community.general\n    version: '>=10.0.0,<11.0.0'\n  - name: amazon.aws\n    version: '>=8.0.0,<9.0.0'\n```\n\n```bash\nansible-galaxy collection install -r collections/requirements.yml\n```\n\n## Inspect and Verify\n\n```bash\nansible-galaxy collection list\nansible-galaxy collection verify community.general\n```\n\n## Scaffold a New Collection\n\n```bash\nansible-galaxy collection init acme.platform\n```\n\nThis creates the standard namespace layout for distributing modules, plugins, roles, and docs.\n",
+  "sections": [
+    {
+      "id": "install",
+      "title": "Install and pin collection versions",
+      "body": "By default, `ansible-galaxy` installs the latest available version of a collection. For reproducible automation, pin versions or version ranges, especially in CI and long-lived playbook repos. Version drift on the control node is a common cause of module-not-found or behavior-change failures.",
+      "tags": ["install", "pinning", "versions", "reproducibility"]
+    },
+    {
+      "id": "requirements-file",
+      "title": "requirements.yml is the team contract",
+      "body": "Use a `requirements.yml` file to declare every collection the project needs. This makes bootstrapping deterministic for local runs, CI workers, and ephemeral agent environments. Commit the file next to the playbooks that depend on it and install from it before execution.",
+      "tags": ["requirements-yml", "contract", "ci", "bootstrap"]
+    },
+    {
+      "id": "verify-list",
+      "title": "List and verify installed content",
+      "body": "Use `ansible-galaxy collection list` to see what is present on the control node and `collection verify` when you need higher confidence that a collection artifact matches expectations. This is especially relevant on long-lived runners or shared automation hosts where state may drift over time.",
+      "tags": ["list", "verify", "drift", "control-node"]
+    },
+    {
+      "id": "authoring",
+      "title": "Scaffold collections for reusable automation",
+      "body": "Use `ansible-galaxy collection init namespace.name` to create the package structure for your own reusable automation content. Collections are the right boundary when modules, roles, or plugins should be versioned and distributed beyond one repository. They are broader than a role and more reusable than copying task files between projects.",
+      "tags": ["authoring", "init", "namespace", "distribution"]
+    }
+  ],
+  "links": [
+    {
+      "uri": "ansible/playbooks",
+      "context": "Playbooks depend on installed collections for module and plugin resolution"
+    },
+    {
+      "uri": "ansible/troubleshooting#modules-templates",
+      "context": "Use the module-resolution checklist when collections are missing or stale"
+    },
+    {
+      "uri": "ansible/ad-hoc",
+      "context": "Ad-hoc commands can call modules shipped by external collections"
+    },
+    {
+      "uri": "ansible/troubleshooting",
+      "context": "Missing collections and plugin resolution errors are common failure modes"
+    },
+    {
+      "uri": "git",
+      "context": "Collection source and requirements files usually live in Git"
+    }
+  ],
+  "related": [
+    {
+      "uri": "ansible/playbooks",
+      "relation": "implements",
+      "note": "Collections supply modules and plugins that playbooks execute"
+    },
+    {
+      "uri": "git",
+      "relation": "see-also",
+      "note": "Versioned requirements and collection source code are typically managed in Git"
+    },
+    {
+      "uri": "python/pip",
+      "relation": "see-also",
+      "note": "The control node itself is commonly installed and maintained with Python tooling"
+    }
+  ],
+  "scripts": [
+    {
+      "id": "manage-collections",
+      "name": "Manage Collections",
+      "description": "Install, list, verify, or scaffold Ansible collections with ansible-galaxy",
+      "lang": "bash",
+      "runtime": "ansible-core>=2.15",
+      "entry": "./scripts/manage-collections.sh",
+      "env": {
+        "ANSIBLE_GALAXY_ACTION": {
+          "required": true,
+          "secret": false,
+          "description": "Collection action: install, list, verify, or init"
+        },
+        "ANSIBLE_COLLECTION_NAME": {
+          "required": false,
+          "secret": false,
+          "description": "Collection name such as community.general or namespace.name"
+        },
+        "ANSIBLE_GALAXY_REQUIREMENTS_FILE": {
+          "required": false,
+          "secret": false,
+          "description": "Path to a requirements.yml file"
+        },
+        "ANSIBLE_COLLECTIONS_PATH": {
+          "required": false,
+          "secret": false,
+          "description": "Collection install or lookup path"
+        },
+        "ANSIBLE_GALAXY_SERVER": {
+          "required": false,
+          "secret": false,
+          "description": "Galaxy API server URL"
+        },
+        "ANSIBLE_GALAXY_TOKEN": {
+          "required": false,
+          "secret": true,
+          "description": "Galaxy API token for private or authenticated servers"
+        },
+        "ANSIBLE_FORCE": {
+          "required": false,
+          "secret": false,
+          "default": "false",
+          "description": "Set to true to overwrite existing content during install or init"
+        },
+        "ANSIBLE_COLLECTION_INIT_PATH": {
+          "required": false,
+          "secret": false,
+          "description": "Destination path when action=init"
+        }
+      },
+      "packages": [
+        "ansible-core"
+      ]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "action": {
+          "type": "string",
+          "enum": [
+            "install",
+            "list",
+            "verify",
+            "init"
+          ],
+          "description": "ansible-galaxy action to perform"
+        },
+        "collectionName": {
+          "type": "string",
+          "description": "Collection identifier such as community.general"
+        },
+        "requirementsFile": {
+          "type": "string",
+          "description": "Path to a requirements.yml file"
+        },
+        "collectionsPath": {
+          "type": "string",
+          "description": "Target or lookup path for installed collections"
+        },
+        "force": {
+          "type": "boolean",
+          "default": false,
+          "description": "Force overwrite on install or init"
+        },
+        "galaxyServer": {
+          "type": "string",
+          "description": "Galaxy server URL"
+        }
+      },
+      "required": [
+        "action"
+      ]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "command": {
+          "type": "string",
+          "description": "The ansible-galaxy command that was executed"
+        },
+        "stdout": {
+          "type": "string",
+          "description": "Rendered ansible-galaxy output"
+        },
+        "exitCode": {
+          "type": "integer",
+          "description": "Process exit code"
+        }
+      }
+    }
+  },
+  "depends": [],
+  "more": {
+    "docs": "https://docs.ansible.com/ansible/latest/collections_guide/index.html",
+    "cli": "https://docs.ansible.com/projects/ansible/latest/cli/ansible-galaxy.html",
+    "index": "https://docs.ansible.com/projects/ansible/latest/collections/index.html"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, platform engineers, AI agents",
+    "estimated_reading_time": "6 min",
+    "prerequisites": [
+      "ansible"
+    ],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://github.com/ansible/ansible",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

@@ -1,0 +1,134 @@
+{
+  "name": "cli",
+  "version": "1.0.0",
+  "uri": "supabase/cli",
+  "type": "skill",
+  "context": "Supabase CLI — init projects, run local dev, manage migrations, deploy edge functions, generate types",
+  "info": "The Supabase CLI (supabase) is the primary tool for local development, schema migrations, edge function deployment, and type generation. It orchestrates Docker containers for a full local Supabase stack (Postgres, GoTrue, PostgREST, Studio, Realtime, Storage). Key workflows: `supabase init` scaffolds a project, `supabase start` launches local services, `supabase db diff` generates migrations from schema changes, `supabase db push` applies migrations to remote, `supabase functions deploy` ships edge functions, and `supabase gen types` produces TypeScript definitions from your schema. Authentication uses `supabase login` with a personal access token. The CLI also manages secrets, links to remote projects, and runs database resets for clean testing.",
+  "parent": "supabase",
+  "tags": ["cli", "supabase-cli", "local-dev", "migrations", "deploy", "types", "docker"],
+  "aliases": [
+    "supabase cli",
+    "supabase command line",
+    "npx supabase",
+    "supabase init",
+    "supabase start",
+    "supabase db push",
+    "supabase gen types",
+    "supabase functions deploy"
+  ],
+  "triggers": [
+    "install supabase cli",
+    "initialize a supabase project",
+    "start local supabase",
+    "run supabase locally",
+    "generate typescript types from supabase",
+    "deploy to supabase",
+    "push migrations to supabase",
+    "link supabase project",
+    "supabase login"
+  ],
+  "body": "# Supabase CLI\n\nThe Supabase CLI manages the entire development lifecycle: project scaffolding, local development with Docker, database migrations, edge function deployment, and TypeScript type generation.\n\n## Installation\n\n```bash\n# npm (recommended)\nnpm install -g supabase\n\n# Homebrew (macOS/Linux)\nbrew install supabase/tap/supabase\n\n# npx (no install)\nnpx supabase <command>\n```\n\n## Authentication\n\n```bash\n# Login with access token (interactive)\nsupabase login\n\n# Login with token directly (CI/CD)\nexport SUPABASE_ACCESS_TOKEN=sbp_abc123...\n```\n\nGenerate tokens at https://supabase.com/dashboard/account/tokens.\n\n## Project Setup\n\n```bash\n# Initialize a new Supabase project (creates supabase/ directory)\nsupabase init\n\n# Link to an existing remote project\nsupabase link --project-ref <project-id>\n\n# Start local development stack (Docker required)\nsupabase start\n\n# Check status of local services\nsupabase status\n\n# Stop local services\nsupabase stop\n```\n\n`supabase start` launches Docker containers and prints local URLs:\n```\nAPI URL: http://localhost:54321\nGraphQL URL: http://localhost:54321/graphql/v1\nDB URL: postgresql://postgres:postgres@localhost:54322/postgres\nStudio URL: http://localhost:54323\nanon key: eyJhbGciOi...\nservice_role key: eyJhbGciOi...\n```\n\n## Database Migrations\n\nSee [[supabase/migrations]] for full migration workflow.\n\n```bash\n# Create a new migration file\nsupabase migration new create_users_table\n\n# Auto-generate migration from local schema diff\nsupabase db diff --use-migra -f create_users_table\n\n# Apply migrations to remote database\nsupabase db push\n\n# Reset local database (drops and recreates from migrations + seed)\nsupabase db reset\n\n# Pull remote schema into local migrations\nsupabase db pull\n```\n\n## Type Generation\n\n```bash\n# Generate TypeScript types from remote database\nsupabase gen types typescript --project-id <ref> > src/types/supabase.ts\n\n# Generate from local database\nsupabase gen types typescript --local > src/types/supabase.ts\n\n# Generate from linked project\nsupabase gen types typescript --linked > src/types/supabase.ts\n```\n\nUsage with the client:\n```typescript\nimport { createClient } from '@supabase/supabase-js';\nimport type { Database } from './types/supabase';\n\nconst supabase = createClient<Database>(\n  process.env.SUPABASE_URL!,\n  process.env.SUPABASE_ANON_KEY!\n);\n\n// Now fully typed!\nconst { data } = await supabase.from('users').select('id, email');\n// data is { id: string; email: string }[] | null\n```\n\n## Edge Functions\n\nSee [[supabase/edge-functions]] for full edge function workflow.\n\n```bash\n# Create a new edge function\nsupabase functions new hello-world\n\n# Serve locally for development\nsupabase functions serve\n\n# Deploy a single function\nsupabase functions deploy hello-world\n\n# Deploy all functions\nsupabase functions deploy\n\n# Set secrets for edge functions\nsupabase secrets set MY_SECRET=value123\nsupabase secrets list\n```\n\n## Useful Commands\n\n```bash\n# Inspect remote project status\nsupabase inspect db table-sizes --linked\nsupabase inspect db index-usage --linked\nsupabase inspect db cache-hit --linked\n\n# Seed the local database\nsupabase db reset  # Runs migrations + supabase/seed.sql\n\n# Dump remote database\nsupabase db dump -f dump.sql --linked\n```\n\n## Configuration (config.toml)\n\nThe `supabase/config.toml` file configures local development:\n\n```toml\n[project]\nid = \"your-project-ref\"\n\n[api]\nenabled = true\nport = 54321\n\n[db]\nport = 54322\nmajor_version = 15\n\n[studio]\nenabled = true\nport = 54323\n\n[auth]\nenabled = true\nsite_url = \"http://localhost:3000\"\n\n[auth.external.github]\nenabled = true\nclient_id = \"env(GITHUB_CLIENT_ID)\"\nsecret = \"env(GITHUB_CLIENT_SECRET)\"\n```\n\n## Environment Variables\n\n| Variable | Purpose |\n|----------|----------|\n| `SUPABASE_ACCESS_TOKEN` | CLI authentication token |\n| `SUPABASE_DB_URL` | Direct Postgres connection (for `db push` with `--db-url`) |\n",
+  "sections": [
+    {
+      "id": "install",
+      "title": "Installation",
+      "body": "Install globally via `npm install -g supabase` or `brew install supabase/tap/supabase`. For one-off use, `npx supabase <command>` works without installation. The CLI requires Docker for local development (`supabase start`). Verify with `supabase --version`.",
+      "tags": ["install", "npm", "brew", "setup"]
+    },
+    {
+      "id": "local-dev",
+      "title": "Local development workflow",
+      "body": "`supabase init` creates the `supabase/` directory with `config.toml`. `supabase start` launches Docker containers for Postgres, GoTrue, PostgREST, Studio, Realtime, and Storage. Studio runs at `http://localhost:54323` for visual database management. `supabase stop` shuts everything down. `supabase status` prints all local URLs and keys. The local anon key and service role key are stable across restarts.",
+      "tags": ["local", "docker", "start", "stop", "studio"]
+    },
+    {
+      "id": "type-gen",
+      "title": "TypeScript type generation",
+      "body": "`supabase gen types typescript` introspects your Postgres schema and generates a `Database` type with full table, view, and function signatures. Pass `--local` for local DB, `--linked` for remote, or `--project-id <ref>` for a specific project. Pipe output to a file: `supabase gen types typescript --local > src/types/supabase.ts`. Pass the `Database` generic to `createClient<Database>()` for fully typed queries. Re-run after every migration.",
+      "tags": ["types", "typescript", "codegen", "type-safety"]
+    },
+    {
+      "id": "config",
+      "title": "Configuration (config.toml)",
+      "body": "The `supabase/config.toml` file configures local services: API port, DB port and version, Studio settings, auth providers, SMTP for email, and edge function settings. Use `env(VAR_NAME)` syntax to reference environment variables for secrets like OAuth client IDs. The `[auth.external.<provider>]` sections configure OAuth providers for local development.",
+      "tags": ["config", "toml", "settings", "ports", "oauth"]
+    }
+  ],
+  "links": [
+    { "uri": "supabase/migrations", "context": "Database migration workflow using the CLI" },
+    { "uri": "supabase/edge-functions", "context": "Deploy edge functions via the CLI" },
+    { "uri": "supabase/client", "context": "Use generated types with the client SDK" },
+    { "uri": "supabase/auth", "context": "Configure auth providers in config.toml" },
+    { "uri": "docker", "context": "Docker is required for supabase start" }
+  ],
+  "related": [
+    { "uri": "supabase/migrations", "relation": "see-also", "note": "The CLI is the primary tool for creating and running migrations" },
+    { "uri": "supabase/client", "relation": "see-also", "note": "Type generation feeds directly into the typed client SDK" },
+    { "uri": "docker", "relation": "prerequisite", "note": "Docker must be running for supabase start" }
+  ],
+  "scripts": [
+    {
+      "id": "init-project",
+      "name": "Initialize Supabase project",
+      "description": "Scaffold a new Supabase project and start local services",
+      "lang": "bash",
+      "runtime": "bash",
+      "entry": "./scripts/init-project.sh",
+      "env": {
+        "SUPABASE_ACCESS_TOKEN": { "required": false, "secret": true, "description": "Personal access token for linking to remote project" }
+      },
+      "packages": ["supabase"]
+    },
+    {
+      "id": "gen-types",
+      "name": "Generate TypeScript types",
+      "description": "Generate TypeScript types from the local Supabase database schema",
+      "lang": "bash",
+      "runtime": "bash",
+      "entry": "./scripts/gen-types.sh",
+      "env": {},
+      "packages": ["supabase"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "command": { "type": "string", "enum": ["init", "start", "stop", "status", "link", "db push", "db pull", "db reset", "db diff", "gen types", "functions deploy", "functions serve", "login"], "description": "CLI command to run" },
+        "projectRef": { "type": "string", "description": "Supabase project reference ID" },
+        "flags": { "type": "array", "items": { "type": "string" }, "description": "Additional CLI flags" }
+      },
+      "required": ["command"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "stdout": { "type": "string", "description": "Command output" },
+        "exitCode": { "type": "integer", "description": "Exit code (0 = success)" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "docker", "reason": "Docker is required for local development (supabase start)" }
+  ],
+  "more": {
+    "docs": "https://supabase.com/docs/reference/cli",
+    "repo": "https://github.com/supabase/cli"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "5 min",
+    "prerequisites": ["docker"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

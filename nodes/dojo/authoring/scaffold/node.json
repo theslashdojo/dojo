@@ -1,0 +1,105 @@
+{
+  "name": "scaffold",
+  "version": "1.0.0",
+  "uri": "dojo/authoring/scaffold",
+  "type": "sub",
+  "context": "Generate a new Dojo node directory with skeleton node.json, SKILL.md, and scripts from a template",
+  "info": "The scaffold sub-skill creates a complete node directory structure from a template. Given a URI, type, and optional context, it generates the directory tree, writes a skeleton node.json with all required fields pre-filled, creates a SKILL.md for executable nodes, and stubs out a scripts/ directory. The skeleton is immediately valid JSON that passes schema validation — the author's job is to enrich it with knowledge content. Templates exist for each of the five node types: ecosystem, standard, skill, context, and sub. See [[dojo/templates]] for the full template catalog.",
+  "parent": "dojo/authoring",
+  "tags": ["scaffold", "template", "create", "skeleton", "generate", "boilerplate"],
+  "aliases": [
+    "scaffold node",
+    "generate node",
+    "create node from template",
+    "node skeleton",
+    "node boilerplate",
+    "stub node"
+  ],
+  "triggers": [
+    "scaffold a new node",
+    "generate a node skeleton",
+    "create a node from a template",
+    "bootstrap a new ecosystem node",
+    "stub out a skill node"
+  ],
+  "body": "# Scaffold a Node\n\nScaffolding creates the minimum viable node — a valid directory structure with a skeleton `node.json` that passes schema validation. The author then enriches it with real knowledge.\n\n## Usage\n\n```bash\n# Scaffold an ecosystem node\n./scripts/scaffold-node.sh ecosystem redis\n\n# Scaffold a skill node under an existing parent\n./scripts/scaffold-node.sh skill github/actions/workflows\n\n# Scaffold a context node\n./scripts/scaffold-node.sh context kubernetes/troubleshooting\n```\n\n## What Gets Created\n\nFor a skill node at `github/actions/workflows`:\n\n```\nnodes/github/actions/workflows/\n├── node.json           # skeleton with all required fields\n├── SKILL.md            # Agent Skills frontmatter + placeholder body\n└── scripts/            # empty scripts directory\n```\n\nFor a context node at `kubernetes/troubleshooting`:\n\n```\nnodes/kubernetes/troubleshooting/\n└── node.json           # skeleton with required + knowledge fields\n```\n\n## Skeleton node.json\n\nThe generated `node.json` includes:\n\n```json\n{\n  \"name\": \"workflows\",\n  \"version\": \"1.0.0\",\n  \"uri\": \"github/actions/workflows\",\n  \"type\": \"skill\",\n  \"context\": \"TODO: one-line description under 200 chars\",\n  \"info\": \"TODO: dense paragraph with scope, surface, and why it matters\",\n  \"parent\": \"github/actions\",\n  \"tags\": [\"workflows\"],\n  \"aliases\": [],\n  \"triggers\": [],\n  \"body\": \"\",\n  \"sections\": [],\n  \"links\": [],\n  \"related\": [],\n  \"author\": \"dojo-community\",\n  \"license\": \"MIT\",\n  \"created\": \"2026-04-11T00:00:00Z\",\n  \"updated\": \"2026-04-11T00:00:00Z\",\n  \"status\": \"draft\"\n}\n```\n\n## Next Steps\n\nAfter scaffolding:\n1. Fill in `context` and `info` with real content\n2. Add `aliases` and `triggers` for discovery\n3. Write `body` with explanations, code examples, and `[[wiki-links]]`\n4. Add `sections` for addressable knowledge chunks\n5. Add `links` and `related` for graph connections\n6. For skill/sub: add `scripts`, `schema`, and `depends`\n7. Run [[dojo/validate]] to check completeness\n\nOr use [[dojo/authoring/enrich]] to automate knowledge enrichment.\n",
+  "sections": [
+    {
+      "id": "usage",
+      "title": "Usage",
+      "body": "Run `./scripts/scaffold-node.sh <type> <uri>` where type is one of ecosystem, standard, skill, context, sub. The URI is the full slash-separated path. The script auto-detects the parent from the URI, creates the directory under `nodes/`, and writes the skeleton files. Pass `--with-scripts` to also create a `scripts/` directory with a stub script file.",
+      "tags": ["usage", "cli", "arguments", "options"]
+    },
+    {
+      "id": "templates",
+      "title": "Template variants",
+      "body": "Five templates exist, one per node type. Ecosystem templates include `more` links. Skill templates include `scripts`, `schema`, and `depends` placeholders. Context templates include `content_type` and `frontmatter` with reading-time estimates. Sub templates inherit the parent's tags. All templates generate valid JSON that passes [[dojo/validate/schema]]. See [[dojo/templates]] for the full catalog.",
+      "tags": ["templates", "ecosystem", "skill", "context", "sub", "standard"]
+    }
+  ],
+  "links": [
+    { "uri": "dojo/authoring", "context": "Parent authoring skill" },
+    { "uri": "dojo/authoring/enrich", "context": "Enrich scaffolded nodes with deep knowledge" },
+    { "uri": "dojo/templates", "context": "Full template catalog for all node types" },
+    { "uri": "dojo/validate", "context": "Validate scaffolded nodes" },
+    { "uri": "dojo/spec#manifest-core", "context": "Manifest contract the scaffold must satisfy" }
+  ],
+  "related": [
+    { "uri": "dojo/authoring", "relation": "prerequisite", "note": "Scaffolding is a sub-operation of the authoring workflow" },
+    { "uri": "dojo/authoring/enrich", "relation": "see-also", "note": "Enrich runs after scaffold to add knowledge depth" },
+    { "uri": "dojo/templates", "relation": "implements", "note": "Scaffold reads from the templates catalog" }
+  ],
+  "scripts": [
+    {
+      "id": "scaffold-node",
+      "name": "Scaffold Node",
+      "description": "Generate a new node directory with skeleton node.json and optional SKILL.md from a type template",
+      "lang": "bash",
+      "runtime": "bash>=4",
+      "entry": "./scripts/scaffold-node.sh",
+      "env": {
+        "DOJO_ROOT": { "required": false, "description": "Path to dojo repository root" }
+      },
+      "packages": ["jq"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "type": { "type": "string", "enum": ["ecosystem", "standard", "skill", "context", "sub"], "description": "Node type to scaffold" },
+        "uri": { "type": "string", "description": "Full URI path (e.g., github/actions/workflows)" }
+      },
+      "required": ["type", "uri"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "path": { "type": "string", "description": "Created directory path" },
+        "files": { "type": "array", "items": { "type": "string" }, "description": "List of created files" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "dojo/templates", "reason": "Scaffold reads skeleton structures from the templates node" }
+  ],
+  "more": {
+    "docs": "https://github.com/theslashdojo/dojo/blob/main/SPEC.md",
+    "repo": "https://github.com/theslashdojo/dojo"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "node authors, autonomous agents",
+    "estimated_reading_time": "3 min",
+    "prerequisites": ["dojo/authoring", "dojo/templates"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

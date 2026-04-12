@@ -1,0 +1,157 @@
+{
+  "name": "ci",
+  "version": "1.0.0",
+  "uri": "gitlab/ci",
+  "type": "context",
+  "context": "Understand `.gitlab-ci.yml`, runners, variables, and typed inputs before automating GitLab pipelines",
+  "info": "GitLab pipeline behavior is defined by `.gitlab-ci.yml`, runner availability, variable precedence, and increasingly by typed pipeline inputs. Agents need this context to know why a pipeline is skipped, why a job is absent, which stages run in parallel, how `rules` gates jobs, how `needs` bypasses stage order, and when to use project variables versus manual pipeline variables or typed inputs. This node focuses on the execution model that sits behind [[gitlab/pipelines]] and [[gitlab/variables]].",
+  "parent": "gitlab",
+  "tags": [
+    "gitlab",
+    "ci",
+    "pipeline",
+    "yaml",
+    "runners",
+    "variables",
+    "inputs",
+    "rules"
+  ],
+  "aliases": [
+    "gitlab ci",
+    "gitlab ci cd",
+    "gitlab pipeline yaml",
+    "gitlab-ci-yml",
+    "gitlab runner",
+    "pipeline inputs",
+    "predefined variables"
+  ],
+  "triggers": [
+    "write a gitlab ci file",
+    "understand why a gitlab job did not run",
+    "set up stages and rules in gitlab ci",
+    "use pipeline inputs in gitlab",
+    "debug runner behavior in gitlab ci"
+  ],
+  "content_type": "reference",
+  "body": "# GitLab CI/CD Model\n\nGitLab pipelines are driven by `.gitlab-ci.yml`, executed by runners, and parameterized by variables or typed inputs. `stages` defines broad ordering, jobs in the same stage run in parallel, and `needs` can start a job earlier than stage order would normally allow. `rules` decides whether a job is included at all, which means many \"missing job\" failures are configuration failures rather than runner failures.\n\n```yaml\nstages:\n  - build\n  - test\n  - deploy\n\nlint:\n  stage: test\n  rules:\n    - if: '$CI_PIPELINE_SOURCE == \"merge_request_event\"'\n  script:\n    - npm run lint\n```\n\nUse [[gitlab/pipelines]] to run or inspect pipelines once the CI model is clear. Use [[gitlab/variables]] when secrets or environment-specific values should live outside the repository.",
+  "sections": [
+    {
+      "id": "yaml-structure",
+      "title": "Stages, jobs, rules, and needs",
+      "body": "`stages` defines execution order; if it is omitted, GitLab defaults to `.pre`, `build`, `test`, `deploy`, `.post`. Jobs in the same stage run in parallel. `rules` controls whether a job is added to the pipeline, and `needs` can make a downstream job start before earlier stages finish. A pipeline with only `.pre` or `.post` jobs does not run.",
+      "tags": [
+        "stages",
+        "jobs",
+        "rules",
+        "needs",
+        "workflow"
+      ]
+    },
+    {
+      "id": "runners",
+      "title": "Runners and executors",
+      "body": "GitLab Runner is the process that picks up jobs and executes them on shell, Docker, Kubernetes, SSH, or autoscaled environments. GitLab-hosted runners are managed by GitLab, while self-managed runners are installed and maintained by your organization. A runner can execute multiple jobs concurrently, and runner tags decide which jobs it is eligible to pick up.",
+      "tags": [
+        "runner",
+        "executor",
+        "docker",
+        "kubernetes",
+        "tags"
+      ]
+    },
+    {
+      "id": "variables",
+      "title": "Variables and precedence",
+      "body": "Top-level `variables` define defaults for all jobs, while job-level `variables` override them. YAML-defined variables are appropriate for non-sensitive configuration, but sensitive values should be stored as protected CI/CD variables or external secrets. Manual and scheduled pipeline variables are not forwarded to downstream pipelines unless forwarding is configured.",
+      "tags": [
+        "variables",
+        "defaults",
+        "job-variables",
+        "secrets"
+      ]
+    },
+    {
+      "id": "inputs",
+      "title": "Typed pipeline inputs",
+      "body": "GitLab pipeline inputs are typed key-value parameters that can be declared with `spec:inputs` and then supplied when creating a pipeline. Inputs can be strings, booleans, numbers, or arrays, and array inputs must be provided as JSON when passed manually or through the API. Use inputs for strongly typed runtime choices and use [[gitlab/variables]] for secrets or long-lived configuration.",
+      "tags": [
+        "inputs",
+        "typed-inputs",
+        "spec-inputs",
+        "api"
+      ]
+    }
+  ],
+  "links": [
+    {
+      "uri": "gitlab/pipelines",
+      "context": "Trigger, retry, cancel, and inspect pipelines after understanding the CI model"
+    },
+    {
+      "uri": "gitlab/pipelines#create",
+      "context": "Pipeline trigger requests map directly onto the YAML and input model described here"
+    },
+    {
+      "uri": "gitlab/variables",
+      "context": "Store project-scoped CI/CD variables outside the repository"
+    },
+    {
+      "uri": "gitlab/variables#security",
+      "context": "Secret handling belongs in protected variables, not repository YAML"
+    },
+    {
+      "uri": "docker",
+      "context": "Docker is a common runner executor and build target"
+    },
+    {
+      "uri": "kubernetes",
+      "context": "Self-managed GitLab runners often execute jobs on Kubernetes"
+    }
+  ],
+  "related": [
+    {
+      "uri": "gitlab/pipelines",
+      "relation": "implements",
+      "note": "Pipeline API calls execute the `.gitlab-ci.yml` model described here"
+    },
+    {
+      "uri": "gitlab/variables",
+      "relation": "see-also",
+      "note": "Variables and secrets management are a core cross-cutting concern in GitLab CI"
+    },
+    {
+      "uri": "gitlab/pipelines#create",
+      "relation": "see-also",
+      "note": "Typed inputs and variable overrides surface most clearly at pipeline creation time"
+    },
+    {
+      "uri": "docker",
+      "relation": "see-also",
+      "note": "Docker executors are one of the most common runner backends"
+    }
+  ],
+  "more": {
+    "yaml": "https://docs.gitlab.com/ci/yaml/",
+    "inputs": "https://docs.gitlab.com/ci/inputs/",
+    "predefined-variables": "https://docs.gitlab.com/ci/variables/predefined_variables/",
+    "runner": "https://docs.gitlab.com/runner/"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents, platform engineers",
+    "estimated_reading_time": "5 min",
+    "prerequisites": [
+      "gitlab/auth"
+    ],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://gitlab.com/gitlab-org/gitlab-runner",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

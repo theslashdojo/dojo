@@ -1,0 +1,164 @@
+{
+  "name": "cli",
+  "version": "1.0.0",
+  "uri": "terraform/cli",
+  "type": "standard",
+  "context": "Terraform CLI commands, global flags, and environment variables for managing infrastructure as code",
+  "info": "The Terraform CLI is the primary interface for managing infrastructure with HashiCorp Terraform. It provides commands for the full infrastructure lifecycle: initializing working directories (init), previewing changes (plan), applying changes (apply), and tearing down resources (destroy). Beyond the core workflow, the CLI includes commands for state management (state, import, taint), workspace isolation (workspace), output inspection (output, show), formatting (fmt), validation (validate), and module/provider management. Global flags like -chdir, -no-color, and -json control behavior across all commands. Environment variables such as TF_CLI_ARGS, TF_INPUT, TF_IN_AUTOMATION, TF_LOG, and TF_DATA_DIR customize execution without modifying command invocations. Understanding the CLI is essential for both interactive development and CI/CD automation pipelines.",
+  "parent": "terraform",
+  "sub": [
+    "terraform/cli/init",
+    "terraform/cli/plan",
+    "terraform/cli/apply",
+    "terraform/cli/destroy"
+  ],
+  "tags": ["terraform", "cli", "iac", "infrastructure", "hashicorp", "hcl", "devops", "automation", "cloud"],
+  "aliases": [
+    "terraform command line",
+    "terraform commands",
+    "tf cli",
+    "terraform binary",
+    "terraform tool",
+    "terraform interface",
+    "terraform workflow"
+  ],
+  "triggers": [
+    "use the terraform cli",
+    "run terraform commands",
+    "terraform global flags",
+    "terraform environment variables",
+    "terraform workflow commands",
+    "set up terraform cli",
+    "install terraform",
+    "configure terraform cli behavior"
+  ],
+  "body": "# Terraform CLI\n\nThe Terraform CLI is the single binary that drives all infrastructure-as-code operations. It reads `.tf` configuration files written in HCL, communicates with cloud provider APIs through plugins, and manages the state of deployed resources.\n\n## Core Workflow\n\n```\ntf init  -->  tf plan  -->  tf apply  -->  (iterate)  -->  tf destroy\n   |              |             |                              |\n backend +     compare       create/                      tear down\n providers   state vs config  update/delete               all resources\n```\n\nThe standard workflow follows four steps:\n\n1. **`terraform init`** — Initialize the working directory, download providers and modules. See [[terraform/cli/init]].\n2. **`terraform plan`** — Preview what changes Terraform will make. See [[terraform/cli/plan]].\n3. **`terraform apply`** — Execute the changes to reach the desired state. See [[terraform/cli/apply]].\n4. **`terraform destroy`** — Tear down all managed infrastructure. See [[terraform/cli/destroy]].\n\n## Installation\n\n```bash\n# macOS (Homebrew)\nbrew install terraform\n\n# Ubuntu/Debian (APT)\nwget -O - https://apt.releases.hashicorp.com/gpg | sudo gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg\necho \"deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main\" | sudo tee /etc/apt/sources.list.d/hashicorp.list\nsudo apt update && sudo apt install terraform\n\n# Binary download (any platform)\ncurl -fsSL https://releases.hashicorp.com/terraform/1.9.0/terraform_1.9.0_linux_amd64.zip -o tf.zip\nunzip tf.zip && sudo mv terraform /usr/local/bin/\n\n# Verify installation\nterraform version\n```\n\n## Global Flags\n\nThese flags work with every `terraform` subcommand:\n\n| Flag | Purpose | Example |\n|---|---|---|\n| `-chdir=DIR` | Switch to a different directory before executing | `terraform -chdir=environments/prod plan` |\n| `-no-color` | Disable terminal color output (for CI logs) | `terraform plan -no-color` |\n| `-json` | Machine-readable JSON output | `terraform plan -json` |\n| `-help` | Show usage for any command | `terraform plan -help` |\n| `-version` | Print Terraform version | `terraform -version` |\n\n```bash\n# Run plan from a different directory\nterraform -chdir=modules/vpc plan\n\n# CI-friendly output: no color, JSON format\nterraform -no-color plan -json > plan.json\n```\n\n## Environment Variables\n\nEnvironment variables customize CLI behavior without changing command arguments:\n\n| Variable | Purpose |\n|---|---|\n| `TF_CLI_ARGS` | Inject extra arguments into every command |\n| `TF_CLI_ARGS_plan` | Inject extra arguments into `terraform plan` only |\n| `TF_INPUT` | Set to `0` or `false` to disable interactive prompts |\n| `TF_IN_AUTOMATION` | Set to any value to adjust output for CI/CD |\n| `TF_LOG` | Enable logging: `TRACE`, `DEBUG`, `INFO`, `WARN`, `ERROR` |\n| `TF_LOG_PATH` | Write logs to a file instead of stderr |\n| `TF_DATA_DIR` | Override default `.terraform` data directory |\n| `TF_WORKSPACE` | Select workspace (equivalent to `terraform workspace select`) |\n| `TF_VAR_name` | Set variable values: `TF_VAR_region=us-east-1` |\n| `TF_PLUGIN_CACHE_DIR` | Shared plugin cache to avoid re-downloading providers |\n\n```bash\n# CI/CD environment setup\nexport TF_IN_AUTOMATION=true\nexport TF_INPUT=0\nexport TF_CLI_ARGS_plan=\"-no-color\"\nexport TF_CLI_ARGS_apply=\"-no-color -auto-approve\"\nexport TF_LOG=WARN\nexport TF_LOG_PATH=/var/log/terraform.log\n\n# Shared provider cache across projects\nexport TF_PLUGIN_CACHE_DIR=\"$HOME/.terraform.d/plugin-cache\"\nmkdir -p \"$TF_PLUGIN_CACHE_DIR\"\n\n# Set variables via environment\nexport TF_VAR_region=us-east-1\nexport TF_VAR_instance_type=t3.micro\n```\n\n## Additional Commands\n\nBeyond the core workflow, the CLI provides:\n\n| Command | Purpose |\n|---|---|\n| `terraform validate` | Check configuration syntax and internal consistency |\n| `terraform fmt` | Reformat `.tf` files to canonical style |\n| `terraform show` | Display the current state or a saved plan |\n| `terraform output` | Read output values from the state |\n| `terraform state list` | List resources tracked in state |\n| `terraform state show` | Show attributes of a single resource in state |\n| `terraform state mv` | Move a resource in state (rename/refactor) |\n| `terraform state rm` | Remove a resource from state without destroying it |\n| `terraform import` | Import existing infrastructure into state |\n| `terraform workspace` | Create and switch between workspaces |\n| `terraform graph` | Generate a DOT dependency graph |\n| `terraform taint` | Mark a resource for forced recreation (deprecated; use -replace) |\n| `terraform providers` | List providers required by the configuration |\n| `terraform console` | Interactive expression evaluation |\n\n```bash\n# Validate syntax\nterraform validate\n\n# Format all .tf files recursively\nterraform fmt -recursive\n\n# Show current state in human-readable form\nterraform show\n\n# Read a specific output\nterraform output -raw db_endpoint\n\n# Import an existing resource\nterraform import aws_s3_bucket.my_bucket my-bucket-name\n\n# Move a resource in state (rename)\nterraform state mv aws_instance.old aws_instance.new\n```\n",
+  "sections": [
+    {
+      "id": "core-workflow",
+      "title": "Core workflow",
+      "body": "The Terraform core workflow is init, plan, apply, destroy. Init downloads providers and modules and configures the backend. Plan compares the current state to the desired configuration and produces an execution plan. Apply executes the plan, creating, updating, or destroying resources. Destroy tears down all managed resources. This workflow applies to both interactive development and CI/CD pipelines.",
+      "tags": ["workflow", "init", "plan", "apply", "destroy", "lifecycle"]
+    },
+    {
+      "id": "global-flags",
+      "title": "Global flags",
+      "body": "Global flags modify the behavior of all terraform subcommands. -chdir changes the working directory before execution, letting you run commands against different environments without cd. -no-color strips ANSI color codes from output, which is essential for CI log parsing. -json produces machine-readable JSON output for plan and apply, enabling programmatic consumption of results.",
+      "tags": ["flags", "chdir", "no-color", "json", "global"]
+    },
+    {
+      "id": "environment-variables",
+      "title": "Environment variables",
+      "body": "Terraform reads environment variables to configure behavior without changing commands. TF_CLI_ARGS injects arguments into every invocation. TF_CLI_ARGS_<command> targets a specific subcommand. TF_INPUT=0 disables interactive prompts for CI. TF_IN_AUTOMATION adjusts output formatting. TF_LOG enables debug logging. TF_VAR_<name> sets input variables. TF_PLUGIN_CACHE_DIR shares downloaded providers across projects to save bandwidth and disk.",
+      "tags": ["environment", "tf-cli-args", "tf-input", "tf-in-automation", "tf-log", "tf-var"]
+    },
+    {
+      "id": "installation",
+      "title": "Installation",
+      "body": "Terraform is distributed as a single static binary. Install via Homebrew on macOS, the HashiCorp APT repository on Debian/Ubuntu, or download the ZIP archive directly from releases.hashicorp.com. Use tfenv or asdf for managing multiple Terraform versions across projects. Verify installation with terraform version.",
+      "tags": ["install", "homebrew", "apt", "binary", "tfenv", "asdf"]
+    },
+    {
+      "id": "additional-commands",
+      "title": "Additional commands",
+      "body": "Beyond the core workflow, Terraform provides validate for syntax checking, fmt for canonical formatting, show and output for inspecting state, state subcommands for direct state manipulation, import for adopting existing resources, workspace for environment isolation, graph for dependency visualization, console for interactive HCL evaluation, and providers for listing required plugins.",
+      "tags": ["validate", "fmt", "output", "state", "import", "workspace", "graph", "console"]
+    }
+  ],
+  "links": [
+    { "uri": "terraform/cli/init", "context": "Initialize working directory, download providers and modules" },
+    { "uri": "terraform/cli/plan", "context": "Preview infrastructure changes before applying" },
+    { "uri": "terraform/cli/apply", "context": "Apply changes to create, update, or destroy resources" },
+    { "uri": "terraform/cli/destroy", "context": "Tear down all managed infrastructure" },
+    { "uri": "terraform", "context": "Parent ecosystem node for Terraform" }
+  ],
+  "related": [
+    { "uri": "aws/cloudformation", "relation": "alternative", "note": "AWS CloudFormation is an alternative IaC tool specific to AWS" },
+    { "uri": "docker", "relation": "see-also", "note": "Terraform can manage Docker resources via the Docker provider" }
+  ],
+  "scripts": [
+    {
+      "id": "terraform-version-check",
+      "name": "Terraform Version Check",
+      "description": "Check the installed Terraform version and list available providers in the current directory",
+      "lang": "bash",
+      "runtime": "terraform>=1.0",
+      "inline": "echo '=== Terraform Version ===' && terraform version && echo '' && echo '=== Provider Requirements ===' && if [ -f '*.tf' ] || ls *.tf 1>/dev/null 2>&1; then terraform providers; else echo 'No .tf files in current directory'; fi"
+    },
+    {
+      "id": "terraform-ci-setup",
+      "name": "CI/CD Environment Setup",
+      "description": "Configure environment variables for non-interactive Terraform execution in CI/CD pipelines",
+      "lang": "bash",
+      "runtime": "terraform>=1.0",
+      "inline": "export TF_IN_AUTOMATION=true\nexport TF_INPUT=0\nexport TF_CLI_ARGS_plan=\"-no-color\"\nexport TF_CLI_ARGS_apply=\"-no-color -auto-approve\"\n${TF_LOG:+export TF_LOG=$TF_LOG}\n${TF_LOG_PATH:+export TF_LOG_PATH=$TF_LOG_PATH}\necho '=== Terraform CI Environment ===' \necho \"TF_IN_AUTOMATION=$TF_IN_AUTOMATION\"\necho \"TF_INPUT=$TF_INPUT\"\necho \"TF_CLI_ARGS_plan=$TF_CLI_ARGS_plan\"\necho \"TF_CLI_ARGS_apply=$TF_CLI_ARGS_apply\"\necho \"TF_LOG=${TF_LOG:-<unset>}\"\nterraform version",
+      "env": {
+        "TF_LOG": { "required": false, "secret": false, "description": "Log level: TRACE, DEBUG, INFO, WARN, ERROR" },
+        "TF_LOG_PATH": { "required": false, "secret": false, "description": "Path to write Terraform logs" }
+      }
+    },
+    {
+      "id": "terraform-full-workflow",
+      "name": "Full Terraform Workflow",
+      "description": "Run the complete init-validate-plan-apply workflow in sequence",
+      "lang": "bash",
+      "runtime": "terraform>=1.0",
+      "inline": "set -euo pipefail\nDIR=\"${TF_WORKING_DIR:-.}\"\necho '=== Step 1: Init ===' && terraform -chdir=\"$DIR\" init -input=false\necho '' && echo '=== Step 2: Validate ===' && terraform -chdir=\"$DIR\" validate\necho '' && echo '=== Step 3: Plan ===' && terraform -chdir=\"$DIR\" plan -input=false -out=tfplan\nif [ \"${AUTO_APPLY:-false}\" = 'true' ]; then\n  echo '' && echo '=== Step 4: Apply ===' && terraform -chdir=\"$DIR\" apply -input=false tfplan\nelse\n  echo '' && echo 'Plan saved to tfplan. Set AUTO_APPLY=true to apply automatically.'\nfi",
+      "env": {
+        "TF_WORKING_DIR": { "required": false, "secret": false, "description": "Working directory containing .tf files (default: current directory)" },
+        "AUTO_APPLY": { "required": false, "secret": false, "description": "Set to 'true' to auto-apply after plan (default: false)" }
+      }
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "command": { "type": "string", "enum": ["init", "plan", "apply", "destroy", "validate", "fmt", "show", "output", "import", "state"], "description": "Terraform subcommand to execute" },
+        "workingDir": { "type": "string", "description": "Directory containing the Terraform configuration" },
+        "globalFlags": {
+          "type": "object",
+          "properties": {
+            "chdir": { "type": "string", "description": "Change to this directory before executing" },
+            "noColor": { "type": "boolean", "description": "Disable color output" },
+            "json": { "type": "boolean", "description": "Enable JSON output" }
+          }
+        }
+      },
+      "required": ["command"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "exitCode": { "type": "integer", "description": "Process exit code (0=success, 1=error, 2=plan has changes)" },
+        "stdout": { "type": "string", "description": "Command standard output" },
+        "stderr": { "type": "string", "description": "Command standard error" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "terraform", "reason": "Terraform must be installed to use the CLI" }
+  ],
+  "more": {
+    "docs": "https://developer.hashicorp.com/terraform/cli",
+    "commands": "https://developer.hashicorp.com/terraform/cli/commands",
+    "env-vars": "https://developer.hashicorp.com/terraform/cli/config/environment-variables",
+    "install": "https://developer.hashicorp.com/terraform/install"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents, DevOps engineers, SREs",
+    "estimated_reading_time": "8 min",
+    "prerequisites": [],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://github.com/hashicorp/terraform",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

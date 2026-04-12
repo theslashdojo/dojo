@@ -4,87 +4,86 @@
   "uri": "anthropic/rate-limits",
   "type": "context",
   "content_type": "reference",
-  "context": "Anthropic API rate limits — usage tiers 1-4, RPM/ITPM/OTPM by model, response headers, and 429 handling",
-  "info": "The Anthropic API enforces rate limits per organization via a token bucket algorithm. Limits are defined by usage tier (1–4) and measured in requests per minute (RPM), input tokens per minute (ITPM), and output tokens per minute (OTPM). Limits vary by model family: Opus 4.x and Sonnet 4.x share combined limits within their family. Tier advancement is automatic based on cumulative credit purchases ($5 → Tier 1, $40 → Tier 2, $200 → Tier 3, $400 → Tier 4). Key optimization: cached input tokens (via [[anthropic/prompt-caching]]) do NOT count toward ITPM limits on most models, effectively multiplying throughput. When rate limited, the API returns 429 with a `retry-after` header. Response headers (`anthropic-ratelimit-*`) show current usage and remaining capacity. Workspace-level limits can be set in the Console.",
+  "context": "Tiered rate limits (RPM, ITPM, OTPM) per model class, response headers, and optimization strategies",
+  "info": "The Anthropic API enforces rate limits at the organization level, measured in requests per minute (RPM), input tokens per minute (ITPM), and output tokens per minute (OTPM). Limits increase across four tiers as you spend more. Tier 1 starts at 50 RPM, Tier 4 reaches 4,000 RPM. A key optimization: cached input tokens (cache_read_input_tokens) do NOT count toward ITPM on most models, making prompt caching an effective way to increase throughput. When rate limited, the API returns 429 with a retry-after header. Rate limits use the token bucket algorithm for smooth replenishment. Opus 4.x models share a combined limit, as do Sonnet 4.x models. Batch API has separate limits.",
   "parent": "anthropic",
-  "tags": ["rate-limits", "throttling", "429", "tiers", "rpm", "tpm"],
+  "tags": ["rate-limits", "throttle", "rpm", "itpm", "otpm", "429", "tier"],
   "aliases": [
     "rate limits",
     "rate limiting",
     "api limits",
-    "throttle",
+    "throttling",
     "429 error",
-    "too many requests",
-    "tokens per minute",
     "requests per minute",
-    "usage tiers",
+    "tokens per minute",
+    "rate limit tiers",
     "anthropic rate limits"
   ],
   "triggers": [
-    "what are the anthropic rate limits",
-    "getting 429 errors from claude api",
-    "how many requests per minute can i make",
-    "increase my rate limits",
-    "what tier am i on",
-    "handle rate limiting with claude",
-    "check rate limit headers"
+    "what are the rate limits for claude",
+    "I'm getting 429 errors",
+    "how to handle rate limiting",
+    "increase my rate limit",
+    "tokens per minute limit",
+    "requests per minute limit",
+    "rate limit headers"
   ],
-  "body": "# Rate Limits\n\nAPI rate limits by tier, model, and how to handle them.\n\n## Tier Requirements\n\n| Tier | Credit Purchase | Monthly Spend Limit |\n|------|----------------|---------------------|\n| 1 | $5 | $100 |\n| 2 | $40 | $500 |\n| 3 | $200 | $1,000 |\n| 4 | $400 | $200,000 |\n| Custom | Contact sales | Unlimited |\n\nTier advancement is automatic when you reach the cumulative credit purchase threshold.\n\n## Messages API Rate Limits by Tier\n\n### Tier 1\n\n| Model | RPM | ITPM | OTPM |\n|-------|-----|------|------|\n| Opus 4.x | 50 | 30,000 | 8,000 |\n| Sonnet 4.x | 50 | 30,000 | 8,000 |\n| Haiku 4.5 | 50 | 50,000 | 10,000 |\n\n### Tier 2\n\n| Model | RPM | ITPM | OTPM |\n|-------|-----|------|------|\n| Opus 4.x | 1,000 | 450,000 | 90,000 |\n| Sonnet 4.x | 1,000 | 450,000 | 90,000 |\n| Haiku 4.5 | 1,000 | 450,000 | 90,000 |\n\n### Tier 3\n\n| Model | RPM | ITPM | OTPM |\n|-------|-----|------|------|\n| Opus 4.x | 2,000 | 800,000 | 160,000 |\n| Sonnet 4.x | 2,000 | 800,000 | 160,000 |\n| Haiku 4.5 | 2,000 | 1,000,000 | 200,000 |\n\n### Tier 4\n\n| Model | RPM | ITPM | OTPM |\n|-------|-----|------|------|\n| Opus 4.x | 4,000 | 2,000,000 | 400,000 |\n| Sonnet 4.x | 4,000 | 2,000,000 | 400,000 |\n| Haiku 4.5 | 4,000 | 4,000,000 | 800,000 |\n\n**Note:** Opus 4.x limit is shared across Opus 4.6, 4.5, 4.1, and 4. Sonnet 4.x limit is shared across Sonnet 4.6, 4.5, and 4.\n\n## Cache-Aware ITPM\n\nCached tokens do NOT count toward ITPM on most models:\n\n- `input_tokens` (after last cache breakpoint) → **counts**\n- `cache_creation_input_tokens` → **counts**\n- `cache_read_input_tokens` → **does NOT count**\n\nWith 80% cache hit rate at Tier 4 (2M ITPM), effective throughput is ~10M total input tokens/minute.\n\n## Batch API Rate Limits\n\n| Tier | RPM | Max in Queue | Max per Batch |\n|------|-----|-------------|---------------|\n| 1 | 50 | 100,000 | 100,000 |\n| 2 | 1,000 | 200,000 | 100,000 |\n| 3 | 2,000 | 300,000 | 100,000 |\n| 4 | 4,000 | 500,000 | 100,000 |\n\n## Response Headers\n\n| Header | Description |\n|--------|-------------|\n| `retry-after` | Seconds to wait before retrying |\n| `anthropic-ratelimit-requests-limit` | Max RPM |\n| `anthropic-ratelimit-requests-remaining` | Remaining RPM |\n| `anthropic-ratelimit-requests-reset` | When RPM resets (RFC 3339) |\n| `anthropic-ratelimit-input-tokens-limit` | Max ITPM |\n| `anthropic-ratelimit-input-tokens-remaining` | Remaining ITPM |\n| `anthropic-ratelimit-input-tokens-reset` | When ITPM resets |\n| `anthropic-ratelimit-output-tokens-limit` | Max OTPM |\n| `anthropic-ratelimit-output-tokens-remaining` | Remaining OTPM |\n| `anthropic-ratelimit-output-tokens-reset` | When OTPM resets |\n\n## Handling 429 Errors\n\n```python\nimport anthropic\nimport time\n\nclient = anthropic.Anthropic()\n\n# SDK has built-in retry with exponential backoff.\n# For manual handling:\ntry:\n    response = client.messages.create(...)\nexcept anthropic.RateLimitError as e:\n    retry_after = int(e.response.headers.get(\"retry-after\", 60))\n    print(f\"Rate limited. Retrying in {retry_after}s\")\n    time.sleep(retry_after)\n```\n\n## Token Bucket Algorithm\n\nRate limits use a token bucket that continuously replenishes up to your maximum. This means capacity is replenished smoothly, not reset at fixed intervals. Short bursts that exceed the per-second rate can trigger 429 errors even if you're under the per-minute limit.\n\n## Increasing Limits\n\n1. **Tier advancement**: Automatic when you add credits (see tier thresholds above)\n2. **Workspace limits**: Set per-workspace limits in Console → Settings → Limits\n3. **Custom limits**: Contact sales via Console → Settings → Limits for Tier 4+ or Priority Tier\n4. **Priority Tier**: Enhanced service levels with committed spend — contact sales\n\n## Monitoring\n\nThe Console Usage page shows:\n- Hourly max uncached input tokens/minute vs. your limit\n- Hourly max output tokens/minute vs. your limit\n- Cache hit rate for input tokens\n",
+  "body": "# Rate Limits\n\nThe API limits requests per minute (RPM), input tokens per minute (ITPM), and output tokens per minute (OTPM) per model class, per organization.\n\n## Rate Limits by Tier\n\n### Tier 1 (Entry: $5 credit purchase)\n\n| Model Class | RPM | ITPM | OTPM |\n|-------------|-----|------|------|\n| Opus 4.x | 50 | 30,000 | 8,000 |\n| Sonnet 4.x | 50 | 30,000 | 8,000 |\n| Haiku 4.5 | 50 | 50,000 | 10,000 |\n\n### Tier 2 ($40 cumulative credit purchase)\n\n| Model Class | RPM | ITPM | OTPM |\n|-------------|-----|------|------|\n| Opus 4.x | 1,000 | 450,000 | 90,000 |\n| Sonnet 4.x | 1,000 | 450,000 | 90,000 |\n| Haiku 4.5 | 1,000 | 450,000 | 90,000 |\n\n### Tier 3 ($200 cumulative)\n\n| Model Class | RPM | ITPM | OTPM |\n|-------------|-----|------|------|\n| Opus 4.x | 2,000 | 800,000 | 160,000 |\n| Sonnet 4.x | 2,000 | 800,000 | 160,000 |\n| Haiku 4.5 | 2,000 | 1,000,000 | 200,000 |\n\n### Tier 4 ($400 cumulative)\n\n| Model Class | RPM | ITPM | OTPM |\n|-------------|-----|------|------|\n| Opus 4.x | 4,000 | 2,000,000 | 400,000 |\n| Sonnet 4.x | 4,000 | 2,000,000 | 400,000 |\n| Haiku 4.5 | 4,000 | 4,000,000 | 800,000 |\n\n## Spend Limit Tiers\n\n| Tier | Credit Purchase | Monthly Spend Limit |\n|------|----------------|--------------------|\n| Tier 1 | $5 | $100 |\n| Tier 2 | $40 | $500 |\n| Tier 3 | $200 | $1,000 |\n| Tier 4 | $400 | $200,000 |\n| Monthly Invoicing | N/A | No limit |\n\n## Handling 429 Errors\n\n```python\nimport anthropic\nimport time\n\nclient = anthropic.Anthropic()\n\ndef call_with_retry(messages, max_retries=5):\n    for attempt in range(max_retries):\n        try:\n            return client.messages.create(\n                model=\"claude-sonnet-4-6\",\n                max_tokens=1024,\n                messages=messages\n            )\n        except anthropic.RateLimitError as e:\n            retry_after = float(e.response.headers.get(\"retry-after\", 1))\n            print(f\"Rate limited. Retrying in {retry_after}s...\")\n            time.sleep(retry_after)\n    raise Exception(\"Max retries exceeded\")\n```\n\nThe SDK has built-in automatic retries for 429 errors with exponential backoff.\n\n## Response Headers\n\n| Header | Description |\n|--------|-------------|\n| `retry-after` | Seconds to wait before retrying |\n| `anthropic-ratelimit-requests-limit` | Max RPM |\n| `anthropic-ratelimit-requests-remaining` | RPM remaining |\n| `anthropic-ratelimit-requests-reset` | When RPM resets (RFC 3339) |\n| `anthropic-ratelimit-input-tokens-limit` | Max ITPM |\n| `anthropic-ratelimit-input-tokens-remaining` | ITPM remaining |\n| `anthropic-ratelimit-input-tokens-reset` | When ITPM resets |\n| `anthropic-ratelimit-output-tokens-limit` | Max OTPM |\n| `anthropic-ratelimit-output-tokens-remaining` | OTPM remaining |\n| `anthropic-ratelimit-output-tokens-reset` | When OTPM resets |\n\n## Cache-Aware ITPM\n\nOn most models, only uncached tokens count toward ITPM:\n\n- `input_tokens` (after last cache breakpoint) — **counts**\n- `cache_creation_input_tokens` — **counts**\n- `cache_read_input_tokens` — **does NOT count**\n\nWith 80% cache hit rate and 2M ITPM limit, effective throughput is ~10M tokens/minute. See [[anthropic/prompt-caching]].\n\n## Token Bucket Algorithm\n\nRate limits use the token bucket algorithm — capacity replenishes continuously, not at fixed intervals. A rate of 60 RPM may be enforced as 1 request/second. Short bursts that exceed instantaneous capacity trigger 429s.\n\n## Model Class Sharing\n\n- **Opus 4.x**: Combined limit across Opus 4.6, 4.5, 4.1, and 4\n- **Sonnet 4.x**: Combined limit across Sonnet 4.6, 4.5, and 4\n- **Haiku 4.5**: Separate limit\n\n## Batch API Limits\n\n| Tier | RPM | Max Queued Requests | Max per Batch |\n|------|-----|---------------------|---------------|\n| Tier 1 | 50 | 100,000 | 100,000 |\n| Tier 2 | 1,000 | 200,000 | 100,000 |\n| Tier 3 | 2,000 | 300,000 | 100,000 |\n| Tier 4 | 4,000 | 500,000 | 100,000 |\n\n## Optimization Strategies\n\n1. **Use [[anthropic/prompt-caching]]** — Cached reads don't count toward ITPM\n2. **Use [[anthropic/batch]]** — Batch API has separate rate limits\n3. **Spread requests evenly** — Avoid bursts that trigger sub-second limits\n4. **Monitor headers** — Check remaining capacity before sending\n5. **Use workspace limits** — Prevent one project from starving others\n6. **Upgrade tier** — Purchase more credits to increase limits\n7. **Contact sales** — Custom limits available for enterprise\n",
   "sections": [
     {
       "id": "tier-limits",
-      "title": "Rate limits by tier",
-      "body": "Tiers 1–4 define RPM, ITPM, and OTPM limits per model family. Tier 1: 50 RPM, 30k–50k ITPM. Tier 4: 4,000 RPM, 2M–4M ITPM. Opus 4.x and Sonnet 4.x limits are shared across all versions within the family. Haiku 4.5 has its own limits (generally higher ITPM). Tier advancement is automatic based on cumulative credit purchases.",
-      "tags": ["tiers", "rpm", "itpm", "otpm", "tier-1", "tier-2", "tier-3", "tier-4"]
+      "title": "Rate limit tiers",
+      "body": "Four tiers based on cumulative credit purchases: Tier 1 ($5, 50 RPM), Tier 2 ($40, 1K RPM), Tier 3 ($200, 2K RPM), Tier 4 ($400, 4K RPM). You advance automatically when purchase thresholds are reached. Enterprise customers can get custom limits via sales. Limits apply per organization.",
+      "tags": ["tiers", "rpm", "upgrade", "spend"]
     },
     {
-      "id": "cache-aware",
-      "title": "Cache-aware ITPM",
-      "body": "On most models, `cache_read_input_tokens` do NOT count toward ITPM rate limits. Only `input_tokens` (uncached) and `cache_creation_input_tokens` count. This means [[anthropic/prompt-caching]] effectively multiplies your throughput. With 80% cache hit rate: 2M ITPM limit → 10M effective total input tokens/minute.",
+      "id": "handling-429",
+      "title": "Handling 429 rate limit errors",
+      "body": "When rate limited, the API returns HTTP 429 with a `retry-after` header (seconds to wait). The SDKs include built-in automatic retries with exponential backoff. For manual handling: read retry-after, sleep, then retry. Also check for acceleration limits — sharp traffic increases may trigger 429s even within normal limits.",
+      "tags": ["429", "retry", "backoff", "error-handling"]
+    },
+    {
+      "id": "cache-itpm",
+      "title": "Cache-aware ITPM optimization",
+      "body": "On most models, cache_read_input_tokens do NOT count toward ITPM. Only input_tokens (after last breakpoint) and cache_creation_input_tokens count. This means prompt caching dramatically increases effective throughput. An 80% cache rate gives 5x effective ITPM capacity. See [[anthropic/prompt-caching]].",
       "tags": ["cache", "itpm", "throughput", "optimization"]
     },
     {
       "id": "response-headers",
       "title": "Rate limit response headers",
-      "body": "Every API response includes `anthropic-ratelimit-*` headers showing current limits, remaining capacity, and reset times. On 429 errors, the `retry-after` header tells you exactly how long to wait. Headers cover requests, input tokens, and output tokens separately. Priority Tier users get additional `anthropic-priority-*` headers.",
-      "tags": ["headers", "retry-after", "remaining", "reset", "monitoring"]
-    },
-    {
-      "id": "handling-429",
-      "title": "Handling rate limit errors",
-      "body": "The 429 status code means you've exceeded a limit. The `retry-after` header gives the wait time in seconds. The official SDKs have built-in retry with exponential backoff for transient errors. For manual handling: catch the 429, read `retry-after`, sleep, and retry. Avoid tight retry loops — the token bucket needs time to replenish. Also watch for acceleration limits on sudden traffic spikes.",
-      "tags": ["429", "error", "retry", "backoff", "handling"]
+      "body": "Every response includes anthropic-ratelimit-* headers showing current limits, remaining capacity, and reset times (RFC 3339). Monitor these to predict and avoid rate limits. The most restrictive limit in effect is reflected in the headers (organization-level or workspace-level).",
+      "tags": ["headers", "monitoring", "remaining", "reset"]
     }
   ],
   "links": [
     { "uri": "anthropic/prompt-caching", "context": "Cached tokens don't count toward ITPM limits" },
-    { "uri": "anthropic/pricing", "context": "Spend limits per tier" },
     { "uri": "anthropic/batch", "context": "Batch API has separate rate limits" },
-    { "uri": "anthropic/auth", "context": "Workspaces for per-project rate limits" },
-    { "uri": "anthropic/models", "context": "Rate limits grouped by model family" }
+    { "uri": "anthropic/pricing", "context": "Spend thresholds determine rate limit tier" },
+    { "uri": "anthropic/models", "context": "Rate limits vary by model class" },
+    { "uri": "anthropic/auth", "context": "Rate limits are per-organization, not per-key" }
   ],
   "related": [
-    { "uri": "anthropic/prompt-caching", "relation": "see-also", "note": "Caching multiplies effective throughput by exempting cached reads from ITPM" },
-    { "uri": "anthropic/pricing", "relation": "see-also", "note": "Tier advancement requires credit purchases" },
-    { "uri": "anthropic/batch", "relation": "see-also", "note": "Batch API has its own rate limit structure" }
+    { "uri": "anthropic/prompt-caching", "relation": "see-also", "note": "Caching is the most effective way to increase effective throughput" },
+    { "uri": "anthropic/batch", "relation": "see-also", "note": "Batch API bypasses real-time rate limits entirely" },
+    { "uri": "anthropic/pricing", "relation": "see-also", "note": "Higher spend unlocks higher rate limit tiers" }
   ],
   "more": {
     "docs": "https://docs.anthropic.com/en/api/rate-limits",
-    "console-limits": "https://console.anthropic.com/settings/limits",
-    "console-usage": "https://console.anthropic.com/usage"
+    "console": "https://console.anthropic.com/settings/limits"
   },
   "frontmatter": {
-    "created": "2026-04-10",
-    "updated": "2026-04-10",
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
     "author": "dojo-community",
     "audience": "developers, AI agents",
     "estimated_reading_time": "5 min",
+    "prerequisites": ["anthropic/auth"],
     "status": "living",
     "confidence": "high"
   },
   "author": "dojo-community",
   "license": "MIT",
-  "created": "2026-04-10T00:00:00Z",
-  "updated": "2026-04-10T00:00:00Z",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
   "status": "published"
 }

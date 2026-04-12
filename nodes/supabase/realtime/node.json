@@ -1,0 +1,121 @@
+{
+  "name": "realtime",
+  "version": "1.0.0",
+  "uri": "supabase/realtime",
+  "type": "skill",
+  "context": "Supabase Realtime — subscribe to Postgres changes, broadcast messages, and track user presence via WebSocket",
+  "info": "Supabase Realtime is an Elixir-based WebSocket server that provides three features: Postgres Changes (listen for INSERT, UPDATE, DELETE on tables), Broadcast (send messages to all clients in a channel), and Presence (track which users are online with shared state). The client SDK uses `supabase.channel('name')` to create channels, then chains `.on()` listeners for each feature. Channels are multiplexed over a single WebSocket connection. Postgres Changes require the `supabase_realtime` publication on the target tables (`ALTER PUBLICATION supabase_realtime ADD TABLE my_table`). RLS policies apply to Postgres Changes — users only receive changes for rows they can SELECT. Broadcast and Presence do not go through Postgres and have no RLS filtering.",
+  "parent": "supabase",
+  "tags": ["realtime", "websocket", "subscriptions", "broadcast", "presence", "postgres-changes", "live"],
+  "aliases": [
+    "supabase realtime",
+    "supabase subscriptions",
+    "supabase websocket",
+    "supabase broadcast",
+    "supabase presence",
+    "supabase live updates",
+    "supabase postgres changes",
+    "realtime database",
+    "live data"
+  ],
+  "triggers": [
+    "subscribe to database changes",
+    "listen for supabase inserts",
+    "realtime updates supabase",
+    "supabase websocket subscription",
+    "broadcast messages to clients",
+    "track online users supabase",
+    "supabase presence tracking",
+    "live chat with supabase",
+    "realtime notifications"
+  ],
+  "body": "# Supabase Realtime\n\nSupabase Realtime provides three real-time features over WebSocket: Postgres Changes, Broadcast, and Presence.\n\n## Postgres Changes\n\nListen for INSERT, UPDATE, DELETE events on tables:\n\n```typescript\n// Listen for all changes on 'posts' table\nconst channel = supabase\n  .channel('posts-changes')\n  .on(\n    'postgres_changes',\n    {\n      event: '*',           // 'INSERT' | 'UPDATE' | 'DELETE' | '*'\n      schema: 'public',\n      table: 'posts',\n    },\n    (payload) => {\n      console.log('Change:', payload.eventType);\n      console.log('New:', payload.new);\n      console.log('Old:', payload.old);\n    }\n  )\n  .subscribe();\n\n// Listen for inserts only\nconst channel = supabase\n  .channel('new-posts')\n  .on(\n    'postgres_changes',\n    {\n      event: 'INSERT',\n      schema: 'public',\n      table: 'posts',\n    },\n    (payload) => {\n      console.log('New post:', payload.new);\n    }\n  )\n  .subscribe();\n\n// Filter by column value\nconst channel = supabase\n  .channel('my-posts')\n  .on(\n    'postgres_changes',\n    {\n      event: '*',\n      schema: 'public',\n      table: 'posts',\n      filter: `user_id=eq.${userId}`,\n    },\n    (payload) => {\n      console.log('My post changed:', payload.new);\n    }\n  )\n  .subscribe();\n```\n\n**Required**: Add the table to the realtime publication:\n```sql\nALTER PUBLICATION supabase_realtime ADD TABLE posts;\n```\n\n## Broadcast\n\nSend messages to all clients in a channel (no Postgres, no persistence):\n\n```typescript\n// Subscribe to broadcast messages\nconst channel = supabase\n  .channel('room-1')\n  .on('broadcast', { event: 'cursor-move' }, (payload) => {\n    console.log('Cursor:', payload.payload);\n  })\n  .subscribe();\n\n// Send a broadcast message\nchannel.send({\n  type: 'broadcast',\n  event: 'cursor-move',\n  payload: { x: 100, y: 200, userId: 'abc' },\n});\n```\n\nBroadcast is ideal for:\n- Cursor positions in collaborative editors\n- Typing indicators\n- Game state synchronization\n- Ephemeral notifications\n\n## Presence\n\nTrack which users are online and share state:\n\n```typescript\nconst channel = supabase.channel('online-users');\n\n// Track presence changes\nchannel\n  .on('presence', { event: 'sync' }, () => {\n    const state = channel.presenceState();\n    console.log('Online users:', Object.keys(state).length);\n\n    // state is: { 'user-uuid': [{ user_id: '...', status: 'online', ... }] }\n    for (const [key, presences] of Object.entries(state)) {\n      console.log(key, presences);\n    }\n  })\n  .on('presence', { event: 'join' }, ({ key, newPresences }) => {\n    console.log('User joined:', key, newPresences);\n  })\n  .on('presence', { event: 'leave' }, ({ key, leftPresences }) => {\n    console.log('User left:', key, leftPresences);\n  })\n  .subscribe(async (status) => {\n    if (status === 'SUBSCRIBED') {\n      // Track this user\n      await channel.track({\n        user_id: userId,\n        status: 'online',\n        last_seen: new Date().toISOString(),\n      });\n    }\n  });\n```\n\nPresence is ideal for:\n- Online/offline indicators\n- \"X is typing...\" indicators\n- Who's viewing this document\n- Collaborative cursor lists\n\n## Unsubscribe\n\n```typescript\n// Unsubscribe from a channel\nawait supabase.removeChannel(channel);\n\n// Unsubscribe from all channels\nawait supabase.removeAllChannels();\n```\n\n## Channel Status\n\n```typescript\nchannel.subscribe((status) => {\n  // status: 'SUBSCRIBED' | 'TIMED_OUT' | 'CLOSED' | 'CHANNEL_ERROR'\n  if (status === 'SUBSCRIBED') {\n    console.log('Connected!');\n  }\n  if (status === 'CHANNEL_ERROR') {\n    console.error('Connection error — will auto-retry');\n  }\n});\n```\n\n## Setup for Postgres Changes\n\nPostgres Changes require two things:\n\n1. **Add table to publication** (in a migration):\n```sql\n-- Add specific tables\nALTER PUBLICATION supabase_realtime ADD TABLE posts;\nALTER PUBLICATION supabase_realtime ADD TABLE comments;\n\n-- Or add all tables (not recommended for production)\n-- ALTER PUBLICATION supabase_realtime FOR ALL TABLES;\n```\n\n2. **RLS policies must allow SELECT** — users only receive changes for rows their policies permit\n\n## Combining Features\n\nA single channel can use all three features:\n\n```typescript\nconst channel = supabase\n  .channel('collaborative-doc')\n  .on('postgres_changes', {\n    event: '*',\n    schema: 'public',\n    table: 'document_edits',\n  }, handleDbChange)\n  .on('broadcast', { event: 'cursor' }, handleCursor)\n  .on('presence', { event: 'sync' }, handlePresenceSync)\n  .subscribe();\n```\n\n## Environment Variables\n\n| Variable | Purpose |\n|----------|----------|\n| `NEXT_PUBLIC_SUPABASE_URL` | WebSocket endpoint (wss://<ref>.supabase.co/realtime/v1) |\n| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Auth token for WebSocket connection |\n",
+  "sections": [
+    {
+      "id": "postgres-changes",
+      "title": "Postgres Changes",
+      "body": "Listen for INSERT, UPDATE, DELETE on tables. Requires adding the table to `supabase_realtime` publication via `ALTER PUBLICATION`. Events include `payload.new` (the new row) and `payload.old` (the old row, for UPDATE/DELETE). Filter by column with `filter: 'col=eq.value'`. RLS policies apply — users only see changes they could SELECT.",
+      "tags": ["postgres-changes", "insert", "update", "delete", "publication", "filter"]
+    },
+    {
+      "id": "broadcast",
+      "title": "Broadcast messages",
+      "body": "Send ephemeral messages to all clients in a channel. No Postgres, no persistence, no RLS. Use `channel.send({ type: 'broadcast', event: 'name', payload: data })`. Subscribe with `.on('broadcast', { event: 'name' }, callback)`. Ideal for cursor positions, typing indicators, and game state.",
+      "tags": ["broadcast", "messages", "ephemeral", "cursor", "typing", "pub-sub"]
+    },
+    {
+      "id": "presence",
+      "title": "Presence tracking",
+      "body": "Track online users with `channel.track(state)`. Listen for sync/join/leave events. `presenceState()` returns all tracked users. State is per-key (typically user ID). Users automatically leave when they disconnect. Ideal for online indicators, collaborative editing, and typing indicators.",
+      "tags": ["presence", "online", "tracking", "join", "leave", "sync", "collaborative"]
+    }
+  ],
+  "links": [
+    { "uri": "supabase/client", "context": "Client provides the channel() method for realtime" },
+    { "uri": "supabase/rls", "context": "RLS policies filter Postgres Changes events" },
+    { "uri": "supabase/database", "context": "Postgres Changes track database operations" },
+    { "uri": "supabase/migrations", "context": "Add tables to realtime publication in migrations" }
+  ],
+  "related": [
+    { "uri": "supabase/rls", "relation": "see-also", "note": "RLS policies filter which Postgres Changes a user receives" },
+    { "uri": "supabase/database", "relation": "see-also", "note": "Postgres Changes are triggered by database operations" },
+    { "uri": "redis/pub-sub", "relation": "similar", "note": "Broadcast is similar to Redis Pub/Sub but over WebSocket" }
+  ],
+  "scripts": [
+    {
+      "id": "realtime-listener",
+      "name": "Realtime subscription listener",
+      "description": "Subscribe to Postgres changes, broadcast, and presence on a channel",
+      "lang": "typescript",
+      "runtime": "node>=18",
+      "entry": "./scripts/realtime-listener.ts",
+      "env": {
+        "SUPABASE_URL": { "required": true, "secret": false, "description": "Supabase project URL" },
+        "SUPABASE_ANON_KEY": { "required": true, "secret": false, "description": "Public anon key" }
+      },
+      "packages": ["@supabase/supabase-js"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "channelName": { "type": "string", "description": "Name of the realtime channel" },
+        "table": { "type": "string", "description": "Table to listen for Postgres changes" },
+        "event": { "type": "string", "enum": ["INSERT", "UPDATE", "DELETE", "*"], "description": "Database event type to listen for" },
+        "filter": { "type": "string", "description": "PostgREST filter (e.g., 'user_id=eq.abc123')" }
+      },
+      "required": ["channelName"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "eventType": { "type": "string", "description": "Type of change event" },
+        "new": { "type": "object", "description": "New row data (INSERT/UPDATE)" },
+        "old": { "type": "object", "description": "Old row data (UPDATE/DELETE)" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "supabase/client", "reason": "Client provides the channel() API for realtime" }
+  ],
+  "more": {
+    "docs": "https://supabase.com/docs/guides/realtime",
+    "api": "https://supabase.com/docs/reference/javascript/subscribe"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "6 min",
+    "prerequisites": ["supabase/client"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

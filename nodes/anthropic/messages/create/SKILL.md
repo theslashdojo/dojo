@@ -1,60 +1,83 @@
 ---
 name: create
-description: Create a synchronous (non-streaming) message with Claude — use when you need the complete response before proceeding, in pipelines, or for batch-style processing
+description: Create a single synchronous Claude message completion. Use when you need a complete response before proceeding — the standard non-streaming API call.
 ---
 
-# Create Message (Synchronous)
+# Create Message
 
-Send a prompt to Claude and receive the complete response in one HTTP call.
+`POST /v1/messages` — synchronous message completion.
 
 ## When to Use
 
-- You need the full response before taking the next step
-- Processing in automated pipelines
-- Simple request/response patterns
-- When streaming overhead is unnecessary
-
-## Prerequisites
-
-- `ANTHROPIC_API_KEY` set in environment
-- `pip install anthropic` or `npm install @anthropic-ai/sdk`
+- Standard API calls where you wait for the full response
+- Backend processing where streaming isn't needed
+- Batch-like operations in a loop
+- Any non-interactive Claude integration
 
 ## Workflow
 
-1. Initialize the Anthropic client
-2. Call `client.messages.create()` with model, max_tokens, messages
-3. Access `message.content[0].text` for the response text
-4. Check `message.stop_reason` to know if the response was complete
-5. Read `message.usage` for token counts
+1. Build the request with model, max_tokens, messages
+2. Call `client.messages.create(**params)`
+3. Wait for complete response
+4. Read `response.content[0].text`
+5. Check `response.stop_reason` for completion status
 
-## Python Example
+## Examples
+
+### Basic
 
 ```python
-import anthropic
-
-client = anthropic.Anthropic()
-message = client.messages.create(
+response = client.messages.create(
     model="claude-sonnet-4-6",
     max_tokens=1024,
-    messages=[{"role": "user", "content": "Explain async/await in Python"}]
+    messages=[{"role": "user", "content": "Explain async/await"}]
 )
-print(message.content[0].text)
+```
+
+### With Vision
+
+```python
+response = client.messages.create(
+    model="claude-sonnet-4-6",
+    max_tokens=1024,
+    messages=[{
+        "role": "user",
+        "content": [
+            {"type": "image", "source": {"type": "base64", "media_type": "image/png", "data": img_b64}},
+            {"type": "text", "text": "Describe this image"}
+        ]
+    }]
+)
+```
+
+### With Structured Output
+
+```python
+response = client.messages.create(
+    model="claude-sonnet-4-6",
+    max_tokens=1024,
+    output_config={
+        "type": "json_schema",
+        "schema": {"type": "object", "properties": {"sentiment": {"type": "string"}}}
+    },
+    messages=[{"role": "user", "content": "Analyze: Great product!"}]
+)
 ```
 
 ## Error Handling
 
 ```python
 try:
-    message = client.messages.create(...)
+    response = client.messages.create(...)
 except anthropic.RateLimitError as e:
-    retry_after = e.response.headers.get("retry-after", 60)
-    time.sleep(int(retry_after))
+    retry_after = e.response.headers.get("retry-after", 1)
+    time.sleep(float(retry_after))
 except anthropic.AuthenticationError:
-    print("Check your ANTHROPIC_API_KEY")
+    print("Check your API key")
 ```
 
 ## Edge Cases
 
-- **Truncated response**: `stop_reason == "max_tokens"` means the response was cut off. Increase `max_tokens`.
-- **Tool use stop**: `stop_reason == "tool_use"` means Claude wants to call a tool. Handle the tool_use block.
-- **Empty content**: Never happens on success. If content is empty, check for errors.
+- `stop_reason: "max_tokens"` means the response was truncated — increase max_tokens
+- `stop_reason: "tool_use"` means Claude wants to call a tool — handle it
+- The SDK automatically retries on transient 5xx errors

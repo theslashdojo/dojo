@@ -1,0 +1,93 @@
+{
+  "name": "inference",
+  "version": "1.0.0",
+  "uri": "zod/inference",
+  "type": "context",
+  "content_type": "explainer",
+  "context": "Extract TypeScript types from Zod schemas with z.infer, z.input, and z.output — single source of truth for runtime and compile time",
+  "info": "Type inference is Zod's killer feature: define a schema once and extract the TypeScript type from it, so runtime validation and compile-time types are always in sync. z.infer<typeof schema> extracts the output type (after transforms). z.input<typeof schema> extracts the input type (before transforms). z.output<typeof schema> is identical to z.infer. When a schema has no transforms, input and output types are the same. This eliminates the classic problem of type definitions drifting from validation logic. Agents use this pattern constantly: define the Zod schema, infer the type, and use both throughout the codebase. See [[zod/schemas]] for defining shapes and [[zod/transform]] for when input/output types diverge.",
+  "parent": "zod",
+  "tags": ["zod", "inference", "z-infer", "types", "typescript", "input", "output", "type-extraction"],
+  "aliases": [
+    "zod infer",
+    "z.infer",
+    "z.input",
+    "z.output",
+    "zod type inference",
+    "infer type from zod",
+    "zod typescript types",
+    "extract types from zod",
+    "zod type extraction",
+    "type from schema"
+  ],
+  "triggers": [
+    "infer type from zod schema",
+    "extract typescript type from zod",
+    "z.infer usage",
+    "zod input vs output types",
+    "single source of truth for types",
+    "derive type from schema",
+    "zod type inference example"
+  ],
+  "body": "# Type Inference in Zod\n\nZod's type inference lets you define a schema once and derive the TypeScript type from it — no duplication, no drift.\n\n## z.infer<typeof schema>\n\n```typescript\nimport { z } from \"zod\";\n\nconst UserSchema = z.object({\n  id: z.string().uuid(),\n  name: z.string().min(1),\n  email: z.string().email(),\n  age: z.number().int().positive().optional(),\n  role: z.enum([\"admin\", \"user\", \"guest\"]),\n  tags: z.array(z.string()).default([]),\n});\n\n// Extract the type\ntype User = z.infer<typeof UserSchema>;\n// {\n//   id: string;\n//   name: string;\n//   email: string;\n//   age?: number | undefined;\n//   role: \"admin\" | \"user\" | \"guest\";\n//   tags: string[];\n// }\n\n// Use the type everywhere\nfunction processUser(user: User) { /* ... */ }\nconst users: User[] = [];\n```\n\n## z.input vs z.output\n\nWhen a schema has transforms, `.default()`, or `.catch()`, the input and output types differ:\n\n```typescript\nconst FormSchema = z.object({\n  name: z.string().min(1),\n  age: z.string().transform((s) => parseInt(s, 10)),\n  newsletter: z.boolean().default(false),\n  createdAt: z.date().default(() => new Date()),\n});\n\n// Input type — what you pass to .parse()\ntype FormInput = z.input<typeof FormSchema>;\n// {\n//   name: string;\n//   age: string;                    ← before transform\n//   newsletter?: boolean | undefined;  ← before default\n//   createdAt?: Date | undefined;      ← before default\n// }\n\n// Output type — what .parse() returns\ntype FormOutput = z.output<typeof FormSchema>;\n// {\n//   name: string;\n//   age: number;      ← after transform\n//   newsletter: boolean; ← after default\n//   createdAt: Date;     ← after default\n// }\n\n// z.infer is always the OUTPUT type\ntype FormData = z.infer<typeof FormSchema>; // same as FormOutput\n```\n\n## Pattern: Schema-First Design\n\n```typescript\n// 1. Define the schema (single source of truth)\nconst CreateUserSchema = z.object({\n  name: z.string().min(1).max(100),\n  email: z.string().email(),\n  password: z.string().min(8),\n});\n\n// 2. Infer the type\ntype CreateUserInput = z.infer<typeof CreateUserSchema>;\n\n// 3. Use everywhere: API handlers, service functions, tests\nasync function createUser(input: CreateUserInput) {\n  // input is fully typed — { name: string; email: string; password: string }\n}\n\n// 4. Validate at the boundary\napp.post(\"/users\", (req, res) => {\n  const result = CreateUserSchema.safeParse(req.body);\n  if (!result.success) return res.status(400).json(result.error.flatten());\n  createUser(result.data); // result.data is CreateUserInput\n});\n```\n\n## Recursive Type Inference\n\n```typescript\n// For recursive schemas, you must annotate the type explicitly\ninterface Category {\n  name: string;\n  subcategories: Category[];\n}\n\nconst CategorySchema: z.ZodType<Category> = z.object({\n  name: z.string(),\n  subcategories: z.lazy(() => CategorySchema.array()),\n});\n\n// z.infer<typeof CategorySchema> won't work for recursive types\n// Use the explicit interface instead\ntype Category = z.infer<typeof CategorySchema>; // ✗ circular\n// Use: type Category = Category; (the interface above)\n```\n\n## Inference with Generics\n\n```typescript\n// Accept any Zod schema as a generic parameter\nfunction validate<T extends z.ZodTypeAny>(schema: T, data: unknown): z.infer<T> {\n  return schema.parse(data);\n}\n\n// The return type is inferred from the schema\nconst user = validate(UserSchema, rawData); // type: User\nconst num = validate(z.number(), rawInput); // type: number\n\n// Constrain generic to specific shapes\nfunction validateObject<T extends z.ZodObject<z.ZodRawShape>>(\n  schema: T,\n  data: unknown\n): z.infer<T> {\n  return schema.parse(data);\n}\n```\n\n## Utility Types\n\n```typescript\n// z.ZodTypeAny — the base type for all Zod schemas\ntype AnySchema = z.ZodTypeAny;\n\n// z.ZodType<Output, Def, Input> — parameterized schema type\ntype StringSchema = z.ZodType<string>;\n\n// z.ZodObject<Shape> — object schema with known shape\ntype UserObjectSchema = z.ZodObject<typeof UserSchema.shape>;\n\n// z.ZodRawShape — the shape parameter type\ntype Shape = z.ZodRawShape; // { [k: string]: z.ZodTypeAny }\n```\n",
+  "sections": [
+    {
+      "id": "z-infer",
+      "title": "z.infer — extracting the output type",
+      "body": "`z.infer<typeof schema>` extracts the TypeScript output type from any Zod schema. This is the type of the value returned by `.parse()`. For schemas without transforms, input and output types are identical. Always use `typeof` with the schema variable: `z.infer<typeof MySchema>`, not `z.infer<MySchema>`. The convention is to define both the schema and the type with the same name: `const User = z.object({...})` and `type User = z.infer<typeof User>`.",
+      "tags": ["z-infer", "output-type", "typeof", "convention"]
+    },
+    {
+      "id": "input-output",
+      "title": "z.input and z.output — before and after transforms",
+      "body": "`z.input<typeof schema>` gives the type BEFORE transforms, defaults, and catches are applied — this is what you pass to `.parse()`. `z.output<typeof schema>` gives the type AFTER — identical to `z.infer`. When a schema has `.transform()`, `.default()`, or `.catch()`, input and output differ: a string field with `.transform(Number)` has input `string` and output `number`. Fields with `.default()` are optional in the input type but required in the output type. Use `z.input` when typing form state or raw API payloads, and `z.output`/`z.infer` for the processed result.",
+      "tags": ["z-input", "z-output", "before-transform", "after-transform", "default"]
+    },
+    {
+      "id": "generics",
+      "title": "Inference with generics and utility types",
+      "body": "Pass Zod schemas as generic parameters: `function validate<T extends z.ZodTypeAny>(schema: T, data: unknown): z.infer<T>`. The return type automatically infers from the schema argument. Key utility types: `z.ZodTypeAny` (base for all schemas), `z.ZodType<Output, Def, Input>` (parameterized), `z.ZodObject<Shape>` (object schemas), `z.ZodRawShape` (`{ [k: string]: z.ZodTypeAny }`). For recursive schemas, annotate explicitly with `z.ZodType<YourInterface>` since TypeScript cannot infer circular types.",
+      "tags": ["generics", "ZodTypeAny", "ZodType", "ZodObject", "ZodRawShape", "utility-types"]
+    },
+    {
+      "id": "schema-first",
+      "title": "Schema-first design pattern",
+      "body": "The recommended Zod workflow: (1) define the schema as the single source of truth, (2) infer the type with `z.infer`, (3) use both schema and type throughout the codebase, (4) validate at system boundaries (API handlers, form submissions, env parsing). This eliminates type duplication — change the schema and the type updates automatically. The schema validates at runtime, the type validates at compile time, and they never drift apart.",
+      "tags": ["schema-first", "single-source-of-truth", "pattern", "workflow", "boundary-validation"]
+    }
+  ],
+  "links": [
+    { "uri": "zod/schemas", "context": "Define schemas that types are inferred from" },
+    { "uri": "zod/transform", "context": "Transforms cause input and output types to diverge" },
+    { "uri": "zod/validation", "context": "Validation shapes what the inferred type looks like" },
+    { "uri": "zod/patterns", "context": "Schema-first design and other inference patterns" },
+    { "uri": "zod", "context": "Zod ecosystem overview" },
+    { "uri": "typescript/types", "context": "TypeScript type system fundamentals" },
+    { "uri": "typescript/generics", "context": "Generics used in Zod inference utilities" }
+  ],
+  "related": [
+    { "uri": "zod/schemas", "relation": "prerequisite", "note": "A schema must exist before types can be inferred" },
+    { "uri": "zod/transform", "relation": "see-also", "note": "Transforms make z.input and z.output diverge" },
+    { "uri": "typescript/types", "relation": "prerequisite", "note": "TypeScript type knowledge is essential for understanding inference" },
+    { "uri": "typescript/generics", "relation": "see-also", "note": "Generic patterns are key to writing reusable Zod utilities" }
+  ],
+  "more": {
+    "docs": "https://zod.dev",
+    "repo": "https://github.com/colinhacks/zod"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "TypeScript developers, AI agents",
+    "estimated_reading_time": "5 min",
+    "prerequisites": ["zod/schemas", "typescript/types"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

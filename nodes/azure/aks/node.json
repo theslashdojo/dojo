@@ -1,0 +1,296 @@
+{
+  "name": "aks",
+  "uri": "azure/aks",
+  "type": "skill",
+  "context": "Create AKS clusters, fetch kubeconfig, and manage node pools with Azure CLI before handing off to Kubernetes tools",
+  "info": "Azure Kubernetes Service is Azure's managed Kubernetes control plane. Agents use this skill to create a cluster, fetch credentials into kubeconfig, inspect cluster state, and add node pools for workload isolation or capacity changes. The core execution surface is `az aks` and `az aks nodepool`, after which control typically hands off to [[kubernetes/kubectl]], [[kubernetes/deployments]], or [[kubernetes/helm]].",
+  "parent": "azure",
+  "tags": [
+    "azure",
+    "aks",
+    "kubernetes",
+    "cluster",
+    "nodepool",
+    "kubeconfig",
+    "az-aks"
+  ],
+  "aliases": [
+    "azure kubernetes service",
+    "aks",
+    "az aks",
+    "create aks cluster",
+    "get aks credentials",
+    "manage aks node pool",
+    "azure managed kubernetes",
+    "bootstrap kubeconfig from azure"
+  ],
+  "triggers": [
+    "create an aks cluster",
+    "get credentials for aks",
+    "add a node pool to aks",
+    "show an aks cluster",
+    "connect kubectl to azure kubernetes service",
+    "provision kubernetes on azure",
+    "scale or isolate workloads with aks node pools",
+    "bootstrap managed kubernetes in azure"
+  ],
+  "body": "# Azure Kubernetes Service\n\nAKS is the Azure-managed control plane for Kubernetes. The Azure part of the job is cluster provisioning, identity, networking defaults, and kubeconfig retrieval. The Kubernetes part of the job starts after credentials land on disk.\n\n~~~bash\n# Create a cluster\naz aks create \\\n  --resource-group rg-dojo-aks \\\n  --name dojo-aks-prod \\\n  --location eastus \\\n  --node-count 3 \\\n  --node-vm-size Standard_D4s_v5 \\\n  --generate-ssh-keys\n\n# Merge credentials into kubeconfig\naz aks get-credentials --resource-group rg-dojo-aks --name dojo-aks-prod\nkubectl get nodes\n\n# Add a specialized node pool\naz aks nodepool add \\\n  --resource-group rg-dojo-aks \\\n  --cluster-name dojo-aks-prod \\\n  --name gpu \\\n  --node-count 1 \\\n  --node-vm-size Standard_NC4as_T4_v3\n~~~\n\nDo not treat the Azure-managed node resource group like a normal hand-edited group. Microsoft's AKS troubleshooting guidance explicitly shows autoscaler failures caused by modified or missing node resource group tags. Let AKS manage that infrastructure boundary unless you have a documented product-specific reason not to.\n\nAfter `az aks get-credentials`, switch immediately to [[kubernetes/kubectl]] and the generic Kubernetes nodes in this graph.\n",
+  "sections": [
+    {
+      "id": "cluster-create",
+      "title": "Create the cluster",
+      "body": "`az aks create` is the provisioning step. Supply the resource group, cluster name, region, node count, and node VM size at minimum. Add extra flags such as `--attach-acr`, `--kubernetes-version`, or `--enable-azure-monitor-metrics` only when the deployment plan requires them.",
+      "tags": [
+        "create",
+        "cluster",
+        "node-count",
+        "vm-size"
+      ]
+    },
+    {
+      "id": "credentials",
+      "title": "Fetch credentials for kubectl",
+      "body": "`az aks get-credentials --resource-group ... --name ...` merges the cluster credentials into kubeconfig so `kubectl` can operate on the cluster. Use `--overwrite-existing` when the local kubeconfig entry may already exist and should be refreshed deterministically.",
+      "tags": [
+        "get-credentials",
+        "kubectl",
+        "kubeconfig"
+      ]
+    },
+    {
+      "id": "node-pools",
+      "title": "Node pools",
+      "body": "`az aks nodepool add` creates an additional node pool for workload isolation, cost segmentation, or special hardware. After creation, use the generic Kubernetes nodes to apply labels, taints, Helm releases, or workload manifests against the cluster.",
+      "tags": [
+        "nodepool",
+        "scale",
+        "isolation",
+        "hardware"
+      ]
+    },
+    {
+      "id": "managed-node-rg",
+      "title": "Managed node resource group caution",
+      "body": "AKS owns a separate node resource group for infrastructure such as scale sets and load balancer artifacts. Microsoft's troubleshooting docs show that modifying or deleting Azure-managed tags in that group can break autoscaling behavior. Treat that group as AKS-owned state rather than a free-form customization target.",
+      "tags": [
+        "managed-resource-group",
+        "autoscaler",
+        "tags",
+        "warning"
+      ]
+    }
+  ],
+  "links": [
+    {
+      "uri": "azure/auth",
+      "context": "Authenticate and select the intended subscription before cluster creation"
+    },
+    {
+      "uri": "azure/resource-groups",
+      "context": "Create or verify the cluster resource group first"
+    },
+    {
+      "uri": "azure/monitor",
+      "context": "Inspect cluster and control-plane signals after creation or change"
+    },
+    {
+      "uri": "kubernetes/kubectl",
+      "context": "Operate workloads after AKS credentials are available locally"
+    },
+    {
+      "uri": "kubernetes/deployments",
+      "context": "Roll application workloads into the cluster"
+    },
+    {
+      "uri": "kubernetes/helm",
+      "context": "Install packaged workloads once the cluster exists"
+    }
+  ],
+  "related": [
+    {
+      "uri": "kubernetes/kubectl",
+      "relation": "implements",
+      "note": "AKS is the Azure-managed way to obtain a Kubernetes cluster for generic kubectl workflows"
+    },
+    {
+      "uri": "kubernetes/helm",
+      "relation": "see-also",
+      "note": "Helm is a common next step after the cluster is provisioned"
+    },
+    {
+      "uri": "docker/images",
+      "relation": "see-also",
+      "note": "AKS workloads normally depend on container images built elsewhere in the graph"
+    }
+  ],
+  "scripts": [
+    {
+      "id": "manage-aks",
+      "name": "Manage AKS",
+      "description": "Create an AKS cluster, fetch credentials, inspect it, or add node pools",
+      "lang": "bash",
+      "runtime": "bash>=4.0, azure-cli>=2.0",
+      "entry": "./scripts/manage-aks.sh",
+      "env": {
+        "AZURE_AKS_ACTION": {
+          "required": true,
+          "description": "One of cluster-create, get-credentials, nodepool-add, or show"
+        },
+        "AZURE_RESOURCE_GROUP": {
+          "required": false,
+          "description": "Cluster resource group"
+        },
+        "AZURE_LOCATION": {
+          "required": false,
+          "description": "Azure region for cluster creation"
+        },
+        "AZURE_AKS_CLUSTER_NAME": {
+          "required": false,
+          "description": "AKS cluster name"
+        },
+        "AZURE_AKS_NODE_COUNT": {
+          "required": false,
+          "default": "3",
+          "description": "Initial node count for cluster create or node pool add"
+        },
+        "AZURE_AKS_NODE_VM_SIZE": {
+          "required": false,
+          "default": "Standard_D4s_v5",
+          "description": "VM size for node pool creation"
+        },
+        "AZURE_AKS_KUBERNETES_VERSION": {
+          "required": false,
+          "description": "Optional explicit Kubernetes version"
+        },
+        "AZURE_AKS_ATTACH_ACR": {
+          "required": false,
+          "description": "Optional ACR name or resource ID to attach during cluster create"
+        },
+        "AZURE_AKS_NODEPOOL_NAME": {
+          "required": false,
+          "description": "Additional node pool name for nodepool-add"
+        },
+        "AZURE_AKS_OVERWRITE_EXISTING": {
+          "required": false,
+          "default": "false",
+          "description": "Set true to pass --overwrite-existing to get-credentials"
+        },
+        "AZURE_SUBSCRIPTION_ID": {
+          "required": false,
+          "description": "Subscription ID or name to activate before the command"
+        }
+      }
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "action": {
+          "type": "string",
+          "enum": [
+            "cluster-create",
+            "get-credentials",
+            "nodepool-add",
+            "show"
+          ]
+        },
+        "resourceGroup": {
+          "type": "string",
+          "description": "Cluster resource group"
+        },
+        "location": {
+          "type": "string",
+          "description": "Azure region for create"
+        },
+        "clusterName": {
+          "type": "string",
+          "description": "AKS cluster name"
+        },
+        "nodeCount": {
+          "type": "integer",
+          "description": "Node count for the default pool or a new node pool"
+        },
+        "nodeVmSize": {
+          "type": "string",
+          "description": "Node VM size"
+        },
+        "kubernetesVersion": {
+          "type": "string",
+          "description": "Explicit Kubernetes version"
+        },
+        "nodePoolName": {
+          "type": "string",
+          "description": "Additional node pool name"
+        }
+      },
+      "required": [
+        "action"
+      ]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "ARM resource ID for the cluster"
+        },
+        "fqdn": {
+          "type": "string",
+          "description": "API server FQDN when available"
+        },
+        "kubernetesVersion": {
+          "type": "string",
+          "description": "Cluster Kubernetes version"
+        },
+        "provisioningState": {
+          "type": "string",
+          "description": "Current ARM provisioning state"
+        }
+      }
+    }
+  },
+  "depends": [
+    {
+      "uri": "azure/auth",
+      "reason": "Cluster lifecycle operations require an authenticated Azure principal"
+    },
+    {
+      "uri": "azure/resource-groups",
+      "reason": "AKS clusters are created inside a resource group"
+    },
+    {
+      "uri": "kubernetes/kubectl",
+      "reason": "After get-credentials, cluster operations move to kubectl",
+      "optional": true
+    },
+    {
+      "uri": "shell/bash",
+      "reason": "The executable wrapper is implemented in Bash"
+    }
+  ],
+  "more": {
+    "aks": "https://learn.microsoft.com/en-us/cli/azure/aks?view=azure-cli-latest",
+    "tutorial": "https://learn.microsoft.com/en-us/azure/aks/tutorial-kubernetes-deploy-cluster"
+  },
+  "frontmatter": {
+    "created": "2026-04-12",
+    "updated": "2026-04-12",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "7 min",
+    "prerequisites": [
+      "azure/auth",
+      "azure/resource-groups"
+    ],
+    "status": "living",
+    "confidence": "high"
+  },
+  "repository": "https://github.com/Azure/azure-cli",
+  "version": "1.0.0",
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-12T00:00:00Z",
+  "updated": "2026-04-12T00:00:00Z",
+  "status": "published"
+}

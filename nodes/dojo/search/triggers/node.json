@@ -1,0 +1,78 @@
+{
+  "name": "triggers",
+  "version": "1.0.0",
+  "uri": "dojo/search/triggers",
+  "type": "context",
+  "content_type": "explainer",
+  "context": "Match natural-language phrases to Dojo nodes for intent-based routing",
+  "info": "Trigger matching routes natural-language requests to the most relevant Dojo node. When an agent receives a task like 'deploy my app to vercel' or 'create a github issue', trigger matching compares the input against every node's `triggers[]` array using semantic similarity scoring. Triggers carry the highest search weight (1.0) because they represent direct intent matches — the node author has explicitly declared that this phrase means this node. Trigger matching is the primary routing mechanism for agent-to-graph intent mapping.",
+  "parent": "dojo/search",
+  "tags": ["triggers", "intent", "routing", "natural-language", "matching", "nlp"],
+  "aliases": [
+    "trigger matching",
+    "dojo triggers",
+    "intent routing",
+    "phrase matching",
+    "natural language routing",
+    "trigger phrases"
+  ],
+  "triggers": [
+    "how do triggers work in dojo",
+    "add triggers to a node",
+    "how does intent matching work",
+    "route a task to a dojo node",
+    "write good trigger phrases"
+  ],
+  "body": "# Trigger Matching\n\nTriggers are the highest-signal discovery mechanism in Dojo. They represent direct intent declarations: the node author says 'when someone says this phrase, they mean this node.'\n\n## How It Works\n\n1. Agent receives a task: `create a github issue for the login bug`\n2. Trigger engine tokenizes and normalizes the input\n3. Each node's `triggers[]` array is scored against the input\n4. Scoring uses token overlap + order weighting + coverage ratio\n5. Top-scoring node is returned as the primary match\n\n## Defining Triggers\n\nTriggers go in the `triggers[]` field of `node.json`:\n\n```json\n{\n  \"name\": \"issues\",\n  \"uri\": \"github/issues\",\n  \"triggers\": [\n    \"create a github issue\",\n    \"file a bug report\",\n    \"search github issues\",\n    \"label an issue\",\n    \"triage issues\",\n    \"manage milestones\"\n  ]\n}\n```\n\n### Best Practices\n\n- Write triggers as complete phrases an agent would actually receive\n- Include verb + object patterns: `create a repo`, `deploy to vercel`, `run tests`\n- Cover the main actions the node supports\n- Vary the phrasing: `create an issue`, `file a bug`, `open a ticket`\n- Don't duplicate triggers across nodes — each phrase should map to exactly one node\n- Don't use generic phrases like `help` or `do something` — they match everything\n\n## Scoring Algorithm\n\nTrigger scoring combines three signals:\n\n| Signal | Weight | Description |\n|--------|--------|-----------|\n| Token overlap | 0.5 | How many trigger tokens appear in the input |\n| Order weighting | 0.3 | Whether matching tokens appear in the same order |\n| Coverage ratio | 0.2 | What fraction of the trigger is covered by the input |\n\nA trigger scores 1.0 when every token matches in order. The minimum threshold for a trigger match is 0.6.\n\n## Trigger vs. Alias\n\n| | Triggers | Aliases |\n|---|---------|----------|\n| Purpose | Route tasks to nodes | Resolve names to URIs |\n| Format | Complete phrases | Single terms or short names |\n| Weight | 1.0 (highest) | 0.9 |\n| Example | `deploy to vercel` | `vercel deploy` |\n| Use case | Agent receives a task | Agent knows a name variant |\n\n## Environment Variables\n\n| Variable | Purpose |\n|----------|----------|\n| `DOJO_URL` | Base URL of the Dojo registry |\n",
+  "sections": [
+    {
+      "id": "defining-triggers",
+      "title": "Defining triggers",
+      "body": "Triggers are declared in the `triggers[]` array of `node.json`. Each trigger is a complete natural-language phrase that an agent would receive as a task. Use verb-object patterns like `create a repo`, `deploy to vercel`, `run tests`. Vary phrasing to cover different ways agents express the same intent. Avoid generic phrases that match too broadly.",
+      "tags": ["authoring", "triggers", "best-practices", "phrasing"]
+    },
+    {
+      "id": "scoring-algorithm",
+      "title": "Scoring algorithm",
+      "body": "Trigger scoring combines token overlap (0.5 weight), order weighting (0.3), and coverage ratio (0.2). A perfect match scores 1.0 — all tokens match in order with full coverage. The minimum threshold for a trigger match is 0.6. Below that threshold, the search falls back to alias resolution and text search. Ties are broken by node depth (shallower wins).",
+      "tags": ["algorithm", "scoring", "tokens", "overlap", "threshold"]
+    },
+    {
+      "id": "triggers-vs-aliases",
+      "title": "Triggers vs aliases",
+      "body": "Triggers and aliases serve different purposes. Triggers route complete task phrases to nodes — they answer 'what should I do with this request?' Aliases resolve name variants to URIs — they answer 'what is this thing called?' Triggers use phrase-level matching; aliases use term-level matching. Both are indexed at search time but triggers carry the highest weight (1.0 vs 0.9). See [[dojo/search/aliases]] for alias resolution details.",
+      "tags": ["comparison", "triggers", "aliases", "when-to-use"]
+    }
+  ],
+  "links": [
+    { "uri": "dojo/search", "context": "Parent search skill covering all discovery paths" },
+    { "uri": "dojo/search/aliases", "context": "Alias resolution for name variants" },
+    { "uri": "dojo/knowledge", "context": "Triggers are part of the knowledge layer" },
+    { "uri": "dojo/contributing", "context": "Guidelines for writing effective triggers" },
+    { "uri": "dojo/api#discovery-routes", "context": "HTTP endpoints that serve trigger matching" }
+  ],
+  "related": [
+    { "uri": "dojo/search", "relation": "prerequisite", "note": "Trigger matching is a sub-mechanism of the broader search skill" },
+    { "uri": "dojo/search/aliases", "relation": "see-also", "note": "Aliases handle name resolution; triggers handle intent routing" },
+    { "uri": "dojo/knowledge", "relation": "implements", "note": "Triggers implement the intent-routing aspect of the knowledge layer" }
+  ],
+  "more": {
+    "docs": "https://github.com/theslashdojo/dojo/blob/main/SPEC.md",
+    "repo": "https://github.com/theslashdojo/dojo"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "node authors, agent developers",
+    "estimated_reading_time": "3 min",
+    "prerequisites": ["dojo/search"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

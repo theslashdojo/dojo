@@ -1,0 +1,161 @@
+{
+  "name": "ansible",
+  "version": "1.0.0",
+  "uri": "ansible",
+  "type": "ecosystem",
+  "context": "Ansible ecosystem for agentless infrastructure automation with inventory, playbooks, vault, and collections",
+  "info": "Ansible is an agentless automation system built around a control node, declarative modules, and YAML playbooks that execute over SSH, local connections, or platform-specific transports. For autonomous agents, it is the shortest path from intent to repeatable operations across fleets of Linux hosts, network devices, and hybrid infrastructure: inspect inventory, run one-off commands, execute playbooks idempotently, manage encrypted secrets with Vault, and install reusable collections with ansible-galaxy. This ecosystem covers the operational surfaces that matter in practice: inventory targeting, ad-hoc execution, playbook orchestration, configuration precedence, secret handling, collection lifecycle, and troubleshooting.",
+  "parent": null,
+  "tags": [
+    "ansible",
+    "ansible-core",
+    "automation",
+    "playbooks",
+    "inventory",
+    "vault",
+    "collections",
+    "ssh",
+    "orchestration",
+    "configuration-management"
+  ],
+  "aliases": [
+    "ansible",
+    "ansible-core",
+    "ansible automation",
+    "ansible playbooks",
+    "configuration management",
+    "server orchestration",
+    "agentless automation",
+    "yaml automation"
+  ],
+  "triggers": [
+    "automate servers with ansible",
+    "run ansible against a fleet",
+    "write an ansible playbook",
+    "inspect ansible inventory",
+    "encrypt secrets with ansible vault",
+    "install ansible collections",
+    "run a one-off ansible command",
+    "debug an ansible run"
+  ],
+  "body": "# Ansible Ecosystem\n\nAnsible turns infrastructure operations into versioned, repeatable text. A control node reads inventory, resolves variables, loads modules from collections, then connects to managed nodes and pushes work without requiring a resident agent. For autonomous agents this matters because the execution surface is simple and explicit: inventory decides *where*, modules decide *what*, playbooks decide *in what order*, and Vault protects *which secrets* are allowed into the run.\n\n## Quick Start\n\n```bash\npython -m pip install --user ansible\nmkdir -p ansible-project && cd ansible-project\nprintf 'localhost ansible_connection=local\\n' > inventory.ini\nansible localhost -i inventory.ini -m ansible.builtin.ping\n```\n\nIf that works, move from a single host to grouped inventory in [[ansible/inventory]], one-off execution in [[ansible/ad-hoc]], and reusable orchestration in [[ansible/playbooks]].\n\n## Mental Model\n\n- Inventory defines hosts, groups, connection variables, and environment boundaries.\n- Ad-hoc commands are fast one-liners for rare or investigative tasks.\n- Playbooks are reusable YAML runs with ordering, handlers, tags, conditionals, and roles.\n- Vault encrypts vars files and inline secrets that playbooks consume at runtime.\n- Collections package modules, plugins, playbooks, and roles for distribution.\n- Configuration and precedence rules determine which setting wins when inventory, CLI flags, env vars, and playbooks all disagree.\n\n## Control Node Workflow\n\n```bash\nansible-inventory -i inventory --graph\nansible web -i inventory -m ansible.builtin.ping -o\nansible-playbook -i inventory site.yml --syntax-check\nansible-playbook -i inventory site.yml -C -D\nansible-playbook -i inventory site.yml --vault-id prod@prompt\n```\n\n## Why Agents Need It\n\nAnsible is especially strong when an agent must operate across multiple servers safely: package installs, service changes, file deployment, permission fixes, configuration drift correction, audit queries, or staged rollouts. It complements [[ssh]] by adding targeting, idempotent modules, concurrency control, and reusable project structure. It complements [[terraform]] by configuring the systems Terraform provisions.\n",
+  "sections": [
+    {
+      "id": "quick-start",
+      "title": "Quick start on a control node",
+      "body": "Install the community package with `python -m pip install --user ansible`, create an inventory, and verify the toolchain with `ansible localhost -i inventory.ini -m ansible.builtin.ping`. This confirms Python, module loading, and the local connection are working before you add SSH-managed hosts. After that, load [[ansible/inventory]] and [[ansible/ad-hoc]].",
+      "tags": ["install", "control-node", "ping", "bootstrap"]
+    },
+    {
+      "id": "core-concepts",
+      "title": "Inventory, modules, playbooks, and vault",
+      "body": "Inventory decides target hosts and variables. Modules express state transitions such as package install or service restart. Playbooks combine modules into ordered, reusable workflows. Vault encrypts the variables or files those workflows need. Collections package modules and plugins into namespaced distributions. These concepts map directly to [[ansible/inventory]], [[ansible/ad-hoc]], [[ansible/playbooks]], [[ansible/vault]], and [[ansible/collections]].",
+      "tags": ["inventory", "modules", "playbooks", "vault", "collections"]
+    },
+    {
+      "id": "transport-model",
+      "title": "Agentless transport model",
+      "body": "Most Ansible runs execute over SSH from a control node. No long-running agent is required on the target host; Ansible transfers a small module payload, executes it, and removes it. This keeps operations close to normal shell access and makes [[ssh/connect]] and [[ssh/config]] directly relevant for real deployments.",
+      "tags": ["agentless", "ssh", "transport", "control-node"]
+    },
+    {
+      "id": "common-jobs",
+      "title": "Common jobs for autonomous agents",
+      "body": "Recurring jobs include validating an inventory before a change, running a one-off package or service fix, executing a tagged playbook against a limited host subset, decrypting a vars file only for the duration of a run, and installing the right collections before execution. The tree is organized around those jobs rather than around documentation chapters.",
+      "tags": ["jobs", "operations", "automation", "execution"]
+    }
+  ],
+  "links": [
+    {
+      "uri": "ansible/inventory",
+      "context": "Define, inspect, and target hosts and groups before any run"
+    },
+    {
+      "uri": "ansible/ad-hoc",
+      "context": "Use the ansible CLI for one-off module execution"
+    },
+    {
+      "uri": "ansible/playbooks",
+      "context": "Run reusable YAML automation with ansible-playbook"
+    },
+    {
+      "uri": "ansible/vault",
+      "context": "Encrypt vars files and inline secrets with ansible-vault"
+    },
+    {
+      "uri": "ansible/collections",
+      "context": "Install, verify, and scaffold collections with ansible-galaxy"
+    },
+    {
+      "uri": "ansible/config",
+      "context": "Understand ansible.cfg search order and precedence rules"
+    },
+    {
+      "uri": "ansible/troubleshooting",
+      "context": "Debug connectivity, privilege, module, and templating failures"
+    },
+    {
+      "uri": "ansible/inventory#patterns",
+      "context": "See how inventory patterns and limits control blast radius"
+    },
+    {
+      "uri": "ansible/playbooks#execution-flags",
+      "context": "Use syntax-check, list-tasks, check mode, and diff before execution"
+    },
+    {
+      "uri": "ansible/troubleshooting#triage-order",
+      "context": "Follow a fixed debug order when runs fail unexpectedly"
+    },
+    {
+      "uri": "ssh",
+      "context": "SSH is the primary transport for Ansible-managed Linux hosts"
+    },
+    {
+      "uri": "python/pip",
+      "context": "Install the Ansible package and its Python dependencies"
+    },
+    {
+      "uri": "terraform",
+      "context": "Terraform provisions infrastructure that Ansible can configure"
+    }
+  ],
+  "related": [
+    {
+      "uri": "ssh",
+      "relation": "prerequisite",
+      "note": "SSH access and trust setup are foundational for most Ansible runs"
+    },
+    {
+      "uri": "python/pip",
+      "relation": "prerequisite",
+      "note": "Many control nodes install Ansible with pip or pipx"
+    },
+    {
+      "uri": "terraform",
+      "relation": "see-also",
+      "note": "Terraform and Ansible are often paired for provisioning plus configuration"
+    }
+  ],
+  "more": {
+    "docs": "https://docs.ansible.com/projects/ansible/latest/getting_started/get_started_ansible.html",
+    "command-guide": "https://docs.ansible.com/projects/ansible/latest/command_guide/index.html",
+    "repo": "https://github.com/ansible/ansible",
+    "playbook-guide": "https://docs.ansible.com/projects/ansible/latest/playbook_guide/index.html"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, DevOps engineers, SREs, AI agents",
+    "estimated_reading_time": "6 min",
+    "prerequisites": [],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://github.com/ansible/ansible",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

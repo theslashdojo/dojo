@@ -1,0 +1,226 @@
+{
+  "name": "vitest",
+  "version": "1.0.0",
+  "uri": "testing/vitest",
+  "type": "skill",
+  "context": "Write and run tests with Vitest, the Vite-native test framework — blazing fast, native ESM/TypeScript, Jest-compatible API, coverage, UI, and browser mode",
+  "info": "Vitest is the Vite-native unit test framework designed for speed and modern JavaScript/TypeScript projects. It leverages Vite's transform pipeline for native ESM, TypeScript, and JSX support without configuration. Vitest provides a Jest-compatible API (describe, it, expect, vi.fn, vi.mock) so migration from Jest is straightforward. Key capabilities include watch mode with HMR-based re-runs, in-source testing, workspace support for monorepos, browser mode via @vitest/browser, V8 and Istanbul coverage providers, a browser-based UI dashboard via @vitest/ui, snapshot and inline snapshot testing, and compile-time type assertions with expectTypeOf. Vitest 3.x (released December 2024) is the latest major version. Configuration lives in vitest.config.ts or inside the test block of vite.config.ts. See [[testing/jest]] for the Jest equivalent, [[testing/mocking]] for cross-framework mocking strategies, [[testing/patterns]] for structural test patterns, and [[testing/ci]] for running Vitest in CI pipelines.",
+  "parent": "testing",
+  "tags": ["vitest", "vite", "testing", "unit-tests", "esm", "typescript", "coverage", "mocking", "snapshot", "watch", "browser-testing", "monorepo", "type-testing"],
+  "aliases": [
+    "vitest",
+    "vite test",
+    "vite testing",
+    "vitest tests",
+    "npx vitest",
+    "vitest runner",
+    "vitest framework",
+    "vitest coverage",
+    "vitest mock",
+    "vitest ui",
+    "vitest watch",
+    "vitest workspace"
+  ],
+  "triggers": [
+    "run vitest",
+    "write vitest tests",
+    "set up vitest",
+    "configure vitest",
+    "add vitest to project",
+    "migrate from jest to vitest",
+    "vitest coverage setup",
+    "vitest mocking",
+    "mock with vi",
+    "vitest watch mode",
+    "vitest browser mode",
+    "vitest workspace monorepo",
+    "vitest type testing",
+    "run tests with vitest",
+    "vitest snapshot testing",
+    "vitest inline snapshot",
+    "vitest is failing"
+  ],
+  "body": "# Vitest — Vite-Native Test Framework\n\nVitest is the test framework built on top of Vite. It uses Vite's transform pipeline, giving you native ESM, TypeScript, and JSX support without any extra configuration. The API mirrors Jest, so switching is low-friction.\n\n## Quick Start\n\n```bash\n# Install vitest\nnpm install -D vitest\n\n# Run tests (watch mode by default in dev)\nnpx vitest\n\n# Run once and exit (CI mode)\nnpx vitest run\n\n# Run with coverage\nnpx vitest run --coverage\n\n# Run with browser UI dashboard\nnpx vitest --ui\n\n# Run benchmarks\nnpx vitest bench\n```\n\nCreate your first test:\n\n```typescript\n// src/math.ts\nexport function sum(a: number, b: number): number {\n  return a + b;\n}\n\n// src/math.test.ts\nimport { describe, it, expect } from 'vitest';\nimport { sum } from './math';\n\ndescribe('sum', () => {\n  it('adds two numbers', () => {\n    expect(sum(1, 2)).toBe(3);\n  });\n\n  it('handles negative numbers', () => {\n    expect(sum(-1, 1)).toBe(0);\n  });\n});\n```\n\n## Configuration\n\nVitest reads config from `vitest.config.ts` (preferred) or the `test` block in `vite.config.ts`.\n\n### Standalone vitest.config.ts\n\n```typescript\nimport { defineConfig } from 'vitest/config';\n\nexport default defineConfig({\n  test: {\n    // Test file patterns\n    include: ['src/**/*.{test,spec}.{ts,tsx,js,jsx}'],\n    exclude: ['node_modules', 'dist', 'e2e'],\n\n    // Environment: 'node' (default), 'jsdom', 'happy-dom'\n    environment: 'node',\n\n    // Global test APIs (no imports needed)\n    globals: true,\n\n    // Setup files run before each test file\n    setupFiles: ['./src/test/setup.ts'],\n\n    // Coverage configuration\n    coverage: {\n      provider: 'v8',\n      reporter: ['text', 'html', 'lcov'],\n      include: ['src/**/*.ts'],\n      exclude: ['src/**/*.test.ts', 'src/**/*.d.ts'],\n      thresholds: {\n        lines: 80,\n        branches: 80,\n        functions: 80,\n        statements: 80,\n      },\n    },\n\n    // Timeouts\n    testTimeout: 10000,\n    hookTimeout: 10000,\n\n    // Reporter\n    reporters: ['default'],\n\n    // Pool: 'threads' (default), 'forks', 'vmThreads'\n    pool: 'threads',\n\n    // Retry flaky tests\n    retry: 0,\n\n    // Type checking tests\n    typecheck: {\n      enabled: false,\n      tsconfig: './tsconfig.json',\n    },\n  },\n});\n```\n\n### Inside vite.config.ts\n\n```typescript\nimport { defineConfig } from 'vite';\nimport react from '@vitejs/plugin-react';\n\nexport default defineConfig({\n  plugins: [react()],\n  test: {\n    environment: 'jsdom',\n    globals: true,\n    setupFiles: './src/test/setup.ts',\n  },\n});\n```\n\n### Environment Options\n\n| Environment | Package | Use Case |\n|-------------|---------|----------|\n| `node` | built-in | Server-side code, utilities, APIs |\n| `jsdom` | `jsdom` | DOM testing, React/Vue components |\n| `happy-dom` | `happy-dom` | Faster DOM testing (less complete than jsdom) |\n| `edge-runtime` | `@edge-runtime/vm` | Edge/Cloudflare Workers |\n\nPer-file environment override with a magic comment:\n\n```typescript\n// @vitest-environment jsdom\nimport { describe, it, expect } from 'vitest';\n\ndescribe('DOM test', () => {\n  it('creates an element', () => {\n    const el = document.createElement('div');\n    expect(el).toBeDefined();\n  });\n});\n```\n\n## Writing Tests\n\nVitest uses the same API as Jest: `describe`, `it`/`test`, `expect`, `beforeEach`, `afterEach`, `beforeAll`, `afterAll`.\n\n```typescript\nimport { describe, it, expect, beforeEach, afterEach } from 'vitest';\n\ndescribe('UserService', () => {\n  let service: UserService;\n\n  beforeEach(() => {\n    service = new UserService();\n  });\n\n  afterEach(() => {\n    service.dispose();\n  });\n\n  it('creates a user', () => {\n    const user = service.create({ name: 'Alice' });\n    expect(user).toMatchObject({ name: 'Alice' });\n    expect(user.id).toBeDefined();\n  });\n\n  it('throws on duplicate email', () => {\n    service.create({ name: 'Alice', email: 'a@b.com' });\n    expect(() => {\n      service.create({ name: 'Bob', email: 'a@b.com' });\n    }).toThrow('Email already exists');\n  });\n\n  it.each([\n    { input: 'alice', expected: 'ALICE' },\n    { input: 'bob', expected: 'BOB' },\n  ])('uppercases $input to $expected', ({ input, expected }) => {\n    expect(input.toUpperCase()).toBe(expected);\n  });\n\n  it.todo('should handle concurrent creates');\n\n  it.skip('slow test', () => {\n    // skipped\n  });\n});\n```\n\n### Async Tests\n\n```typescript\nimport { it, expect } from 'vitest';\n\nit('fetches data', async () => {\n  const data = await fetchUsers();\n  expect(data).toHaveLength(3);\n});\n\nit('rejects on error', async () => {\n  await expect(fetchBadEndpoint()).rejects.toThrow('Not Found');\n});\n```\n\n### Snapshot Testing\n\n```typescript\nimport { it, expect } from 'vitest';\n\nit('matches snapshot', () => {\n  const result = generateConfig({ mode: 'production' });\n  expect(result).toMatchSnapshot();\n});\n\nit('matches inline snapshot', () => {\n  const result = formatUser({ name: 'Alice', age: 30 });\n  expect(result).toMatchInlineSnapshot(`\"Alice (30)\"`);\n});\n```\n\nUpdate snapshots: `npx vitest run --update` or press `u` in watch mode.\n\n## Mocking with vi\n\nVitest provides the `vi` utility for mocking, spying, and stubbing.\n\n### vi.fn() — Mock Functions\n\n```typescript\nimport { it, expect, vi } from 'vitest';\n\nit('tracks calls', () => {\n  const fn = vi.fn();\n  fn('hello');\n  fn('world');\n\n  expect(fn).toHaveBeenCalledTimes(2);\n  expect(fn).toHaveBeenCalledWith('hello');\n  expect(fn).toHaveBeenLastCalledWith('world');\n});\n\nit('returns mock values', () => {\n  const fn = vi.fn()\n    .mockReturnValueOnce(1)\n    .mockReturnValueOnce(2)\n    .mockReturnValue(99);\n\n  expect(fn()).toBe(1);\n  expect(fn()).toBe(2);\n  expect(fn()).toBe(99);\n});\n\nit('mocks async functions', async () => {\n  const fn = vi.fn().mockResolvedValue({ id: 1 });\n  const result = await fn();\n  expect(result).toEqual({ id: 1 });\n});\n```\n\n### vi.mock() — Module Mocking\n\n```typescript\nimport { describe, it, expect, vi } from 'vitest';\nimport { getUser } from './api';\nimport { fetchFromDB } from './db';\n\n// Mock the entire module\nvi.mock('./db', () => ({\n  fetchFromDB: vi.fn().mockResolvedValue({ id: 1, name: 'Alice' }),\n}));\n\ndescribe('getUser', () => {\n  it('returns user from DB', async () => {\n    const user = await getUser(1);\n    expect(user.name).toBe('Alice');\n    expect(fetchFromDB).toHaveBeenCalledWith(1);\n  });\n});\n```\n\nvi.mock is hoisted to the top of the file automatically.\n\n### vi.spyOn() — Spy on Methods\n\n```typescript\nimport { it, expect, vi } from 'vitest';\n\nit('spies on method', () => {\n  const obj = { greet: (name: string) => `Hello ${name}` };\n  const spy = vi.spyOn(obj, 'greet');\n\n  obj.greet('Alice');\n\n  expect(spy).toHaveBeenCalledWith('Alice');\n  expect(spy).toHaveReturnedWith('Hello Alice');\n\n  spy.mockRestore();\n});\n```\n\n### vi.stubGlobal() — Stub Globals\n\n```typescript\nimport { it, expect, vi, afterEach } from 'vitest';\n\nafterEach(() => {\n  vi.unstubAllGlobals();\n});\n\nit('stubs fetch', async () => {\n  vi.stubGlobal('fetch', vi.fn().mockResolvedValue({\n    ok: true,\n    json: () => Promise.resolve({ data: 'test' }),\n  }));\n\n  const resp = await fetch('/api');\n  const data = await resp.json();\n  expect(data).toEqual({ data: 'test' });\n});\n```\n\n### Timers\n\n```typescript\nimport { it, expect, vi, beforeEach, afterEach } from 'vitest';\n\nbeforeEach(() => {\n  vi.useFakeTimers();\n});\n\nafterEach(() => {\n  vi.useRealTimers();\n});\n\nit('advances timers', () => {\n  const fn = vi.fn();\n  setTimeout(fn, 1000);\n\n  vi.advanceTimersByTime(1000);\n  expect(fn).toHaveBeenCalledOnce();\n});\n```\n\n## Coverage\n\nVitest supports coverage via `@vitest/coverage-v8` (default, fast, V8-based) or `@vitest/coverage-istanbul` (traditional instrumentation).\n\n```bash\n# Install V8 coverage provider\nnpm install -D @vitest/coverage-v8\n\n# Or Istanbul\nnpm install -D @vitest/coverage-istanbul\n\n# Run with coverage\nnpx vitest run --coverage\n```\n\nConfigure in vitest.config.ts:\n\n```typescript\nexport default defineConfig({\n  test: {\n    coverage: {\n      provider: 'v8',\n      reporter: ['text', 'html', 'lcov', 'json'],\n      include: ['src/**/*.ts'],\n      exclude: ['src/**/*.test.ts', 'src/**/*.d.ts', 'src/test/**'],\n      thresholds: {\n        lines: 80,\n        branches: 75,\n        functions: 80,\n        statements: 80,\n      },\n    },\n  },\n});\n```\n\n## Watch Mode and UI\n\nVitest runs in watch mode by default during development. It re-runs only affected tests using Vite's module graph.\n\n```bash\n# Watch mode (default)\nnpx vitest\n\n# Watch with UI dashboard\nnpx vitest --ui\n\n# Watch specific files\nnpx vitest src/utils\n\n# Keyboard shortcuts in watch mode:\n#   a — re-run all tests\n#   f — re-run only failed tests\n#   u — update snapshots\n#   p — filter by filename\n#   t — filter by test name\n#   q — quit\n```\n\nInstall the UI package for the browser dashboard:\n\n```bash\nnpm install -D @vitest/ui\nnpx vitest --ui\n# Opens http://localhost:51204/__vitest__/\n```\n\n## Workspace / Monorepo Setup\n\nVitest workspaces let you run tests across multiple projects with different configs.\n\n```typescript\n// vitest.workspace.ts\nimport { defineWorkspace } from 'vitest/config';\n\nexport default defineWorkspace([\n  // Glob pattern for project configs\n  'packages/*/vitest.config.ts',\n\n  // Or inline project definitions\n  {\n    test: {\n      name: 'unit',\n      include: ['src/**/*.test.ts'],\n      environment: 'node',\n    },\n  },\n  {\n    test: {\n      name: 'browser',\n      include: ['src/**/*.browser.test.ts'],\n      environment: 'jsdom',\n    },\n  },\n]);\n```\n\nRun a specific project: `npx vitest --project unit`.\n\n## Browser Mode\n\nTest in real browsers instead of simulated DOM environments.\n\n```bash\nnpm install -D @vitest/browser playwright\n```\n\n```typescript\n// vitest.config.ts\nimport { defineConfig } from 'vitest/config';\n\nexport default defineConfig({\n  test: {\n    browser: {\n      enabled: true,\n      provider: 'playwright',\n      instances: [\n        { browser: 'chromium' },\n      ],\n    },\n  },\n});\n```\n\n## Migration from Jest\n\nVitest is API-compatible with Jest. Migration steps:\n\n1. Install: `npm install -D vitest` and remove `jest`, `ts-jest`, `babel-jest`\n2. Replace `jest.config.js` with `vitest.config.ts`\n3. Replace `jest.fn()` with `vi.fn()`, `jest.mock()` with `vi.mock()`, etc.\n4. Replace `jest.spyOn()` with `vi.spyOn()`\n5. Change imports: `import { describe, it, expect, vi } from 'vitest'`\n6. If using `globals: true`, no import changes are needed for describe/it/expect\n7. Update `package.json` scripts: replace `jest` with `vitest run`\n\nSearch-and-replace mappings:\n\n| Jest | Vitest |\n|------|--------|\n| `jest.fn()` | `vi.fn()` |\n| `jest.mock()` | `vi.mock()` |\n| `jest.spyOn()` | `vi.spyOn()` |\n| `jest.useFakeTimers()` | `vi.useFakeTimers()` |\n| `jest.advanceTimersByTime()` | `vi.advanceTimersByTime()` |\n| `jest.clearAllMocks()` | `vi.clearAllMocks()` |\n| `jest.resetAllMocks()` | `vi.resetAllMocks()` |\n| `jest.restoreAllMocks()` | `vi.restoreAllMocks()` |\n\n## Type Testing\n\nVitest can assert on TypeScript types at compile time.\n\n```typescript\nimport { describe, it, expectTypeOf } from 'vitest';\n\ndescribe('type tests', () => {\n  it('checks return type', () => {\n    expectTypeOf(sum).toBeFunction();\n    expectTypeOf(sum).parameter(0).toBeNumber();\n    expectTypeOf(sum).returns.toBeNumber();\n  });\n\n  it('checks object shape', () => {\n    expectTypeOf<{ name: string; age: number }>().toMatchTypeOf<{ name: string }>();\n  });\n});\n```\n\nEnable in config:\n\n```typescript\nexport default defineConfig({\n  test: {\n    typecheck: {\n      enabled: true,\n      tsconfig: './tsconfig.json',\n    },\n  },\n});\n```\n\nRun: `npx vitest typecheck`.\n\n## In-Source Testing\n\nWrite tests directly in source files. Vitest strips them from production builds.\n\n```typescript\n// src/math.ts\nexport function sum(a: number, b: number) {\n  return a + b;\n}\n\nif (import.meta.vitest) {\n  const { it, expect } = import.meta.vitest;\n  it('sum', () => {\n    expect(sum(1, 2)).toBe(3);\n  });\n}\n```\n\nEnable in config: `test: { includeSource: ['src/**/*.ts'] }` and add `/// <reference types=\"vitest\" />` to a global `.d.ts` file.\n\n## package.json Scripts\n\n```json\n{\n  \"scripts\": {\n    \"test\": \"vitest\",\n    \"test:run\": \"vitest run\",\n    \"test:coverage\": \"vitest run --coverage\",\n    \"test:ui\": \"vitest --ui\",\n    \"test:watch\": \"vitest --watch\",\n    \"test:bench\": \"vitest bench\",\n    \"test:typecheck\": \"vitest typecheck\"\n  }\n}\n```\n\n## Environment Variables\n\n| Variable | Purpose |\n|----------|----------|\n| `VITEST` | Set to `true` when running inside Vitest |\n| `VITEST_MODE` | Current mode: `run`, `watch`, `benchmark` |\n| `VITEST_POOL_ID` | ID of the pool thread/fork (0-indexed) |\n| `VITEST_WORKER_ID` | Unique worker ID across all pools |\n| `TEST` | Set to `true` by Vitest |\n| `NODE_ENV` | Set to `test` by default |\n\nAccess in tests or setup files:\n\n```typescript\nif (process.env.VITEST) {\n  // Running inside Vitest\n}\n```\n\n## CLI Reference\n\n```bash\nnpx vitest                        # watch mode (default)\nnpx vitest run                    # run once and exit\nnpx vitest run src/utils          # run tests matching pattern\nnpx vitest run --reporter=json    # JSON output\nnpx vitest run --coverage         # with coverage\nnpx vitest --ui                   # browser UI dashboard\nnpx vitest --ui --coverage        # UI with coverage overlay\nnpx vitest bench                  # run benchmarks\nnpx vitest typecheck              # type-check test files\nnpx vitest --project unit         # run specific workspace project\nnpx vitest run --changed HEAD~1   # only tests affected by recent changes\nnpx vitest run --bail 3           # stop after 3 failures\nnpx vitest run --update           # update snapshots\nnpx vitest list                   # list all test files without running\n```\n",
+  "sections": [
+    {
+      "id": "quick-start",
+      "title": "Quick start — install and first test",
+      "body": "Install Vitest as a dev dependency: `npm install -D vitest`. Create a test file next to your source code (e.g., `src/math.test.ts`). Import `describe`, `it`, `expect` from `vitest`. Run `npx vitest` for watch mode or `npx vitest run` for a single pass. Vitest discovers files matching `**/*.{test,spec}.{ts,tsx,js,jsx}` by default. Add `\"test\": \"vitest\"` to package.json scripts. For existing Vite projects, Vitest reuses your vite.config.ts — just add a `test` block. No babel, no ts-jest, no transform configuration needed.",
+      "tags": ["install", "quick-start", "first-test", "setup", "npm"]
+    },
+    {
+      "id": "configuration",
+      "title": "Configuration — vitest.config.ts options",
+      "body": "Vitest config lives in `vitest.config.ts` (standalone) or the `test` block of `vite.config.ts`. Key options: `include`/`exclude` for test file patterns, `environment` for DOM simulation (node, jsdom, happy-dom), `globals` to expose test APIs without imports, `setupFiles` for bootstrap code, `coverage` for provider and thresholds, `pool` for execution strategy (threads, forks, vmThreads), `testTimeout`/`hookTimeout` for limits, `reporters` for output format, `retry` for flaky test retries. Use `defineConfig` from `vitest/config` for type safety. Per-file environment overrides are supported via `// @vitest-environment jsdom` comments.",
+      "tags": ["config", "vitest-config", "environment", "jsdom", "happy-dom", "globals", "setup-files"]
+    },
+    {
+      "id": "mocking",
+      "title": "Mocking — vi.fn, vi.mock, vi.spyOn",
+      "body": "Vitest provides the `vi` object for all mocking needs. `vi.fn()` creates a mock function that tracks calls and can return configured values via `mockReturnValue`, `mockResolvedValue`, or `mockImplementation`. `vi.mock('module')` mocks an entire module — it is auto-hoisted to the top of the file. `vi.spyOn(obj, 'method')` wraps an existing method to track calls while preserving the original implementation (call `mockRestore()` to undo). `vi.stubGlobal('name', value)` replaces global variables like `fetch`. Use `vi.useFakeTimers()` / `vi.advanceTimersByTime(ms)` for timer control. Clean up with `vi.clearAllMocks()`, `vi.resetAllMocks()`, or `vi.restoreAllMocks()` in `afterEach`.",
+      "tags": ["mocking", "vi-fn", "vi-mock", "vi-spyon", "stub-global", "fake-timers", "mock-restore"]
+    },
+    {
+      "id": "coverage",
+      "title": "Coverage — V8 and Istanbul providers",
+      "body": "Install `@vitest/coverage-v8` (fast, V8 engine native) or `@vitest/coverage-istanbul` (traditional instrumentation, more accurate branch coverage). Run `npx vitest run --coverage`. Configure in vitest.config.ts under `test.coverage`: set `provider`, `reporter` (text, html, lcov, json), `include`/`exclude` patterns, and `thresholds` for lines, branches, functions, and statements. Coverage thresholds cause the process to exit non-zero when not met — ideal for CI gates. Use `lcov` reporter for integration with Codecov, Coveralls, or SonarQube.",
+      "tags": ["coverage", "v8", "istanbul", "thresholds", "lcov", "codecov", "ci"]
+    },
+    {
+      "id": "workspaces",
+      "title": "Workspaces — monorepo testing",
+      "body": "Create `vitest.workspace.ts` at the repository root to define multiple test projects. Each project can have its own environment, include patterns, and config. Reference per-package configs with a glob (`'packages/*/vitest.config.ts'`) or define inline project objects with a `name` and `test` block. Run all projects with `npx vitest`, or target one with `--project name`. Workspaces share a single Vitest process for fast startup. Use `defineWorkspace` from `vitest/config` for type safety.",
+      "tags": ["workspace", "monorepo", "multi-project", "define-workspace", "packages"]
+    },
+    {
+      "id": "browser-mode",
+      "title": "Browser mode — testing in real browsers",
+      "body": "Vitest browser mode runs tests in a real browser instead of jsdom or happy-dom. Install `@vitest/browser` and a browser provider (`playwright` or `webdriverio`). Configure `test.browser.enabled: true` and specify `provider: 'playwright'` with browser instances (chromium, firefox, webkit). Browser mode gives you real DOM APIs, real CSS, and real event handling — use it for component tests that need high fidelity. For basic DOM testing, jsdom or happy-dom is faster.",
+      "tags": ["browser", "playwright", "webdriverio", "real-dom", "component-testing"]
+    },
+    {
+      "id": "migration-from-jest",
+      "title": "Migration from Jest — switching to Vitest",
+      "body": "Vitest is API-compatible with Jest, so migration is mostly mechanical. Replace `jest.fn()` with `vi.fn()`, `jest.mock()` with `vi.mock()`, `jest.spyOn()` with `vi.spyOn()`. Remove ts-jest, babel-jest, and jest config — Vitest handles TypeScript and ESM natively. If using `globals: true`, the only code change is swapping `jest.*` calls to `vi.*`. Replace `jest.config.js` with `vitest.config.ts`. Update package.json scripts from `jest` to `vitest run`. Snapshot files are compatible. The `@jest/globals` import becomes `import { ... } from 'vitest'`.",
+      "tags": ["migration", "jest", "jest-to-vitest", "search-replace", "compatibility"]
+    },
+    {
+      "id": "type-testing",
+      "title": "Type testing — expectTypeOf assertions",
+      "body": "Vitest supports compile-time type assertions via `expectTypeOf()`. Import it from `vitest` and chain assertions: `.toBeString()`, `.toBeNumber()`, `.toBeFunction()`, `.toMatchTypeOf<T>()`, `.parameter(0).toBeString()`, `.returns.toBeNumber()`. Enable with `test.typecheck.enabled: true` in config and run with `npx vitest typecheck`. Type tests run the TypeScript compiler on your test files and verify type relationships without executing runtime code. Useful for validating library public APIs, generic type utilities, and type guard correctness.",
+      "tags": ["type-testing", "expectTypeOf", "typecheck", "compile-time", "type-assertions"]
+    }
+  ],
+  "links": [
+    { "uri": "testing/jest", "context": "Jest test framework — Vitest is the modern alternative with compatible API" },
+    { "uri": "testing/mocking", "context": "Cross-framework mocking strategies — vi.fn, vi.mock, vi.spyOn" },
+    { "uri": "testing/patterns", "context": "Structural testing patterns: Arrange-Act-Assert, data-driven tests" },
+    { "uri": "testing/ci", "context": "Running Vitest in CI/CD pipelines with coverage gates" },
+    { "uri": "testing/playwright", "context": "E2E browser testing — complements Vitest browser mode for full user flows" },
+    { "uri": "typescript/compiler", "context": "TypeScript compiler — Vitest type testing uses tsc under the hood" }
+  ],
+  "related": [
+    { "uri": "testing/jest", "relation": "alternative", "note": "Jest is the legacy alternative — Vitest provides the same API with native ESM and Vite integration" },
+    { "uri": "testing/jest", "relation": "evolution", "note": "Vitest evolves from and is inspired by Jest, offering a modern Vite-native replacement" },
+    { "uri": "testing/playwright", "relation": "see-also", "note": "Playwright handles full E2E browser testing; Vitest browser mode handles component-level browser tests" },
+    { "uri": "testing/mocking", "relation": "see-also", "note": "Vitest vi.* mocking maps to cross-framework mocking concepts" },
+    { "uri": "testing/patterns", "relation": "see-also", "note": "Testing patterns (AAA, factories, parametrize) apply directly to Vitest tests" },
+    { "uri": "typescript/compiler", "relation": "see-also", "note": "Vitest typecheck mode uses the TypeScript compiler for type assertions" }
+  ],
+  "scripts": [
+    {
+      "id": "run-tests",
+      "name": "Run Vitest tests",
+      "description": "Detect local vitest installation and run tests with support for patterns, coverage, watch, UI, and CI mode",
+      "lang": "bash",
+      "runtime": "node>=18",
+      "entry": "./scripts/run-tests.sh",
+      "env": {
+        "TEST_PATTERN": "Optional test file or name pattern to filter",
+        "VITEST_COVERAGE": "Set to 'true' to enable coverage",
+        "VITEST_WATCH": "Set to 'true' to enable watch mode",
+        "VITEST_UI": "Set to 'true' to enable browser UI",
+        "VITEST_RUN": "Set to 'true' for single-pass run mode"
+      },
+      "packages": ["vitest", "@vitest/coverage-v8"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "pattern": {
+          "type": "string",
+          "description": "Test file or name pattern to filter (e.g., 'src/utils' or 'test_login')"
+        },
+        "coverage": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable code coverage reporting"
+        },
+        "watch": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable watch mode for continuous re-runs"
+        },
+        "ui": {
+          "type": "boolean",
+          "default": false,
+          "description": "Open browser-based UI dashboard"
+        },
+        "run": {
+          "type": "boolean",
+          "default": true,
+          "description": "Run once and exit (CI mode, disables watch)"
+        },
+        "reporter": {
+          "type": "string",
+          "enum": ["default", "verbose", "json", "junit"],
+          "default": "default",
+          "description": "Output reporter format"
+        },
+        "project": {
+          "type": "string",
+          "description": "Workspace project name to run"
+        }
+      }
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "success": {
+          "type": "boolean",
+          "description": "Whether all tests passed"
+        },
+        "numTotalTests": {
+          "type": "integer",
+          "description": "Total number of tests executed"
+        },
+        "numPassedTests": {
+          "type": "integer",
+          "description": "Number of tests that passed"
+        },
+        "numFailedTests": {
+          "type": "integer",
+          "description": "Number of tests that failed"
+        },
+        "numSkippedTests": {
+          "type": "integer",
+          "description": "Number of tests that were skipped"
+        },
+        "coveragePercent": {
+          "type": "number",
+          "description": "Overall line coverage percentage (if coverage enabled)"
+        }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "typescript", "reason": "Vitest natively transforms TypeScript via Vite — TypeScript knowledge helps with config and type testing" },
+    { "uri": "testing/mocking", "reason": "Understanding mock patterns helps use vi.fn, vi.mock, vi.spyOn effectively" }
+  ],
+  "more": {
+    "docs": "https://vitest.dev/guide/",
+    "api": "https://vitest.dev/api/",
+    "config": "https://vitest.dev/config/",
+    "cli": "https://vitest.dev/guide/cli",
+    "migration": "https://vitest.dev/guide/migration",
+    "repo": "https://github.com/vitest-dev/vitest",
+    "changelog": "https://github.com/vitest-dev/vitest/releases"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "10 min",
+    "prerequisites": ["typescript"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

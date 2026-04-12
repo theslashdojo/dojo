@@ -1,0 +1,98 @@
+{
+  "name": "firebase",
+  "version": "1.0.0",
+  "uri": "firebase",
+  "type": "ecosystem",
+  "context": "Firebase platform — Authentication, Cloud Firestore, Hosting, Cloud Functions, Cloud Storage, and Emulator Suite",
+  "info": "The Firebase ecosystem covers Google's Backend-as-a-Service platform: Authentication with email/password, phone, and 15+ OAuth providers; Cloud Firestore as a realtime NoSQL document database with offline sync and security rules; Firebase Hosting for static sites and single-page apps with global CDN and automatic SSL; Cloud Functions for server-side Node.js/Python event-driven logic triggered by HTTP, Firestore, Auth, and Storage events; Cloud Storage for user-generated file uploads governed by security rules; and the Firebase Emulator Suite for full local development and testing. Every Firebase project is a Google Cloud project underneath — Firestore is Cloud Firestore, Functions are Cloud Functions, Storage is Cloud Storage. The 'firebase' npm package is the client SDK, 'firebase-admin' is the privileged server SDK that bypasses security rules, and 'firebase-tools' provides the CLI for init, deploy, and emulator management. Configuration lives in firebase.json (service config and deploy targets) and .firebaserc (project aliases). The Firebase console at console.firebase.google.com is the management dashboard.",
+  "parent": null,
+  "tags": ["firebase", "firestore", "auth", "hosting", "cloud-functions", "storage", "baas", "backend", "serverless", "google", "realtime", "nosql", "emulator"],
+  "aliases": [
+    "firebase",
+    "firebase platform",
+    "firebase backend",
+    "firebase api",
+    "firebase project",
+    "google firebase",
+    "firebase app",
+    "firebase sdk",
+    "firebase services",
+    "fcm",
+    "firebase cloud messaging"
+  ],
+  "triggers": [
+    "set up firebase",
+    "create a firebase project",
+    "add firebase to my app",
+    "connect to firebase",
+    "firebase authentication",
+    "firebase login",
+    "query firestore",
+    "deploy to firebase hosting",
+    "write a cloud function",
+    "upload files to firebase storage",
+    "run firebase emulators",
+    "firebase security rules",
+    "use firebase with nextjs",
+    "firebase init",
+    "firebase deploy"
+  ],
+  "body": "# Firebase Ecosystem\n\nFirebase is Google's Backend-as-a-Service platform. Every Firebase project is a Google Cloud project underneath, giving you access to the full GCP ecosystem while Firebase provides higher-level SDKs, security rules, a management console, and the Emulator Suite for local development.\n\n## Architecture\n\nA Firebase project bundles these services, each backed by Google Cloud infrastructure:\n\n| Service | Node | Purpose |\n|---------|------|---------|\n| Authentication | [[firebase/auth]] | User sign-up, sign-in — email/password, phone, OAuth providers, anonymous auth |\n| Cloud Firestore | [[firebase/firestore]] | Realtime NoSQL document database with offline sync and security rules |\n| Hosting | [[firebase/hosting]] | Static site and SPA hosting — global CDN, automatic SSL, preview channels |\n| Cloud Functions | [[firebase/functions]] | Server-side event-driven logic — HTTP triggers, Firestore triggers, Auth triggers |\n| Cloud Storage | [[firebase/storage]] | File uploads — images, videos, user-generated content with security rules |\n| Firebase CLI | [[firebase/cli]] | Command-line tool — init, deploy, emulators, manage projects |\n| Configuration | [[firebase/config]] | firebase.json, .firebaserc, project settings, environment config |\n\n## Agent Jobs\n\n- **Initialize a project** — Use [[firebase/cli]] to run `firebase init` and select services, then `firebase emulators:start` for local development\n- **Authenticate users** — Implement sign-up, sign-in, OAuth, phone auth, and anonymous auth with [[firebase/auth]]\n- **Store and query data** — Create collections, add documents, query with filters, listen for realtime updates via [[firebase/firestore]]\n- **Secure data** — Write Firestore security rules and Storage security rules to control read/write access per user\n- **Deploy static sites** — Build and deploy SPAs, static sites, or Next.js apps with [[firebase/hosting]]\n- **Run server code** — Write and deploy Cloud Functions triggered by HTTP, Firestore, Auth, or Storage events via [[firebase/functions]]\n- **Upload files** — Store and serve user-generated files with [[firebase/storage]]\n- **Test locally** — Run the full Emulator Suite (Auth, Firestore, Functions, Hosting, Storage) for offline development and integration testing\n- **Configure the project** — Manage firebase.json, .firebaserc, and environment variables via [[firebase/config]]\n\n## Environment Variables\n\n| Variable | Required | Purpose |\n|----------|----------|----------|\n| `FIREBASE_CONFIG` | Functions | Auto-set in Cloud Functions runtime with project config JSON |\n| `GOOGLE_APPLICATION_CREDENTIALS` | Server only | Path to service account JSON key for firebase-admin SDK |\n| `GCLOUD_PROJECT` | Optional | Default GCP project ID |\n| `FIREBASE_TOKEN` | CI/CD only | Auth token for non-interactive CLI deployment (deprecated in favor of `gcloud` auth) |\n| `FIREBASE_EMULATORS_IMPORT_DIRECTORY` | Local dev | Path to import emulator data on startup |\n| `FIREBASE_EMULATORS_EXPORT_DIRECTORY` | Local dev | Path to export emulator data on shutdown |\n\n## Client Initialization\n\nThe client SDK requires a config object from the Firebase console (Project Settings > General > Your Apps):\n\n```typescript\nimport { initializeApp } from 'firebase/app';\nimport { getAuth } from 'firebase/auth';\nimport { getFirestore } from 'firebase/firestore';\nimport { getStorage } from 'firebase/storage';\n\nconst firebaseConfig = {\n  apiKey: 'AIzaSy...',\n  authDomain: 'my-project.firebaseapp.com',\n  projectId: 'my-project',\n  storageBucket: 'my-project.appspot.com',\n  messagingSenderId: '123456789',\n  appId: '1:123456789:web:abcdef'\n};\n\nconst app = initializeApp(firebaseConfig);\nconst auth = getAuth(app);\nconst db = getFirestore(app);\nconst storage = getStorage(app);\n```\n\nThe Admin SDK (server-side, bypasses security rules):\n\n```typescript\nimport { initializeApp, cert } from 'firebase-admin/app';\nimport { getFirestore } from 'firebase-admin/firestore';\nimport { getAuth } from 'firebase-admin/auth';\n\nconst app = initializeApp({\n  credential: cert(require('./service-account.json'))\n});\n\nconst db = getFirestore(app);\nconst auth = getAuth(app);\n```\n\n## Project Structure\n\nA typical Firebase project directory after `firebase init`:\n\n```\nmy-app/\n├── firebase.json             # Service config — hosting, functions, firestore, storage rules\n├── .firebaserc               # Project aliases (default, staging, production)\n├── firestore.rules           # Firestore security rules\n├── firestore.indexes.json    # Composite index definitions\n├── storage.rules             # Cloud Storage security rules\n├── functions/\n│   ├── package.json          # Functions dependencies\n│   ├── tsconfig.json         # TypeScript config (if using TS)\n│   ├── src/\n│   │   └── index.ts          # Function entry point — exports are deployed\n│   └── .env                  # Functions environment variables\n├── public/                   # Hosting — static files served by Firebase Hosting\n│   └── index.html\n├── src/\n│   └── lib/\n│       └── firebase.ts       # Client SDK initialization\n├── .env.local                # Client environment variables\n└── package.json\n```\n\n## Key Concepts\n\n- **Firebase project = GCP project**: Every Firebase project has a corresponding GCP project. You can use GCP services (BigQuery, Cloud Run, Pub/Sub) alongside Firebase services in the same project.\n- **Client SDK vs Admin SDK**: The `firebase` npm package is the client SDK — it respects security rules and runs in browsers or mobile apps. The `firebase-admin` package is the server SDK — it bypasses all security rules and has full access. Never expose admin credentials to clients.\n- **Security Rules**: Firestore and Storage use declarative security rules (not RLS). Rules are written in a custom language and deployed via the CLI. Rules are the primary access control mechanism for client SDK access.\n- **Emulator Suite**: The Firebase Emulator Suite runs local instances of Auth, Firestore, Functions, Hosting, Storage, and Pub/Sub. Emulators are isolated from production and support data import/export for reproducible testing.\n- **Modular SDK (v9+)**: The modern Firebase JS SDK uses tree-shakeable modular imports (`import { getAuth } from 'firebase/auth'`) instead of the legacy namespace API (`firebase.auth()`). Always use modular imports for new projects.\n",
+  "sections": [
+    {
+      "id": "architecture",
+      "title": "Platform architecture",
+      "body": "Firebase wraps Google Cloud infrastructure with higher-level SDKs and a unified console. Cloud Firestore is the primary database — a NoSQL document store organized into collections and documents with subcollections. Authentication uses Google Identity Platform under the hood. Cloud Functions run on Cloud Functions for Firebase (2nd gen uses Cloud Run). Hosting serves static content from a global CDN with automatic SSL via Let's Encrypt. Storage uses Google Cloud Storage buckets with Firebase security rules layered on top. The client SDK ('firebase' npm package) handles all client-side access with security rules enforcement. The admin SDK ('firebase-admin') provides privileged server-side access that bypasses security rules.",
+      "tags": ["architecture", "firestore", "cloud-functions", "hosting", "gcp", "platform"]
+    },
+    {
+      "id": "env-vars",
+      "title": "Environment variables",
+      "body": "`FIREBASE_CONFIG` is automatically set in Cloud Functions runtime and contains the project's config as JSON. `GOOGLE_APPLICATION_CREDENTIALS` points to a service account JSON key file for server-side firebase-admin initialization. `GCLOUD_PROJECT` sets the default project ID. For CI/CD pipelines, use `gcloud auth` or the legacy `FIREBASE_TOKEN` (from `firebase login:ci`) for non-interactive CLI authentication. The client SDK config (apiKey, authDomain, projectId, storageBucket, messagingSenderId, appId) is safe to expose in client code — security is enforced by Firestore and Storage security rules, not by hiding these values.",
+      "tags": ["env", "configuration", "credentials", "secrets", "service-account"]
+    },
+    {
+      "id": "local-dev",
+      "title": "Local development with Emulator Suite",
+      "body": "Run `firebase init emulators` to configure which emulators to use, then `firebase emulators:start` to launch them. The Emulator UI runs at `http://localhost:4000` by default. Individual emulators: Auth (port 9099), Firestore (8080), Functions (5001), Hosting (5000), Storage (9199), Pub/Sub (8085). Connect the client SDK to emulators with `connectAuthEmulator(auth, 'http://localhost:9099')`, `connectFirestoreEmulator(db, 'localhost', 8080)`, etc. Use `--import` and `--export-on-exit` flags to persist emulator data between sessions. Emulators support security rules hot-reload — edit rules files and they take effect immediately.",
+      "tags": ["emulator", "local", "development", "testing", "emulator-suite", "offline"]
+    }
+  ],
+  "links": [
+    { "uri": "firebase/auth", "context": "User authentication — email/password, phone, OAuth providers, anonymous auth" },
+    { "uri": "firebase/firestore", "context": "Cloud Firestore — realtime NoSQL document database with security rules" },
+    { "uri": "firebase/hosting", "context": "Static site and SPA hosting — global CDN, SSL, preview channels" },
+    { "uri": "firebase/functions", "context": "Cloud Functions — server-side event-driven Node.js/Python logic" },
+    { "uri": "firebase/storage", "context": "Cloud Storage — file uploads with security rules" },
+    { "uri": "firebase/cli", "context": "Firebase CLI — init, deploy, emulators, project management" },
+    { "uri": "firebase/config", "context": "Configuration — firebase.json, .firebaserc, project settings" }
+  ],
+  "related": [
+    { "uri": "supabase", "relation": "alternative", "note": "Supabase is an open-source Firebase alternative built on Postgres with SQL, RLS, and REST APIs" },
+    { "uri": "gcp", "relation": "prerequisite", "note": "Firebase projects are GCP projects — GCP services like BigQuery, Cloud Run, and Pub/Sub are available in the same project" },
+    { "uri": "nextjs", "relation": "see-also", "note": "Next.js apps commonly use Firebase for auth, database, and hosting via the client SDK or Admin SDK in API routes" }
+  ],
+  "more": {
+    "docs": "https://firebase.google.com/docs",
+    "repo": "https://github.com/firebase/firebase-js-sdk",
+    "api": "https://firebase.google.com/docs/reference",
+    "examples": "https://github.com/firebase/quickstart-js",
+    "console": "https://console.firebase.google.com"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents, full-stack engineers",
+    "estimated_reading_time": "6 min",
+    "prerequisites": [],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://github.com/firebase/firebase-js-sdk",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

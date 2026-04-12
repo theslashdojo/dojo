@@ -1,0 +1,145 @@
+{
+  "name": "gcloud",
+  "version": "1.0.0",
+  "uri": "gcp/gcloud",
+  "type": "skill",
+  "context": "Install, configure, and use the gcloud CLI to manage all Google Cloud Platform services from the terminal",
+  "info": "This skill covers the gcloud CLI, the primary command-line tool for Google Cloud Platform: installation, authentication, project and configuration management, and common command patterns across all GCP services. gcloud is organized into command groups (compute, storage, functions, iam, projects, etc.) that mirror GCP service boundaries. Agents use this skill to set up credentials, configure defaults, and execute infrastructure operations. The gcloud CLI also includes gsutil (Cloud Storage) and bq (BigQuery) as companion tools. See [[gcp/iam]] for IAM-specific gcloud commands, [[gcp/compute]] for compute commands, [[gcp/storage]] for storage commands, and [[gcp/functions]] for function deployment commands.",
+  "parent": "gcp",
+  "tags": ["gcloud", "cli", "google-cloud-sdk", "gcp-cli", "cloud-sdk", "gsutil", "bq", "configuration"],
+  "aliases": [
+    "gcloud",
+    "gcloud cli",
+    "google cloud sdk",
+    "google cloud cli",
+    "gcloud command",
+    "cloud sdk",
+    "gcloud tool",
+    "gsutil",
+    "gcp cli",
+    "gcloud setup",
+    "gcloud auth",
+    "gcloud config"
+  ],
+  "triggers": [
+    "install gcloud",
+    "set up gcloud cli",
+    "authenticate gcloud",
+    "configure gcloud project",
+    "gcloud auth login",
+    "set default zone in gcloud",
+    "gcloud command help",
+    "switch gcloud project",
+    "gcloud config set",
+    "use google cloud from terminal"
+  ],
+  "body": "# gcloud CLI\n\nThe gcloud CLI is the primary command-line tool for interacting with Google Cloud Platform. It manages authentication, project configuration, and resources across all GCP services.\n\n## Installation\n\n```bash\n# macOS (via Homebrew)\nbrew install --cask google-cloud-sdk\n\n# macOS / Linux (official installer)\ncurl https://sdk.cloud.google.com | bash\nexec -l $SHELL  # restart shell to pick up PATH\n\n# Debian/Ubuntu\napt-get install apt-transport-https ca-certificates gnupg curl\ncurl https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key add -\necho \"deb https://packages.cloud.google.com/apt cloud-sdk main\" > /etc/apt/sources.list.d/google-cloud-sdk.list\napt-get update && apt-get install google-cloud-cli\n\n# Docker\ndocker run -it google/cloud-sdk:latest gcloud version\n\n# Verify installation\ngcloud version\n```\n\n## Authentication\n\n```bash\n# Interactive login (opens browser)\ngcloud auth login\n\n# Set Application Default Credentials (for client libraries)\ngcloud auth application-default login\n\n# Activate a service account (non-interactive, CI/CD)\ngcloud auth activate-service-account \\\n  --key-file=service-account-key.json\n\n# List authenticated accounts\ngcloud auth list\n\n# Print access token (for use with curl/REST)\ngcloud auth print-access-token\n\n# Revoke credentials\ngcloud auth revoke\n```\n\n## Configuration\n\ngcloud uses named configurations to switch between projects, accounts, and regions.\n\n```bash\n# Set default project\ngcloud config set project my-project-id\n\n# Set default compute region and zone\ngcloud config set compute/region us-central1\ngcloud config set compute/zone us-central1-a\n\n# View current configuration\ngcloud config list\n\n# Create a named configuration (for multi-project work)\ngcloud config configurations create work-prod\ngcloud config set project prod-project-id\ngcloud config set account admin@company.com\ngcloud config set compute/region us-east1\n\n# Switch between configurations\ngcloud config configurations activate work-dev\n\n# List all configurations\ngcloud config configurations list\n\n# Use a different project for one command\ngcloud compute instances list --project=other-project\n```\n\n## Command Structure\n\n```\ngcloud <group> <subgroup> <command> [--flags]\n\nExamples:\n  gcloud compute instances list\n  gcloud storage buckets create gs://my-bucket\n  gcloud functions deploy my-func --gen2\n  gcloud iam service-accounts create my-sa\n  gcloud projects describe my-project\n```\n\n### Command Groups\n\n| Group | Service | Example |\n|-------|---------|--------|\n| `compute` | Compute Engine | `gcloud compute instances list` |\n| `storage` | Cloud Storage | `gcloud storage cp file gs://bucket/` |\n| `functions` | Cloud Functions | `gcloud functions deploy NAME` |\n| `iam` | IAM | `gcloud iam service-accounts list` |\n| `projects` | Project management | `gcloud projects list` |\n| `services` | API management | `gcloud services enable compute.googleapis.com` |\n| `logging` | Cloud Logging | `gcloud logging read \"severity>=ERROR\"` |\n| `run` | Cloud Run | `gcloud run deploy NAME --image=IMAGE` |\n| `container` | GKE | `gcloud container clusters list` |\n| `sql` | Cloud SQL | `gcloud sql instances list` |\n| `secrets` | Secret Manager | `gcloud secrets create NAME --data-file=FILE` |\n\n## Project Management\n\n```bash\n# List projects\ngcloud projects list\n\n# Create a new project\ngcloud projects create my-new-project --name=\"My New Project\"\n\n# Set default project\ngcloud config set project my-new-project\n\n# Enable an API\ngcloud services enable compute.googleapis.com\ngcloud services enable cloudfunctions.googleapis.com\ngcloud services enable storage.googleapis.com\n\n# List enabled APIs\ngcloud services list --enabled\n\n# Link a billing account\ngcloud billing projects link my-new-project \\\n  --billing-account=BILLING_ACCOUNT_ID\n```\n\n## Output Formatting\n\n```bash\n# JSON output\ngcloud compute instances list --format=json\n\n# YAML output\ngcloud compute instances describe my-vm --format=yaml\n\n# Table with specific columns\ngcloud compute instances list --format=\"table(name, zone, status, networkInterfaces[0].accessConfigs[0].natIP)\"\n\n# Value only (for scripting)\ngcloud compute instances describe my-vm --format=\"value(networkInterfaces[0].accessConfigs[0].natIP)\"\n\n# CSV output\ngcloud compute instances list --format=csv\n\n# Filter results\ngcloud compute instances list --filter=\"status=RUNNING AND zone:us-central1-*\"\n\n# Limit results\ngcloud compute instances list --limit=10\n```\n\n## Useful Flags\n\n| Flag | Purpose |\n|------|--------|\n| `--project=ID` | Override default project |\n| `--format=json\\|yaml\\|table\\|csv\\|value` | Output format |\n| `--filter=EXPR` | Server-side filtering |\n| `--limit=N` | Limit number of results |\n| `--quiet` | Suppress prompts (for scripting) |\n| `--verbosity=debug` | Debug output |\n| `--impersonate-service-account=SA` | Act as a service account |\n| `--flatten=KEY` | Flatten nested arrays |\n| `--sort-by=FIELD` | Sort output |\n\n## Environment Variables\n\n| Variable | Purpose |\n|----------|----------|\n| `CLOUDSDK_CORE_PROJECT` | Default project |\n| `CLOUDSDK_COMPUTE_REGION` | Default compute region |\n| `CLOUDSDK_COMPUTE_ZONE` | Default compute zone |\n| `CLOUDSDK_CORE_ACCOUNT` | Default account |\n| `GOOGLE_APPLICATION_CREDENTIALS` | Service account key path |\n| `CLOUDSDK_AUTH_ACCESS_TOKEN` | Override auth with a token |\n| `CLOUDSDK_CORE_DISABLE_PROMPTS` | Set to 1 for non-interactive mode |\n",
+  "sections": [
+    {
+      "id": "installation",
+      "title": "Installation",
+      "body": "Install via Homebrew (`brew install --cask google-cloud-sdk`), the official installer (`curl https://sdk.cloud.google.com | bash`), or system package manager. After installation, run `gcloud init` for guided setup. Verify with `gcloud version`. The SDK includes gcloud, gsutil (Cloud Storage), and bq (BigQuery). Update with `gcloud components update`.",
+      "tags": ["install", "setup", "google-cloud-sdk", "components", "update"]
+    },
+    {
+      "id": "authentication",
+      "title": "Authentication",
+      "body": "Use `gcloud auth login` for interactive browser-based auth. Use `gcloud auth application-default login` to set ADC that client libraries auto-discover. For CI/CD, use `gcloud auth activate-service-account --key-file=KEY`. Use `gcloud auth print-access-token` to get a Bearer token for REST API calls. List accounts with `gcloud auth list`. See [[gcp/iam]] for service account creation and role assignment.",
+      "tags": ["auth", "login", "adc", "service-account", "access-token"]
+    },
+    {
+      "id": "configuration",
+      "title": "Configuration management",
+      "body": "Set defaults with `gcloud config set PROPERTY VALUE`. Key properties: `project` (project ID), `compute/region`, `compute/zone`, `account`. Named configurations let you switch between environments: `gcloud config configurations create NAME`, then activate with `gcloud config configurations activate NAME`. Override any default per-command with `--project`, `--region`, etc. View current config with `gcloud config list`.",
+      "tags": ["config", "project", "region", "zone", "configurations", "defaults"]
+    },
+    {
+      "id": "output-formatting",
+      "title": "Output formatting and filtering",
+      "body": "Control output with `--format` (json, yaml, table, csv, value). Filter server-side with `--filter` using expressions like `status=RUNNING AND zone:us-central1-*`. For scripting, use `--format=value(FIELD)` to extract a single value. Flatten nested structures with `--flatten=KEY`. Sort with `--sort-by=FIELD`. Limit results with `--limit=N`. JSON output is best for programmatic parsing; table for human reading.",
+      "tags": ["format", "filter", "json", "table", "scripting", "output"]
+    },
+    {
+      "id": "scripting",
+      "title": "Scripting and automation",
+      "body": "For non-interactive scripts: set `--quiet` to suppress prompts, use `--format=json` or `--format=value(FIELD)` for parseable output, set `CLOUDSDK_CORE_DISABLE_PROMPTS=1` environment variable. Use `--impersonate-service-account=SA_EMAIL` to act as a service account without downloading keys. Chain commands with `$(gcloud ...)` for dynamic values: `gcloud compute ssh $(gcloud compute instances list --limit=1 --format='value(name)') --zone=$(gcloud compute instances list --limit=1 --format='value(zone)')`.",
+      "tags": ["scripting", "automation", "non-interactive", "quiet", "impersonation"]
+    }
+  ],
+  "links": [
+    { "uri": "gcp", "context": "GCP ecosystem overview" },
+    { "uri": "gcp/iam", "context": "IAM commands — roles, service accounts, policies" },
+    { "uri": "gcp/compute", "context": "gcloud compute commands for VM management" },
+    { "uri": "gcp/storage", "context": "gcloud storage and gsutil commands" },
+    { "uri": "gcp/functions", "context": "gcloud functions deploy and manage" }
+  ],
+  "related": [
+    { "uri": "gcp/iam", "relation": "see-also", "note": "IAM operations are performed through gcloud iam commands" },
+    { "uri": "gcp/compute", "relation": "see-also", "note": "gcloud compute is the primary interface for Compute Engine" },
+    { "uri": "gcp/storage", "relation": "see-also", "note": "gcloud storage replaces gsutil for Cloud Storage operations" },
+    { "uri": "gcp/functions", "relation": "see-also", "note": "gcloud functions deploy is how you deploy Cloud Functions" },
+    { "uri": "shell/bash", "relation": "see-also", "note": "gcloud commands are run in bash/shell environments" }
+  ],
+  "scripts": [
+    {
+      "id": "gcloud-setup",
+      "name": "gcloud CLI Setup",
+      "description": "Install and configure the gcloud CLI with project, region, zone, and authentication",
+      "lang": "bash",
+      "runtime": "bash>=4",
+      "entry": "./scripts/gcloud-setup.sh",
+      "env": {
+        "GOOGLE_CLOUD_PROJECT": { "required": false, "secret": false, "description": "GCP project ID to configure as default" },
+        "CLOUDSDK_COMPUTE_REGION": { "required": false, "secret": false, "default": "us-central1", "description": "Default compute region" },
+        "CLOUDSDK_COMPUTE_ZONE": { "required": false, "secret": false, "default": "us-central1-a", "description": "Default compute zone" },
+        "GOOGLE_APPLICATION_CREDENTIALS": { "required": false, "secret": false, "description": "Path to service account key for non-interactive auth" }
+      },
+      "packages": ["google-cloud-sdk"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "action": { "type": "string", "enum": ["install", "auth-login", "auth-activate-sa", "config-set", "config-list", "enable-api"], "description": "Operation to perform" },
+        "project": { "type": "string", "description": "GCP project ID" },
+        "region": { "type": "string", "default": "us-central1", "description": "Default compute region" },
+        "zone": { "type": "string", "default": "us-central1-a", "description": "Default compute zone" },
+        "key_file": { "type": "string", "description": "Path to service account key file" },
+        "api": { "type": "string", "description": "API to enable (e.g., compute.googleapis.com)" }
+      },
+      "required": ["action"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "project": { "type": "string", "description": "Active project ID" },
+        "account": { "type": "string", "description": "Active account email" },
+        "region": { "type": "string", "description": "Default compute region" },
+        "zone": { "type": "string", "description": "Default compute zone" },
+        "sdk_version": { "type": "string", "description": "Installed gcloud SDK version" }
+      }
+    }
+  },
+  "depends": [],
+  "more": {
+    "docs": "https://cloud.google.com/sdk/docs",
+    "repo": "https://github.com/google-cloud-sdk-unofficial/google-cloud-sdk",
+    "examples": "https://cloud.google.com/sdk/docs/cheatsheet"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents, DevOps engineers",
+    "estimated_reading_time": "6 min",
+    "prerequisites": [],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

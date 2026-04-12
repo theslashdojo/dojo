@@ -1,0 +1,118 @@
+{
+  "name": "cli",
+  "version": "1.0.0",
+  "uri": "dojo/cli",
+  "type": "skill",
+  "context": "Use the dojo CLI to search, inspect, validate, scaffold, and publish nodes from the terminal",
+  "info": "The dojo CLI is the primary developer interface for working with the Dojo knowledge graph from the terminal. It wraps the most common workflows into single commands: searching for nodes, inspecting node manifests, validating node.json files, scaffolding new nodes from templates, and publishing to the registry. The CLI can operate against a local nodes/ directory (offline mode) or a running Dojo server (online mode). It auto-detects the dojo repository root and defaults to local mode. Install globally via `npm install -g @dojo/cli` or run with `npx @dojo/cli`. See [[dojo/server]] for the API server the CLI talks to in online mode.",
+  "parent": "dojo",
+  "tags": ["cli", "terminal", "commands", "tool", "developer-tools", "npx"],
+  "aliases": [
+    "dojo cli",
+    "dojo command line",
+    "dojo terminal",
+    "dojo commands",
+    "dojo tool",
+    "npx dojo",
+    "dojo-cli"
+  ],
+  "triggers": [
+    "use the dojo cli",
+    "run a dojo command",
+    "search from the terminal",
+    "validate a node from the command line",
+    "scaffold a node with the cli",
+    "inspect a node manifest",
+    "publish with the cli"
+  ],
+  "body": "# Dojo CLI\n\nThe CLI is the fastest way to interact with Dojo from the terminal. It handles search, inspect, validate, scaffold, and publish — the five operations agents and developers use most.\n\n## Installation\n\n```bash\n# Global install\nnpm install -g @dojo/cli\n\n# Or use npx (no install)\nnpx @dojo/cli search \"deploy to vercel\"\n```\n\n## Commands\n\n### Search\n\nFind nodes by query, tag, or type:\n\n```bash\n# Text search\ndojo search \"deploy to vercel\"\n\n# Filter by tag\ndojo search \"deploy\" --tag vercel\n\n# Filter by type\ndojo search \"auth\" --type context\n\n# Limit results\ndojo search \"kubernetes\" --limit 5\n```\n\n### Inspect\n\nView a node's full manifest or specific fields:\n\n```bash\n# Full manifest\ndojo inspect github/repos\n\n# Specific field\ndojo inspect github/repos --field context\ndojo inspect github/repos --field scripts\ndojo inspect github/repos --field links\n\n# JSON output (for piping)\ndojo inspect github/repos --json\n```\n\n### Validate\n\nCheck a node against the schema and knowledge quality rules:\n\n```bash\n# Validate a single node\ndojo validate nodes/github/repos/node.json\n\n# Validate an entire subtree\ndojo validate nodes/github/\n\n# Schema only\ndojo validate nodes/github/repos/node.json --schema-only\n\n# Knowledge quality only\ndojo validate nodes/github/repos/node.json --knowledge-only\n```\n\nSee [[dojo/validate]] for what gets checked.\n\n### Scaffold\n\nCreate a new node from a template:\n\n```bash\n# Scaffold an ecosystem\ndojo scaffold ecosystem redis\n\n# Scaffold a skill under an existing parent\ndojo scaffold skill github/actions/workflows\n\n# Scaffold a context node\ndojo scaffold context kubernetes/troubleshooting\n```\n\nSee [[dojo/authoring/scaffold]] for details.\n\n### Publish\n\nPublish a validated node to the registry:\n\n```bash\n# Publish to local (smoke test)\ndojo publish nodes/github/repos/ --local\n\n# Publish to registry\ndojo publish nodes/github/repos/ --registry https://registry.dojo.dev\n```\n\nSee [[dojo/publish]] for the full workflow.\n\n### Learn\n\nRead a node's knowledge content in the terminal:\n\n```bash\n# Learn from a node (renders body + sections)\ndojo learn github/repos\n\n# Learn a specific section\ndojo learn github/repos#create\n```\n\n## Modes\n\n| Mode | When | How |\n|------|------|-----|\n| **Local** | No server running | Reads directly from `nodes/` directory |\n| **Online** | Server running | Queries `DOJO_URL` API endpoints |\n\nThe CLI auto-detects mode: if `DOJO_URL` is set and reachable, it uses online mode. Otherwise, it finds the nearest `nodes/` directory and operates locally.\n\n## Environment Variables\n\n| Variable | Default | Description |\n|----------|---------|-------------|\n| `DOJO_URL` | _(none)_ | Server URL for online mode |\n| `DOJO_ROOT` | _(auto)_ | Path to dojo repository root |\n| `DOJO_AUTH_TOKEN` | _(none)_ | Auth token for publish commands |\n",
+  "sections": [
+    {
+      "id": "commands",
+      "title": "CLI commands",
+      "body": "Six commands: `search` (find nodes by query/tag/type), `inspect` (view manifest fields), `validate` (check schema + knowledge quality), `scaffold` (create from template), `publish` (push to registry), `learn` (read knowledge content). Each command supports `--help` for usage details and `--json` for machine-readable output.",
+      "tags": ["commands", "search", "inspect", "validate", "scaffold", "publish", "learn"]
+    },
+    {
+      "id": "modes",
+      "title": "Local vs online mode",
+      "body": "The CLI operates in two modes. Local mode reads directly from the `nodes/` directory on disk — no server needed. Online mode queries a running Dojo server via `DOJO_URL`. Auto-detection: if `DOJO_URL` is set and the server responds to a health check, use online mode. Otherwise, walk up the directory tree to find the nearest `nodes/` directory and use local mode.",
+      "tags": ["local", "online", "modes", "auto-detect", "server"]
+    },
+    {
+      "id": "installation",
+      "title": "Installation",
+      "body": "Install globally with `npm install -g @dojo/cli` for the `dojo` command. Or use `npx @dojo/cli` for one-off usage without installation. Requires Node.js >= 18. The CLI has no native dependencies — it's pure JavaScript.",
+      "tags": ["install", "npm", "npx", "node", "global"]
+    }
+  ],
+  "links": [
+    { "uri": "dojo/server", "context": "The API server the CLI talks to in online mode" },
+    { "uri": "dojo/search", "context": "Search skill powering the CLI search command" },
+    { "uri": "dojo/validate", "context": "Validation skill powering the CLI validate command" },
+    { "uri": "dojo/authoring/scaffold", "context": "Scaffold skill powering the CLI scaffold command" },
+    { "uri": "dojo/publish", "context": "Publish skill powering the CLI publish command" },
+    { "uri": "dojo/api", "context": "API contract the CLI queries in online mode" }
+  ],
+  "related": [
+    { "uri": "dojo/server", "relation": "see-also", "note": "CLI talks to the server in online mode" },
+    { "uri": "dojo/search", "relation": "implements", "note": "CLI search command wraps the search skill" },
+    { "uri": "dojo/validate", "relation": "implements", "note": "CLI validate command wraps the validation skill" },
+    { "uri": "dojo/sdk", "relation": "alternative", "note": "SDK provides programmatic access; CLI provides terminal access" }
+  ],
+  "scripts": [
+    {
+      "id": "dojo-commands",
+      "name": "Dojo CLI Commands",
+      "description": "Run dojo CLI commands for search, inspect, validate, scaffold, and publish",
+      "lang": "bash",
+      "runtime": "node>=18",
+      "entry": "./scripts/dojo-commands.sh",
+      "env": {
+        "DOJO_URL": { "required": false, "description": "Server URL for online mode" },
+        "DOJO_ROOT": { "required": false, "description": "Path to dojo repository root" }
+      },
+      "packages": ["@dojo/cli"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "command": { "type": "string", "enum": ["search", "inspect", "validate", "scaffold", "publish", "learn"], "description": "CLI command to run" },
+        "args": { "type": "array", "items": { "type": "string" }, "description": "Command arguments" }
+      },
+      "required": ["command"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "exitCode": { "type": "integer", "description": "Process exit code (0 = success)" },
+        "stdout": { "type": "string", "description": "Command output" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "dojo/api", "reason": "CLI queries the API in online mode", "optional": true }
+  ],
+  "more": {
+    "docs": "https://github.com/theslashdojo/dojo/blob/main/SPEC.md",
+    "repo": "https://github.com/theslashdojo/dojo"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, node authors, agents",
+    "estimated_reading_time": "4 min",
+    "prerequisites": [],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://github.com/theslashdojo/dojo",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

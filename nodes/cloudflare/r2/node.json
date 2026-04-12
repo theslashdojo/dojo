@@ -1,0 +1,132 @@
+{
+  "name": "r2",
+  "version": "1.0.0",
+  "uri": "cloudflare/r2",
+  "type": "skill",
+  "context": "Upload, download, list, and manage objects in Cloudflare R2 — S3-compatible storage with zero egress fees",
+  "info": "Cloudflare R2 is S3-compatible object storage with zero egress fees. It supports the S3 API, so existing S3 tools (AWS CLI, Boto3, aws-sdk) work with R2 by changing the endpoint. R2 is accessed from Workers via bindings or externally via the S3-compatible API. Objects can be up to 5TB. R2 supports multipart uploads, conditional headers (ETags), custom metadata, and public bucket access via r2.dev domains or custom domains. Common uses: file hosting, backups, media storage, static assets, and data lakes. R2 is strongly consistent — reads after writes always return the latest data.",
+  "parent": "cloudflare",
+  "tags": ["r2", "object-storage", "s3", "blob", "storage", "upload", "download", "zero-egress"],
+  "aliases": [
+    "cloudflare r2",
+    "r2 storage",
+    "r2 bucket",
+    "cloudflare object storage",
+    "cf r2",
+    "s3 compatible storage",
+    "r2 s3",
+    "cloudflare blob storage"
+  ],
+  "triggers": [
+    "upload a file to r2",
+    "store files in cloudflare",
+    "create an r2 bucket",
+    "use cloudflare r2",
+    "download from r2",
+    "list r2 objects",
+    "set up s3 compatible storage on cloudflare"
+  ],
+  "body": "# Cloudflare R2\n\nR2 is S3-compatible object storage with **zero egress fees**. Store and serve any amount of data without paying for bandwidth.\n\n## Setup\n\n### Create a Bucket\n\n```bash\n# Create a bucket\nwrangler r2 bucket create my-bucket\n\n# List buckets\nwrangler r2 bucket list\n```\n\n### wrangler.toml Binding\n\n```toml\n[[r2_buckets]]\nbinding = \"MY_BUCKET\"\nbucket_name = \"my-bucket\"\npreview_bucket_name = \"my-bucket-preview\"  # for wrangler dev\n```\n\n## Worker API\n\n```typescript\nexport interface Env {\n  MY_BUCKET: R2Bucket;\n}\n\nexport default {\n  async fetch(request: Request, env: Env): Promise<Response> {\n    const url = new URL(request.url);\n    const key = url.pathname.slice(1); // remove leading /\n\n    switch (request.method) {\n      case 'PUT': {\n        // Upload an object\n        const object = await env.MY_BUCKET.put(key, request.body, {\n          httpMetadata: {\n            contentType: request.headers.get('Content-Type') || 'application/octet-stream',\n          },\n          customMetadata: {\n            uploadedBy: 'agent',\n            timestamp: new Date().toISOString(),\n          },\n        });\n        return Response.json({ key: object.key, size: object.size, etag: object.etag });\n      }\n\n      case 'GET': {\n        // Download an object\n        const object = await env.MY_BUCKET.get(key);\n        if (!object) return new Response('Not Found', { status: 404 });\n\n        const headers = new Headers();\n        object.writeHttpMetadata(headers);\n        headers.set('etag', object.httpEtag);\n\n        return new Response(object.body, { headers });\n      }\n\n      case 'DELETE': {\n        await env.MY_BUCKET.delete(key);\n        return new Response('Deleted', { status: 200 });\n      }\n\n      default:\n        return new Response('Method Not Allowed', { status: 405 });\n    }\n  },\n};\n```\n\n## Listing Objects\n\n```typescript\n// List objects with prefix and pagination\nconst listed = await env.MY_BUCKET.list({\n  prefix: 'images/',\n  limit: 100,\n  cursor: undefined, // for pagination\n  delimiter: '/',     // group by \"directory\"\n});\n\nfor (const object of listed.objects) {\n  console.log(object.key, object.size, object.uploaded);\n}\n\n// Paginate through all objects\nlet cursor: string | undefined;\nconst allObjects: R2Object[] = [];\ndo {\n  const result = await env.MY_BUCKET.list({ prefix: 'data/', cursor });\n  allObjects.push(...result.objects);\n  cursor = result.truncated ? result.cursor : undefined;\n} while (cursor);\n```\n\n## CLI Operations\n\n```bash\n# Upload a file\nwrangler r2 object put my-bucket/path/to/file.txt --file ./local-file.txt\n\n# Download a file\nwrangler r2 object get my-bucket/path/to/file.txt --file ./downloaded.txt\n\n# Delete an object\nwrangler r2 object delete my-bucket/path/to/file.txt\n\n# List objects\nwrangler r2 object list my-bucket --prefix images/\n```\n\n## S3 API Compatibility\n\nR2 is S3-compatible. Use any S3 client by changing the endpoint:\n\n```bash\n# AWS CLI with R2\naws configure set default.s3.endpoint_url https://<ACCOUNT_ID>.r2.cloudflarestorage.com\n\naws s3 cp ./file.txt s3://my-bucket/file.txt \\\n  --endpoint-url https://<ACCOUNT_ID>.r2.cloudflarestorage.com\n\naws s3 ls s3://my-bucket/ \\\n  --endpoint-url https://<ACCOUNT_ID>.r2.cloudflarestorage.com\n```\n\n```javascript\n// Node.js with @aws-sdk/client-s3\nimport { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';\n\nconst s3 = new S3Client({\n  region: 'auto',\n  endpoint: `https://${ACCOUNT_ID}.r2.cloudflarestorage.com`,\n  credentials: {\n    accessKeyId: R2_ACCESS_KEY_ID,\n    secretAccessKey: R2_SECRET_ACCESS_KEY,\n  },\n});\n\nawait s3.send(new PutObjectCommand({\n  Bucket: 'my-bucket',\n  Key: 'file.txt',\n  Body: 'Hello R2',\n}));\n```\n\n## Public Access\n\n```bash\n# Enable public access via r2.dev subdomain\n# Configure in Cloudflare Dashboard > R2 > bucket > Settings > Public access\n# URL format: https://pub-<hash>.r2.dev/path/to/file.txt\n\n# Or connect a custom domain for public access\n```\n\n## R2 Credentials (for S3 API)\n\nGenerate R2 API credentials (separate from Cloudflare API tokens) for S3-compatible access:\n1. Dashboard > R2 > Manage R2 API Tokens\n2. Create token with Read or Read/Write permissions\n3. Get `Access Key ID` and `Secret Access Key`\n\nSet as environment variables:\n```bash\nexport R2_ACCESS_KEY_ID=\"your-access-key\"\nexport R2_SECRET_ACCESS_KEY=\"your-secret-key\"\n```\n",
+  "sections": [
+    {
+      "id": "setup",
+      "title": "Creating buckets and bindings",
+      "body": "Create a bucket with `wrangler r2 bucket create <name>`. Add an `[[r2_buckets]]` binding in `wrangler.toml` with `binding`, `bucket_name`, and optional `preview_bucket_name`. The binding exposes an `R2Bucket` object on the Worker's `env`. For S3 API access, generate R2 API tokens in the dashboard.",
+      "tags": ["setup", "bucket", "binding", "create"]
+    },
+    {
+      "id": "crud",
+      "title": "Object CRUD operations",
+      "body": "`env.MY_BUCKET.put(key, body, options?)` uploads an object. Body can be string, ArrayBuffer, ReadableStream, Blob, or null. Options include `httpMetadata` (contentType, cacheControl) and `customMetadata` (key-value pairs). `env.MY_BUCKET.get(key)` returns an R2ObjectBody with `.body` (ReadableStream), `.key`, `.size`, `.etag`. `env.MY_BUCKET.delete(key)` or `env.MY_BUCKET.delete([keys])` for batch delete.",
+      "tags": ["put", "get", "delete", "upload", "download", "crud"]
+    },
+    {
+      "id": "s3-compat",
+      "title": "S3 API compatibility",
+      "body": "R2 implements the S3 API. Use any S3 client (AWS CLI, @aws-sdk/client-s3, boto3) by changing the endpoint to `https://<ACCOUNT_ID>.r2.cloudflarestorage.com`. Requires R2 API credentials (Access Key ID + Secret Access Key), not Cloudflare API tokens. Generate credentials in Dashboard > R2 > Manage R2 API Tokens.",
+      "tags": ["s3", "aws-sdk", "boto3", "aws-cli", "endpoint", "compatibility"]
+    },
+    {
+      "id": "public-access",
+      "title": "Public bucket access",
+      "body": "Enable public access via r2.dev subdomain in the dashboard (Settings > Public access). Objects are served at `https://pub-<hash>.r2.dev/<key>`. For custom domains, connect a domain via the dashboard. Public buckets serve objects without authentication. Use a Worker in front of the bucket for access control.",
+      "tags": ["public", "r2-dev", "custom-domain", "cdn"]
+    }
+  ],
+  "links": [
+    { "uri": "cloudflare/workers", "context": "Access R2 from Workers via bindings" },
+    { "uri": "cloudflare/workers/bindings", "context": "Configure R2 bucket bindings" },
+    { "uri": "cloudflare/kv", "context": "Use KV for smaller key-value data (< 25MB)" },
+    { "uri": "cloudflare/wrangler", "context": "CLI for R2 bucket and object management" },
+    { "uri": "cloudflare/auth", "context": "Authentication for R2 API access" },
+    { "uri": "cloudflare/troubleshooting#limits", "context": "R2 storage and request limits" }
+  ],
+  "related": [
+    { "uri": "cloudflare/workers", "relation": "prerequisite", "note": "Workers access R2 through bindings" },
+    { "uri": "cloudflare/auth", "relation": "prerequisite", "note": "API tokens or R2 credentials required" },
+    { "uri": "cloudflare/kv", "relation": "see-also", "note": "KV for small values; R2 for large objects" },
+    { "uri": "aws/s3", "relation": "alternative", "note": "S3 is the AWS equivalent; R2 is S3-compatible with zero egress" },
+    { "uri": "supabase/storage", "relation": "alternative", "note": "Supabase Storage is another managed object store option" }
+  ],
+  "scripts": [
+    {
+      "id": "r2-ops",
+      "name": "R2 Operations",
+      "description": "Create buckets, upload, download, list, and delete R2 objects via Wrangler CLI",
+      "lang": "bash",
+      "runtime": "node>=18",
+      "entry": "./scripts/r2-ops.sh",
+      "env": {
+        "CLOUDFLARE_API_TOKEN": { "required": true, "secret": true, "description": "API token with Workers R2 Storage:Edit permission" },
+        "CLOUDFLARE_ACCOUNT_ID": { "required": true, "secret": false, "description": "Cloudflare account identifier" }
+      },
+      "packages": ["wrangler"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "action": { "type": "string", "enum": ["create-bucket", "put", "get", "delete", "list"], "description": "R2 operation to perform" },
+        "bucket": { "type": "string", "description": "Bucket name" },
+        "key": { "type": "string", "description": "Object key (path)" },
+        "filePath": { "type": "string", "description": "Local file path for upload/download" },
+        "prefix": { "type": "string", "description": "Key prefix for listing" }
+      },
+      "required": ["action", "bucket"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "key": { "type": "string", "description": "Object key" },
+        "size": { "type": "integer", "description": "Object size in bytes" },
+        "etag": { "type": "string", "description": "Object ETag" },
+        "objects": { "type": "array", "items": { "type": "object" }, "description": "Listed objects" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "cloudflare/auth", "reason": "API token or R2 credentials required" },
+    { "uri": "cloudflare/wrangler", "reason": "Wrangler CLI for bucket and object management" }
+  ],
+  "more": {
+    "docs": "https://developers.cloudflare.com/r2/",
+    "api": "https://developers.cloudflare.com/r2/api/workers/workers-api-reference/",
+    "s3-api": "https://developers.cloudflare.com/r2/api/s3/"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "5 min",
+    "prerequisites": ["cloudflare/auth"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

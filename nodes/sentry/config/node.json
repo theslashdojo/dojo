@@ -1,0 +1,126 @@
+{
+  "name": "config",
+  "version": "1.0.0",
+  "uri": "sentry/config",
+  "type": "context",
+  "content_type": "reference",
+  "context": "Complete reference for Sentry SDK configuration options — sampling, filtering, integrations, and transport tuning",
+  "info": "This node is the exhaustive reference for all Sentry JavaScript SDK configuration options passed to Sentry.init(). Covers identity options (dsn, release, environment), error sampling (sampleRate, beforeSend, ignoreErrors, denyUrls, allowUrls), performance tracing (tracesSampleRate, tracesSampler, tracePropagationTargets, beforeSendTransaction), session replay (replaysSessionSampleRate, replaysOnErrorSampleRate), breadcrumbs (maxBreadcrumbs, beforeBreadcrumb), transport (tunnel, transport, transportOptions), debugging (debug, enabled), data normalization (normalizeDepth, normalizeMaxBreadth, maxValueLength), PII handling (sendDefaultPii), and integrations. Agents use this node when tuning SDK behavior for production: reducing event volume, filtering noise, scrubbing PII, configuring custom transports, or adding integrations. See [[sentry/setup]] for basic initialization and [[sentry/capture]] for the event capture API.",
+  "parent": "sentry",
+  "tags": ["sentry", "config", "configuration", "options", "sampling", "filtering", "integrations", "transport", "pii", "breadcrumbs"],
+  "aliases": [
+    "sentry config",
+    "sentry configuration",
+    "sentry options",
+    "sentry init options",
+    "sentry sdk options",
+    "sentry sampling",
+    "sentry filtering",
+    "sentry beforeSend",
+    "sentry ignoreErrors",
+    "sentry integrations",
+    "sentry tracesSampleRate",
+    "sentry sampleRate",
+    "sentry tunnel",
+    "sentry pii",
+    "sentry debug mode"
+  ],
+  "triggers": [
+    "configure sentry options",
+    "reduce sentry event volume",
+    "filter sentry errors",
+    "sentry beforeSend example",
+    "sentry ignoreErrors",
+    "set sentry sample rate",
+    "sentry tracesSampleRate",
+    "sentry tunnel configuration",
+    "strip pii from sentry events",
+    "sentry integrations list",
+    "sentry debug mode",
+    "customize sentry sdk"
+  ],
+  "body": "# Sentry SDK Configuration Reference\n\nAll options are passed to `Sentry.init()`. This reference covers every option for the JavaScript SDK family (`@sentry/browser`, `@sentry/node`, `@sentry/react`, `@sentry/nextjs`).\n\n## Identity & Routing\n\n```javascript\nSentry.init({\n  // REQUIRED — Data Source Name identifying your project\n  dsn: \"https://examplePublicKey@o0.ingest.sentry.io/0\",\n\n  // Release version — links errors to source maps and commits\n  release: \"my-app@1.2.3\",\n\n  // Environment — filters events in the Sentry UI\n  environment: \"production\",  // default: \"production\"\n\n  // Fully disable the SDK (useful for local development)\n  enabled: true,  // default: true\n});\n```\n\n## Error Sampling & Filtering\n\n```javascript\nSentry.init({\n  // Sample rate for error events (0.0 to 1.0)\n  sampleRate: 1.0,  // default: 1.0 (capture all errors)\n\n  // Filter events before sending — return null to drop\n  beforeSend(event, hint) {\n    // Drop events from browser extensions\n    if (event.exception?.values?.[0]?.stacktrace?.frames?.some(\n      f => f.filename?.includes(\"extension://\")\n    )) {\n      return null;\n    }\n    // Scrub PII from event\n    if (event.user) {\n      delete event.user.email;\n    }\n    return event;\n  },\n\n  // Drop events matching these error messages (strings or RegExp)\n  ignoreErrors: [\n    \"ResizeObserver loop limit exceeded\",\n    \"ResizeObserver loop completed with undelivered notifications\",\n    /^Network request failed$/,\n    /^Loading chunk \\d+ failed$/,\n  ],\n\n  // Only report errors from these script URLs\n  allowUrls: [\n    /https?:\\/\\/((cdn|www)\\.)?myapp\\.com/,\n  ],\n\n  // Never report errors from these script URLs\n  denyUrls: [\n    /extensions\\//i,\n    /^chrome:\\/\\//i,\n    /^moz-extension:\\/\\//i,\n  ],\n});\n```\n\n## Performance Tracing\n\n```javascript\nSentry.init({\n  // Percentage of transactions to capture (0.0 to 1.0)\n  tracesSampleRate: 0.2,  // 20% of transactions\n\n  // Dynamic sampling function (overrides tracesSampleRate)\n  tracesSampler(samplingContext) {\n    // Always trace checkout\n    if (samplingContext.name === \"POST /api/checkout\") return 1.0;\n    // Never trace health checks\n    if (samplingContext.name === \"GET /health\") return 0;\n    // Default rate\n    return 0.1;\n  },\n\n  // URLs to propagate trace headers to (default: same-origin)\n  tracePropagationTargets: [\n    \"localhost\",\n    /^https:\\/\\/api\\.myapp\\.com/,\n  ],\n\n  // Filter transactions before sending\n  beforeSendTransaction(event) {\n    if (event.transaction === \"/health\") return null;\n    return event;\n  },\n\n  // Filter specific spans\n  ignoreTransactions: [\"/health\", /^\\/internal\\//],\n});\n```\n\n## Session Replay\n\n```javascript\nSentry.init({\n  // Capture replays for this percentage of sessions\n  replaysSessionSampleRate: 0.1,  // 10%\n\n  // Capture replay when an error occurs (captures prior 60s)\n  replaysOnErrorSampleRate: 1.0,  // 100% of error sessions\n\n  integrations: [\n    Sentry.replayIntegration({\n      maskAllText: true,       // mask all text content\n      blockAllMedia: true,     // block images/videos\n      maskAllInputs: true,     // mask form inputs\n    }),\n  ],\n});\n```\n\n## Breadcrumbs\n\n```javascript\nSentry.init({\n  // Maximum breadcrumbs to store (default: 100)\n  maxBreadcrumbs: 50,\n\n  // Filter or modify breadcrumbs — return null to drop\n  beforeBreadcrumb(breadcrumb, hint) {\n    // Drop noisy console breadcrumbs\n    if (breadcrumb.category === \"console\" && breadcrumb.level === \"debug\") {\n      return null;\n    }\n    // Redact sensitive URLs\n    if (breadcrumb.category === \"fetch\" && breadcrumb.data?.url?.includes(\"/auth\")) {\n      breadcrumb.data.url = \"[REDACTED]\";\n    }\n    return breadcrumb;\n  },\n});\n```\n\n## Transport & Networking\n\n```javascript\nSentry.init({\n  // Tunnel endpoint to bypass ad blockers\n  // Your server proxies requests to Sentry's ingest endpoint\n  tunnel: \"/sentry-tunnel\",\n\n  // Custom transport (advanced — replace the default fetch transport)\n  transport: Sentry.makeFetchTransport,\n\n  // Custom transport options\n  transportOptions: {\n    headers: { \"X-Custom-Header\": \"value\" },\n  },\n});\n```\n\n### Tunnel Endpoint\n\nAd blockers may block requests to `*.ingest.sentry.io`. A tunnel proxies events through your own server:\n\n```javascript\n// Express tunnel endpoint example\napp.post(\"/sentry-tunnel\", async (req, res) => {\n  const envelope = req.body;\n  const piece = envelope.split(\"\\n\")[0];\n  const header = JSON.parse(piece);\n  const dsn = new URL(header.dsn);\n  const projectId = dsn.pathname.replace(\"/\", \"\");\n  const upstream = `https://${dsn.hostname}/api/${projectId}/envelope/`;\n\n  await fetch(upstream, {\n    method: \"POST\",\n    body: envelope,\n    headers: { \"Content-Type\": \"application/x-sentry-envelope\" },\n  });\n  res.status(200).end();\n});\n```\n\n## Debugging\n\n```javascript\nSentry.init({\n  // Log SDK operations to the console\n  debug: true,  // default: false — DISABLE in production\n\n  // Attach stack traces to all messages (not just exceptions)\n  attachStacktrace: true,  // default: false\n\n  // Control PII collection (IP address, cookies, user data)\n  sendDefaultPii: false,  // default: false\n});\n```\n\n## Data Normalization\n\n```javascript\nSentry.init({\n  // Depth for walking contextual data objects (default: 3)\n  normalizeDepth: 5,\n\n  // Max properties per object/array in normalized data (default: 1000)\n  normalizeMaxBreadth: 500,\n\n  // Max characters for string values before truncation\n  maxValueLength: 500,\n\n  // Send client-side outcome reports to Sentry (default: true)\n  sendClientReports: true,\n});\n```\n\n## Integrations\n\n```javascript\nimport * as Sentry from \"@sentry/browser\";\n\nSentry.init({\n  integrations: [\n    // Performance monitoring\n    Sentry.browserTracingIntegration(),\n\n    // Session replay\n    Sentry.replayIntegration(),\n\n    // User feedback widget\n    Sentry.feedbackIntegration({ colorScheme: \"system\" }),\n\n    // HTTP client errors (4xx, 5xx as events)\n    Sentry.httpClientIntegration(),\n\n    // Capture console.error as events\n    Sentry.captureConsoleIntegration({ levels: [\"error\", \"warn\"] }),\n\n    // Report only errors with stack traces from specific URLs\n    Sentry.reportingObserverIntegration(),\n  ],\n\n  // Disable all default integrations (advanced)\n  // defaultIntegrations: false,\n});\n```\n\n## Logs (Experimental)\n\n```javascript\nSentry.init({\n  enableLogs: true,  // default: false\n\n  beforeSendLog(log) {\n    // Drop debug logs\n    if (log.level === \"debug\") return null;\n    return log;\n  },\n});\n\n// Usage\nSentry.logger.info(\"User completed onboarding\");\nSentry.logger.warn(\"Slow query\", { duration: 3500 });\nSentry.logger.error(\"Validation failed\", { field: \"email\" });\n```\n\n## Common Production Configuration\n\n```javascript\n// Recommended production config\nSentry.init({\n  dsn: process.env.SENTRY_DSN,\n  release: process.env.SENTRY_RELEASE,\n  environment: process.env.NODE_ENV,\n  sampleRate: 1.0,\n  tracesSampleRate: 0.1,\n  replaysSessionSampleRate: 0.1,\n  replaysOnErrorSampleRate: 1.0,\n  ignoreErrors: [\n    \"ResizeObserver loop limit exceeded\",\n    /^Loading chunk \\d+ failed$/,\n    /^Network request failed$/,\n  ],\n  denyUrls: [/extensions\\//i, /^chrome:\\/\\//i],\n  integrations: [\n    Sentry.browserTracingIntegration(),\n    Sentry.replayIntegration({ maskAllText: true, blockAllMedia: true }),\n  ],\n});\n```\n",
+  "sections": [
+    {
+      "id": "identity",
+      "title": "Identity options (dsn, release, environment)",
+      "body": "`dsn` (string, required) — Data Source Name URL identifying your Sentry project. `release` (string) — version identifier linking events to source maps and commits, e.g., `my-app@1.2.3`. `environment` (string, default `production`) — deployment target for filtering in the UI. `enabled` (boolean, default `true`) — set to `false` to fully disable the SDK.",
+      "tags": ["dsn", "release", "environment", "enabled"]
+    },
+    {
+      "id": "error-filtering",
+      "title": "Error sampling and filtering",
+      "body": "`sampleRate` (number, 0-1, default 1.0) — probability of capturing each error event. `beforeSend(event, hint) => event|null` — callback to modify or drop events before sending; return `null` to discard. `ignoreErrors` (string[]|RegExp[]) — drop events whose message matches. `allowUrls` (string[]|RegExp[]) — only capture errors from matching script URLs. `denyUrls` (string[]|RegExp[]) — drop errors from matching script URLs (useful for filtering browser extension noise).",
+      "tags": ["sampleRate", "beforeSend", "ignoreErrors", "allowUrls", "denyUrls", "filtering"]
+    },
+    {
+      "id": "tracing",
+      "title": "Performance tracing options",
+      "body": "`tracesSampleRate` (number, 0-1) — probability of capturing each transaction. `tracesSampler(context) => number|boolean` — dynamic sampling function for per-route control. `tracePropagationTargets` (string[]|RegExp[]) — URLs to receive `sentry-trace` and `baggage` headers for distributed tracing (default: same-origin). `beforeSendTransaction(event) => event|null` — filter transactions before sending. `ignoreTransactions` (string[]|RegExp[]) — drop matching transactions. `beforeSendSpan(span) => span` — modify individual spans.",
+      "tags": ["tracesSampleRate", "tracesSampler", "tracePropagation", "distributed-tracing", "performance"]
+    },
+    {
+      "id": "replay",
+      "title": "Session replay options",
+      "body": "`replaysSessionSampleRate` (number, 0-1) — percentage of sessions to continuously record. `replaysOnErrorSampleRate` (number, 0-1) — percentage of error sessions to capture (records the preceding 60 seconds). Requires `Sentry.replayIntegration()` in the integrations array. Privacy options on the integration: `maskAllText`, `blockAllMedia`, `maskAllInputs` to prevent capturing PII in replays.",
+      "tags": ["replay", "session-replay", "privacy", "masking"]
+    },
+    {
+      "id": "breadcrumbs-config",
+      "title": "Breadcrumb configuration",
+      "body": "`maxBreadcrumbs` (number, default 100) — maximum breadcrumbs stored before oldest are dropped. `beforeBreadcrumb(breadcrumb, hint) => breadcrumb|null` — callback to modify or drop breadcrumbs; return `null` to discard. Use to redact sensitive URLs, drop noisy console breadcrumbs, or remove PII from breadcrumb data payloads.",
+      "tags": ["breadcrumbs", "maxBreadcrumbs", "beforeBreadcrumb", "redact"]
+    },
+    {
+      "id": "transport-tunnel",
+      "title": "Transport and tunnel configuration",
+      "body": "`tunnel` (string) — URL path on your server that proxies events to Sentry's ingest endpoint, bypassing ad blockers that block `*.ingest.sentry.io`. Your server must forward the raw envelope body to `https://{host}/api/{project_id}/envelope/`. `transport` — custom transport implementation replacing the default fetch-based transport. `transportOptions` — configure custom headers or fetch options on the default transport.",
+      "tags": ["tunnel", "transport", "ad-blocker", "proxy", "fetch"]
+    },
+    {
+      "id": "debug-pii",
+      "title": "Debugging and PII options",
+      "body": "`debug` (boolean, default false) — log SDK operations to the console for debugging setup issues; disable in production. `attachStacktrace` (boolean, default false) — attach stack traces to `captureMessage` calls, not just exceptions. `sendDefaultPii` (boolean, default false) — automatically collect IP addresses, cookies, and user agent data. `normalizeDepth` (number, default 3) — depth for serializing contextual data objects. `maxValueLength` (number) — truncate string values beyond this length.",
+      "tags": ["debug", "pii", "privacy", "attachStacktrace", "normalize"]
+    },
+    {
+      "id": "integrations-ref",
+      "title": "Integrations reference",
+      "body": "Browser integrations: `browserTracingIntegration()` for automatic page load and navigation tracing, `replayIntegration()` for session replay, `feedbackIntegration()` for user feedback widget, `httpClientIntegration()` for 4xx/5xx response capture, `captureConsoleIntegration()` for console.error events, `reportingObserverIntegration()` for deprecation/intervention reports. Node integrations: auto-instrumented HTTP, Express, database modules via diagnostic channels. Pass integrations as an array to `Sentry.init({ integrations: [...] })`. Set `defaultIntegrations: false` to disable all defaults.",
+      "tags": ["integrations", "browserTracing", "replay", "feedback", "httpClient"]
+    }
+  ],
+  "links": [
+    { "uri": "sentry/setup", "context": "Basic initialization before advanced configuration" },
+    { "uri": "sentry/capture", "context": "Events enriched by configuration flow through beforeSend" },
+    { "uri": "sentry/source-maps", "context": "Release option determines which source maps apply" },
+    { "uri": "sentry/alerts", "context": "Sample rates affect how many events reach alert evaluation" }
+  ],
+  "related": [
+    { "uri": "sentry/setup", "relation": "prerequisite", "note": "Basic init must work before tuning advanced options" },
+    { "uri": "sentry/capture", "relation": "see-also", "note": "beforeSend filters events produced by capture methods" },
+    { "uri": "sentry/source-maps", "relation": "see-also", "note": "release option must match source map uploads" }
+  ],
+  "more": {
+    "docs": "https://docs.sentry.io/platforms/javascript/configuration/options/",
+    "integrations": "https://docs.sentry.io/platforms/javascript/configuration/integrations/",
+    "filtering": "https://docs.sentry.io/platforms/javascript/configuration/filtering/",
+    "transports": "https://docs.sentry.io/platforms/javascript/configuration/transports/",
+    "tree-shaking": "https://docs.sentry.io/platforms/javascript/configuration/tree-shaking/"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "8 min",
+    "prerequisites": ["sentry/setup"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

@@ -1,0 +1,95 @@
+{
+  "name": "dark-mode",
+  "version": "1.0.0",
+  "uri": "tailwind/dark-mode",
+  "type": "context",
+  "content_type": "guide",
+  "context": "Tailwind dark mode — media query, class toggle, data attribute strategies, and three-way theme switching",
+  "info": "Tailwind's dark: variant lets agents style elements differently in dark mode. By default it uses the prefers-color-scheme media feature (OS preference), but can be configured for manual toggling via a CSS class or data attribute. This node covers all three strategies, the JavaScript needed for three-way toggling (light/dark/system), avoiding flash of unstyled content (FOUC), and persisting preference in localStorage. Agents need this knowledge when implementing theme switchers, adding dark mode support to existing components, or debugging dark mode not working. In v4, dark mode is customized via @custom-variant instead of the darkMode config key.",
+  "parent": "tailwind",
+  "tags": ["dark-mode", "theme", "dark", "light-mode", "prefers-color-scheme", "theming"],
+  "aliases": [
+    "tailwind dark mode",
+    "dark mode tailwind",
+    "tailwind dark theme",
+    "tailwind light dark",
+    "tw dark mode",
+    "dark: variant",
+    "tailwind theme toggle",
+    "tailwind night mode",
+    "darkmode tailwind"
+  ],
+  "triggers": [
+    "add dark mode to my app",
+    "tailwind dark mode setup",
+    "toggle dark mode with tailwind",
+    "dark mode not working tailwind",
+    "implement theme switcher",
+    "dark: variant tailwind",
+    "class based dark mode",
+    "prefers color scheme tailwind",
+    "three way theme toggle"
+  ],
+  "body": "# Dark Mode in Tailwind CSS\n\nThe `dark:` variant applies styles when dark mode is active. Three strategies exist for activating it.\n\n## Strategy 1: Media Query (Default)\n\nRespects the user's OS preference via `prefers-color-scheme: dark`. No configuration needed.\n\n```html\n<div class=\"bg-white dark:bg-gray-900\">\n  <h1 class=\"text-gray-900 dark:text-white\">Title</h1>\n  <p class=\"text-gray-600 dark:text-gray-400\">Description</p>\n  <button class=\"bg-indigo-600 dark:bg-indigo-500 text-white hover:bg-indigo-700 dark:hover:bg-indigo-400\">\n    Action\n  </button>\n</div>\n```\n\nThis generates:\n```css\n.dark\\:bg-gray-900 {\n  @media (prefers-color-scheme: dark) {\n    background-color: var(--color-gray-900);\n  }\n}\n```\n\n## Strategy 2: Class Toggle\n\nManually control dark mode with a CSS class on `<html>` or a parent element.\n\n### v4 Configuration\n```css\n@import \"tailwindcss\";\n@custom-variant dark (&:where(.dark, .dark *));\n```\n\n### v3 Configuration\n```javascript\n// tailwind.config.js\nmodule.exports = {\n  darkMode: \"class\",\n};\n```\n\n### Usage\n```html\n<html class=\"dark\">\n  <body class=\"bg-white dark:bg-gray-900\">\n    <!-- Dark mode active via class -->\n  </body>\n</html>\n```\n\n## Strategy 3: Data Attribute\n\nUse a data attribute instead of a class:\n\n### v4 Configuration\n```css\n@import \"tailwindcss\";\n@custom-variant dark (&:where([data-theme=dark], [data-theme=dark] *));\n```\n\n### Usage\n```html\n<html data-theme=\"dark\">\n  <body class=\"bg-white dark:bg-gray-900\">\n    <!-- Dark mode active via data attribute -->\n  </body>\n</html>\n```\n\n## Three-Way Toggle: Light / Dark / System\n\nThe most common real-world pattern — user picks light, dark, or respects OS.\n\n### JavaScript (Add to `<head>` to prevent FOUC)\n```html\n<script>\n  // Runs before paint to prevent flash of wrong theme\n  document.documentElement.classList.toggle(\n    \"dark\",\n    localStorage.theme === \"dark\" ||\n      (!(\"theme\" in localStorage) &&\n        window.matchMedia(\"(prefers-color-scheme: dark)\").matches)\n  );\n</script>\n```\n\n### Toggle Functions\n```javascript\n// Light mode\nfunction setLight() {\n  localStorage.theme = \"light\";\n  document.documentElement.classList.remove(\"dark\");\n}\n\n// Dark mode\nfunction setDark() {\n  localStorage.theme = \"dark\";\n  document.documentElement.classList.add(\"dark\");\n}\n\n// System preference\nfunction setSystem() {\n  localStorage.removeItem(\"theme\");\n  const prefersDark = window.matchMedia(\"(prefers-color-scheme: dark)\").matches;\n  document.documentElement.classList.toggle(\"dark\", prefersDark);\n}\n```\n\n### Listen for OS Changes\n```javascript\nwindow.matchMedia(\"(prefers-color-scheme: dark)\")\n  .addEventListener(\"change\", (e) => {\n    if (!(\"theme\" in localStorage)) {\n      document.documentElement.classList.toggle(\"dark\", e.matches);\n    }\n  });\n```\n\n## React Theme Switcher Component\n\n```tsx\nimport { useEffect, useState } from \"react\";\n\ntype Theme = \"light\" | \"dark\" | \"system\";\n\nexport function ThemeSwitcher() {\n  const [theme, setTheme] = useState<Theme>(() => {\n    if (typeof window === \"undefined\") return \"system\";\n    return (localStorage.getItem(\"theme\") as Theme) ?? \"system\";\n  });\n\n  useEffect(() => {\n    const root = document.documentElement;\n    if (theme === \"system\") {\n      localStorage.removeItem(\"theme\");\n      const prefersDark = window.matchMedia(\"(prefers-color-scheme: dark)\").matches;\n      root.classList.toggle(\"dark\", prefersDark);\n    } else {\n      localStorage.setItem(\"theme\", theme);\n      root.classList.toggle(\"dark\", theme === \"dark\");\n    }\n  }, [theme]);\n\n  return (\n    <select\n      value={theme}\n      onChange={(e) => setTheme(e.target.value as Theme)}\n      className=\"rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white px-3 py-1.5\"\n    >\n      <option value=\"light\">Light</option>\n      <option value=\"dark\">Dark</option>\n      <option value=\"system\">System</option>\n    </select>\n  );\n}\n```\n\n## Common Dark Mode Patterns\n\n```html\n<!-- Card with full dark mode support -->\n<div class=\"rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-6 shadow-sm dark:shadow-gray-900/20\">\n  <h3 class=\"text-lg font-semibold text-gray-900 dark:text-white\">Card Title</h3>\n  <p class=\"mt-2 text-gray-600 dark:text-gray-400\">Description</p>\n  <div class=\"mt-4 flex gap-3\">\n    <button class=\"bg-indigo-600 dark:bg-indigo-500 text-white px-4 py-2 rounded-md hover:bg-indigo-700 dark:hover:bg-indigo-400\">\n      Primary\n    </button>\n    <button class=\"border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 px-4 py-2 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700\">\n      Secondary\n    </button>\n  </div>\n</div>\n```\n\n## Color Pairing Guide\n\n| Light | Dark | Usage |\n|-------|------|-------|\n| `bg-white` | `dark:bg-gray-900` | Page background |\n| `bg-gray-50` | `dark:bg-gray-800` | Card / surface |\n| `text-gray-900` | `dark:text-white` | Primary text |\n| `text-gray-600` | `dark:text-gray-400` | Secondary text |\n| `text-gray-400` | `dark:text-gray-500` | Muted / placeholder |\n| `border-gray-200` | `dark:border-gray-700` | Borders |\n| `bg-indigo-600` | `dark:bg-indigo-500` | Primary action |\n| `hover:bg-gray-50` | `dark:hover:bg-gray-700` | Hover surface |\n\n## Debugging Dark Mode\n\n1. **Not toggling?** Check `@custom-variant dark` (v4) or `darkMode: \"class\"` (v3) is set\n2. **FOUC?** Put the theme detection script inline in `<head>`, before any stylesheets\n3. **Variants not applying?** Ensure `.dark` class is on `<html>`, not `<body>`\n4. **OS preference ignored?** If using class strategy, add matchMedia listener for system fallback\n",
+  "sections": [
+    {
+      "id": "media-strategy",
+      "title": "Media query strategy (default)",
+      "body": "Default behavior: `dark:` generates `@media (prefers-color-scheme: dark)` rules that follow the OS setting. No configuration needed. Works automatically on macOS, Windows, iOS, Android dark mode. Cannot be manually toggled by the user without switching OS settings.",
+      "tags": ["media", "prefers-color-scheme", "os-preference", "default"]
+    },
+    {
+      "id": "class-strategy",
+      "title": "Class-based toggle",
+      "body": "v4: add `@custom-variant dark (&:where(.dark, .dark *));` to CSS. v3: set `darkMode: \"class\"` in config. Then add/remove the `dark` class on `<html>`. This gives full control — users can toggle manually. Persist choice in `localStorage`. Must include inline `<head>` script to prevent flash of wrong theme.",
+      "tags": ["class", "toggle", "manual", "custom-variant"]
+    },
+    {
+      "id": "data-attribute",
+      "title": "Data attribute strategy",
+      "body": "Alternative to class: `@custom-variant dark (&:where([data-theme=dark], [data-theme=dark] *));`. Set `<html data-theme=\"dark\">` to activate. Useful when integrating with frameworks that manage theme via data attributes (e.g., daisyUI, Radix Themes).",
+      "tags": ["data-attribute", "data-theme", "selector"]
+    },
+    {
+      "id": "three-way-toggle",
+      "title": "Three-way toggle implementation",
+      "body": "Support light, dark, and system (OS default). Store \"light\" or \"dark\" in `localStorage.theme`. Remove the key for system mode. Inline detection script in `<head>`: check localStorage first, fall back to `window.matchMedia('(prefers-color-scheme: dark)')`. Listen for `change` events on the matchMedia query to update when OS preference changes.",
+      "tags": ["three-way", "system", "light", "dark", "toggle", "localstorage"]
+    },
+    {
+      "id": "color-pairing",
+      "title": "Light/dark color pairing patterns",
+      "body": "Page bg: `bg-white dark:bg-gray-900`. Surface: `bg-gray-50 dark:bg-gray-800`. Primary text: `text-gray-900 dark:text-white`. Secondary: `text-gray-600 dark:text-gray-400`. Borders: `border-gray-200 dark:border-gray-700`. Actions: `bg-indigo-600 dark:bg-indigo-500`. Hover: `hover:bg-gray-50 dark:hover:bg-gray-700`. Shadows may need adjusted opacity: `shadow-sm dark:shadow-gray-900/20`.",
+      "tags": ["colors", "pairing", "patterns", "light", "dark"]
+    }
+  ],
+  "links": [
+    { "uri": "tailwind/classes", "context": "dark: is a variant applied to any utility class" },
+    { "uri": "tailwind/config", "context": "Configure dark mode strategy in theme settings" },
+    { "uri": "tailwind/responsive", "context": "Combine dark: with responsive: dark:md:bg-gray-900" },
+    { "uri": "tailwind/v4", "context": "v4 uses @custom-variant instead of darkMode config key" }
+  ],
+  "related": [
+    { "uri": "tailwind/classes", "relation": "prerequisite", "note": "Understanding utility classes is needed before adding dark: variants" },
+    { "uri": "tailwind/config", "relation": "see-also", "note": "Dark mode strategy is configured in project setup" },
+    { "uri": "tailwind/v4", "relation": "see-also", "note": "v4 replaced darkMode config with @custom-variant directive" }
+  ],
+  "more": {
+    "docs": "https://tailwindcss.com/docs/dark-mode"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "frontend developers, AI agents",
+    "estimated_reading_time": "5 min",
+    "prerequisites": ["tailwind/classes", "tailwind/config"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

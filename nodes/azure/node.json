@@ -1,0 +1,165 @@
+{
+  "name": "azure",
+  "uri": "azure",
+  "type": "ecosystem",
+  "context": "Microsoft Azure cloud ecosystem for resource automation, hosting, storage, secrets, serverless, monitoring, and Kubernetes operations",
+  "info": "Azure is Microsoft's ARM-based cloud control plane. Autonomous agents use it to authenticate with Microsoft Entra ID, select the correct tenant and subscription, create or inspect resource groups, provision storage and secret dependencies, deploy web and serverless workloads, attach identities, and bootstrap AKS clusters. The dominant execution surface is the `az` CLI, backed by subscription-scoped RBAC and resource IDs. This tree is organized around the recurring jobs an engineering agent actually performs: set auth context, manage resource groups, move artifacts through storage, deploy App Service and Function Apps, protect credentials in Key Vault, reach Kubernetes clusters through AKS, and inspect incidents with Azure Monitor.",
+  "parent": null,
+  "tags": [
+    "azure",
+    "az",
+    "cloud",
+    "arm",
+    "entra-id",
+    "resource-groups",
+    "storage",
+    "app-service",
+    "functions",
+    "aks",
+    "monitor"
+  ],
+  "aliases": [
+    "microsoft azure",
+    "azure cloud",
+    "azure platform",
+    "az cli",
+    "azure resource manager",
+    "arm on azure",
+    "azure control plane",
+    "azure subscription automation",
+    "azure infrastructure"
+  ],
+  "triggers": [
+    "deploy to azure",
+    "work with azure resources",
+    "manage an azure subscription",
+    "create an azure resource group",
+    "deploy an app service to azure",
+    "store a secret in azure key vault",
+    "create an aks cluster",
+    "inspect azure metrics and logs",
+    "automate azure cli workflows"
+  ],
+  "body": "# Azure Ecosystem\n\nAzure automation is built around three facts that agents must keep straight at all times:\n\n1. Authentication is tenant-scoped and enforced by Microsoft Entra ID.\n2. Almost every resource lives inside a subscription and a resource group.\n3. The fastest operational surface is usually the Azure CLI, not the portal.\n\n~~~bash\naz login\naz account show\naz account set --subscription \"$AZURE_SUBSCRIPTION_ID\"\naz configure --defaults group=rg-dojo location=eastus\naz group create --name rg-dojo --location eastus\naz resource list --resource-group rg-dojo --output table\n~~~\n\nFor autonomous agents, the safest pattern is: authenticate with [[azure/auth]], confirm the active subscription, create or inspect [[azure/resource-groups]], provision dependencies like [[azure/storage]] and [[azure/key-vault]], then deploy workloads with [[azure/app-service]], [[azure/functions]], or [[azure/aks]]. After any rollout or failure, jump to [[azure/monitor]].\n\nAzure CLI defaults are sticky. `az configure --defaults` writes profile defaults, and `az webapp up` also caches deployment parameters in `.azure/config` inside the project directory. That accelerates repeat execution, but it also means an agent must re-check subscription, group, and location before destructive changes.\n\nThe other durable mental model is ARM identity: every resource has a fully qualified resource ID such as `/subscriptions/<sub>/resourceGroups/<rg>/providers/Microsoft.Web/sites/<name>`. Those IDs become the hand-off format between deployment, monitoring, RBAC, and downstream tools.\n\nCore paths in this ecosystem:\n\n- [[azure/auth]] for user, service principal, and managed identity login\n- [[azure/resource-groups]] for blast-radius boundaries and lifecycle management\n- [[azure/storage]] for accounts, containers, and blob artifact movement\n- [[azure/app-service]] for long-running web workloads\n- [[azure/functions]] for serverless functions and zip deployments\n- [[azure/key-vault]] for secrets and RBAC-protected secret operations\n- [[azure/aks]] for managed Kubernetes clusters\n- [[azure/monitor]] for metrics, activity logs, and Log Analytics queries\n",
+  "sections": [
+    {
+      "id": "resource-model",
+      "title": "Resource model",
+      "body": "Azure operations are usually subscription-scoped and resource-group scoped. Resource groups are the safest deletion and tagging boundary for most app environments, while ARM resource IDs are the canonical reference format for logs, metrics, RBAC scopes, and cross-resource wiring. Create or inspect the group first, then place dependent services inside it.",
+      "tags": [
+        "arm",
+        "resource-groups",
+        "subscriptions",
+        "resource-ids"
+      ]
+    },
+    {
+      "id": "auth-context",
+      "title": "Authentication and active context",
+      "body": "The active tenant and subscription matter as much as the command itself. Start with `az account show` and `az account set --subscription ...` before creating, deleting, or updating resources. Use [[azure/auth]] for the right noninteractive login pattern; service principals and managed identities are safer for automation than human interactive sessions.",
+      "tags": [
+        "auth",
+        "tenant",
+        "subscription",
+        "context"
+      ]
+    },
+    {
+      "id": "agent-workflows",
+      "title": "Agent workflows",
+      "body": "The recurring jobs are predictable: create a resource group, create storage for artifacts or function runtime state, store secrets in Key Vault, deploy a web or function artifact, attach identities or app settings, fetch AKS credentials when the workload is Kubernetes-based, and then inspect metrics or logs in [[azure/monitor]]. The shortest path depends on the runtime shape rather than the product marketing page.",
+      "tags": [
+        "agent-jobs",
+        "deployment",
+        "operations",
+        "troubleshooting"
+      ]
+    }
+  ],
+  "links": [
+    {
+      "uri": "azure/auth",
+      "context": "Authenticate and pin the correct tenant and subscription context"
+    },
+    {
+      "uri": "azure/resource-groups",
+      "context": "Create and manage the boundary that most Azure resources live inside"
+    },
+    {
+      "uri": "azure/storage",
+      "context": "Move artifacts and data through storage accounts and blob containers"
+    },
+    {
+      "uri": "azure/app-service",
+      "context": "Deploy long-running web apps with `az webapp`"
+    },
+    {
+      "uri": "azure/functions",
+      "context": "Provision and deploy Azure Function Apps"
+    },
+    {
+      "uri": "azure/key-vault",
+      "context": "Store and retrieve secrets with RBAC-aware workflows"
+    },
+    {
+      "uri": "azure/aks",
+      "context": "Create clusters and fetch kubeconfig for managed Kubernetes"
+    },
+    {
+      "uri": "azure/monitor",
+      "context": "Inspect metrics, activity logs, and Log Analytics data"
+    },
+    {
+      "uri": "terraform/providers",
+      "context": "Model Azure infrastructure declaratively once the control-plane concepts are clear"
+    },
+    {
+      "uri": "kubernetes/kubectl",
+      "context": "Operate workloads after AKS hands off cluster credentials"
+    }
+  ],
+  "related": [
+    {
+      "uri": "aws",
+      "relation": "alternative",
+      "note": "AWS is the closest comparable public cloud control plane in the graph"
+    },
+    {
+      "uri": "gcp",
+      "relation": "alternative",
+      "note": "GCP covers a similar cloud automation surface with different IAM and resource models"
+    },
+    {
+      "uri": "terraform",
+      "relation": "see-also",
+      "note": "Many Azure teams provision the same services declaratively with Terraform"
+    },
+    {
+      "uri": "kubernetes",
+      "relation": "see-also",
+      "note": "AKS is Azure's managed Kubernetes surface and hands off to generic Kubernetes operations"
+    }
+  ],
+  "more": {
+    "docs": "https://learn.microsoft.com/en-us/azure/",
+    "cli": "https://learn.microsoft.com/en-us/cli/azure/",
+    "repo": "https://github.com/Azure/azure-cli"
+  },
+  "frontmatter": {
+    "created": "2026-04-12",
+    "updated": "2026-04-12",
+    "author": "dojo-community",
+    "audience": "platform engineers, developers, AI agents",
+    "estimated_reading_time": "6 min",
+    "prerequisites": [],
+    "status": "living",
+    "confidence": "high"
+  },
+  "repository": "https://github.com/Azure/azure-cli",
+  "version": "1.0.0",
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-12T00:00:00Z",
+  "updated": "2026-04-12T00:00:00Z",
+  "status": "published"
+}

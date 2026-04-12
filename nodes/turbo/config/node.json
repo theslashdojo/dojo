@@ -1,0 +1,127 @@
+{
+  "name": "config",
+  "version": "1.0.0",
+  "uri": "turbo/config",
+  "type": "skill",
+  "context": "Initialize and configure turbo.json — global options, env modes, remote cache, and per-workspace overrides",
+  "info": "This skill covers creating and configuring turbo.json, the central configuration file for Turborepo. It includes global options (globalDependencies, globalEnv, envMode, ui, concurrency), remote cache setup (TURBO_TOKEN, TURBO_TEAM, remoteCache object), per-workspace configuration overrides using the extends field, and environment variable handling in strict vs loose mode. Agents use this skill when setting up a new Turborepo project, migrating configuration, or tuning build behavior. See [[turbo/pipelines]] for task definitions within turbo.json, [[turbo/workspaces]] for monorepo structure, and [[turbo/caching]] for cache-specific configuration.",
+  "parent": "turbo",
+  "tags": ["turbo-config", "turbo-json", "configuration", "env-mode", "remote-cache", "global-env", "concurrency"],
+  "aliases": [
+    "turbo.json",
+    "turbo config",
+    "turbo configuration",
+    "turborepo config",
+    "turbo json file",
+    "turbo setup",
+    "turbo.json setup",
+    "configure turborepo"
+  ],
+  "triggers": [
+    "create a turbo.json file",
+    "configure turborepo",
+    "set up turbo.json",
+    "configure remote caching in turbo",
+    "set turbo env mode to strict",
+    "add global dependencies to turbo",
+    "set up turbo concurrency",
+    "configure turbo for CI",
+    "extend turbo.json in a workspace"
+  ],
+  "body": "# Turborepo Configuration\n\nAll Turborepo configuration lives in `turbo.json` at the repository root. Workspaces can override task-level settings with their own `turbo.json` using the `extends` field.\n\n## Root turbo.json Structure\n\n```json\n{\n  \"$schema\": \"https://turborepo.dev/schema.json\",\n  \"globalDependencies\": [\".env\", \"tsconfig.base.json\"],\n  \"globalEnv\": [\"NODE_ENV\", \"CI\"],\n  \"globalPassThroughEnv\": [\"AWS_SECRET_ACCESS_KEY\"],\n  \"envMode\": \"strict\",\n  \"ui\": \"stream\",\n  \"concurrency\": 10,\n  \"cacheDir\": \".turbo/cache\",\n  \"tasks\": {\n    \"build\": {\n      \"dependsOn\": [\"^build\"],\n      \"outputs\": [\"dist/**\"]\n    }\n  }\n}\n```\n\n## Global Options Reference\n\n| Field | Type | Default | Description |\n|-------|------|---------|-------------|\n| `globalDependencies` | `string[]` | `[]` | Files that invalidate all task caches when changed |\n| `globalEnv` | `string[]` | `[]` | Env vars included in every task hash |\n| `globalPassThroughEnv` | `string[]` | `null` | Env vars available to tasks but not hashed (strict mode) |\n| `envMode` | `\"strict\"\\|\"loose\"` | `\"strict\"` | Controls env var availability |\n| `ui` | `\"tui\"\\|\"stream\"` | `\"stream\"` | Terminal output mode |\n| `concurrency` | `number\\|string` | `10` | Max parallel tasks (number or percentage like \"50%\") |\n| `cacheDir` | `string` | `\".turbo/cache\"` | Local cache directory |\n| `cacheMaxAge` | `string` | `\"0\"` | Max age of cache entries (e.g., \"7d\", \"24h\") |\n| `cacheMaxSize` | `string` | `\"0\"` | Max total cache size (e.g., \"10GB\") |\n| `dangerouslyDisablePackageManagerCheck` | `boolean` | `false` | Skip package manager validation |\n| `noUpdateNotifier` | `boolean` | `false` | Suppress update notifications |\n\n## Environment Mode\n\n**Strict mode** (default, recommended): Only explicitly declared env vars (via `env`, `globalEnv`, `passThroughEnv`, `globalPassThroughEnv`) are available to tasks. This prevents cache pollution from undeclared variables.\n\n**Loose mode**: All environment variables are available. Risks cache invalidation issues.\n\n```json\n{\n  \"envMode\": \"strict\",\n  \"globalEnv\": [\"NODE_ENV\", \"CI\"],\n  \"tasks\": {\n    \"build\": {\n      \"env\": [\"API_URL\", \"DATABASE_*\"],\n      \"passThroughEnv\": [\"AWS_SECRET_ACCESS_KEY\"]\n    }\n  }\n}\n```\n\nEnv patterns support wildcards (`API_*`) and negation (`!API_SECRET`).\n\n## Remote Cache Configuration\n\nEnable remote caching to share build artifacts across CI and team members:\n\n```bash\n# Authenticate with Vercel (default provider)\nnpx turbo login\nnpx turbo link\n```\n\nOr configure manually via environment variables:\n```bash\nexport TURBO_TOKEN=\"your-token\"\nexport TURBO_TEAM=\"your-team\"\n```\n\nAdvanced remote cache options in turbo.json:\n```json\n{\n  \"remoteCache\": {\n    \"enabled\": true,\n    \"signature\": false,\n    \"preflight\": false,\n    \"timeout\": 30,\n    \"uploadTimeout\": 60\n  }\n}\n```\n\n## Per-Workspace Overrides\n\nCreate a `turbo.json` in any workspace to override task configuration:\n\n```json\n{\n  \"extends\": [\"//\"],\n  \"tasks\": {\n    \"build\": {\n      \"outputs\": [\".next/**\", \"!.next/cache/**\"]\n    }\n  }\n}\n```\n\nThe `\"//\"` syntax means \"extend from the root turbo.json\". Only task-level fields can be overridden — global options are always inherited from root.\n\n## CI Configuration\n\nFor CI environments, set these environment variables:\n\n```yaml\n# GitHub Actions example\nenv:\n  TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}\n  TURBO_TEAM: ${{ vars.TURBO_TEAM }}\n```\n\nThis enables remote caching in CI without `turbo login`.\n",
+  "sections": [
+    {
+      "id": "root-config",
+      "title": "Root turbo.json",
+      "body": "The root turbo.json is required and defines global configuration plus task definitions. It must exist at the repository root alongside package.json. Add `$schema` for editor autocompletion. Global fields like `globalDependencies`, `globalEnv`, and `envMode` affect all tasks. Task definitions live under the `tasks` key — see [[turbo/pipelines]] for details.",
+      "tags": ["root", "turbo-json", "global", "schema"]
+    },
+    {
+      "id": "env-mode",
+      "title": "Environment variable modes",
+      "body": "Strict mode (default) only exposes env vars declared in `env`, `globalEnv`, `passThroughEnv`, or `globalPassThroughEnv` to tasks. This ensures cache correctness — undeclared variables cannot silently invalidate or pollute the cache. Loose mode passes all env vars through but risks cache hits returning stale results when an undeclared variable changes. Always prefer strict mode and declare env vars explicitly.",
+      "tags": ["env-mode", "strict", "loose", "environment-variables", "cache-correctness"]
+    },
+    {
+      "id": "remote-cache",
+      "title": "Remote cache setup",
+      "body": "Remote caching shares task outputs across machines. Vercel provides built-in remote caching — run `turbo login` then `turbo link`. For CI, set `TURBO_TOKEN` and `TURBO_TEAM` environment variables. Self-hosted remote caches are possible via the Remote Caching API. Enable artifact signing with `TURBO_REMOTE_CACHE_SIGNATURE_KEY` for supply chain security. The `remoteCache` object in turbo.json controls timeouts, preflight requests, and signature verification.",
+      "tags": ["remote-cache", "vercel", "ci", "turbo-token", "turbo-team", "self-hosted"]
+    },
+    {
+      "id": "workspace-overrides",
+      "title": "Per-workspace configuration",
+      "body": "Any workspace can create its own turbo.json with `\"extends\": [\"//\"]` to override task-level configuration from the root. This is useful when a specific app has different outputs (e.g., Next.js `.next/**` vs Vite `dist/**`) or needs additional env vars. Only task-level fields can be overridden; global fields are always inherited from root. The `$TURBO_EXTENDS$` token appends to parent arrays instead of replacing them.",
+      "tags": ["workspace", "extends", "override", "per-package"]
+    }
+  ],
+  "links": [
+    { "uri": "turbo", "context": "Parent Turborepo ecosystem node" },
+    { "uri": "turbo/pipelines", "context": "Task definitions that live inside turbo.json's tasks object" },
+    { "uri": "turbo/workspaces", "context": "Workspace structure that turbo.json orchestrates" },
+    { "uri": "turbo/caching", "context": "Cache behavior configured via turbo.json fields" },
+    { "uri": "turbo/troubleshooting", "context": "Debug configuration issues and cache problems" }
+  ],
+  "related": [
+    { "uri": "turbo/pipelines", "relation": "see-also", "note": "Task definitions are the core content of turbo.json" },
+    { "uri": "turbo/caching", "relation": "see-also", "note": "Cache configuration fields like cacheDir, cacheMaxAge live in turbo.json" },
+    { "uri": "turbo/workspaces", "relation": "prerequisite", "note": "Workspace structure must exist before configuring tasks" },
+    { "uri": "typescript/config", "relation": "see-also", "note": "tsconfig.json is often a globalDependency in turbo.json" }
+  ],
+  "scripts": [
+    {
+      "id": "init-turbo-config",
+      "name": "Initialize turbo.json",
+      "description": "Create or update turbo.json with sensible defaults for a monorepo",
+      "lang": "bash",
+      "runtime": "bash>=4",
+      "entry": "./scripts/init-config.sh",
+      "env": {
+        "TURBO_TEAM": { "required": false, "secret": false, "description": "Remote cache team name" },
+        "TURBO_TOKEN": { "required": false, "secret": true, "description": "Remote cache authentication token" }
+      },
+      "packages": ["turbo"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "envMode": { "type": "string", "enum": ["strict", "loose"], "default": "strict", "description": "Environment variable mode" },
+        "concurrency": { "type": ["number", "string"], "default": 10, "description": "Max parallel tasks" },
+        "remoteCache": { "type": "boolean", "default": false, "description": "Enable remote cache configuration" },
+        "globalDeps": { "type": "array", "items": { "type": "string" }, "description": "Global dependency file patterns" },
+        "globalEnv": { "type": "array", "items": { "type": "string" }, "description": "Global environment variables" }
+      }
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "configPath": { "type": "string", "description": "Path to the created/updated turbo.json" },
+        "status": { "type": "string", "enum": ["created", "updated"], "description": "Whether the config was newly created or updated" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "turbo", "reason": "turbo must be installed as a devDependency" }
+  ],
+  "more": {
+    "docs": "https://turborepo.dev/repo/docs/reference/configuration",
+    "schema": "https://turborepo.dev/schema.json"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "5 min",
+    "prerequisites": ["turbo"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

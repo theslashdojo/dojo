@@ -1,0 +1,102 @@
+{
+  "name": "queries",
+  "version": "1.0.0",
+  "uri": "prisma/client/queries",
+  "type": "sub",
+  "context": "CRUD query patterns, filters, pagination, aggregation, and sorting with Prisma Client",
+  "info": "This sub-skill covers every query operation available in Prisma Client: reading data with `findUnique`, `findFirst`, `findMany`, `count`, `aggregate`, and `groupBy`; creating with `create` and `createMany`; updating with `update`, `updateMany`, and `upsert`; and deleting with `delete` and `deleteMany`. It details all filter operators (`equals`, `not`, `in`, `notIn`, `lt`, `gt`, `contains`, `startsWith`, `endsWith`, `AND`, `OR`, `NOT`), query options (`select`, `include`, `orderBy`, `take`, `skip`, `cursor`, `distinct`), and atomic number operations (`increment`, `decrement`, `multiply`, `divide`). See [[prisma/client/relations]] for relation-specific queries and [[prisma/client]] for setup.",
+  "parent": "prisma/client",
+  "tags": ["queries", "crud", "find", "create", "update", "delete", "filter", "pagination", "aggregate"],
+  "aliases": [
+    "prisma queries",
+    "prisma crud",
+    "prisma findMany",
+    "prisma findUnique",
+    "prisma create",
+    "prisma update",
+    "prisma delete",
+    "prisma where",
+    "prisma filter",
+    "prisma pagination",
+    "prisma aggregate",
+    "prisma groupBy",
+    "prisma orderBy",
+    "prisma upsert"
+  ],
+  "triggers": [
+    "query records with prisma",
+    "find a record by id",
+    "search with prisma filters",
+    "paginate prisma results",
+    "aggregate data with prisma",
+    "group by with prisma",
+    "create a record",
+    "update a record",
+    "delete records",
+    "upsert with prisma",
+    "filter with contains or startsWith",
+    "sort prisma results"
+  ],
+  "body": "# Prisma Client Queries\n\nComplete reference for all CRUD operations, filters, and query options in [[prisma/client]].\n\n## Read Operations\n\n### findUnique — Find by unique field\n\n```typescript\n// By primary key\nconst user = await prisma.user.findUnique({ where: { id: 1 } });\n\n// By unique field\nconst user = await prisma.user.findUnique({ where: { email: 'alice@example.com' } });\n\n// By composite unique\nconst record = await prisma.post.findUnique({\n  where: { authorId_slug: { authorId: 1, slug: 'my-post' } },\n});\n\n// Throws if not found\nconst user = await prisma.user.findUniqueOrThrow({ where: { id: 1 } });\n```\n\n### findFirst — Find first match\n\n```typescript\nconst post = await prisma.post.findFirst({\n  where: { published: true },\n  orderBy: { createdAt: 'desc' },\n});\n\n// Throws if not found\nconst post = await prisma.post.findFirstOrThrow({ where: { published: true } });\n```\n\n### findMany — Find multiple records\n\n```typescript\nconst users = await prisma.user.findMany({\n  where: { role: 'ADMIN' },\n  orderBy: { name: 'asc' },\n  take: 10,\n  skip: 0,\n});\n```\n\n### count\n\n```typescript\nconst total = await prisma.user.count();\nconst admins = await prisma.user.count({ where: { role: 'ADMIN' } });\n```\n\n### aggregate\n\n```typescript\nconst stats = await prisma.product.aggregate({\n  _avg: { price: true },\n  _max: { price: true },\n  _min: { price: true },\n  _sum: { price: true },\n  _count: true,\n});\n```\n\n### groupBy\n\n```typescript\nconst grouped = await prisma.user.groupBy({\n  by: ['role'],\n  _count: true,\n  _avg: { age: true },\n  having: { age: { _avg: { gt: 25 } } },\n});\n```\n\n## Create Operations\n\n```typescript\n// Create one\nconst user = await prisma.user.create({\n  data: {\n    email: 'alice@example.com',\n    name: 'Alice',\n    role: 'ADMIN',\n  },\n});\n\n// Create many\nconst result = await prisma.user.createMany({\n  data: [\n    { email: 'bob@example.com', name: 'Bob' },\n    { email: 'charlie@example.com', name: 'Charlie' },\n  ],\n  skipDuplicates: true,  // Skip records with duplicate unique fields\n});\n// result.count = number of created records\n\n// Create many and return (PostgreSQL, SQLite, CockroachDB)\nconst users = await prisma.user.createManyAndReturn({\n  data: [{ email: 'a@b.com' }, { email: 'c@d.com' }],\n});\n```\n\n## Update Operations\n\n```typescript\n// Update one (must match unique field)\nconst user = await prisma.user.update({\n  where: { id: 1 },\n  data: { name: 'Alice Updated' },\n});\n\n// Update many\nconst result = await prisma.user.updateMany({\n  where: { role: 'USER' },\n  data: { verified: true },\n});\n\n// Atomic number operations\nconst updated = await prisma.product.update({\n  where: { id: 1 },\n  data: {\n    views: { increment: 1 },\n    stock: { decrement: 1 },\n    price: { multiply: 1.1 },\n  },\n});\n\n// Upsert — update if exists, create if not\nconst user = await prisma.user.upsert({\n  where: { email: 'alice@example.com' },\n  update: { name: 'Alice Updated', lastLogin: new Date() },\n  create: { email: 'alice@example.com', name: 'Alice' },\n});\n```\n\n## Delete Operations\n\n```typescript\n// Delete one\nconst deleted = await prisma.user.delete({ where: { id: 1 } });\n\n// Delete many\nconst result = await prisma.user.deleteMany({ where: { verified: false } });\n\n// Delete all records in a table\nconst result = await prisma.user.deleteMany({});\n```\n\n## Filter Operators\n\n### Comparison\n\n```typescript\nawait prisma.user.findMany({\n  where: {\n    age: { gte: 18, lt: 65 },       // >= 18 AND < 65\n    role: { not: 'ADMIN' },          // != ADMIN\n    id: { in: [1, 2, 3] },           // IN (1, 2, 3)\n    status: { notIn: ['BANNED'] },   // NOT IN\n  },\n});\n```\n\n### String Filters\n\n```typescript\nawait prisma.user.findMany({\n  where: {\n    email: { contains: 'prisma', mode: 'insensitive' },\n    name: { startsWith: 'A' },\n    bio: { endsWith: '.' },\n  },\n});\n```\n\n### Compound Filters\n\n```typescript\nawait prisma.user.findMany({\n  where: {\n    OR: [\n      { email: { contains: 'admin' } },\n      { role: 'ADMIN' },\n    ],\n    AND: [\n      { verified: true },\n      { age: { gte: 18 } },\n    ],\n    NOT: { status: 'BANNED' },\n  },\n});\n```\n\n### Null Checks\n\n```typescript\nawait prisma.user.findMany({ where: { bio: null } });      // IS NULL\nawait prisma.user.findMany({ where: { bio: { not: null } } }); // IS NOT NULL\n```\n\n## Query Options\n\n### select — Return specific fields\n\n```typescript\nconst user = await prisma.user.findUnique({\n  where: { id: 1 },\n  select: { id: true, email: true, name: true },\n});\n// Type: { id: number; email: string; name: string | null }\n```\n\n### include — Load relations\n\n```typescript\nconst user = await prisma.user.findUnique({\n  where: { id: 1 },\n  include: { posts: true, profile: true },\n});\n```\n\n`select` and `include` cannot be used together at the same level.\n\n### orderBy — Sort results\n\n```typescript\nawait prisma.user.findMany({\n  orderBy: [{ role: 'asc' }, { name: 'desc' }],\n});\n\n// Order by relation count\nawait prisma.user.findMany({\n  orderBy: { posts: { _count: 'desc' } },\n});\n```\n\n### Pagination\n\n```typescript\n// Offset pagination\nawait prisma.user.findMany({ skip: 20, take: 10 });\n\n// Cursor pagination (more efficient for large datasets)\nawait prisma.user.findMany({\n  take: 10,\n  cursor: { id: lastSeenId },\n  skip: 1,  // Skip the cursor record itself\n});\n```\n\n### distinct — Unique values\n\n```typescript\nawait prisma.user.findMany({\n  distinct: ['role'],\n  select: { role: true },\n});\n```\n",
+  "sections": [
+    {
+      "id": "read",
+      "title": "Read operations",
+      "body": "`findUnique` — by `@id` or `@unique` field, returns null or record. `findUniqueOrThrow` — same but throws `PrismaClientKnownRequestError` (P2025). `findFirst` — first matching record with optional `orderBy`. `findMany` — array of matching records with filters, sorting, pagination. `count` — integer count with optional filters. `aggregate` — `_avg`, `_sum`, `_min`, `_max`, `_count`. `groupBy` — group by fields with aggregate functions and `having` clause.",
+      "tags": ["find", "findUnique", "findFirst", "findMany", "count", "aggregate", "groupBy"]
+    },
+    {
+      "id": "write",
+      "title": "Write operations",
+      "body": "`create` — insert one record with `data`. `createMany` — batch insert with `skipDuplicates` option. `update` — update one by unique field. `updateMany` — bulk update by filter. `upsert` — update-or-create with `where` + `update` + `create`. `delete` — remove one by unique field. `deleteMany` — bulk delete by filter (empty `{}` deletes all).",
+      "tags": ["create", "update", "upsert", "delete", "createMany", "updateMany", "deleteMany"]
+    },
+    {
+      "id": "filters",
+      "title": "Filter operators",
+      "body": "Comparison: `equals`, `not`, `in`, `notIn`, `lt`, `lte`, `gt`, `gte`. String: `contains`, `startsWith`, `endsWith` with optional `mode: 'insensitive'`. Compound: `AND: [...]`, `OR: [...]`, `NOT: { ... }`. Null: `where: { field: null }` for IS NULL. Scalar list: `has`, `hasEvery`, `hasSome`, `isEmpty`. JSON: `path` + `equals` for deep filtering.",
+      "tags": ["filters", "where", "contains", "comparison", "compound", "null"]
+    },
+    {
+      "id": "pagination",
+      "title": "Pagination and sorting",
+      "body": "Offset pagination: `skip` + `take`. Cursor pagination: `cursor` + `take` + `skip: 1` — more efficient for large tables. Sorting: `orderBy: { field: 'asc' | 'desc' }` or array for multi-column sort. Order by relation count: `orderBy: { relation: { _count: 'desc' } }`. Use `distinct: ['field']` for unique values.",
+      "tags": ["pagination", "cursor", "offset", "orderBy", "sorting", "distinct"]
+    },
+    {
+      "id": "atomic",
+      "title": "Atomic operations",
+      "body": "Number fields support atomic updates: `increment`, `decrement`, `multiply`, `divide`, `set`. These are race-condition safe — they generate SQL like `SET views = views + 1` instead of reading-then-writing. Use for counters, stock levels, and any field requiring concurrent updates.",
+      "tags": ["atomic", "increment", "decrement", "multiply", "concurrent"]
+    }
+  ],
+  "links": [
+    { "uri": "prisma/client", "context": "Parent skill with setup and transactions" },
+    { "uri": "prisma/client/relations", "context": "Relation queries, nested writes, and relation filters" },
+    { "uri": "prisma/schema", "context": "Models define the available query methods and types" },
+    { "uri": "prisma/troubleshooting", "context": "Error codes P2001, P2002, P2025 for query failures" }
+  ],
+  "related": [
+    { "uri": "prisma/client", "relation": "extends", "note": "Detailed query patterns extending the parent client skill" },
+    { "uri": "prisma/client/relations", "relation": "see-also", "note": "Relation loading and nested writes complement CRUD queries" }
+  ],
+  "more": {
+    "docs": "https://www.prisma.io/docs/orm/prisma-client/queries",
+    "spec": "https://www.prisma.io/docs/orm/reference/prisma-client-reference"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "7 min",
+    "prerequisites": ["prisma/client"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

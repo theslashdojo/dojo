@@ -1,0 +1,139 @@
+{
+  "name": "authoring",
+  "version": "1.0.0",
+  "uri": "dojo/authoring",
+  "type": "skill",
+  "context": "Create, scaffold, and enrich Dojo nodes with proper structure, knowledge, and executable scripts",
+  "info": "The authoring skill covers the full node creation lifecycle: scaffolding new nodes from templates, writing rich node.json manifests, creating SKILL.md files for portable Agent Skills, adding executable scripts, and enriching thin nodes with deeper knowledge content. This is the primary skill agents use when building new ecosystem trees or expanding existing ones. The workflow follows: choose a type and location in the tree, scaffold the directory structure, write the node.json with all required and knowledge fields, add scripts and schema for executable nodes, create SKILL.md for portable bundling, then validate with [[dojo/validate]]. See [[dojo/templates]] for starter patterns and [[dojo/contributing]] for the community contribution guide.",
+  "parent": "dojo",
+  "tags": ["authoring", "create", "scaffold", "write", "node-builder", "content"],
+  "aliases": [
+    "create a dojo node",
+    "author a node",
+    "build a node",
+    "write a node",
+    "node authoring",
+    "dojo authoring",
+    "node builder",
+    "create node json",
+    "scaffold a node"
+  ],
+  "triggers": [
+    "create a new dojo node",
+    "scaffold a new ecosystem",
+    "build a node tree",
+    "write a node.json file",
+    "author a skill node",
+    "create a context node",
+    "how to create a dojo node",
+    "add a new skill to the dojo tree"
+  ],
+  "body": "# Node Authoring\n\nAuthoring is how the Dojo knowledge graph grows. Every node starts as a decision to capture a capability, a concept, or a workflow that an agent needs. This skill guides the full creation process.\n\n## Authoring Workflow\n\n```\n1. Choose type and location → where does this node live in the tree?\n2. Scaffold structure      → create directories and skeleton files\n3. Write node.json         → identity, context, knowledge, discovery fields\n4. Add scripts (skill/sub) → executable code with env vars and packages\n5. Create SKILL.md         → portable Agent Skills bundle\n6. Enrich knowledge        → body, sections, links, related\n7. Validate                → run dojo/validate before publishing\n```\n\n## Choosing the Right Type\n\n| Type | When to use | Has scripts? | Example |\n|------|------------|-------------|----------|\n| `ecosystem` | Top-level vendor/platform | No | `github`, `aws`, `docker` |\n| `standard` | Protocol, spec, convention | No | `rest`, `graphql`, `oauth2` |\n| `skill` | Executable capability | Yes | `deploy`, `query`, `send` |\n| `context` | Reference material, guides | No | `auth`, `rate-limits`, `troubleshooting` |\n| `sub` | Specialized skill variant | Yes | `deploy/preview`, `query/explain` |\n\n## Required Fields (All Nodes)\n\nEvery `node.json` must include:\n\n```json\n{\n  \"name\": \"lowercase-hyphenated\",\n  \"version\": \"1.0.0\",\n  \"uri\": \"parent/name\",\n  \"type\": \"skill\",\n  \"context\": \"One line under 200 chars — when to use this node\",\n  \"info\": \"Dense paragraph with scope, surface, and why it matters\",\n  \"parent\": \"parent-uri\",\n  \"tags\": [\"concrete\", \"keywords\"]\n}\n```\n\n## Knowledge Fields (Make Nodes Teach)\n\nRich nodes also include:\n\n- `aliases[]` — real phrases agents say: `k8s`, `create repo`, `gh issues`\n- `triggers[]` — full task phrases: `deploy to vercel`, `create a github issue`\n- `body` — long-form markdown with `[[uri]]` wiki-links, code examples, tables\n- `sections[]` — addressable chunks with `id`, `title`, `body`, `tags`\n- `links[]` — directed next steps: `{ \"uri\": \"...\", \"context\": \"...\" }`\n- `related[]` — semantic edges: `{ \"uri\": \"...\", \"relation\": \"prerequisite\" }`\n\nSee [[dojo/knowledge#authoring-patterns]] for detailed guidance.\n\n## Skill/Sub Fields (Make Nodes Execute)\n\nExecutable nodes add:\n\n- `scripts[]` — with `id`, `name`, `lang`, `runtime`, `entry`, `env`, `packages`\n- `schema` — `input` and `output` JSON contracts\n- `depends[]` — cross-node dependencies with `uri` and `reason`\n\nSee [[dojo/execution]] for the execution model.\n\n## File Layout\n\n```\nnodes/ecosystem/skill/\n├── node.json           # manifest (required)\n├── SKILL.md            # Agent Skills bundle (skill/sub nodes)\n├── scripts/            # executable scripts\n│   └── do-thing.sh\n├── references/         # bulky reference material\n│   └── api-spec.md\n└── tests/              # test scripts\n    └── do-thing.test.js\n```\n\n## Environment Variables\n\n| Variable | Purpose |\n|----------|----------|\n| `DOJO_ROOT` | Path to the dojo repository root (default: auto-detected) |\n",
+  "sections": [
+    {
+      "id": "choosing-type",
+      "title": "Choosing the right node type",
+      "body": "Use `ecosystem` for top-level vendor namespaces (github, aws). Use `standard` for protocols and specs (rest, graphql). Use `skill` for executable capabilities with scripts. Use `context` for reference material, guides, and knowledge-only nodes. Use `sub` for specialized variants of a skill (deploy/preview). The type determines what fields are expected and how the node appears in search results. See [[dojo/spec#type-hierarchy]] for the formal rules.",
+      "tags": ["type", "ecosystem", "standard", "skill", "context", "sub"]
+    },
+    {
+      "id": "required-fields",
+      "title": "Required fields",
+      "body": "Every node needs: `name` (lowercase-hyphenated, unique in parent), `version` (semver), `uri` (full slash path), `type` (one of five types), `context` (one line under 200 chars), `info` (dense paragraph), `parent` (parent URI, null for ecosystems), `tags` (concrete keywords). See [[dojo/spec#manifest-core]] for the formal contract.",
+      "tags": ["required", "name", "version", "uri", "type", "context", "info", "tags"]
+    },
+    {
+      "id": "knowledge-fields",
+      "title": "Knowledge fields",
+      "body": "Rich nodes include: `aliases` for alternative names and abbreviations, `triggers` for natural-language intent phrases, `body` for long-form markdown with wiki-links, `sections` for addressable sub-chunks, `links` for directed next steps, `related` for semantic graph edges. These fields are what make a node teach well enough that an agent can act without reading upstream docs. See [[dojo/knowledge#body-and-sections]].",
+      "tags": ["knowledge", "aliases", "triggers", "body", "sections", "links", "related"]
+    },
+    {
+      "id": "execution-fields",
+      "title": "Execution fields for skill/sub nodes",
+      "body": "Skill and sub nodes add `scripts` (executable code with lang, runtime, entry, env vars, packages), `schema` (input/output JSON contracts), and `depends` (cross-node dependencies). Scripts must be real executable code, not placeholders. Schema should document the actual inputs and outputs. Depends should reference nodes that are truly required at execution time. See [[dojo/execution]].",
+      "tags": ["scripts", "schema", "depends", "execution", "env-vars"]
+    },
+    {
+      "id": "quality-checklist",
+      "title": "Quality checklist",
+      "body": "Before publishing, verify: (1) context is one line under 200 chars, (2) info doesn't repeat context, (3) aliases include real phrases not just tags, (4) triggers are complete task phrases, (5) body has code examples and wiki-links, (6) sections have meaningful IDs and tagged content, (7) links point to real nodes, (8) scripts are executable, (9) schema matches actual I/O. Run [[dojo/validate]] to check all of this automatically.",
+      "tags": ["quality", "checklist", "validation", "review"]
+    }
+  ],
+  "sub": ["dojo/authoring/scaffold", "dojo/authoring/enrich"],
+  "links": [
+    { "uri": "dojo/authoring/scaffold", "context": "Scaffold new nodes from templates" },
+    { "uri": "dojo/authoring/enrich", "context": "Enrich thin nodes with deeper knowledge" },
+    { "uri": "dojo/templates", "context": "Starter patterns for each node type" },
+    { "uri": "dojo/contributing", "context": "Community contribution guidelines" },
+    { "uri": "dojo/spec#manifest-core", "context": "Formal manifest contract" },
+    { "uri": "dojo/knowledge#authoring-patterns", "context": "How to write effective knowledge fields" },
+    { "uri": "dojo/validate", "context": "Validate nodes before publishing" },
+    { "uri": "dojo/execution", "context": "How scripts, runtimes, and env vars work" },
+    { "uri": "dojo/publish", "context": "Publish validated nodes to the registry" }
+  ],
+  "related": [
+    { "uri": "dojo/contributing", "relation": "see-also", "note": "Contributing is the community guide; authoring is the executable skill" },
+    { "uri": "dojo/templates", "relation": "prerequisite", "note": "Templates provide the starting patterns for scaffolding" },
+    { "uri": "dojo/validate", "relation": "see-also", "note": "Validation is the next step after authoring" },
+    { "uri": "dojo/knowledge", "relation": "prerequisite", "note": "Understanding the knowledge layer is required for effective authoring" }
+  ],
+  "scripts": [
+    {
+      "id": "create-node",
+      "name": "Create Node",
+      "description": "Create a new Dojo node with proper directory structure and skeleton node.json",
+      "lang": "bash",
+      "runtime": "bash>=4",
+      "entry": "./scripts/create-node.sh",
+      "env": {
+        "DOJO_ROOT": { "required": false, "description": "Path to dojo repository root (auto-detected if not set)" }
+      },
+      "packages": ["jq"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "uri": { "type": "string", "description": "Full URI path for the new node (e.g., github/actions)" },
+        "type": { "type": "string", "enum": ["ecosystem", "standard", "skill", "context", "sub"], "description": "Node type" },
+        "name": { "type": "string", "description": "Node name (last segment of URI)" },
+        "context": { "type": "string", "description": "One-line context for the node" }
+      },
+      "required": ["uri", "type"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "path": { "type": "string", "description": "Filesystem path to the created node directory" },
+        "files": { "type": "array", "items": { "type": "string" }, "description": "List of created files" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "dojo/spec", "reason": "The spec defines the manifest contract that authoring must follow" },
+    { "uri": "dojo/templates", "reason": "Templates provide the skeleton structures for scaffolding" }
+  ],
+  "more": {
+    "docs": "https://github.com/theslashdojo/dojo/blob/main/SPEC.md",
+    "repo": "https://github.com/theslashdojo/dojo"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "node authors, autonomous agents, contributors",
+    "estimated_reading_time": "5 min",
+    "prerequisites": ["dojo/spec", "dojo/knowledge"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://github.com/theslashdojo/dojo",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

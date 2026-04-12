@@ -1,0 +1,84 @@
+{
+  "name": "config",
+  "version": "1.0.0",
+  "uri": "drizzle/config",
+  "type": "context",
+  "content_type": "reference",
+  "context": "Configure drizzle-kit via drizzle.config.ts — dialect, schema path, output directory, and database credentials",
+  "info": "The `drizzle.config.ts` file is the central configuration for drizzle-kit CLI commands (generate, migrate, push, pull, studio). It uses `defineConfig()` from `drizzle-kit` and specifies the database dialect (postgresql, mysql, sqlite, turso, singlestore, mssql), schema file path(s), output directory for migrations, and database credentials. Credentials can be a URL string or individual host/port/user/password/database fields. Optional settings include `strict` (confirmation for destructive changes), `verbose` (print SQL), `tablesFilter` (glob-based table filtering), `schemaFilter` (PostgreSQL schema names), `migrations` (custom migration table name and schema), `breakpoints` (statement separators), and `introspect.casing` (column name casing on pull). Environment variables are commonly used for credentials via `process.env.DATABASE_URL`. Multiple config files support different environments.",
+  "parent": "drizzle",
+  "tags": ["config", "drizzle-config", "drizzle-kit", "configuration", "dialect", "credentials", "connection"],
+  "aliases": [
+    "drizzle config",
+    "drizzle.config.ts",
+    "drizzle configuration",
+    "drizzle-kit config",
+    "drizzle config file",
+    "defineConfig drizzle",
+    "drizzle setup",
+    "drizzle connection config"
+  ],
+  "triggers": [
+    "create drizzle config",
+    "configure drizzle-kit",
+    "set up drizzle.config.ts",
+    "drizzle database connection",
+    "drizzle config file",
+    "define drizzle config",
+    "connect drizzle to database"
+  ],
+  "body": "# Drizzle Configuration\n\nThe `drizzle.config.ts` file at your project root configures all drizzle-kit CLI commands.\n\n## Minimal Configuration\n\n```typescript\n// drizzle.config.ts\nimport { defineConfig } from 'drizzle-kit';\n\nexport default defineConfig({\n  dialect: 'postgresql',\n  schema: './src/db/schema.ts',\n  out: './drizzle',\n  dbCredentials: {\n    url: process.env.DATABASE_URL!,\n  },\n});\n```\n\n## Full Configuration Reference\n\n```typescript\nimport { defineConfig } from 'drizzle-kit';\n\nexport default defineConfig({\n  // ─── Required ──────────────────────────────────────\n  dialect: 'postgresql',              // 'postgresql' | 'mysql' | 'sqlite' | 'turso' | 'singlestore' | 'mssql'\n  schema: './src/db/schema.ts',       // Path or glob to schema files\n\n  // ─── Output ────────────────────────────────────────\n  out: './drizzle',                   // Migration output directory (default: 'drizzle')\n\n  // ─── Database Connection ───────────────────────────\n  dbCredentials: {\n    url: process.env.DATABASE_URL!,   // URL format\n    // OR individual fields:\n    // host: 'localhost',\n    // port: 5432,\n    // user: 'postgres',\n    // password: 'password',\n    // database: 'mydb',\n    // ssl: true,\n  },\n\n  // ─── Migration Table ───────────────────────────────\n  migrations: {\n    table: '__drizzle_migrations',    // Custom migration tracking table name\n    schema: 'public',                 // PostgreSQL schema for migration table\n  },\n\n  // ─── Filters ───────────────────────────────────────\n  tablesFilter: ['users', 'posts', 'app_*'],  // Glob filter for push/pull\n  schemaFilter: ['public', 'auth'],            // PostgreSQL schema names\n  extensionsFilters: ['postgis'],              // Ignore extension tables\n\n  // ─── Behavior ──────────────────────────────────────\n  strict: true,                       // Require confirmation for destructive changes\n  verbose: true,                      // Print generated SQL statements\n  breakpoints: true,                  // Add statement breakpoints (default: true)\n\n  // ─── Introspect ────────────────────────────────────\n  introspect: {\n    casing: 'camel',                  // 'preserve' | 'camel' — column key casing on pull\n  },\n\n  // ─── Driver Override ───────────────────────────────\n  // driver: 'aws-data-api',          // 'aws-data-api' | 'd1-http' | 'pglite'\n});\n```\n\n## Configuration by Database\n\n### PostgreSQL\n\n```typescript\nexport default defineConfig({\n  dialect: 'postgresql',\n  schema: './src/db/schema.ts',\n  out: './drizzle',\n  dbCredentials: {\n    url: 'postgres://user:pass@localhost:5432/mydb',\n  },\n});\n```\n\n### MySQL\n\n```typescript\nexport default defineConfig({\n  dialect: 'mysql',\n  schema: './src/db/schema.ts',\n  out: './drizzle',\n  dbCredentials: {\n    url: 'mysql://user:pass@localhost:3306/mydb',\n  },\n});\n```\n\n### SQLite\n\n```typescript\nexport default defineConfig({\n  dialect: 'sqlite',\n  schema: './src/db/schema.ts',\n  out: './drizzle',\n  dbCredentials: {\n    url: './sqlite.db',              // File path\n    // url: ':memory:',              // In-memory\n  },\n});\n```\n\n### Turso\n\n```typescript\nexport default defineConfig({\n  dialect: 'turso',\n  schema: './src/db/schema.ts',\n  out: './drizzle',\n  dbCredentials: {\n    url: process.env.TURSO_DATABASE_URL!,\n    authToken: process.env.TURSO_AUTH_TOKEN!,\n  },\n});\n```\n\n### Neon Serverless\n\n```typescript\nexport default defineConfig({\n  dialect: 'postgresql',\n  schema: './src/db/schema.ts',\n  out: './drizzle',\n  dbCredentials: {\n    url: process.env.NEON_DATABASE_URL!,\n  },\n});\n```\n\n### Cloudflare D1\n\n```typescript\nexport default defineConfig({\n  dialect: 'sqlite',\n  schema: './src/db/schema.ts',\n  out: './drizzle',\n  driver: 'd1-http',\n  dbCredentials: {\n    accountId: process.env.CF_ACCOUNT_ID!,\n    databaseId: process.env.CF_D1_DATABASE_ID!,\n    token: process.env.CF_API_TOKEN!,\n  },\n});\n```\n\n## Schema Path Patterns\n\n```typescript\n// Single file\nschema: './src/db/schema.ts'\n\n// Directory (all .ts files)\nschema: './src/db/schema'\n\n// Glob pattern\nschema: './src/**/*.schema.ts'\n\n// Multiple explicit files\nschema: ['./src/db/users.ts', './src/db/posts.ts']\n```\n\n## Multiple Config Files\n\nMaintain separate configs per environment:\n\n```bash\n# Development\nnpx drizzle-kit generate --config=drizzle.dev.config.ts\n\n# Production\nnpx drizzle-kit migrate --config=drizzle.prod.config.ts\n\n# Staging\nnpx drizzle-kit push --config=drizzle.staging.config.ts\n```\n\n## Configuration Options Reference\n\n| Option | Type | Required | Default | Purpose |\n|--------|------|----------|---------|--------|\n| `dialect` | string | Yes | — | Database type |\n| `schema` | string/string[] | Yes | — | Schema file path(s) |\n| `out` | string | No | `'drizzle'` | Migration output directory |\n| `dbCredentials` | object | Yes* | — | Database connection (*not needed for generate-only) |\n| `driver` | string | No | auto | Override driver detection |\n| `strict` | boolean | No | `false` | Confirm destructive ops |\n| `verbose` | boolean | No | `true` | Print SQL output |\n| `breakpoints` | boolean | No | `true` | Statement breakpoint markers |\n| `tablesFilter` | string[] | No | all | Glob filter for tables |\n| `schemaFilter` | string[] | No | all | PostgreSQL schema filter |\n| `extensionsFilters` | string[] | No | none | Ignore extension tables |\n| `migrations.table` | string | No | `'__drizzle_migrations'` | Migration tracking table |\n| `migrations.schema` | string | No | `'drizzle'` | Migration table schema |\n| `introspect.casing` | string | No | `'preserve'` | Column casing on pull |\n\n## Environment Variables\n\n| Variable | Purpose | Example |\n|----------|---------|--------|\n| `DATABASE_URL` | Main connection string | `postgres://user:pass@localhost:5432/mydb` |\n| `TURSO_DATABASE_URL` | Turso connection URL | `libsql://db-name.turso.io` |\n| `TURSO_AUTH_TOKEN` | Turso auth token | `eyJ...` |\n| `CF_ACCOUNT_ID` | Cloudflare account ID | `abc123` |\n| `CF_D1_DATABASE_ID` | Cloudflare D1 database ID | `def456` |\n| `CF_API_TOKEN` | Cloudflare API token | `token123` |\n",
+  "sections": [
+    {
+      "id": "required-options",
+      "title": "Required configuration options",
+      "body": "`dialect` sets the database type: `postgresql`, `mysql`, `sqlite`, `turso`, `singlestore`, `mssql`. `schema` is a path (string or glob) to your TypeScript schema files. These two are required for all drizzle-kit commands. `dbCredentials` is required for commands that touch the database (migrate, push, pull, studio) but not for `generate` (which only reads schema files and snapshots).",
+      "tags": ["dialect", "schema", "dbCredentials", "required"]
+    },
+    {
+      "id": "output",
+      "title": "Migration output directory",
+      "body": "The `out` option (default: `'drizzle'`) sets where migration files, snapshots, and the journal are stored. This directory should be committed to version control. All drizzle-kit commands that read or write migrations use this path.",
+      "tags": ["out", "output", "migrations", "directory"]
+    },
+    {
+      "id": "filters",
+      "title": "Table and schema filters",
+      "body": "`tablesFilter` accepts glob patterns to limit which tables drizzle-kit manages — useful for shared databases or multi-tenant setups. `schemaFilter` limits to specific PostgreSQL schemas (default: all in 1.0+). `extensionsFilters` prevents extension tables (like PostGIS geometry_columns) from appearing in migrations.",
+      "tags": ["filter", "tablesFilter", "schemaFilter", "extensionsFilters", "multi-tenant"]
+    },
+    {
+      "id": "multiple-configs",
+      "title": "Multiple configuration files",
+      "body": "Pass `--config=path/to/config.ts` to any drizzle-kit command to use an alternate config. Common pattern: `drizzle.dev.config.ts` pointing to a local database and `drizzle.prod.config.ts` pointing to production. This supports per-environment schema management without complex branching logic.",
+      "tags": ["multiple-configs", "environments", "dev", "prod", "staging"]
+    }
+  ],
+  "links": [
+    { "uri": "drizzle/schema", "context": "Schema files referenced by the config's schema option" },
+    { "uri": "drizzle/migrate", "context": "drizzle-kit commands that read from this config" }
+  ],
+  "related": [
+    { "uri": "drizzle/migrate", "relation": "see-also", "note": "All drizzle-kit migration commands read from this config file" },
+    { "uri": "drizzle/schema", "relation": "see-also", "note": "The schema option points to your table definition files" }
+  ],
+  "more": {
+    "docs": "https://orm.drizzle.team/docs/drizzle-config-file",
+    "kit-overview": "https://orm.drizzle.team/docs/kit-overview"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "4 min",
+    "prerequisites": [],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

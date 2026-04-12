@@ -1,0 +1,98 @@
+{
+  "name": "config",
+  "version": "1.0.0",
+  "uri": "typescript/config",
+  "type": "context",
+  "content_type": "reference",
+  "context": "tsconfig.json reference — compiler options, module resolution, paths, extends, include/exclude, and project setup",
+  "info": "tsconfig.json is the configuration file for the TypeScript compiler. It controls every aspect of compilation: which files to include, how to resolve modules, what JavaScript target to emit, how strict type checking should be, and how the output is structured. Every TypeScript project should have a tsconfig.json in its root. The file supports inheritance via the `extends` field for sharing base configurations, glob-based file inclusion with `include`/`exclude`/`files`, path mapping with `paths` and `baseUrl` for module aliases, and project references for monorepo architectures. Understanding tsconfig.json is essential for agents working with TypeScript — incorrect configuration causes confusing type errors, broken imports, and build failures. The options are organized into categories: type checking, modules, emit, JavaScript support, interop, and completeness.",
+  "parent": "typescript",
+  "tags": ["tsconfig", "tsconfig-json", "compiler-options", "module-resolution", "paths", "extends", "include", "exclude", "strict", "target", "lib"],
+  "aliases": [
+    "tsconfig",
+    "tsconfig.json",
+    "ts config",
+    "typescript config",
+    "typescript configuration",
+    "compiler options",
+    "tsc config"
+  ],
+  "triggers": [
+    "configure tsconfig",
+    "set up tsconfig.json",
+    "typescript compiler options",
+    "module resolution settings",
+    "path aliases in typescript",
+    "extend tsconfig",
+    "strict mode typescript",
+    "what target should I use",
+    "configure module resolution",
+    "tsconfig for node",
+    "tsconfig for react"
+  ],
+  "body": "# tsconfig.json Reference\n\ntsconfig.json configures the TypeScript compiler. Place it in your project root. Run `npx tsc --init` to generate one with defaults.\n\n## File Structure\n\n```jsonc\n{\n  // Inherit from a base config\n  \"extends\": \"@tsconfig/node20/tsconfig.json\",\n\n  // Compiler options\n  \"compilerOptions\": {\n    // ... all options go here\n  },\n\n  // Which files to compile\n  \"include\": [\"src/**/*.ts\"],\n  \"exclude\": [\"node_modules\", \"dist\", \"**/*.test.ts\"],\n  \"files\": [\"src/global.d.ts\"],\n\n  // Project references (monorepos)\n  \"references\": [\n    { \"path\": \"./packages/core\" },\n    { \"path\": \"./packages/cli\" }\n  ]\n}\n```\n\n## Type Checking Options\n\nThese control how strictly TypeScript validates your code.\n\n```jsonc\n{\n  \"compilerOptions\": {\n    // Master strict switch — enables ALL strict flags below\n    \"strict\": true,\n\n    // Individual strict flags (all enabled by strict: true)\n    \"noImplicitAny\": true,           // Error on expressions/declarations with implied 'any'\n    \"strictNullChecks\": true,         // null and undefined are distinct types\n    \"strictFunctionTypes\": true,      // Strict checking of function parameter types\n    \"strictBindCallApply\": true,      // Strict bind, call, apply methods\n    \"strictPropertyInitialization\": true, // Class properties must be initialized\n    \"noImplicitThis\": true,           // Error on 'this' with implied 'any' type\n    \"useUnknownInCatchVariables\": true, // catch(e) is 'unknown' not 'any'\n    \"alwaysStrict\": true,             // Emit 'use strict' in every file\n\n    // Additional strictness (NOT included in strict: true)\n    \"noUncheckedIndexedAccess\": true, // Index signatures return T | undefined\n    \"noImplicitOverride\": true,       // Require 'override' keyword for overrides\n    \"noFallthroughCasesInSwitch\": true, // Error on fallthrough switch cases\n    \"noPropertyAccessFromIndexSignature\": true, // Require bracket notation for index\n    \"exactOptionalPropertyTypes\": true, // Differentiate 'missing' from 'undefined'\n    \"noImplicitReturns\": true,        // Error when not all paths return\n    \"noUnusedLocals\": true,           // Error on unused local variables\n    \"noUnusedParameters\": true,       // Error on unused function parameters\n    \"allowUnreachableCode\": false,    // Error on unreachable code\n    \"allowUnusedLabels\": false        // Error on unused labels\n  }\n}\n```\n\n**Recommendation**: Always set `strict: true`. Add `noUncheckedIndexedAccess: true` and `noImplicitOverride: true` for maximum safety.\n\n## Module Options\n\nThese control how TypeScript resolves and emits modules.\n\n```jsonc\n{\n  \"compilerOptions\": {\n    // Output module format\n    \"module\": \"nodenext\",       // Node.js ESM + CJS dual\n    // Other values: \"commonjs\", \"es2015\", \"es2020\", \"es2022\", \"esnext\", \"node16\"\n\n    // How imports are resolved\n    \"moduleResolution\": \"nodenext\",  // Modern Node.js resolution\n    // Other values: \"node\" (legacy), \"node16\", \"bundler\" (for webpack/vite)\n\n    // Module output target\n    \"target\": \"es2022\",         // JavaScript version to emit\n    // Common values: \"es2020\", \"es2021\", \"es2022\", \"es2023\", \"esnext\"\n\n    // Available runtime APIs\n    \"lib\": [\"es2023\"],          // Type definitions for runtime APIs\n    // DOM projects: [\"es2023\", \"dom\", \"dom.iterable\"]\n\n    // Module interop\n    \"esModuleInterop\": true,    // Allow default imports from CJS modules\n    \"allowSyntheticDefaultImports\": true,  // Allow default import syntax\n    \"verbatimModuleSyntax\": true, // Enforce import/export type annotations (5.0+)\n    \"isolatedModules\": true,    // Ensure files can be transpiled independently\n\n    // Resolve JSON imports\n    \"resolveJsonModule\": true   // Allow importing .json files\n  }\n}\n```\n\n### Module Resolution Guide\n\n| Project Type | `module` | `moduleResolution` |\n|-------------|----------|--------------------|\n| Node.js library | `nodenext` | `nodenext` |\n| Node.js app (ESM) | `nodenext` | `nodenext` |\n| React/Vite/webpack | `esnext` | `bundler` |\n| Legacy Node.js | `commonjs` | `node` |\n| Deno | `esnext` | `bundler` |\n\n## Path Mapping\n\nCreate import aliases to avoid deep relative paths.\n\n```jsonc\n{\n  \"compilerOptions\": {\n    \"baseUrl\": \".\",\n    \"paths\": {\n      \"@/*\": [\"src/*\"],\n      \"@utils/*\": [\"src/utils/*\"],\n      \"@types\": [\"src/types/index.ts\"],\n      \"~/*\": [\"src/*\"]\n    }\n  }\n}\n```\n\nThis lets you write `import { helper } from \"@/utils/helper\"` instead of `import { helper } from \"../../../utils/helper\"`. Note: `paths` only affect TypeScript resolution — your bundler or runtime must also be configured to resolve these aliases (e.g., Vite's `resolve.alias`, webpack's `resolve.alias`, or `tsconfig-paths` for Node.js).\n\n## Emit Options\n\nControl what files tsc produces.\n\n```jsonc\n{\n  \"compilerOptions\": {\n    \"outDir\": \"./dist\",              // Output directory\n    \"rootDir\": \"./src\",              // Root of source files (preserves structure)\n    \"declaration\": true,             // Generate .d.ts files\n    \"declarationDir\": \"./dist/types\", // Separate directory for declarations\n    \"declarationMap\": true,          // Source maps for declarations\n    \"sourceMap\": true,               // Generate .js.map files\n    \"inlineSourceMap\": false,        // Inline source maps in JS (alternative)\n    \"inlineSources\": false,          // Include TS source in source maps\n    \"removeComments\": true,          // Strip comments from output\n    \"noEmit\": false,                 // Set true for type-check only\n    \"noEmitOnError\": true,           // Don't emit if there are errors\n    \"emitDeclarationOnly\": false,    // Only emit .d.ts (bundler handles JS)\n    \"importHelpers\": true,           // Use tslib for helper functions\n    \"downlevelIteration\": true,      // Emit helpers for for..of on older targets\n    \"newLine\": \"lf\",                 // Line ending: \"lf\" or \"crlf\"\n    \"preserveConstEnums\": true,      // Keep const enum declarations in output\n    \"incremental\": true,             // Cache for faster rebuilds\n    \"tsBuildInfoFile\": \"./.tsbuildinfo\" // Incremental cache location\n  }\n}\n```\n\n## Extends — Configuration Inheritance\n\nShare base configurations across projects.\n\n```jsonc\n// tsconfig.base.json\n{\n  \"compilerOptions\": {\n    \"strict\": true,\n    \"esModuleInterop\": true,\n    \"skipLibCheck\": true,\n    \"forceConsistentCasingInFileNames\": true\n  }\n}\n\n// tsconfig.json\n{\n  \"extends\": \"./tsconfig.base.json\",\n  \"compilerOptions\": {\n    \"outDir\": \"./dist\",\n    \"target\": \"es2022\"\n  },\n  \"include\": [\"src\"]\n}\n```\n\n### Community Base Configs\n\nThe `@tsconfig` npm scope provides recommended bases:\n\n```bash\nnpm install -D @tsconfig/node20\nnpm install -D @tsconfig/strictest\nnpm install -D @tsconfig/recommended\n```\n\n```jsonc\n{\n  \"extends\": \"@tsconfig/node20/tsconfig.json\",\n  \"compilerOptions\": {\n    \"outDir\": \"dist\"\n  },\n  \"include\": [\"src\"]\n}\n```\n\n## Include, Exclude, and Files\n\n```jsonc\n{\n  // Glob patterns for files to compile\n  \"include\": [\n    \"src/**/*.ts\",\n    \"src/**/*.tsx\"\n  ],\n\n  // Glob patterns to exclude (defaults include node_modules)\n  \"exclude\": [\n    \"node_modules\",\n    \"dist\",\n    \"**/*.test.ts\",\n    \"**/*.spec.ts\"\n  ],\n\n  // Explicit file list (overrides include/exclude)\n  \"files\": [\n    \"src/global.d.ts\",\n    \"src/env.d.ts\"\n  ]\n}\n```\n\nRules:\n- If `files` is specified, those files are always included\n- `include` defaults to `[\"**/*\"]` (everything)\n- `exclude` defaults to `[\"node_modules\", \"bower_components\", \"jspm_packages\"]` plus `outDir`\n- Files referenced by `import` are always included regardless of `exclude`\n- Use `npx tsc --explainFiles` to debug which files are included and why\n\n## Recommended Configurations\n\n### Node.js Backend\n\n```jsonc\n{\n  \"compilerOptions\": {\n    \"target\": \"es2022\",\n    \"module\": \"nodenext\",\n    \"moduleResolution\": \"nodenext\",\n    \"lib\": [\"es2023\"],\n    \"outDir\": \"dist\",\n    \"rootDir\": \"src\",\n    \"strict\": true,\n    \"esModuleInterop\": true,\n    \"skipLibCheck\": true,\n    \"forceConsistentCasingInFileNames\": true,\n    \"resolveJsonModule\": true,\n    \"declaration\": true,\n    \"declarationMap\": true,\n    \"sourceMap\": true,\n    \"incremental\": true,\n    \"isolatedModules\": true,\n    \"noUncheckedIndexedAccess\": true\n  },\n  \"include\": [\"src\"],\n  \"exclude\": [\"node_modules\", \"dist\"]\n}\n```\n\n### React/Vite Frontend\n\n```jsonc\n{\n  \"compilerOptions\": {\n    \"target\": \"es2020\",\n    \"module\": \"esnext\",\n    \"moduleResolution\": \"bundler\",\n    \"lib\": [\"es2023\", \"dom\", \"dom.iterable\"],\n    \"jsx\": \"react-jsx\",\n    \"strict\": true,\n    \"esModuleInterop\": true,\n    \"skipLibCheck\": true,\n    \"forceConsistentCasingInFileNames\": true,\n    \"isolatedModules\": true,\n    \"noEmit\": true,\n    \"resolveJsonModule\": true,\n    \"allowImportingTsExtensions\": true,\n    \"noUncheckedIndexedAccess\": true,\n    \"verbatimModuleSyntax\": true\n  },\n  \"include\": [\"src\"],\n  \"exclude\": [\"node_modules\"]\n}\n```\n\n### Library (Dual CJS + ESM)\n\n```jsonc\n{\n  \"compilerOptions\": {\n    \"target\": \"es2020\",\n    \"module\": \"nodenext\",\n    \"moduleResolution\": \"nodenext\",\n    \"lib\": [\"es2023\"],\n    \"outDir\": \"dist\",\n    \"rootDir\": \"src\",\n    \"strict\": true,\n    \"declaration\": true,\n    \"declarationMap\": true,\n    \"sourceMap\": true,\n    \"esModuleInterop\": true,\n    \"isolatedModules\": true,\n    \"skipLibCheck\": true\n  },\n  \"include\": [\"src\"],\n  \"exclude\": [\"node_modules\", \"dist\", \"**/*.test.ts\"]\n}\n```\n",
+  "sections": [
+    {
+      "id": "strict-mode",
+      "title": "Strict mode options",
+      "body": "The `strict: true` flag enables all strict-family options at once: `noImplicitAny`, `strictNullChecks`, `strictFunctionTypes`, `strictBindCallApply`, `strictPropertyInitialization`, `noImplicitThis`, `useUnknownInCatchVariables`, and `alwaysStrict`. Always start with `strict: true` for new projects. You can disable individual flags if needed. Additional strict options NOT covered by the `strict` flag: `noUncheckedIndexedAccess` (index signatures return `T | undefined`), `noImplicitOverride` (require `override` keyword), `exactOptionalPropertyTypes` (distinguish missing from `undefined`), `noFallthroughCasesInSwitch`, `noPropertyAccessFromIndexSignature`.",
+      "tags": ["strict", "strictNullChecks", "noImplicitAny", "type-safety"]
+    },
+    {
+      "id": "module-resolution",
+      "title": "Module resolution strategies",
+      "body": "The `moduleResolution` option controls how TypeScript finds imported modules. `nodenext`/`node16`: follows Node.js ESM resolution rules — requires file extensions in imports, respects `exports` field in package.json, distinguishes ESM and CJS. `bundler`: follows bundler conventions — no file extensions needed, resolves `exports` field, supports `allowImportingTsExtensions`. `node` (legacy): the classic Node.js resolution algorithm — no `exports` field support, resolves index files automatically. Use `nodenext` for Node.js libraries and `bundler` for frontend projects using webpack, Vite, or esbuild.",
+      "tags": ["moduleResolution", "nodenext", "bundler", "node16", "imports", "exports"]
+    },
+    {
+      "id": "paths-mapping",
+      "title": "Path aliases and baseUrl",
+      "body": "The `paths` compiler option maps import specifiers to file locations: `\"@/*\": [\"src/*\"]` lets you write `import { x } from \"@/utils\"`. Requires `baseUrl` to be set (usually `.`). `paths` only affects TypeScript's type resolution — your bundler or runtime must separately understand these aliases. For Vite, configure `resolve.alias`. For webpack, configure `resolve.alias`. For Node.js at runtime, use `tsconfig-paths` or `tsx` which reads paths automatically. With `moduleResolution: \"nodenext\"`, `paths` may not work as expected — prefer `imports` in package.json instead (Node.js subpath imports).",
+      "tags": ["paths", "baseUrl", "aliases", "import-mapping", "resolve"]
+    },
+    {
+      "id": "extends-inheritance",
+      "title": "Configuration inheritance with extends",
+      "body": "The `extends` field inherits compiler options from a base tsconfig. The extending config's options override the base. `include`, `exclude`, and `files` are NOT inherited — they must be redeclared in each config. You can extend from: a relative path (`./tsconfig.base.json`), an npm package (`@tsconfig/node20/tsconfig.json`), or a multi-level chain. Multi-file tsconfig patterns: `tsconfig.json` (default, references others), `tsconfig.build.json` (production build), `tsconfig.test.json` (includes test files). Use `npx tsc --showConfig` to see the final merged configuration.",
+      "tags": ["extends", "inheritance", "base-config", "tsconfig-bases", "showConfig"]
+    },
+    {
+      "id": "recommended-configs",
+      "title": "Recommended configurations by project type",
+      "body": "**Node.js backend**: `target: \"es2022\"`, `module: \"nodenext\"`, `moduleResolution: \"nodenext\"`, `lib: [\"es2023\"]`. **React/Vite frontend**: `target: \"es2020\"`, `module: \"esnext\"`, `moduleResolution: \"bundler\"`, `lib: [\"es2023\", \"dom\", \"dom.iterable\"]`, `jsx: \"react-jsx\"`, `noEmit: true`. **Library**: `target: \"es2020\"`, `module: \"nodenext\"`, `declaration: true`, `declarationMap: true`. All should use `strict: true`, `skipLibCheck: true`, `esModuleInterop: true`, `forceConsistentCasingInFileNames: true`, and `isolatedModules: true`.",
+      "tags": ["node", "react", "vite", "library", "recommended", "best-practices"]
+    }
+  ],
+  "links": [
+    { "uri": "typescript/compiler", "context": "tsc CLI reads tsconfig.json — build, watch, and diagnostic commands" },
+    { "uri": "typescript/project-refs", "context": "Project references use tsconfig references array for multi-project builds" },
+    { "uri": "typescript/types", "context": "Strict mode options affect how the type system enforces safety" },
+    { "uri": "typescript/generics", "context": "Generic constraints interact with strict function types" }
+  ],
+  "related": [
+    { "uri": "typescript/compiler", "relation": "see-also", "note": "tsc reads its configuration from tsconfig.json" },
+    { "uri": "typescript/project-refs", "relation": "see-also", "note": "The references field in tsconfig enables multi-project builds" },
+    { "uri": "typescript/types", "relation": "see-also", "note": "Strict mode options directly affect type checking behavior" }
+  ],
+  "more": {
+    "docs": "https://www.typescriptlang.org/tsconfig/",
+    "reference": "https://www.typescriptlang.org/docs/handbook/tsconfig-json.html",
+    "bases": "https://github.com/tsconfig/bases",
+    "handbook": "https://www.typescriptlang.org/docs/handbook/compiler-options.html"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "8 min",
+    "prerequisites": [],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

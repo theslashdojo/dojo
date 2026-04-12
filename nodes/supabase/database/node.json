@@ -1,0 +1,140 @@
+{
+  "name": "database",
+  "version": "1.0.0",
+  "uri": "supabase/database",
+  "type": "skill",
+  "context": "Query Supabase Postgres — select, insert, update, delete, filters, joins, RPC, and the PostgREST query builder",
+  "info": "Supabase exposes your Postgres database through PostgREST, generating a REST API from your schema automatically. The @supabase/supabase-js client provides a query builder: `supabase.from('table')` chains `.select()`, `.insert()`, `.update()`, `.upsert()`, `.delete()` with powerful filters (`.eq()`, `.gt()`, `.in()`, `.like()`, `.textSearch()`, etc.), ordering, pagination, and relationship queries via foreign key joins. For complex logic, use `.rpc()` to call Postgres functions. All queries respect Row Level Security policies when using the anon key. The query builder returns `{ data, error, count, status }`. Queries are typed when using generated Database types from [[supabase/cli]].",
+  "parent": "supabase",
+  "tags": ["database", "queries", "select", "insert", "update", "delete", "filters", "postgrest", "rpc", "joins"],
+  "aliases": [
+    "supabase database",
+    "supabase query",
+    "supabase select",
+    "supabase insert",
+    "supabase from",
+    "supabase table",
+    "supabase postgrest",
+    "supabase data",
+    "supabase db query",
+    "supabase crud"
+  ],
+  "triggers": [
+    "query supabase database",
+    "select from supabase table",
+    "insert data into supabase",
+    "update supabase record",
+    "delete from supabase",
+    "filter supabase query",
+    "join tables in supabase",
+    "call supabase rpc function",
+    "supabase pagination",
+    "supabase full text search"
+  ],
+  "body": "# Supabase Database Queries\n\nThe Supabase client provides a PostgREST-powered query builder for CRUD operations with filters, joins, and pagination.\n\n## Select (Read)\n\n```typescript\n// Select all columns\nconst { data, error } = await supabase\n  .from('posts')\n  .select('*');\n\n// Select specific columns\nconst { data } = await supabase\n  .from('posts')\n  .select('id, title, created_at');\n\n// Select with count\nconst { data, count } = await supabase\n  .from('posts')\n  .select('*', { count: 'exact' });\n\n// Select a single row\nconst { data } = await supabase\n  .from('posts')\n  .select('*')\n  .eq('id', postId)\n  .single();\n```\n\n## Insert (Create)\n\n```typescript\n// Insert one row\nconst { data, error } = await supabase\n  .from('posts')\n  .insert({ title: 'Hello', body: 'World', user_id: userId })\n  .select();\n\n// Insert multiple rows\nconst { data, error } = await supabase\n  .from('posts')\n  .insert([\n    { title: 'Post 1', body: 'Body 1' },\n    { title: 'Post 2', body: 'Body 2' },\n  ])\n  .select();\n```\n\n## Update\n\n```typescript\nconst { data, error } = await supabase\n  .from('posts')\n  .update({ title: 'Updated Title' })\n  .eq('id', postId)\n  .select();\n```\n\n## Upsert (Insert or Update)\n\n```typescript\nconst { data, error } = await supabase\n  .from('posts')\n  .upsert(\n    { id: postId, title: 'Upserted', body: 'Content' },\n    { onConflict: 'id' }\n  )\n  .select();\n```\n\n## Delete\n\n```typescript\nconst { error } = await supabase\n  .from('posts')\n  .delete()\n  .eq('id', postId);\n```\n\n## Filters\n\n```typescript\n// Equality\n.eq('status', 'published')\n\n// Not equal\n.neq('status', 'draft')\n\n// Greater than / less than\n.gt('views', 100)\n.gte('views', 100)\n.lt('views', 1000)\n.lte('views', 1000)\n\n// In a list\n.in('status', ['published', 'archived'])\n\n// Pattern matching\n.like('title', '%hello%')\n.ilike('title', '%hello%')  // case-insensitive\n\n// Is null / not null\n.is('deleted_at', null)\n.not('deleted_at', 'is', null)\n\n// Range\n.range(0, 9)  // rows 0-9 (first 10)\n\n// Array contains\n.contains('tags', ['javascript', 'react'])\n.containedBy('tags', ['javascript', 'react', 'nextjs'])\n\n// Full-text search\n.textSearch('title', 'hello world', { type: 'websearch' })\n\n// JSON filtering\n.eq('metadata->theme', 'dark')\n\n// OR conditions\n.or('status.eq.published,views.gt.100')\n```\n\n## Ordering and Pagination\n\n```typescript\nconst { data } = await supabase\n  .from('posts')\n  .select('*')\n  .order('created_at', { ascending: false })\n  .range(0, 19);  // First 20 rows\n\n// Multiple order columns\n.order('status', { ascending: true })\n.order('created_at', { ascending: false })\n\n// Limit\n.limit(10)\n```\n\n## Foreign Key Joins\n\nPostgREST auto-detects foreign keys and enables relationship queries:\n\n```typescript\n// One-to-many: get posts with their comments\nconst { data } = await supabase\n  .from('posts')\n  .select(`\n    id, title,\n    comments (\n      id, body, created_at\n    )\n  `);\n\n// Many-to-one: get posts with their author\nconst { data } = await supabase\n  .from('posts')\n  .select(`\n    id, title,\n    author:profiles (\n      id, full_name, avatar_url\n    )\n  `);\n\n// Nested joins\nconst { data } = await supabase\n  .from('posts')\n  .select(`\n    id, title,\n    comments (\n      id, body,\n      author:profiles (\n        full_name\n      )\n    )\n  `);\n\n// Filter on joined table\nconst { data } = await supabase\n  .from('posts')\n  .select('id, title, comments!inner(id, body)')\n  .eq('comments.body', 'Great post!');\n```\n\n## RPC (Postgres Functions)\n\nCall server-side Postgres functions:\n\n```typescript\n// Call a function\nconst { data, error } = await supabase\n  .rpc('get_top_posts', {\n    limit_count: 10,\n    category: 'tech',\n  });\n```\n\nDefine the function in SQL:\n```sql\nCREATE OR REPLACE FUNCTION get_top_posts(\n  limit_count integer DEFAULT 10,\n  category text DEFAULT NULL\n)\nRETURNS SETOF posts AS $$\n  SELECT *\n  FROM posts\n  WHERE (category IS NULL OR posts.category = get_top_posts.category)\n  ORDER BY views DESC\n  LIMIT limit_count;\n$$ LANGUAGE sql STABLE;\n```\n\n## Error Handling\n\n```typescript\nconst { data, error } = await supabase\n  .from('posts')\n  .select('*');\n\nif (error) {\n  console.error('Query failed:', error.message);\n  console.error('Code:', error.code);     // Postgres error code\n  console.error('Details:', error.details);\n  console.error('Hint:', error.hint);\n  return;\n}\n\n// data is typed and non-null here\nconsole.log(data);\n```\n\n## Important Patterns\n\n- **Always check `error`** — the SDK never throws; errors come in the `error` field\n- **Chain `.select()` after insert/update/upsert** to get back the affected rows\n- **Use `.single()` for one row** — returns object instead of array, errors if 0 or 2+ rows\n- **Use `.maybeSingle()`** — like `.single()` but returns null instead of error for 0 rows\n- **Filters are AND by default** — use `.or()` for OR conditions\n- **RLS applies to all queries** with the anon key — see [[supabase/rls]]\n",
+  "sections": [
+    {
+      "id": "select",
+      "title": "Select queries",
+      "body": "`supabase.from('table').select('columns')` reads data. Use `*` for all columns, comma-separated names for specific columns. Chain filters, ordering, and pagination. Use `.single()` for exactly one row, `.maybeSingle()` for zero or one. Pass `{ count: 'exact' }` as the second arg to get a row count alongside data.",
+      "tags": ["select", "read", "query", "single", "count"]
+    },
+    {
+      "id": "mutations",
+      "title": "Insert, update, upsert, delete",
+      "body": "`.insert()` creates rows. `.update()` modifies rows matching filters. `.upsert()` inserts or updates based on conflict columns. `.delete()` removes rows matching filters. Always chain `.select()` after mutations to get affected rows back. Without filters on update/delete, PostgREST rejects the query to prevent accidental bulk operations.",
+      "tags": ["insert", "update", "upsert", "delete", "mutations", "crud"]
+    },
+    {
+      "id": "filters",
+      "title": "Filter operators",
+      "body": "Filters chain onto select/update/delete: `.eq()`, `.neq()`, `.gt()`, `.gte()`, `.lt()`, `.lte()`, `.like()`, `.ilike()`, `.in()`, `.is()`, `.contains()`, `.containedBy()`, `.textSearch()`. Use `.or()` for OR conditions with PostgREST syntax: `.or('col.eq.a,col.eq.b')`. Filters on joined tables use dot notation: `.eq('comments.status', 'approved')`.",
+      "tags": ["filters", "eq", "gt", "like", "in", "or", "textsearch"]
+    },
+    {
+      "id": "joins",
+      "title": "Foreign key joins",
+      "body": "PostgREST detects foreign keys and enables embedding related tables in `.select()`. Syntax: `select('*, comments(id, body)')`. Use `!inner` for INNER JOIN behavior: `select('*, comments!inner(id)')`. Rename with aliasing: `author:profiles(name)`. Nested joins work to any depth. If the foreign key is ambiguous, specify it: `comments!post_id(id)`.",
+      "tags": ["joins", "relationships", "foreign-key", "inner", "nested", "embedding"]
+    },
+    {
+      "id": "rpc",
+      "title": "RPC — Postgres functions",
+      "body": "Call Postgres functions with `supabase.rpc('function_name', { args })`. Functions must be created in SQL and be in the `public` schema (or whichever schema PostgREST exposes). Use for complex queries, aggregations, transactions, or any logic that's better expressed in SQL. Functions can return single values, rows, or sets of rows.",
+      "tags": ["rpc", "functions", "stored-procedures", "sql", "server-side"]
+    }
+  ],
+  "links": [
+    { "uri": "supabase/rls", "context": "RLS policies control what data queries can access" },
+    { "uri": "supabase/client", "context": "Client initialization for database queries" },
+    { "uri": "supabase/migrations", "context": "Create and modify the schema that queries target" },
+    { "uri": "supabase/realtime", "context": "Subscribe to database changes in realtime" },
+    { "uri": "supabase/vectors", "context": "Vector similarity search via RPC functions" },
+    { "uri": "postgres/queries", "context": "SQL fundamentals for RPC functions" }
+  ],
+  "related": [
+    { "uri": "supabase/rls", "relation": "see-also", "note": "All queries with anon key are subject to RLS policies" },
+    { "uri": "supabase/migrations", "relation": "see-also", "note": "Migrations define the schema that queries operate on" },
+    { "uri": "postgres/queries", "relation": "prerequisite", "note": "Understanding SQL helps with RPC functions and complex filters" },
+    { "uri": "prisma", "relation": "alternative", "note": "Prisma is an alternative ORM that can connect directly to Supabase Postgres" }
+  ],
+  "scripts": [
+    {
+      "id": "query-example",
+      "name": "Database query examples",
+      "description": "CRUD operations with the Supabase query builder",
+      "lang": "typescript",
+      "runtime": "node>=18",
+      "entry": "./scripts/query-example.ts",
+      "env": {
+        "SUPABASE_URL": { "required": true, "secret": false, "description": "Supabase project URL" },
+        "SUPABASE_ANON_KEY": { "required": true, "secret": false, "description": "Public anon key" }
+      },
+      "packages": ["@supabase/supabase-js"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "table": { "type": "string", "description": "Table name" },
+        "operation": { "type": "string", "enum": ["select", "insert", "update", "upsert", "delete", "rpc"], "description": "CRUD operation" },
+        "columns": { "type": "string", "description": "Columns to select (comma-separated or * for all)" },
+        "filters": { "type": "object", "description": "Key-value pairs for .eq() filters" },
+        "data": { "type": "object", "description": "Data for insert/update/upsert" }
+      },
+      "required": ["table", "operation"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "data": { "description": "Query results (array or object)" },
+        "error": { "type": "object", "description": "Error object if query failed" },
+        "count": { "type": "integer", "description": "Row count if requested" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "supabase/client", "reason": "Client must be initialized to run queries" }
+  ],
+  "more": {
+    "docs": "https://supabase.com/docs/reference/javascript/select",
+    "api": "https://supabase.com/docs/guides/database",
+    "postgrest": "https://postgrest.org/en/stable/"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "7 min",
+    "prerequisites": ["supabase/client"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

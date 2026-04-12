@@ -1,0 +1,107 @@
+{
+  "name": "dynamic-forward",
+  "version": "1.0.0",
+  "uri": "ssh/tunnel/dynamic-forward",
+  "type": "sub",
+  "context": "Create a SOCKS proxy on the client with ssh -D for ad hoc access through an SSH path",
+  "info": "Dynamic forwarding makes SSH act as a SOCKS 4/5 proxy. Instead of predeclaring one destination, client software picks arbitrary destinations and the SSH client forwards them through the encrypted connection. Agents use it for browser-based testing, temporary egress through a bastion, and tooling that already understands SOCKS proxies.",
+  "parent": "ssh/tunnel",
+  "tags": ["ssh", "dynamic-forward", "socks", "proxy", "ssh-d", "browser"],
+  "aliases": [
+    "ssh dynamic forward",
+    "ssh socks proxy",
+    "ssh -D",
+    "socks over ssh",
+    "proxy through bastion"
+  ],
+  "triggers": [
+    "create a socks proxy with ssh",
+    "route traffic through a bastion",
+    "use ssh -D",
+    "open a dynamic ssh tunnel"
+  ],
+  "body": "# Dynamic Forwarding\n\nDynamic forwarding creates a local SOCKS proxy that can reach arbitrary destinations through the SSH session.\n\n```bash\nssh -D 1080 ops@bastion.example.com -N\n```\n\nPoint SOCKS-aware tools at `127.0.0.1:1080` and let them choose destinations dynamically. This is useful when you do not know every endpoint ahead of time or when a browser, package manager, or debugger already supports SOCKS proxy settings.\n",
+  "sections": [
+    {
+      "id": "socks-proxy",
+      "title": "Use SSH as a SOCKS proxy",
+      "body": "`ssh -D port host -N` creates a SOCKS 4/5 listener on the client. Applications that understand SOCKS can then route traffic through the SSH path without additional destination-specific forwards. This is the flexible option when multiple internal services need temporary access.",
+      "tags": ["socks", "proxy", "dynamic", "multiple-destinations"]
+    },
+    {
+      "id": "client-compatibility",
+      "title": "Use only with SOCKS-aware clients",
+      "body": "Dynamic forwarding is not transparent TCP redirection. The application must know how to speak SOCKS or be wrapped by tooling that does. For a single fixed service such as a database, [[ssh/tunnel/local-forward]] is simpler and easier to reason about.",
+      "tags": ["client-support", "socks-aware", "local-forward"]
+    }
+  ],
+  "links": [
+    { "uri": "ssh/tunnel", "context": "Parent skill for SSH forwarding behavior" },
+    { "uri": "ssh/tunnel/local-forward", "context": "Use a fixed local forward when only one destination matters" },
+    { "uri": "ssh/troubleshooting", "context": "Debug proxy reachability or SOCKS client issues" }
+  ],
+  "related": [
+    { "uri": "ssh/tunnel", "relation": "implements", "note": "This sub-skill specializes the general SSH tunnel workflow for -D" },
+    { "uri": "ssh/tunnel/local-forward", "relation": "alternative", "note": "Local forwarding is simpler when the destination is fixed" }
+  ],
+  "scripts": [
+    {
+      "id": "open-dynamic-forward",
+      "name": "Open dynamic SSH forward",
+      "description": "Open a SOCKS proxy with ssh -D",
+      "lang": "bash",
+      "runtime": "bash",
+      "entry": "./scripts/open-dynamic-forward.sh",
+      "env": {
+        "SSH_HOST": { "required": true, "description": "Remote SSH host anchoring the tunnel" },
+        "SSH_USER": { "required": false, "description": "Remote username" },
+        "SSH_LOCAL_PORT": { "required": true, "description": "Local SOCKS listening port" },
+        "SSH_BIND_ADDRESS": { "required": false, "description": "Optional local bind address" },
+        "SSH_BACKGROUND": { "required": false, "default": "false", "description": "Background the tunnel after setup" }
+      },
+      "packages": ["openssh-client"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "host": { "type": "string", "description": "Remote SSH host" },
+        "user": { "type": "string", "description": "Remote username" },
+        "localPort": { "type": "integer", "description": "Local SOCKS listening port" },
+        "bindAddress": { "type": "string", "description": "Optional local bind address" },
+        "background": { "type": "boolean", "default": false, "description": "Background the tunnel after setup" }
+      },
+      "required": ["host", "localPort"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "mode": { "type": "string", "const": "dynamic", "description": "Tunnel mode" },
+        "forwardSpec": { "type": "string", "description": "Forwarding specification passed to ssh -D" },
+        "exitCode": { "type": "integer", "description": "Exit code from ssh" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "ssh/tunnel", "reason": "This is a specialized wrapper around the general SSH tunnel skill" }
+  ],
+  "more": {
+    "docs": "https://man.openbsd.org/ssh"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, SREs, AI agents",
+    "estimated_reading_time": "3 min",
+    "prerequisites": ["ssh/tunnel"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

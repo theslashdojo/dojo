@@ -1,0 +1,100 @@
+{
+  "name": "expressions",
+  "version": "1.0.0",
+  "uri": "terraform/hcl/expressions",
+  "type": "skill",
+  "context": "HCL expressions — references, interpolation, conditionals, iteration, dynamic blocks, and for_each/count",
+  "info": "Terraform expressions form the computation and logic layer of HCL. They reference resource attributes, variables, locals, and data sources. String interpolation embeds dynamic values in strings. Conditional expressions choose between values. For expressions transform collections. Splat expressions extract attributes from lists of resources. Dynamic blocks generate repeated nested blocks programmatically. The count and for_each meta-arguments control resource multiplication — count uses an integer index while for_each iterates over maps or sets. Expressions also include operators (arithmetic, comparison, logical), type conversions, and template directives. See [[terraform/hcl/variables]] for the values expressions reference and [[terraform/hcl/functions]] for callable functions within expressions.",
+  "parent": "terraform/hcl",
+  "tags": ["expressions", "terraform", "hcl", "interpolation", "conditional", "for-each", "count", "splat", "dynamic-blocks", "iteration", "references", "templates"],
+  "aliases": [
+    "terraform expressions",
+    "hcl expressions",
+    "terraform interpolation",
+    "terraform conditionals",
+    "terraform for_each",
+    "terraform count",
+    "terraform dynamic blocks",
+    "terraform splat",
+    "terraform for expression",
+    "terraform string templates",
+    "terraform iteration",
+    "terraform references"
+  ],
+  "triggers": [
+    "how to use terraform expressions",
+    "terraform string interpolation",
+    "terraform conditional expression",
+    "terraform for_each loop",
+    "terraform count vs for_each",
+    "terraform dynamic block",
+    "terraform splat expression",
+    "terraform reference a resource attribute",
+    "iterate over a list in terraform",
+    "terraform ternary operator",
+    "terraform template strings"
+  ],
+  "body": "# HCL Expressions\n\nExpressions in Terraform compute values from references, operations, and function calls. Every argument value in HCL is an expression — from simple string literals to complex for expressions over nested structures.\n\n## References\n\nExpressions reference named values using dot-separated paths:\n\n```hcl\n# Resource attributes\naws_instance.web.id\naws_instance.web.public_ip\naws_instance.web.tags[\"Name\"]\n\n# Input variables\nvar.instance_type\nvar.environment\nvar.database_config.engine\n\n# Local values\nlocal.common_tags\nlocal.name_prefix\n\n# Data source attributes\ndata.aws_ami.ubuntu.id\ndata.aws_vpc.main.cidr_block\n\n# Module outputs\nmodule.vpc.vpc_id\nmodule.vpc.private_subnet_ids\n\n# Special references\nself.id                  # Within provisioners\neach.key                 # In for_each resources\neach.value               # In for_each resources\ncount.index              # In count resources\npath.module              # Path to current module\npath.root                # Path to root module\npath.cwd                 # Current working directory\nterraform.workspace      # Current workspace name\n```\n\n## String Interpolation and Templates\n\nEmbed expressions in strings with `${...}` syntax:\n\n```hcl\n# Basic interpolation\nresource \"aws_instance\" \"web\" {\n  tags = {\n    Name = \"${var.project}-${var.environment}-web\"\n  }\n}\n\n# Directive templates — conditionals and loops in strings\nlocals {\n  greeting = \"Hello, ${var.name != \"\" ? var.name : \"World\"}!\"\n}\n\n# Heredoc syntax for multi-line strings\nresource \"aws_iam_policy\" \"example\" {\n  policy = <<-EOT\n    {\n      \"Version\": \"2012-10-17\",\n      \"Statement\": [{\n        \"Effect\": \"Allow\",\n        \"Action\": \"s3:GetObject\",\n        \"Resource\": \"arn:aws:s3:::${var.bucket_name}/*\"\n      }]\n    }\n  EOT\n}\n\n# templatefile() for external templates\nresource \"aws_instance\" \"web\" {\n  user_data = templatefile(\"${path.module}/user-data.sh.tpl\", {\n    environment = var.environment\n    db_host     = aws_db_instance.main.endpoint\n    app_port    = 8080\n  })\n}\n```\n\nUse `templatefile()` from [[terraform/hcl/functions]] for complex templates — it supports `%{ for ... }` and `%{ if ... }` directives.\n\n## Conditional Expressions\n\nThe ternary operator selects between two values:\n\n```hcl\n# condition ? true_value : false_value\nresource \"aws_instance\" \"web\" {\n  instance_type = var.environment == \"prod\" ? \"t3.large\" : \"t3.micro\"\n  \n  # Conditionally include a block\n  monitoring = var.environment == \"prod\" ? true : false\n}\n\n# Conditional resource creation (count)\nresource \"aws_cloudwatch_metric_alarm\" \"cpu\" {\n  count = var.environment == \"prod\" ? 1 : 0\n\n  alarm_name  = \"${var.project}-high-cpu\"\n  metric_name = \"CPUUtilization\"\n  threshold   = 80\n}\n\n# Conditional output\noutput \"alarm_arn\" {\n  value = var.environment == \"prod\" ? aws_cloudwatch_metric_alarm.cpu[0].arn : null\n}\n\n# Combine with coalesce for fallbacks\nlocals {\n  instance_type = coalesce(var.instance_type_override, var.environment == \"prod\" ? \"t3.large\" : \"t3.micro\")\n}\n```\n\n## For Expressions\n\nTransform collections with `for` expressions:\n\n```hcl\n# List comprehension — transform a list\nlocals {\n  upper_names = [for name in var.names : upper(name)]\n  # [\"ALICE\", \"BOB\", \"CHARLIE\"]\n}\n\n# Map comprehension — build a map\nlocals {\n  instance_ids = { for inst in aws_instance.web : inst.tags[\"Name\"] => inst.id }\n  # { \"web-1\" = \"i-abc123\", \"web-2\" = \"i-def456\" }\n}\n\n# Filtering with if clause\nlocals {\n  public_subnets = [for s in var.subnets : s.id if s.public == true]\n  large_instances = { for k, v in var.instances : k => v if v.size == \"large\" }\n}\n\n# Nested for — flatten structure\nlocals {\n  all_ports = flatten([\n    for sg_name, sg in var.security_groups : [\n      for rule in sg.ingress_rules : {\n        sg_name = sg_name\n        port    = rule.port\n        cidr    = rule.cidr\n      }\n    ]\n  ])\n}\n```\n\nWrap in `[ ]` for lists, `{ }` for maps. Use `=>` for key-value pairs in maps.\n\n## Splat Expressions\n\nExtract a single attribute from a list of objects:\n\n```hcl\n# Full splat — equivalent to [for o in list : o.attr]\noutput \"instance_ids\" {\n  value = aws_instance.web[*].id\n}\n\noutput \"private_ips\" {\n  value = aws_instance.web[*].private_ip\n}\n\n# Useful with data sources\ndata \"aws_instances\" \"tagged\" {\n  filter {\n    name   = \"tag:Environment\"\n    values = [var.environment]\n  }\n}\n\noutput \"running_ids\" {\n  value = data.aws_instances.tagged.ids\n}\n```\n\n`[*]` is syntactic sugar for `[for item in list : item.attr]`.\n\n## Dynamic Blocks\n\nGenerate repeated nested blocks from collections:\n\n```hcl\nresource \"aws_security_group\" \"web\" {\n  name   = \"${var.project}-web-sg\"\n  vpc_id = var.vpc_id\n\n  dynamic \"ingress\" {\n    for_each = var.ingress_rules\n    content {\n      from_port   = ingress.value.port\n      to_port     = ingress.value.port\n      protocol    = ingress.value.protocol\n      cidr_blocks = ingress.value.cidr_blocks\n      description = ingress.value.description\n    }\n  }\n\n  dynamic \"egress\" {\n    for_each = var.egress_rules\n    content {\n      from_port   = egress.value.port\n      to_port     = egress.value.port\n      protocol    = egress.value.protocol\n      cidr_blocks = egress.value.cidr_blocks\n    }\n  }\n}\n\n# Nested dynamic blocks\nresource \"aws_lb_listener\" \"front\" {\n  load_balancer_arn = aws_lb.main.arn\n  port              = 443\n  protocol          = \"HTTPS\"\n\n  dynamic \"default_action\" {\n    for_each = var.listener_actions\n    content {\n      type             = default_action.value.type\n      target_group_arn = default_action.value.target_group_arn\n\n      dynamic \"redirect\" {\n        for_each = default_action.value.type == \"redirect\" ? [default_action.value.redirect] : []\n        content {\n          port        = redirect.value.port\n          protocol    = redirect.value.protocol\n          status_code = redirect.value.status_code\n        }\n      }\n    }\n  }\n}\n```\n\nInside a `dynamic` block, the iterator defaults to the block name (e.g. `ingress.value`). Override with the `iterator` argument.\n\n## count and for_each\n\nControl resource multiplication:\n\n```hcl\n# count — create N identical resources\nresource \"aws_instance\" \"web\" {\n  count = var.instance_count\n\n  ami           = data.aws_ami.ubuntu.id\n  instance_type = var.instance_type\n  subnet_id     = var.subnet_ids[count.index % length(var.subnet_ids)]\n\n  tags = {\n    Name = \"${var.project}-web-${count.index + 1}\"\n  }\n}\n\n# Reference: aws_instance.web[0].id, aws_instance.web[*].id\n\n# for_each with a map — create named resources\nresource \"aws_iam_user\" \"team\" {\n  for_each = tomap({\n    alice = { role = \"admin\",     email = \"alice@example.com\" }\n    bob   = { role = \"developer\", email = \"bob@example.com\" }\n    carol = { role = \"developer\", email = \"carol@example.com\" }\n  })\n\n  name = each.key\n  tags = {\n    Role  = each.value.role\n    Email = each.value.email\n  }\n}\n\n# Reference: aws_iam_user.team[\"alice\"].arn\n\n# for_each with a set\nresource \"aws_s3_bucket\" \"data\" {\n  for_each = toset([\"raw\", \"processed\", \"archive\"])\n\n  bucket = \"${var.project}-${each.key}-${var.environment}\"\n\n  tags = local.common_tags\n}\n\n# Reference: aws_s3_bucket.data[\"raw\"].arn\n```\n\nPrefer `for_each` over `count` — it uses keys instead of indices, so removing an item from the middle of a list does not force recreation of subsequent resources.\n\n## Operators\n\n```hcl\n# Arithmetic: +, -, *, /, %\nlocals {\n  total_storage = var.instance_count * var.storage_per_instance\n}\n\n# Comparison: ==, !=, <, >, <=, >=\n# Logical: &&, ||, !\nlocals {\n  needs_scaling = var.instance_count > 1 && var.environment == \"prod\"\n  is_disabled   = !var.enabled\n}\n```\n",
+  "sections": [
+    {
+      "id": "references",
+      "title": "References",
+      "body": "Expressions reference values via dot paths: `var.<name>` for input variables, `local.<name>` for locals, `resource_type.name.attribute` for resources, `data.type.name.attribute` for data sources, `module.name.output` for module outputs. Special references: `self` (provisioners), `each.key` / `each.value` (for_each), `count.index` (count), `path.module` / `path.root` / `path.cwd`, `terraform.workspace`. Index into maps with `[\"key\"]` and lists with `[index]`.",
+      "tags": ["references", "var", "local", "resource", "data", "module", "self", "path", "workspace"]
+    },
+    {
+      "id": "interpolation",
+      "title": "String interpolation and templates",
+      "body": "Embed expressions in strings with `${expr}`. Heredoc syntax (`<<-EOT ... EOT`) for multi-line strings with optional indent stripping. Use `templatefile(path, vars)` from [[terraform/hcl/functions]] for external template files supporting `%{ for }` and `%{ if }` directives. Prefer `templatefile()` over inline heredocs for complex user data scripts, IAM policies, and configuration files.",
+      "tags": ["interpolation", "template", "heredoc", "templatefile", "string", "user-data"]
+    },
+    {
+      "id": "conditionals",
+      "title": "Conditional expressions",
+      "body": "Ternary syntax: `condition ? true_val : false_val`. Both branches must be compatible types. Common patterns: conditional instance sizing (`var.env == \"prod\" ? \"t3.large\" : \"t3.micro\"`), conditional resource creation (`count = var.enabled ? 1 : 0`), and null coalescing with `coalesce()`. Combine with `try()` from [[terraform/hcl/functions]] for safe fallback chains.",
+      "tags": ["conditional", "ternary", "coalesce", "try", "null", "count"]
+    },
+    {
+      "id": "iteration",
+      "title": "For expressions and splats",
+      "body": "For expressions transform collections: `[for item in list : expr]` produces a list, `{for item in list : key => value}` produces a map. Add `if clause` for filtering: `[for s in subnets : s.id if s.public]`. Splat `[*]` extracts one attribute from a list: `aws_instance.web[*].id`. Nested for + `flatten()` handles multi-level structures. For expressions support both single-value and key-value iterators (`for k, v in map`).",
+      "tags": ["for", "iteration", "splat", "filter", "list-comprehension", "map-comprehension", "flatten"]
+    },
+    {
+      "id": "dynamic-blocks",
+      "title": "Dynamic blocks",
+      "body": "Generate repeated nested blocks with `dynamic \"block_name\" { for_each = collection; content { ... } }`. Inside content, access the current element with `block_name.value` (or `block_name.key` for the index/key). Override the iterator name with the `iterator` argument. Supports nesting — dynamic blocks inside dynamic blocks. Use sparingly: overuse reduces readability. Best for security group rules, listener actions, and other highly variable nested blocks.",
+      "tags": ["dynamic", "nested-blocks", "iterator", "for-each", "security-group", "generated"]
+    }
+  ],
+  "links": [
+    { "uri": "terraform/hcl", "context": "Parent HCL syntax and block structure" },
+    { "uri": "terraform/hcl/variables", "context": "Variables, locals, and outputs referenced in expressions" },
+    { "uri": "terraform/hcl/functions", "context": "Built-in functions callable within expressions" }
+  ],
+  "related": [
+    { "uri": "terraform/hcl", "relation": "extends", "note": "Expressions are the computation layer on top of HCL block syntax" },
+    { "uri": "terraform/hcl/variables", "relation": "prerequisite", "note": "Understanding variables and locals is needed to write meaningful expressions" },
+    { "uri": "terraform/hcl/functions", "relation": "see-also", "note": "Functions are called within expressions to transform values" }
+  ],
+  "more": {
+    "docs": "https://developer.hashicorp.com/terraform/language/expressions",
+    "spec": "https://developer.hashicorp.com/terraform/language/expressions/references",
+    "examples": "https://developer.hashicorp.com/terraform/tutorials/configuration-language"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents, DevOps engineers, SREs",
+    "estimated_reading_time": "8 min",
+    "prerequisites": ["terraform/hcl", "terraform/hcl/variables"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

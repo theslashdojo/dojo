@@ -1,0 +1,149 @@
+{
+  "name": "workers",
+  "version": "1.0.0",
+  "uri": "cloudflare/workers",
+  "type": "skill",
+  "context": "Deploy and manage Cloudflare Workers — JavaScript/TypeScript edge functions running in V8 isolates",
+  "info": "Cloudflare Workers are serverless functions that run at the edge in V8 isolates across 300+ data centers globally. Unlike container-based serverless, Workers have sub-millisecond cold starts and execute JavaScript, TypeScript, or WebAssembly. Workers use the Web Standards API (fetch, Request, Response, Headers, URL, crypto, streams) — not Node.js APIs. The entry point is a module that exports a `fetch` handler. Workers connect to storage services (KV, R2, D1, Queues) through bindings configured in `wrangler.toml`. Deploy with `wrangler deploy`. Agents use this skill to deploy API endpoints, proxies, middleware, scheduled tasks, and edge applications.",
+  "parent": "cloudflare",
+  "tags": ["workers", "edge", "serverless", "v8", "deploy", "javascript", "typescript"],
+  "aliases": [
+    "cloudflare workers",
+    "cf workers",
+    "edge functions",
+    "cloudflare serverless",
+    "worker script",
+    "deploy worker",
+    "cloudflare edge compute",
+    "workers deploy",
+    "cf worker"
+  ],
+  "triggers": [
+    "create a cloudflare worker",
+    "deploy a worker",
+    "deploy to cloudflare workers",
+    "write an edge function",
+    "create an api on cloudflare",
+    "deploy serverless function to cloudflare",
+    "set up a cloudflare worker project"
+  ],
+  "body": "# Cloudflare Workers\n\nWorkers are edge compute functions that run JavaScript/TypeScript/Wasm in V8 isolates. They handle HTTP requests, run cron schedules, and process queue messages.\n\n## Quick Start\n\n```bash\n# Create a new Worker project\nnpm create cloudflare@latest my-worker\n\n# Or manually:\nmkdir my-worker && cd my-worker\nnpm init -y\nnpm install wrangler --save-dev\n```\n\n## wrangler.toml\n\n```toml\nname = \"my-worker\"\nmain = \"src/index.ts\"\ncompatibility_date = \"2024-09-23\"\ncompatibility_flags = [\"nodejs_compat\"]\naccount_id = \"your-account-id\"\n\n# Optional: custom domain or route\n# routes = [{ pattern = \"api.example.com/*\", zone_name = \"example.com\" }]\n```\n\n## Worker Entry Point (Module Syntax)\n\n```typescript\n// src/index.ts\nexport interface Env {\n  MY_KV: KVNamespace;       // KV binding\n  MY_BUCKET: R2Bucket;      // R2 binding\n  MY_DB: D1Database;        // D1 binding\n  API_KEY: string;          // Environment variable\n}\n\nexport default {\n  async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {\n    const url = new URL(request.url);\n\n    if (url.pathname === '/api/hello') {\n      return Response.json({ message: 'Hello from the edge!' });\n    }\n\n    if (url.pathname === '/api/data') {\n      const value = await env.MY_KV.get('key');\n      return Response.json({ value });\n    }\n\n    return new Response('Not Found', { status: 404 });\n  },\n\n  // Cron trigger (configured in wrangler.toml)\n  async scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext) {\n    ctx.waitUntil(doScheduledWork(env));\n  },\n};\n```\n\n## Deployment\n\n```bash\n# Deploy to production\nwrangler deploy\n\n# Deploy to a specific environment\nwrangler deploy --env staging\n\n# Local development\nwrangler dev\n\n# Local dev with remote bindings (real KV, R2, D1)\nwrangler dev --remote\n\n# View live logs\nwrangler tail\n```\n\n## Request/Response Patterns\n\n```typescript\n// Read request body\nconst body = await request.json();\nconst formData = await request.formData();\nconst text = await request.text();\n\n// Headers\nconst auth = request.headers.get('Authorization');\nconst cf = request.cf; // Cloudflare-specific: country, colo, tlsVersion\n\n// Responses\nreturn new Response('OK', { status: 200 });\nreturn Response.json({ data: 'value' });\nreturn Response.redirect('https://example.com', 301);\nreturn new Response(readableStream, {\n  headers: { 'Content-Type': 'application/octet-stream' },\n});\n```\n\n## Environment Variables and Secrets\n\n```toml\n# wrangler.toml — plain text vars\n[vars]\nAPI_URL = \"https://api.example.com\"\nENVIRONMENT = \"production\"\n```\n\n```bash\n# Secrets (encrypted, not in wrangler.toml)\nwrangler secret put API_KEY\n# Enter value when prompted\n\n# List secrets\nwrangler secret list\n\n# Delete a secret\nwrangler secret delete API_KEY\n```\n\n## Cron Triggers\n\n```toml\n# wrangler.toml\n[triggers]\ncrons = [\"0 * * * *\", \"*/5 * * * *\"]\n```\n\n```typescript\nexport default {\n  async scheduled(event, env, ctx) {\n    // event.cron contains the cron pattern that triggered this\n    // event.scheduledTime is the trigger timestamp\n    ctx.waitUntil(processData(env));\n  },\n};\n```\n\n## Sub-Skills\n\n- **[[cloudflare/workers/routes]]** — Configure routes, custom domains, and zone bindings\n- **[[cloudflare/workers/bindings]]** — Connect Workers to KV, R2, D1, Queues, and other services\n\n## Runtime Constraints\n\n- Uses Web Standards APIs, not Node.js. Enable `nodejs_compat` flag for Node.js API polyfills\n- 128MB memory limit per invocation\n- Free: 10ms CPU time, 1MB script. Paid: 30s CPU time, 10MB script\n- `request.cf` object provides geo data: `country`, `city`, `timezone`, `colo`\n- `ctx.waitUntil(promise)` for background work after response is sent\n- `ctx.passThroughOnException()` falls back to origin on uncaught errors\n",
+  "sections": [
+    {
+      "id": "quick-start",
+      "title": "Quick start",
+      "body": "Run `npm create cloudflare@latest my-worker` to scaffold a new project. This creates `wrangler.toml`, `src/index.ts`, and `package.json`. Run `wrangler dev` for local development and `wrangler deploy` to push to production. See [[cloudflare/auth]] for authentication setup before deploying.",
+      "tags": ["quick-start", "scaffold", "create", "new-project"]
+    },
+    {
+      "id": "module-syntax",
+      "title": "Module syntax entry point",
+      "body": "Workers use ES module syntax. Export a default object with handler methods: `fetch(request, env, ctx)` for HTTP, `scheduled(event, env, ctx)` for cron, `queue(batch, env, ctx)` for Queues. The `env` parameter contains all bindings and environment variables. The `ctx` parameter provides `waitUntil()` and `passThroughOnException()`.",
+      "tags": ["module", "fetch-handler", "env", "context", "entry-point"]
+    },
+    {
+      "id": "deploy",
+      "title": "Deploying Workers",
+      "body": "Run `wrangler deploy` to push the Worker to production. Use `--env staging` for named environments. Workers are deployed globally to all 300+ Cloudflare data centers within seconds. Use `wrangler tail` to stream live logs after deployment. Roll back with `wrangler rollback` or by redeploying a previous version.",
+      "tags": ["deploy", "wrangler-deploy", "environments", "rollback"]
+    },
+    {
+      "id": "secrets",
+      "title": "Environment variables and secrets",
+      "body": "Plain text variables go in `[vars]` in `wrangler.toml`. Secrets are set with `wrangler secret put <NAME>` and are encrypted at rest. Both are accessed via `env.NAME` in the Worker. Secrets are never shown in the dashboard or API after creation. Use secrets for API keys, database credentials, and tokens.",
+      "tags": ["secrets", "env-vars", "configuration", "encrypted"]
+    },
+    {
+      "id": "cron",
+      "title": "Cron triggers",
+      "body": "Add `[triggers]` with `crons` array in `wrangler.toml` to schedule Worker execution. The `scheduled` handler receives `event.cron` (the matching pattern) and `event.scheduledTime`. Use `ctx.waitUntil()` for async work. Cron Workers don't receive HTTP requests — they run on a schedule.",
+      "tags": ["cron", "scheduled", "triggers", "background"]
+    },
+    {
+      "id": "bindings",
+      "title": "Bindings overview",
+      "body": "Bindings connect Workers to Cloudflare services with zero-latency references. Configure in `wrangler.toml`: `[[kv_namespaces]]` for KV, `[[r2_buckets]]` for R2, `[[d1_databases]]` for D1, `[[queues.producers]]` for Queues. Access via `env.BINDING_NAME` in the Worker. See [[cloudflare/workers/bindings]] for detailed configuration.",
+      "tags": ["bindings", "kv", "r2", "d1", "queues", "configuration"]
+    }
+  ],
+  "sub": ["cloudflare/workers/routes", "cloudflare/workers/bindings"],
+  "links": [
+    { "uri": "cloudflare/workers/routes", "context": "Configure custom domains and route patterns" },
+    { "uri": "cloudflare/workers/bindings", "context": "Connect to KV, R2, D1, Queues, and services" },
+    { "uri": "cloudflare/kv", "context": "Key-value storage for Workers" },
+    { "uri": "cloudflare/r2", "context": "Object storage for Workers" },
+    { "uri": "cloudflare/d1", "context": "SQLite database for Workers" },
+    { "uri": "cloudflare/wrangler", "context": "CLI for development and deployment" },
+    { "uri": "cloudflare/auth", "context": "Authentication setup before deploying" },
+    { "uri": "cloudflare/pages", "context": "Alternative: full-stack deployment with Pages Functions" },
+    { "uri": "cloudflare/troubleshooting", "context": "Debug Worker errors and limits" }
+  ],
+  "related": [
+    { "uri": "cloudflare/auth", "relation": "prerequisite", "note": "Authentication is required before deploying Workers" },
+    { "uri": "cloudflare/wrangler", "relation": "prerequisite", "note": "Wrangler CLI is used for all Worker operations" },
+    { "uri": "cloudflare/workers/bindings", "relation": "see-also", "note": "Bindings connect Workers to storage and services" },
+    { "uri": "aws/lambda", "relation": "alternative", "note": "Lambda is container-based serverless; Workers use V8 isolates with faster cold starts" },
+    { "uri": "vercel/serverless", "relation": "alternative", "note": "Vercel serverless functions run in Node.js; Workers run at the edge" }
+  ],
+  "scripts": [
+    {
+      "id": "deploy-worker",
+      "name": "Deploy Worker",
+      "description": "Deploy a Cloudflare Worker to production using Wrangler",
+      "lang": "bash",
+      "runtime": "node>=18",
+      "entry": "./scripts/deploy-worker.sh",
+      "env": {
+        "CLOUDFLARE_API_TOKEN": { "required": true, "secret": true, "description": "Cloudflare API token with Workers Scripts Edit permission" },
+        "CLOUDFLARE_ACCOUNT_ID": { "required": true, "secret": false, "description": "Cloudflare account identifier" }
+      },
+      "packages": ["wrangler"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "description": "Worker name (used in URL: name.account.workers.dev)" },
+        "entryPoint": { "type": "string", "default": "src/index.ts", "description": "Path to the Worker entry file" },
+        "compatibilityDate": { "type": "string", "description": "Runtime compatibility date (YYYY-MM-DD)" },
+        "env": { "type": "string", "description": "Named environment to deploy to (e.g., staging)" },
+        "vars": { "type": "object", "description": "Environment variables to set" }
+      },
+      "required": ["name"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "url": { "type": "string", "description": "Deployed Worker URL (name.account.workers.dev)" },
+        "name": { "type": "string", "description": "Worker name" },
+        "routes": { "type": "array", "items": { "type": "string" }, "description": "Configured routes" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "cloudflare/auth", "reason": "API token required for deployment" },
+    { "uri": "cloudflare/wrangler", "reason": "Wrangler CLI is used for all Worker operations" }
+  ],
+  "more": {
+    "docs": "https://developers.cloudflare.com/workers/",
+    "api": "https://developers.cloudflare.com/api/resources/workers/subresources/scripts/methods/update/",
+    "examples": "https://developers.cloudflare.com/workers/examples/",
+    "repo": "https://github.com/cloudflare/workers-sdk"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "6 min",
+    "prerequisites": ["cloudflare/auth", "cloudflare/wrangler"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

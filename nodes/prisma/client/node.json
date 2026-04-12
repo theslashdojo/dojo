@@ -1,0 +1,138 @@
+{
+  "name": "client",
+  "version": "1.0.0",
+  "uri": "prisma/client",
+  "type": "skill",
+  "context": "Generate and use the Prisma Client to perform type-safe database queries, mutations, and transactions",
+  "info": "Prisma Client is a type-safe database client auto-generated from your schema. After running `npx prisma generate`, you get a `PrismaClient` class with methods for every model: `findUnique`, `findFirst`, `findMany`, `create`, `createMany`, `update`, `updateMany`, `upsert`, `delete`, `deleteMany`, `count`, `aggregate`, and `groupBy`. The client supports nested writes, relation loading via `include` and `select`, raw SQL via `$queryRaw` and `$executeRaw`, and transactions via `$transaction`. In production, use a singleton pattern to avoid exhausting database connections. See [[prisma/client/queries]] for CRUD operations, [[prisma/client/relations]] for relation queries, and [[prisma/troubleshooting]] for error handling.",
+  "parent": "prisma",
+  "tags": ["client", "prisma-client", "queries", "type-safe", "crud", "transactions", "orm"],
+  "aliases": [
+    "prisma client",
+    "@prisma/client",
+    "PrismaClient",
+    "prisma query",
+    "prisma queries",
+    "prisma crud",
+    "prisma find",
+    "prisma create",
+    "prisma update",
+    "prisma delete",
+    "prisma transaction",
+    "prisma generate"
+  ],
+  "triggers": [
+    "query the database with prisma",
+    "use prisma client",
+    "generate prisma client",
+    "create a record with prisma",
+    "find records with prisma",
+    "update a record in prisma",
+    "delete with prisma",
+    "run a prisma transaction",
+    "set up prisma client singleton",
+    "use raw sql with prisma"
+  ],
+  "body": "# Prisma Client\n\nPrisma Client is a type-safe query builder generated from your [[prisma/schema]]. It provides a fluent API for all CRUD operations, relation queries, transactions, and raw SQL.\n\n## Setup\n\n```bash\n# Install packages\nnpm install @prisma/client\nnpm install prisma --save-dev\n\n# Generate the client (run after every schema change)\nnpx prisma generate\n```\n\n## Instantiation\n\n```typescript\nimport { PrismaClient } from '@prisma/client';\n\nconst prisma = new PrismaClient();\n```\n\n## Singleton Pattern (Required for Production)\n\nAvoid creating multiple `PrismaClient` instances — each opens its own connection pool:\n\n```typescript\n// lib/prisma.ts\nimport { PrismaClient } from '@prisma/client';\n\nconst globalForPrisma = globalThis as unknown as { prisma: PrismaClient };\n\nexport const prisma = globalForPrisma.prisma || new PrismaClient();\n\nif (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;\n```\n\nThis is critical in Next.js and other hot-reloading environments where modules are re-evaluated.\n\n## CRUD Operations\n\nSee [[prisma/client/queries]] for comprehensive query patterns.\n\n```typescript\n// Create\nconst user = await prisma.user.create({\n  data: { email: 'alice@example.com', name: 'Alice' },\n});\n\n// Read\nconst user = await prisma.user.findUnique({ where: { id: 1 } });\nconst users = await prisma.user.findMany({ where: { role: 'ADMIN' } });\n\n// Update\nconst updated = await prisma.user.update({\n  where: { id: 1 },\n  data: { name: 'Alice Updated' },\n});\n\n// Delete\nconst deleted = await prisma.user.delete({ where: { id: 1 } });\n\n// Upsert\nconst user = await prisma.user.upsert({\n  where: { email: 'alice@example.com' },\n  update: { name: 'Alice Updated' },\n  create: { email: 'alice@example.com', name: 'Alice' },\n});\n```\n\n## Relation Queries\n\nSee [[prisma/client/relations]] for detailed relation patterns.\n\n```typescript\n// Include related records\nconst userWithPosts = await prisma.user.findUnique({\n  where: { id: 1 },\n  include: { posts: true },\n});\n\n// Select specific fields\nconst userEmail = await prisma.user.findUnique({\n  where: { id: 1 },\n  select: { email: true, posts: { select: { title: true } } },\n});\n\n// Nested create\nconst userWithPost = await prisma.user.create({\n  data: {\n    email: 'bob@example.com',\n    name: 'Bob',\n    posts: {\n      create: [{ title: 'First Post' }, { title: 'Second Post' }],\n    },\n  },\n  include: { posts: true },\n});\n```\n\n## Transactions\n\n```typescript\n// Sequential transaction (batch of operations)\nconst [posts, count] = await prisma.$transaction([\n  prisma.post.findMany({ where: { published: true } }),\n  prisma.post.count(),\n]);\n\n// Interactive transaction (with custom logic)\nconst result = await prisma.$transaction(async (tx) => {\n  const sender = await tx.account.update({\n    data: { balance: { decrement: 100 } },\n    where: { email: 'alice@example.com' },\n  });\n  if (sender.balance < 0) throw new Error('Insufficient funds');\n  return await tx.account.update({\n    data: { balance: { increment: 100 } },\n    where: { email: 'bob@example.com' },\n  });\n}, {\n  maxWait: 5000,\n  timeout: 10000,\n  isolationLevel: 'Serializable',\n});\n```\n\n## Raw SQL\n\n```typescript\n// Parameterized query (safe from SQL injection)\nconst users = await prisma.$queryRaw`SELECT * FROM \"User\" WHERE email = ${email}`;\n\n// Parameterized execute\nconst count = await prisma.$executeRaw`UPDATE \"User\" SET name = ${name} WHERE id = ${id}`;\n```\n\n**Never** use `$queryRawUnsafe` or `$executeRawUnsafe` with user input — they are vulnerable to SQL injection.\n\n## Logging\n\n```typescript\nconst prisma = new PrismaClient({\n  log: ['query', 'info', 'warn', 'error'],\n});\n\n// Event-based logging\nconst prisma = new PrismaClient({\n  log: [{ level: 'query', emit: 'event' }],\n});\nprisma.$on('query', (e) => {\n  console.log(`Query: ${e.query} — Duration: ${e.duration}ms`);\n});\n```\n\n## Connection Management\n\n```typescript\n// Explicit connect (optional — lazy connects on first query)\nawait prisma.$connect();\n\n// Disconnect when shutting down\nawait prisma.$disconnect();\n```\n\n## Environment Variables\n\n| Variable | Purpose |\n|----------|--------|\n| `DATABASE_URL` | Connection string for the database |\n",
+  "sections": [
+    {
+      "id": "setup",
+      "title": "Setup and generation",
+      "body": "Install `@prisma/client` (runtime) and `prisma` (dev). Run `npx prisma generate` after every schema change to regenerate the client. The client is generated into `node_modules/.prisma/client` by default. Import from `@prisma/client`. The `migrate dev` command auto-runs `generate`.",
+      "tags": ["setup", "generate", "install", "import"]
+    },
+    {
+      "id": "singleton",
+      "title": "Singleton pattern",
+      "body": "Create a single `PrismaClient` instance and reuse it across your application. In Next.js and other hot-reloading frameworks, store the instance on `globalThis` to prevent connection pool exhaustion during development. Each `PrismaClient` instance opens its own connection pool.",
+      "tags": ["singleton", "connection-pool", "nextjs", "hot-reload", "production"]
+    },
+    {
+      "id": "transactions",
+      "title": "Transactions",
+      "body": "Use `prisma.$transaction([...])` for sequential batched operations or `prisma.$transaction(async (tx) => { ... })` for interactive transactions with custom logic and rollback. Transaction options: `maxWait` (ms to wait for slot), `timeout` (ms max execution), `isolationLevel` (ReadUncommitted, ReadCommitted, RepeatableRead, Serializable). Throwing inside an interactive transaction triggers automatic rollback.",
+      "tags": ["transactions", "batch", "interactive", "rollback", "isolation"]
+    },
+    {
+      "id": "raw-sql",
+      "title": "Raw SQL queries",
+      "body": "Use `prisma.$queryRaw` with tagged template literals for parameterized SELECT queries. Use `prisma.$executeRaw` for INSERT/UPDATE/DELETE. Both use parameterized queries to prevent SQL injection. Avoid `$queryRawUnsafe` and `$executeRawUnsafe` with user input.",
+      "tags": ["raw-sql", "query-raw", "execute-raw", "parameterized"]
+    },
+    {
+      "id": "error-handling",
+      "title": "Error handling",
+      "body": "Prisma throws typed errors: `PrismaClientKnownRequestError` (has `.code` like P2002 for unique violation), `PrismaClientValidationError` (invalid query), `PrismaClientInitializationError` (connection failure). Catch specific error codes for business logic (e.g., P2002 = duplicate, P2025 = not found). See [[prisma/troubleshooting]] for the full error code reference.",
+      "tags": ["errors", "error-handling", "P2002", "P2025", "catch"]
+    }
+  ],
+  "sub": ["prisma/client/queries", "prisma/client/relations"],
+  "links": [
+    { "uri": "prisma/client/queries", "context": "Detailed CRUD query patterns and filters" },
+    { "uri": "prisma/client/relations", "context": "Include, nested writes, and relation filters" },
+    { "uri": "prisma/schema", "context": "The schema that defines the client's type-safe API" },
+    { "uri": "prisma/migrate", "context": "Run migrate dev to regenerate the client" },
+    { "uri": "prisma/troubleshooting", "context": "Error codes and fixes for query failures" }
+  ],
+  "related": [
+    { "uri": "prisma/schema", "relation": "prerequisite", "note": "The schema defines models that generate the client API" },
+    { "uri": "prisma/migrate", "relation": "prerequisite", "note": "Migrations must be applied before the client can query" },
+    { "uri": "prisma/client/queries", "relation": "extends", "note": "Detailed CRUD patterns and filter operators" },
+    { "uri": "prisma/client/relations", "relation": "extends", "note": "Relation loading, nested writes, and filtering" }
+  ],
+  "scripts": [
+    {
+      "id": "setup-client",
+      "name": "Setup Prisma Client",
+      "description": "Install, generate, and create a singleton Prisma Client module",
+      "lang": "bash",
+      "runtime": "bash",
+      "entry": "./scripts/setup-client.sh",
+      "env": {
+        "DATABASE_URL": { "required": true, "secret": true, "description": "Database connection string" }
+      },
+      "packages": ["prisma", "@prisma/client"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "model": { "type": "string", "description": "Model name to query (e.g., user, post)" },
+        "operation": { "type": "string", "enum": ["findUnique", "findFirst", "findMany", "create", "createMany", "update", "updateMany", "upsert", "delete", "deleteMany", "count", "aggregate", "groupBy"], "description": "CRUD operation" },
+        "args": { "type": "object", "description": "Operation arguments (where, data, include, select, etc.)" }
+      },
+      "required": ["model", "operation"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "result": { "description": "Query result — shape depends on operation and select/include" },
+        "count": { "type": "integer", "description": "Number of affected records (for batch operations)" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "prisma/schema", "reason": "Client is generated from the schema" },
+    { "uri": "prisma/migrate", "reason": "Database must match schema before querying" }
+  ],
+  "more": {
+    "docs": "https://www.prisma.io/docs/orm/prisma-client",
+    "spec": "https://www.prisma.io/docs/orm/reference/prisma-client-reference"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "6 min",
+    "prerequisites": ["prisma/schema", "prisma/migrate"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

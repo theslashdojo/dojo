@@ -1,0 +1,128 @@
+{
+  "name": "middleware",
+  "version": "1.0.0",
+  "uri": "nextjs/middleware",
+  "type": "skill",
+  "context": "Run code before Next.js requests complete — authentication, redirects, rewrites, headers, and geo-routing with middleware.ts",
+  "info": "Next.js Middleware runs before a request is completed, allowing you to modify the response by rewriting, redirecting, modifying headers, or setting cookies. Middleware is defined in a single `middleware.ts` file at the project root (or `src/` root). It runs on every request by default but can be scoped with a `matcher` config. Middleware uses the Edge Runtime — a lightweight subset of Node.js APIs based on Web Standards (Request, Response, fetch, crypto). Common use cases include authentication checks, locale detection, A/B testing, bot protection, feature flags, and request logging. Middleware executes before cached content and route matching, making it the earliest interception point in the request lifecycle.",
+  "parent": "nextjs",
+  "tags": ["middleware", "auth", "redirect", "rewrite", "headers", "cookies", "edge-runtime", "nextjs"],
+  "aliases": [
+    "middleware",
+    "next middleware",
+    "nextjs middleware",
+    "next.js middleware",
+    "middleware.ts",
+    "request middleware",
+    "edge middleware",
+    "next auth middleware",
+    "route middleware"
+  ],
+  "triggers": [
+    "add middleware to next.js",
+    "protect routes with authentication",
+    "redirect based on locale",
+    "add headers to all responses",
+    "rewrite URLs in next.js",
+    "check auth before page loads",
+    "set cookies in middleware",
+    "A/B testing with middleware",
+    "rate limit requests",
+    "create middleware.ts"
+  ],
+  "body": "# Middleware\n\nMiddleware runs before every matched request in Next.js, enabling authentication, redirects, rewrites, and header manipulation at the edge.\n\n## Setup\n\nCreate `middleware.ts` at the root of your project (next to `app/` or `pages/`) or inside `src/`.\n\n```tsx\n// middleware.ts\nimport { NextResponse } from 'next/server'\nimport type { NextRequest } from 'next/server'\n\nexport function middleware(request: NextRequest) {\n  // Runs on every matched request\n  return NextResponse.next()\n}\n\n// Optionally scope to specific paths\nexport const config = {\n  matcher: ['/dashboard/:path*', '/api/:path*'],\n}\n```\n\n## Authentication Guard\n\n```tsx\nimport { NextResponse } from 'next/server'\nimport type { NextRequest } from 'next/server'\n\nexport function middleware(request: NextRequest) {\n  const token = request.cookies.get('session')?.value\n\n  // Protect dashboard routes\n  if (request.nextUrl.pathname.startsWith('/dashboard')) {\n    if (!token) {\n      const loginUrl = new URL('/login', request.url)\n      loginUrl.searchParams.set('callbackUrl', request.nextUrl.pathname)\n      return NextResponse.redirect(loginUrl)\n    }\n  }\n\n  return NextResponse.next()\n}\n\nexport const config = {\n  matcher: ['/dashboard/:path*', '/settings/:path*'],\n}\n```\n\n## Redirects\n\n```tsx\nexport function middleware(request: NextRequest) {\n  const { pathname } = request.nextUrl\n\n  // Permanent redirect\n  if (pathname === '/old-page') {\n    return NextResponse.redirect(new URL('/new-page', request.url), 308)\n  }\n\n  // Temporary redirect\n  if (pathname === '/maintenance') {\n    return NextResponse.redirect(new URL('/coming-soon', request.url))\n  }\n\n  return NextResponse.next()\n}\n```\n\n## Rewrites (URL Masking)\n\n```tsx\nexport function middleware(request: NextRequest) {\n  const { pathname } = request.nextUrl\n\n  // Proxy API requests to external service (URL stays the same for the user)\n  if (pathname.startsWith('/api/external')) {\n    return NextResponse.rewrite(\n      new URL(pathname.replace('/api/external', ''), 'https://api.example.com')\n    )\n  }\n\n  return NextResponse.next()\n}\n```\n\n## Setting Headers\n\n```tsx\nexport function middleware(request: NextRequest) {\n  // Add request headers (visible to server components and route handlers)\n  const requestHeaders = new Headers(request.headers)\n  requestHeaders.set('x-request-id', crypto.randomUUID())\n\n  const response = NextResponse.next({\n    request: { headers: requestHeaders },\n  })\n\n  // Add response headers\n  response.headers.set('X-Frame-Options', 'DENY')\n  response.headers.set('X-Content-Type-Options', 'nosniff')\n  response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin')\n\n  return response\n}\n```\n\n## Cookies\n\n```tsx\nexport function middleware(request: NextRequest) {\n  const response = NextResponse.next()\n\n  // Read cookies\n  const theme = request.cookies.get('theme')?.value\n\n  // Set cookies\n  response.cookies.set('visited', 'true', {\n    httpOnly: true,\n    secure: true,\n    sameSite: 'lax',\n    maxAge: 60 * 60 * 24 * 30, // 30 days\n  })\n\n  // Delete cookies\n  response.cookies.delete('old-cookie')\n\n  return response\n}\n```\n\n## Locale Detection\n\n```tsx\nexport function middleware(request: NextRequest) {\n  const { pathname } = request.nextUrl\n\n  // Skip if locale already in path\n  const locales = ['en', 'fr', 'de', 'ja']\n  const hasLocale = locales.some(\n    locale => pathname.startsWith(`/${locale}/`) || pathname === `/${locale}`\n  )\n  if (hasLocale) return NextResponse.next()\n\n  // Detect locale from Accept-Language header\n  const acceptLang = request.headers.get('Accept-Language') ?? ''\n  const detected = locales.find(l => acceptLang.includes(l)) ?? 'en'\n\n  // Rewrite to locale-prefixed path\n  return NextResponse.rewrite(\n    new URL(`/${detected}${pathname}`, request.url)\n  )\n}\n```\n\n## A/B Testing\n\n```tsx\nexport function middleware(request: NextRequest) {\n  const bucket = request.cookies.get('ab-bucket')?.value\n  const response = NextResponse.next()\n\n  if (!bucket) {\n    const newBucket = Math.random() < 0.5 ? 'control' : 'variant'\n    response.cookies.set('ab-bucket', newBucket)\n\n    if (newBucket === 'variant') {\n      return NextResponse.rewrite(\n        new URL('/variant' + request.nextUrl.pathname, request.url)\n      )\n    }\n  } else if (bucket === 'variant') {\n    return NextResponse.rewrite(\n      new URL('/variant' + request.nextUrl.pathname, request.url)\n    )\n  }\n\n  return response\n}\n```\n\n## Matcher Configuration\n\n```tsx\nexport const config = {\n  matcher: [\n    // Match specific paths\n    '/dashboard/:path*',\n    '/api/:path*',\n\n    // Match all paths except static files and images\n    '/((?!_next/static|_next/image|favicon.ico|.*\\\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',\n  ],\n}\n```\n\nMatcher supports:\n- `:path` — single segment wildcard\n- `:path*` — zero or more segments\n- Regex in parentheses `(regex)` for negative lookaheads\n\n## NextRequest API\n\n| Property/Method | Description |\n|----------------|-------------|\n| `request.nextUrl` | Parsed URL with `pathname`, `searchParams`, `basePath` |\n| `request.cookies` | Cookie jar with `get()`, `getAll()`, `set()`, `delete()`, `has()` |\n| `request.headers` | Standard Headers object |\n| `request.geo` | Geolocation data (`country`, `city`, `region`) — Vercel only |\n| `request.ip` | Client IP address — Vercel only |\n\n## NextResponse API\n\n| Method | Description |\n|--------|-------------|\n| `NextResponse.next()` | Continue to the next middleware or route |\n| `NextResponse.redirect(url, status?)` | Redirect to a URL (default 307) |\n| `NextResponse.rewrite(url)` | Serve a different URL without changing the browser URL |\n| `NextResponse.json(data, init?)` | Return a JSON response |\n",
+  "sections": [
+    {
+      "id": "setup",
+      "title": "Setup and matcher",
+      "body": "Place `middleware.ts` at the project root (next to `app/` or `pages/`) or inside `src/`. Only one middleware file per project. Use `export const config = { matcher: [...] }` to scope middleware to specific paths. Without a matcher, middleware runs on every request including `_next/static` and `_next/image` — always use a matcher in production. Matchers support named params (`:path*`) and regex patterns.",
+      "tags": ["setup", "matcher", "config", "scope", "path-matching"]
+    },
+    {
+      "id": "auth",
+      "title": "Authentication patterns",
+      "body": "Check for session tokens in `request.cookies`. Redirect unauthenticated users to a login page with `NextResponse.redirect()`. Pass the original URL as a `callbackUrl` query parameter for post-login redirect. For JWT validation, use edge-compatible libraries (jose, not jsonwebtoken). For NextAuth.js, use `withAuth` middleware wrapper. Always protect both page routes and API routes.",
+      "tags": ["auth", "session", "jwt", "redirect", "login", "nextauth"]
+    },
+    {
+      "id": "redirects-rewrites",
+      "title": "Redirects and rewrites",
+      "body": "`NextResponse.redirect(url)` sends a 307 redirect (or specify 301/308). `NextResponse.rewrite(url)` serves content from a different URL without changing the browser URL — useful for A/B testing, feature flags, and proxying external APIs. Both construct URLs with `new URL(path, request.url)` to preserve the origin. Rewrites can point to external domains.",
+      "tags": ["redirect", "rewrite", "proxy", "url-masking", "307", "301"]
+    },
+    {
+      "id": "edge-runtime",
+      "title": "Edge Runtime limitations",
+      "body": "Middleware runs on the Edge Runtime, which has a limited API surface compared to Node.js. Available: `fetch`, `Request`, `Response`, `Headers`, `URL`, `crypto`, `TextEncoder/TextDecoder`, `setTimeout`, `setInterval`. Not available: `fs`, `path`, `child_process`, `net`, native Node.js modules. Use edge-compatible npm packages. Max execution time varies by platform (typically 30s on Vercel).",
+      "tags": ["edge-runtime", "limitations", "web-apis", "compatibility"]
+    }
+  ],
+  "links": [
+    { "uri": "nextjs/app-router", "context": "Middleware runs before App Router route resolution" },
+    { "uri": "nextjs/api-routes", "context": "Middleware can protect API endpoints" },
+    { "uri": "nextjs/config", "context": "Redirects and headers can also be configured in next.config" },
+    { "uri": "nextjs/deployment", "context": "Edge Runtime middleware behavior varies by deployment target" }
+  ],
+  "related": [
+    { "uri": "nextjs/config", "relation": "alternative", "note": "Simple redirects and headers can be defined in next.config.js without middleware" },
+    { "uri": "nextjs/app-router", "relation": "see-also", "note": "Middleware runs before the App Router resolves routes" },
+    { "uri": "nextjs/api-routes", "relation": "see-also", "note": "Middleware can add auth and CORS headers before API routes execute" }
+  ],
+  "scripts": [
+    {
+      "id": "create-middleware",
+      "name": "Create Middleware",
+      "description": "Scaffold a middleware.ts file with authentication guard and matcher config",
+      "lang": "bash",
+      "runtime": "bash",
+      "entry": "./scripts/create-middleware.sh",
+      "env": {
+        "PROTECTED_PATHS": { "required": false, "default": "/dashboard", "description": "Comma-separated paths to protect (e.g., '/dashboard,/settings')" },
+        "AUTH_COOKIE": { "required": false, "default": "session", "description": "Name of the authentication cookie" },
+        "LOGIN_PATH": { "required": false, "default": "/login", "description": "Login page path for redirects" },
+        "PROJECT_DIR": { "required": false, "default": ".", "description": "Next.js project root" }
+      },
+      "packages": []
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "protectedPaths": { "type": "array", "items": { "type": "string" }, "description": "Paths to protect with authentication" },
+        "authCookie": { "type": "string", "default": "session", "description": "Authentication cookie name" },
+        "loginPath": { "type": "string", "default": "/login", "description": "Redirect target for unauthenticated requests" },
+        "features": { "type": "array", "items": { "type": "string", "enum": ["auth", "headers", "locale", "logging"] }, "description": "Middleware features to include" }
+      }
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "middlewareFile": { "type": "string", "description": "Path to the created middleware file" },
+        "matcherPaths": { "type": "array", "items": { "type": "string" }, "description": "Paths the middleware matches" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "nextjs", "reason": "Middleware is a Next.js framework feature" }
+  ],
+  "more": {
+    "docs": "https://nextjs.org/docs/app/building-your-application/routing/middleware",
+    "api": "https://nextjs.org/docs/app/api-reference/functions/next-request"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "7 min",
+    "prerequisites": ["nextjs"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

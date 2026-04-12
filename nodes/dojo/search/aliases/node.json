@@ -1,0 +1,78 @@
+{
+  "name": "aliases",
+  "version": "1.0.0",
+  "uri": "dojo/search/aliases",
+  "type": "context",
+  "content_type": "explainer",
+  "context": "Resolve alternative names and abbreviations to canonical Dojo node URIs",
+  "info": "Alias resolution maps informal names, abbreviations, acronyms, and common misspellings to the canonical node URI. When an agent or user says 'gh' instead of 'github', or 'k8s' instead of 'kubernetes', alias resolution bridges the gap. Aliases are defined in each node's `aliases[]` array and indexed at server startup. Resolution is case-insensitive and supports partial matching with a configurable threshold. Alias collisions (two nodes claiming the same alias) are resolved by node depth (shallower wins) then alphabetical URI order.",
+  "parent": "dojo/search",
+  "tags": ["aliases", "resolution", "abbreviations", "synonyms", "discovery", "naming"],
+  "aliases": [
+    "alias resolution",
+    "dojo aliases",
+    "node aliases",
+    "alternative names",
+    "name resolution",
+    "abbreviation lookup"
+  ],
+  "triggers": [
+    "how do aliases work",
+    "resolve an alias",
+    "what aliases does a node have",
+    "how to add aliases to a node",
+    "alias collision resolution"
+  ],
+  "body": "# Alias Resolution\n\nAliases let agents find nodes using the words they naturally use. Every node can declare an `aliases[]` array of alternative names. The search engine indexes these at startup and resolves them during queries.\n\n## How It Works\n\n1. Agent queries with a term like `k8s` or `gh`\n2. Search engine normalizes the term (lowercase, trim whitespace)\n3. Exact match against the alias index → returns canonical URI\n4. If no exact match, fuzzy match with Levenshtein distance ≤ 2\n5. Return the canonical node with its full manifest\n\n## Defining Aliases\n\nAliases go in the `aliases[]` field of `node.json`:\n\n```json\n{\n  \"name\": \"kubernetes\",\n  \"uri\": \"kubernetes\",\n  \"aliases\": [\n    \"k8s\",\n    \"kube\",\n    \"kubernetes cluster\",\n    \"k8s cluster\"\n  ]\n}\n```\n\n### Best Practices\n\n- Include the full name, common abbreviations, and acronyms\n- Add common misspellings if they occur frequently\n- Include phrase variants: `create repo`, `new repository`, `repo creation`\n- Avoid overlapping with another node's aliases unless the overlap is genuinely shared\n- Keep aliases specific — `deploy` is too broad, `vercel deploy` is better\n\n## Alias Resolution API\n\n```bash\n# Resolve a single alias\ncurl \"$DOJO_URL/v1/alias/k8s\"\n# → { \"uri\": \"kubernetes\", \"name\": \"kubernetes\", \"type\": \"ecosystem\" }\n\n# List all aliases for a node\ncurl \"$DOJO_URL/v1/skills/kubernetes\" | jq '.aliases'\n# → [\"k8s\", \"kube\", \"kubernetes cluster\", \"k8s cluster\"]\n```\n\n## Collision Resolution\n\nWhen two nodes claim the same alias:\n1. Shallower node wins (ecosystem > standard > skill > sub)\n2. If same depth, alphabetically earlier URI wins\n3. The losing node's alias still works as a search term but won't resolve via `/v1/alias/`\n\n## Environment Variables\n\n| Variable | Purpose |\n|----------|----------|\n| `DOJO_URL` | Base URL of the Dojo registry |\n",
+  "sections": [
+    {
+      "id": "defining-aliases",
+      "title": "Defining aliases",
+      "body": "Aliases are declared in the `aliases[]` array of `node.json`. Include the full name, common abbreviations, acronyms, phrase variants, and frequent misspellings. Each alias should be a string that an agent or user would naturally type when looking for this node. Aliases are case-insensitive at resolution time.",
+      "tags": ["authoring", "aliases", "best-practices", "definition"]
+    },
+    {
+      "id": "resolution-algorithm",
+      "title": "Resolution algorithm",
+      "body": "Alias resolution follows this order: (1) normalize input to lowercase and trim, (2) exact match against the alias index, (3) if no exact match, fuzzy match using Levenshtein distance ≤ 2, (4) return the canonical node URI. Collisions are resolved by node depth (shallower wins) then alphabetical URI order. The alias index is built at server startup by scanning all `aliases[]` arrays across the node tree.",
+      "tags": ["algorithm", "fuzzy-match", "levenshtein", "collision", "index"]
+    },
+    {
+      "id": "api-endpoint",
+      "title": "Alias API endpoint",
+      "body": "`GET /v1/alias/<alias>` resolves a single alias to its canonical node. Returns the node's `uri`, `name`, `type`, and `context`. Returns 404 if no match is found. For batch resolution, use the search endpoint with multiple terms: `GET /v1/search?q=k8s+deploy`. See [[dojo/api#discovery-routes]].",
+      "tags": ["api", "endpoint", "http", "resolution"]
+    }
+  ],
+  "links": [
+    { "uri": "dojo/search", "context": "Parent search skill covering all discovery paths" },
+    { "uri": "dojo/search/triggers", "context": "Trigger matching complements alias resolution for intent-based queries" },
+    { "uri": "dojo/knowledge", "context": "Aliases are part of the knowledge layer defined in the spec" },
+    { "uri": "dojo/api#discovery-routes", "context": "HTTP endpoints serving alias resolution" },
+    { "uri": "dojo/contributing", "context": "Authoring guidelines for writing good aliases" }
+  ],
+  "related": [
+    { "uri": "dojo/search", "relation": "prerequisite", "note": "Alias resolution is a sub-mechanism of the broader search skill" },
+    { "uri": "dojo/search/triggers", "relation": "see-also", "note": "Triggers handle natural-language intent; aliases handle name variants" },
+    { "uri": "dojo/knowledge", "relation": "implements", "note": "Aliases implement the discovery aspect of the knowledge layer" }
+  ],
+  "more": {
+    "docs": "https://github.com/theslashdojo/dojo/blob/main/SPEC.md",
+    "repo": "https://github.com/theslashdojo/dojo"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "node authors, agent developers",
+    "estimated_reading_time": "3 min",
+    "prerequisites": ["dojo/search"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

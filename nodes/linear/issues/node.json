@@ -1,0 +1,136 @@
+{
+  "name": "issues",
+  "version": "1.0.0",
+  "uri": "linear/issues",
+  "type": "skill",
+  "context": "Create, search, update, and manage Linear issues via the GraphQL API and TypeScript SDK",
+  "info": "This skill covers the full issue lifecycle in Linear: creating issues with titles, descriptions, assignees, labels, and priorities; searching and filtering issues with GraphQL queries; updating issue state, assignees, and properties; and bulk operations. Issues are the atomic unit of work in Linear — every bug, feature, and task is an issue. Issues belong to exactly one team and move through team-specific workflow states. The @linear/sdk provides typed methods for all operations. Sub-skills [[linear/issues/create]] and [[linear/issues/update]] provide focused coverage. See [[linear/auth]] for authentication and [[linear/teams]] for team context.",
+  "parent": "linear",
+  "sub": ["linear/issues/create", "linear/issues/update"],
+  "tags": ["issues", "bugs", "tasks", "create-issue", "update-issue", "search", "triage"],
+  "aliases": [
+    "linear issues",
+    "linear issue",
+    "linear tickets",
+    "linear bugs",
+    "linear tasks",
+    "create linear issue",
+    "search linear issues",
+    "manage linear issues",
+    "linear issue api"
+  ],
+  "triggers": [
+    "create a linear issue",
+    "search linear issues",
+    "update a linear issue",
+    "find issues in linear",
+    "list my linear issues",
+    "triage linear issues",
+    "assign a linear issue",
+    "change issue status in linear",
+    "file a bug in linear"
+  ],
+  "body": "# Linear Issue Management\n\nIssues are the core work item in Linear. Every bug report, feature request, task, and improvement lives as an issue within a team.\n\n## Sub-Skills\n\n- **[[linear/issues/create]]** — Create new issues with all metadata\n- **[[linear/issues/update]]** — Update existing issues (state, assignee, labels, etc.)\n\n## Querying Issues\n\n### Search by identifier\n\nEvery issue has a human-readable identifier like `ENG-42`:\n\n```graphql\nquery Issue {\n  issue(id: \"ENG-42\") {\n    id\n    title\n    description\n    state {\n      name\n      type\n    }\n    assignee {\n      name\n    }\n    priority\n    labels {\n      nodes {\n        name\n      }\n    }\n    team {\n      name\n      key\n    }\n    createdAt\n    updatedAt\n  }\n}\n```\n\n### List issues with filters\n\n```graphql\nquery FilteredIssues {\n  issues(\n    filter: {\n      team: { key: { eq: \"ENG\" } }\n      state: { type: { in: [\"started\", \"unstarted\"] } }\n      priority: { lte: 2 }\n      assignee: { email: { eq: \"dev@company.com\" } }\n    }\n    orderBy: updatedAt\n    first: 50\n  ) {\n    nodes {\n      id\n      identifier\n      title\n      priority\n      state {\n        name\n        type\n      }\n      assignee {\n        name\n      }\n    }\n    pageInfo {\n      hasNextPage\n      endCursor\n    }\n  }\n}\n```\n\n### SDK queries\n\n```typescript\nimport { LinearClient } from \"@linear/sdk\";\n\nconst client = new LinearClient({ apiKey: process.env.LINEAR_API_KEY });\n\n// Get my assigned issues\nconst me = await client.viewer;\nconst myIssues = await me.assignedIssues({\n  filter: {\n    state: { type: { in: [\"started\", \"unstarted\"] } },\n  },\n  orderBy: LinearDocument.PaginationOrderBy.UpdatedAt,\n});\n\nfor (const issue of myIssues.nodes) {\n  console.log(`${issue.identifier}: ${issue.title} [${issue.priority}]`);\n}\n\n// Search issues\nconst results = await client.searchIssues(\"login bug\");\nfor (const issue of results.nodes) {\n  console.log(`${issue.identifier}: ${issue.title}`);\n}\n\n// Get a specific issue\nconst issue = await client.issue(\"ISSUE_UUID\");\nconsole.log(issue.title, issue.description);\n```\n\n## Issue Fields\n\n| Field | Type | Description |\n|-------|------|-------------|\n| `title` | string | Issue title (required) |\n| `description` | string | Markdown description |\n| `teamId` | UUID | Team the issue belongs to (required for creation) |\n| `stateId` | UUID | Workflow state |\n| `assigneeId` | UUID | Assigned user |\n| `priority` | int | 0=none, 1=urgent, 2=high, 3=medium, 4=low |\n| `labelIds` | UUID[] | Applied labels |\n| `projectId` | UUID | Parent project |\n| `cycleId` | UUID | Sprint/cycle |\n| `estimate` | number | Story points or time estimate |\n| `dueDate` | string | Due date in YYYY-MM-DD format |\n| `parentId` | UUID | Parent issue for sub-issues |\n\n## Pagination\n\nLinear uses Relay-style cursor-based pagination:\n\n```typescript\nlet hasMore = true;\nlet cursor: string | undefined;\n\nwhile (hasMore) {\n  const page = await client.issues({\n    first: 50,\n    after: cursor,\n    filter: { team: { key: { eq: \"ENG\" } } },\n  });\n\n  for (const issue of page.nodes) {\n    console.log(issue.identifier, issue.title);\n  }\n\n  hasMore = page.pageInfo.hasNextPage;\n  cursor = page.pageInfo.endCursor;\n}\n```\n\n## Filtering Patterns\n\nGraphQL filters support nested comparisons:\n\n```graphql\nfilter: {\n  # Exact match\n  team: { key: { eq: \"ENG\" } }\n  # In list\n  state: { type: { in: [\"started\"] } }\n  # Comparison\n  priority: { lte: 2 }\n  # Nested relation\n  assignee: { email: { contains: \"@company.com\" } }\n  # Date range\n  createdAt: { gte: \"2026-01-01\" }\n  # Null check\n  assignee: { null: true }  # Unassigned issues\n}\n```\n\n## Environment Variables\n\n| Variable | Purpose |\n|----------|----------|\n| `LINEAR_API_KEY` | Personal API key for authentication |\n| `LINEAR_TEAM_ID` | Default team ID for issue operations |\n",
+  "sections": [
+    {
+      "id": "query",
+      "title": "Querying issues",
+      "body": "Fetch a single issue by UUID or identifier (e.g., `ENG-42`) with `issue(id)`. List issues with `issues(filter, first, after, orderBy)`. Filter by team, state type, priority, assignee, labels, dates. Paginate with cursor-based Relay pagination using `pageInfo.hasNextPage` and `pageInfo.endCursor`. Search text with `searchIssues(query)`.",
+      "tags": ["query", "search", "filter", "pagination", "list"]
+    },
+    {
+      "id": "fields",
+      "title": "Issue fields reference",
+      "body": "Required: `title` and `teamId` (for creation). Key optional fields: `description` (markdown), `assigneeId`, `stateId`, `priority` (0-4, where 1 is urgent), `labelIds`, `projectId`, `cycleId`, `estimate`, `dueDate` (YYYY-MM-DD), `parentId` (for sub-issues). All IDs are UUIDs except `identifier` which is the human-readable key like `ENG-42`.",
+      "tags": ["fields", "schema", "properties", "priority", "assignee", "state"]
+    },
+    {
+      "id": "filtering",
+      "title": "Filter syntax",
+      "body": "GraphQL filters use nested comparators: `eq` (exact), `neq` (not equal), `in` (list), `contains`/`startsWith` (string), `lt`/`lte`/`gt`/`gte` (comparison), `null` (boolean). Filters can nest into relations: `assignee: { email: { contains: \"@co.com\" } }`. Combine multiple filters with AND logic. Use `includeArchived: true` to include archived issues.",
+      "tags": ["filter", "comparators", "query-syntax", "graphql"]
+    }
+  ],
+  "links": [
+    { "uri": "linear/issues/create", "context": "Create new issues" },
+    { "uri": "linear/issues/update", "context": "Update existing issues" },
+    { "uri": "linear/auth", "context": "Authentication required for all issue operations" },
+    { "uri": "linear/teams", "context": "Issues belong to teams — teamId is required" },
+    { "uri": "linear/projects", "context": "Issues can be grouped into projects" },
+    { "uri": "linear/webhooks", "context": "React to issue events in real time" }
+  ],
+  "related": [
+    { "uri": "linear/auth", "relation": "prerequisite", "note": "Authentication required before any issue operation" },
+    { "uri": "linear/teams", "relation": "prerequisite", "note": "Must know teamId to create issues" },
+    { "uri": "github/issues", "relation": "alternative", "note": "GitHub Issues is an alternative — Linear can sync with GitHub issues bidirectionally" }
+  ],
+  "scripts": [
+    {
+      "id": "manage-issues",
+      "name": "Manage Linear Issues",
+      "description": "List, search, and display Linear issues with filtering and pagination",
+      "lang": "typescript",
+      "runtime": "node>=18",
+      "entry": "./scripts/manage-issues.ts",
+      "env": {
+        "LINEAR_API_KEY": { "required": true, "secret": true, "description": "Linear personal API key" },
+        "LINEAR_TEAM_KEY": { "required": false, "description": "Team key to filter issues (e.g., ENG)" }
+      },
+      "packages": ["@linear/sdk"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "action": { "type": "string", "enum": ["list", "search", "get"], "description": "Operation to perform" },
+        "teamKey": { "type": "string", "description": "Team key for filtering (e.g., ENG)" },
+        "query": { "type": "string", "description": "Search query string" },
+        "issueId": { "type": "string", "description": "Issue UUID or identifier (e.g., ENG-42)" },
+        "limit": { "type": "integer", "default": 25, "description": "Max results to return" }
+      },
+      "required": ["action"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "issues": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "identifier": { "type": "string" },
+              "title": { "type": "string" },
+              "state": { "type": "string" },
+              "priority": { "type": "integer" },
+              "assignee": { "type": "string" }
+            }
+          }
+        },
+        "totalCount": { "type": "integer" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "linear/auth", "reason": "Authentication required for all issue API calls" }
+  ],
+  "more": {
+    "docs": "https://linear.app/developers",
+    "api": "https://api.linear.app/graphql"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "5 min",
+    "prerequisites": ["linear/auth", "linear/teams"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

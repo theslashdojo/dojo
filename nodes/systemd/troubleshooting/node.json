@@ -1,0 +1,89 @@
+{
+  "name": "troubleshooting",
+  "version": "1.0.0",
+  "uri": "systemd/troubleshooting",
+  "type": "context",
+  "context": "Diagnose failed services, broken overrides, and timer misfires with a repeatable systemd runbook",
+  "info": "This troubleshooting node turns common systemd failures into a deterministic workflow. It combines `systemctl` for manager state and loaded file inspection, `journalctl` for runtime evidence, and `systemd-analyze` for structural validation. It focuses on the problems autonomous agents actually hit after deploys or configuration edits: services that fail immediately, services that flap because restart policy hides the real error, timers that never seem to run, overrides that do not apply because the wrong file is loaded, and boot or dependency issues where the manager ordering graph matters.",
+  "parent": "systemd",
+  "tags": ["troubleshooting", "failed-service", "crash-loop", "timer-not-firing", "daemon-reload", "fragmentpath", "reset-failed", "boot-debugging"],
+  "aliases": [
+    "debug systemd service",
+    "systemd troubleshooting",
+    "why did my service fail",
+    "timer not firing",
+    "systemd crash loop",
+    "wrong unit file loaded",
+    "reset failed unit",
+    "debug boot ordering"
+  ],
+  "triggers": [
+    "my systemd service keeps failing",
+    "timer unit is not firing",
+    "systemd is loading the wrong unit file",
+    "changes to a unit file are ignored",
+    "boot is waiting on a service",
+    "restart loop hides the real error"
+  ],
+  "content_type": "guide",
+  "body": "# Troubleshooting systemd\n\nMost failures reduce to a short loop built from [[systemd/systemctl]], [[systemd/journalctl]], and [[systemd/analyze]]: confirm the loaded file and manager scope with `systemctl show`, inspect runtime state with `status`, read the journal, and verify the unit definition. Repeat only after `daemon-reload` when files changed.\n\n```bash\nsystemctl status my-app.service\nsystemctl show my-app.service -p FragmentPath -p ActiveState -p SubState --value\njournalctl -u my-app.service -n 100 --no-pager\nsystemd-analyze verify /etc/systemd/system/my-app.service\nsystemctl reset-failed my-app.service\n```\n\nFor timers, inspect both the timer and the activated service and move between [[systemd/timers]] and [[systemd/services]] as needed:\n\n```bash\nsystemctl list-timers --all\nsystemctl show backup.timer -p NextElapseUSecRealtime --value\njournalctl -u backup.service --no-pager\n```\n\nCommon causes are wrong scope, stale unit files because `daemon-reload` was skipped, missing executables or service users, override files shadowing the main unit, and timer-driven services that never become inactive again. Use the sections below as a runbook rather than guessing from a single command.",
+  "sections": [
+    {
+      "id": "failed-service",
+      "title": "Failed or flapping service",
+      "body": "Start with [[systemd/systemctl#introspection]] to confirm the loaded file and current state, then move into [[systemd/journalctl#filters]] for the first failing invocation. If the service fails instantly, suspect a bad `ExecStart=`, missing binary, wrong `User=`, wrong working directory, or a missing environment file. If restart policy causes a loop, temporarily inspect with `systemctl reset-failed UNIT` and read the very first failure in the journal rather than the latest restart iteration.",
+      "tags": ["failed-service", "restart-loop", "execstart", "user", "environment"]
+    },
+    {
+      "id": "timer-not-firing",
+      "title": "Timer not firing",
+      "body": "Check [[systemd/timers#inspection]] first. If the timer has a next elapse time, the scheduler is probably fine and the problem is the paired service. Inspect the activated service with [[systemd/systemctl#introspection]] and its logs with [[systemd/journalctl#filters]]. If the timer fires only once, check whether the service stays active because of `RemainAfterExit=yes` or never returns to an inactive state. If the machine was offline at the scheduled time, remember that catch-up behavior requires `Persistent=true` and applies to `OnCalendar=` timers.",
+      "tags": ["timer-not-firing", "list-timers", "next-elapse", "persistent", "remainafterexit"]
+    },
+    {
+      "id": "overrides-and-stale-config",
+      "title": "Overrides and stale config",
+      "body": "If a change appears to do nothing, confirm `FragmentPath` and review the relevant `NAME.service.d/*.conf` drop-ins with help from [[systemd/unit-files#overrides-and-dropins]]. The wrong file may be loaded because a higher-precedence unit or override exists. After editing any unit or drop-in, run `systemctl daemon-reload`; otherwise systemd keeps the older in-memory definition. Use [[systemd/analyze#verify]] on the final file set if an override resets or replaces directives unexpectedly.",
+      "tags": ["overrides", "drop-ins", "fragmentpath", "daemon-reload", "stale-config"]
+    },
+    {
+      "id": "boot-and-manager",
+      "title": "Boot and manager behavior",
+      "body": "When the issue is ordering or boot delay, move from logs into [[systemd/analyze#boot-debugging]]. `blame` and `critical-chain` reveal which units spent time activating and what dependency path actually gated the target. If a unit validates and logs look fine but boot is still waiting, the problem is often a dependency or wait-online style ordering constraint rather than the service code itself.",
+      "tags": ["boot", "critical-chain", "blame", "ordering", "wait-online"]
+    }
+  ],
+  "links": [
+    { "uri": "systemd/systemctl#introspection", "context": "Confirm unit state, loaded file, and manager scope" },
+    { "uri": "systemd/journalctl#filters", "context": "Read the exact service or boot logs that explain runtime failure" },
+    { "uri": "systemd/analyze#verify", "context": "Validate unit structure when a configuration edit may have broken the unit" },
+    { "uri": "systemd/analyze#boot-debugging", "context": "Inspect boot ordering and time-critical chains" },
+    { "uri": "systemd/services#overrides", "context": "Fix broken service definitions and drop-ins" },
+    { "uri": "systemd/timers#inspection", "context": "Inspect timer and paired service state together" }
+  ],
+  "related": [
+    { "uri": "systemd/systemctl", "relation": "prerequisite", "note": "Troubleshooting starts with manager state and loaded unit inspection" },
+    { "uri": "systemd/journalctl", "relation": "prerequisite", "note": "Journal evidence is required to move beyond guesswork" },
+    { "uri": "systemd/analyze", "relation": "prerequisite", "note": "Structural validation and boot diagnostics confirm the manager-side cause" }
+  ],
+  "more": {
+    "docs": "https://systemd.io/DEBUGGING/",
+    "tips": "https://systemd.io/TIPS_AND_TRICKS/"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "AI agents, linux operators",
+    "estimated_reading_time": "5 min",
+    "prerequisites": ["systemd/systemctl", "systemd/journalctl", "systemd/analyze"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://github.com/systemd/systemd",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

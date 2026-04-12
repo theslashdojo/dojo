@@ -1,0 +1,75 @@
+{
+  "name": "routes",
+  "version": "1.0.0",
+  "uri": "cloudflare/workers/routes",
+  "type": "sub",
+  "context": "Configure Worker routes, custom domains, and zone bindings to map URLs to Workers",
+  "info": "Worker routes define URL patterns that trigger a Worker. Routes are configured in `wrangler.toml` or via the API. A route pattern like `api.example.com/*` maps all requests to that path to the Worker. Custom domains provide automatic SSL and DNS — Cloudflare creates the DNS record and provisions the certificate. Zone routes require the domain to be on Cloudflare DNS. Routes support wildcards (`*`) for path matching. Multiple routes can point to the same Worker. Workers also get a default `*.workers.dev` subdomain.",
+  "parent": "cloudflare/workers",
+  "tags": ["routes", "custom-domain", "zone", "url-pattern", "workers-dev"],
+  "aliases": [
+    "worker routes",
+    "custom domain worker",
+    "worker url",
+    "cloudflare worker route",
+    "workers dev subdomain",
+    "worker domain",
+    "route pattern"
+  ],
+  "triggers": [
+    "add a route to a worker",
+    "point a domain to a worker",
+    "set up a custom domain for a worker",
+    "configure worker routing",
+    "map a url to a worker"
+  ],
+  "body": "# Worker Routes\n\nRoutes map URL patterns to Workers. There are three routing methods:\n\n## 1. workers.dev Subdomain (Default)\n\nEvery Worker gets a free `<name>.<subdomain>.workers.dev` URL automatically.\n\n```toml\n# wrangler.toml\nname = \"my-api\"\nworkers_dev = true  # default, enables *.workers.dev\n```\n\nURL: `https://my-api.<subdomain>.workers.dev`\n\n## 2. Custom Domains (Recommended)\n\nCustom domains provide automatic SSL and DNS configuration:\n\n```toml\n# wrangler.toml\nroutes = [\n  { pattern = \"api.example.com\", custom_domain = true }\n]\n```\n\nCloudflare automatically:\n- Creates a DNS record pointing to the Worker\n- Provisions an SSL certificate\n- Routes all traffic to the Worker\n\n## 3. Zone Routes (Pattern Matching)\n\nZone routes use wildcard patterns to match URLs within a Cloudflare-managed zone:\n\n```toml\n# wrangler.toml\nroutes = [\n  { pattern = \"api.example.com/*\", zone_name = \"example.com\" },\n  { pattern = \"example.com/api/*\", zone_name = \"example.com\" },\n]\n\n# Or with zone_id instead of zone_name\nroutes = [\n  { pattern = \"api.example.com/*\", zone_id = \"zone-id-here\" }\n]\n```\n\n### Pattern Syntax\n\n| Pattern | Matches |\n|---------|----------|\n| `api.example.com/*` | All paths under api.example.com |\n| `*.example.com/*` | All subdomains and paths |\n| `example.com/api/*` | Paths starting with /api/ |\n| `api.example.com` | Exact subdomain (no path wildcard) |\n\n## Route Priority\n\nWhen multiple routes could match:\n1. More specific hostname wins over wildcard\n2. Longer path wins over shorter\n3. Zone routes take priority over `workers.dev`\n\n## API Management\n\n```bash\n# List routes for a zone\ncurl \"https://api.cloudflare.com/client/v4/zones/$ZONE_ID/workers/routes\" \\\n  -H \"Authorization: Bearer $CLOUDFLARE_API_TOKEN\"\n\n# Create a route\ncurl -X POST \"https://api.cloudflare.com/client/v4/zones/$ZONE_ID/workers/routes\" \\\n  -H \"Authorization: Bearer $CLOUDFLARE_API_TOKEN\" \\\n  -H \"Content-Type: application/json\" \\\n  --data '{\"pattern\":\"api.example.com/*\",\"script\":\"my-worker\"}'\n\n# Delete a route\ncurl -X DELETE \"https://api.cloudflare.com/client/v4/zones/$ZONE_ID/workers/routes/$ROUTE_ID\" \\\n  -H \"Authorization: Bearer $CLOUDFLARE_API_TOKEN\"\n```\n\n## Named Environments\n\n```toml\n# Production\nroutes = [{ pattern = \"api.example.com/*\", zone_name = \"example.com\" }]\n\n# Staging\n[env.staging]\nroutes = [{ pattern = \"staging-api.example.com/*\", zone_name = \"example.com\" }]\n```\n",
+  "sections": [
+    {
+      "id": "custom-domains",
+      "title": "Custom domains",
+      "body": "Set `custom_domain = true` in the route to have Cloudflare auto-configure DNS and SSL. This is the simplest way to connect a domain to a Worker. The domain must be in a zone on the same Cloudflare account. Custom domains handle all paths — no wildcard needed.",
+      "tags": ["custom-domain", "ssl", "automatic", "dns"]
+    },
+    {
+      "id": "zone-routes",
+      "title": "Zone routes with patterns",
+      "body": "Zone routes use URL patterns with `*` wildcards. Specify `zone_name` or `zone_id` to target a Cloudflare zone. Patterns match against the full URL (hostname + path). The `*` wildcard matches any path segment. Multiple routes can be defined per Worker. Routes require the domain to have its DNS on Cloudflare.",
+      "tags": ["zone-route", "pattern", "wildcard", "matching"]
+    },
+    {
+      "id": "priority",
+      "title": "Route priority",
+      "body": "More specific routes win: exact hostname over wildcard, longer path over shorter. If a request matches routes for multiple Workers, the most specific match is used. Zone routes take priority over the default `workers.dev` subdomain.",
+      "tags": ["priority", "specificity", "matching-order"]
+    }
+  ],
+  "links": [
+    { "uri": "cloudflare/workers", "context": "Workers that routes point to" },
+    { "uri": "cloudflare/dns", "context": "DNS records for route domains" },
+    { "uri": "cloudflare/wrangler", "context": "Configure routes in wrangler.toml" },
+    { "uri": "cloudflare/auth", "context": "API access for route management" }
+  ],
+  "related": [
+    { "uri": "cloudflare/workers", "relation": "prerequisite", "note": "Routes point to deployed Workers" },
+    { "uri": "cloudflare/dns", "relation": "see-also", "note": "DNS records must exist for zone routes to work" }
+  ],
+  "more": {
+    "docs": "https://developers.cloudflare.com/workers/configuration/routing/"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "3 min",
+    "prerequisites": ["cloudflare/workers", "cloudflare/dns"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

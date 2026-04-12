@@ -1,0 +1,99 @@
+{
+  "name": "kubernetes",
+  "version": "1.0.0",
+  "uri": "kubernetes",
+  "type": "ecosystem",
+  "context": "Kubernetes container orchestration — deploy, scale, network, and manage containerized workloads in clusters",
+  "info": "The Kubernetes ecosystem covers production container orchestration: deploying applications as Pods managed by Deployments, exposing them via Services and Ingress, storing configuration in ConfigMaps and Secrets, persisting data with Volumes, managing access with RBAC, running batch work with Jobs, and autoscaling with HPA. All operations use kubectl, the Kubernetes API, or Helm charts. This tree is organized around the resources an agent actually manages: Pods, Deployments, Services, Ingress, ConfigMaps, Namespaces, Volumes, RBAC, Jobs, and HPA. Kubernetes runs on every major cloud (EKS, GKE, AKS) and locally via minikube, kind, or k3d.",
+  "parent": null,
+  "tags": ["kubernetes", "k8s", "kubectl", "containers", "orchestration", "devops", "cluster", "pods", "deployments", "services", "helm"],
+  "aliases": [
+    "kubernetes",
+    "k8s",
+    "kube",
+    "kubectl",
+    "kubernetes cluster",
+    "container orchestration",
+    "kubernetes platform",
+    "k8s cluster",
+    "kubernetes orchestration"
+  ],
+  "triggers": [
+    "deploy to kubernetes",
+    "manage kubernetes cluster",
+    "create a deployment",
+    "expose a service",
+    "set up ingress",
+    "scale pods",
+    "debug a crashing pod",
+    "install a helm chart",
+    "configure kubernetes rbac",
+    "create kubernetes namespace"
+  ],
+  "body": "# Kubernetes Ecosystem\n\nKubernetes (k8s) is the industry-standard container orchestration platform. Agents use it to deploy, scale, expose, configure, and debug containerized applications across clusters. Every major cloud provider offers managed Kubernetes (EKS, GKE, AKS), and local development uses minikube, kind, or k3d.\n\n## Architecture\n\nKubernetes clusters have two planes:\n\n| Component | Role |\n|-----------|------|\n| **Control Plane** | API server, etcd, scheduler, controller manager — manages desired state |\n| **Worker Nodes** | kubelet, kube-proxy, container runtime — runs workloads |\n| **kubectl** | CLI client that talks to the API server |\n| **Helm** | Package manager for templated resource bundles (charts) |\n\nThe API server is the single entry point. Every `kubectl` command translates to an HTTP request to the API server. The desired state (YAML manifests) is stored in etcd, and controllers reconcile actual state to match.\n\n## Core Resources\n\nKubernetes resources form a hierarchy:\n\n- **[[kubernetes/kubectl]]** — the CLI for all cluster operations: apply, get, describe, logs, exec, scale\n- **[[kubernetes/config]]** — kubeconfig files, contexts, authentication, and cluster connection\n- **[[kubernetes/pods]]** — smallest deployable unit; one or more containers sharing network/storage\n- **[[kubernetes/deployments]]** — declarative updates for Pods; manages ReplicaSets, rollouts, and rollbacks\n- **[[kubernetes/services]]** — stable networking: ClusterIP, NodePort, LoadBalancer, ExternalName\n- **[[kubernetes/ingress]]** — HTTP/HTTPS routing with TLS termination and path-based rules\n- **[[kubernetes/configmaps]]** — externalized configuration and secrets for Pods\n- **[[kubernetes/volumes]]** — persistent storage via PV, PVC, and StorageClasses\n- **[[kubernetes/namespaces]]** — cluster multi-tenancy and resource isolation\n- **[[kubernetes/rbac]]** — access control with Roles, ClusterRoles, and ServiceAccounts\n- **[[kubernetes/jobs]]** — batch and scheduled workloads (Jobs, CronJobs)\n- **[[kubernetes/hpa]]** — horizontal autoscaling based on CPU, memory, or custom metrics\n- **[[kubernetes/helm]]** — package management for repeatable deployments\n- **[[kubernetes/troubleshooting]]** — debug CrashLoopBackOff, OOMKilled, scheduling failures, networking issues\n\n## Agent Jobs\n\nThe primary tasks an agent performs in this ecosystem:\n\n- **Deploy an app** — write a Deployment + Service manifest, apply it, verify rollout. See [[kubernetes/deployments]].\n- **Expose an app** — create a Service and/or Ingress to make it reachable. See [[kubernetes/services]], [[kubernetes/ingress]].\n- **Configure an app** — inject env vars and files from ConfigMaps and Secrets. See [[kubernetes/configmaps]].\n- **Scale an app** — manually scale replicas or set up HPA for auto-scaling. See [[kubernetes/hpa]].\n- **Debug a failure** — inspect events, logs, describe resources, exec into pods. See [[kubernetes/troubleshooting]].\n- **Install a chart** — deploy third-party software via Helm. See [[kubernetes/helm]].\n\n## kubectl Basics\n\n```bash\n# Set context\nkubectl config use-context my-cluster\nkubectl config set-context --current --namespace=my-app\n\n# Apply manifests\nkubectl apply -f deployment.yaml\nkubectl apply -f service.yaml\n\n# Get resources\nkubectl get pods -n my-app\nkubectl get deployments\nkubectl get services\nkubectl get events --sort-by=.metadata.creationTimestamp\n\n# Describe and debug\nkubectl describe pod my-pod\nkubectl logs my-pod -c my-container --tail=100\nkubectl exec -it my-pod -- /bin/sh\n\n# Delete resources\nkubectl delete -f deployment.yaml\nkubectl delete pod my-pod\n```\n\n## Manifest Structure\n\nEvery Kubernetes resource is defined as a YAML manifest:\n\n```yaml\napiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: my-app\n  namespace: production\n  labels:\n    app: my-app\nspec:\n  replicas: 3\n  selector:\n    matchLabels:\n      app: my-app\n  template:\n    metadata:\n      labels:\n        app: my-app\n    spec:\n      containers:\n        - name: my-app\n          image: myregistry/my-app:v1.2.0\n          ports:\n            - containerPort: 8080\n          resources:\n            requests:\n              cpu: 100m\n              memory: 128Mi\n            limits:\n              cpu: 500m\n              memory: 512Mi\n```\n\n## Environment Setup\n\n| Tool | Purpose |\n|------|----------|\n| `kubectl` | CLI to interact with the Kubernetes API |\n| `helm` | Package manager for Kubernetes charts |\n| `minikube` | Local single-node cluster for development |\n| `kind` | Kubernetes-in-Docker for CI and testing |\n| `k3d` | Lightweight k3s clusters in Docker |\n| `kubectx` / `kubens` | Fast context and namespace switching |\n| `stern` | Multi-pod log tailing |\n| `k9s` | Terminal UI for cluster management |\n\n## Environment Variables\n\n| Variable | Purpose |\n|----------|----------|\n| `KUBECONFIG` | Path to kubeconfig file (default: `~/.kube/config`) |\n| `KUBE_CONTEXT` | Active cluster context name |\n| `KUBE_NAMESPACE` | Default namespace for commands |\n",
+  "sections": [
+    {
+      "id": "architecture",
+      "title": "Cluster architecture",
+      "body": "A Kubernetes cluster has a control plane (API server, etcd, scheduler, controller manager) and worker nodes (kubelet, kube-proxy, container runtime). The API server is the single entry point — kubectl and all clients talk to it via HTTPS. etcd stores all cluster state. The scheduler assigns Pods to nodes. Controllers reconcile desired state (manifests in etcd) with actual state (running containers).",
+      "tags": ["architecture", "control-plane", "worker-nodes", "api-server", "etcd", "scheduler"]
+    },
+    {
+      "id": "resource-model",
+      "title": "Resource model",
+      "body": "Everything in Kubernetes is a resource defined by apiVersion, kind, metadata, and spec. Resources are namespaced (Pods, Deployments, Services) or cluster-scoped (Nodes, Namespaces, ClusterRoles). Resources are created, read, updated, and deleted via the API server. Labels and selectors connect resources — a [[kubernetes/services]] selects Pods by label, a [[kubernetes/deployments]] manages Pods via a label selector.",
+      "tags": ["resources", "api-version", "kind", "metadata", "spec", "labels", "selectors"]
+    },
+    {
+      "id": "kubectl-patterns",
+      "title": "kubectl command patterns",
+      "body": "Core verbs: `get`, `describe`, `apply`, `delete`, `logs`, `exec`, `port-forward`, `scale`, `rollout`. Use `-o yaml` or `-o json` for machine-readable output. Use `-n namespace` to target a namespace. Use `--all-namespaces` or `-A` to search everywhere. Use `-l app=my-app` to filter by label. Use `--watch` for real-time updates. Dry-run with `--dry-run=client -o yaml` to generate manifests without applying.",
+      "tags": ["kubectl", "cli", "commands", "get", "describe", "apply", "delete", "logs", "exec"]
+    }
+  ],
+  "links": [
+    { "uri": "kubernetes/kubectl", "context": "CLI for all cluster operations — apply, get, describe, logs, exec" },
+    { "uri": "kubernetes/pods", "context": "Pod lifecycle, logs, exec, port-forward" },
+    { "uri": "kubernetes/deployments", "context": "Declarative deployments, rollouts, rollbacks" },
+    { "uri": "kubernetes/services", "context": "Networking: ClusterIP, NodePort, LoadBalancer" },
+    { "uri": "kubernetes/config", "context": "Kubeconfig, contexts, authentication, and cluster connection" },
+    { "uri": "kubernetes/ingress", "context": "HTTP routing and TLS termination" },
+    { "uri": "kubernetes/configmaps", "context": "ConfigMaps and Secrets for configuration" },
+    { "uri": "kubernetes/volumes", "context": "Persistent storage with PV, PVC, StorageClass" },
+    { "uri": "kubernetes/namespaces", "context": "Cluster isolation and resource quotas" },
+    { "uri": "kubernetes/rbac", "context": "Access control with Roles and ServiceAccounts" },
+    { "uri": "kubernetes/jobs", "context": "Batch and scheduled workloads" },
+    { "uri": "kubernetes/hpa", "context": "Horizontal Pod Autoscaler" },
+    { "uri": "kubernetes/helm", "context": "Package management with Helm charts" },
+    { "uri": "kubernetes/troubleshooting", "context": "Debug pods, events, and cluster issues" },
+    { "uri": "docker/images", "context": "Build container images that Kubernetes deploys" },
+    { "uri": "docker/registry", "context": "Push images to registries that clusters pull from" }
+  ],
+  "related": [
+    { "uri": "docker", "relation": "prerequisite", "note": "Kubernetes runs Docker/OCI container images — build images first, then deploy them" },
+    { "uri": "aws/ec2", "relation": "see-also", "note": "EKS runs Kubernetes on AWS EC2 instances" },
+    { "uri": "github/actions", "relation": "see-also", "note": "CI/CD pipelines deploy to Kubernetes clusters" }
+  ],
+  "more": {
+    "docs": "https://kubernetes.io/docs/home/",
+    "api": "https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.31/",
+    "repo": "https://github.com/kubernetes/kubernetes",
+    "examples": "https://kubernetes.io/docs/tutorials/"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, DevOps engineers, SREs, AI agents",
+    "estimated_reading_time": "6 min",
+    "prerequisites": ["docker"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://github.com/kubernetes/kubernetes",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

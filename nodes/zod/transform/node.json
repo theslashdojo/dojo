@@ -1,0 +1,138 @@
+{
+  "name": "transform",
+  "version": "1.0.0",
+  "uri": "zod/transform",
+  "type": "skill",
+  "context": "Transform, coerce, preprocess, and pipe data through Zod schema chains to reshape validated input",
+  "info": "This skill covers Zod's data transformation capabilities: .transform() to map validated data into a new shape (the output type differs from the input type), .default() to provide fallback values for undefined input, .catch() to provide fallback values when validation fails, .preprocess() to modify raw input before validation, .pipe() to chain schemas where the output of one feeds into the next, z.coerce for automatic type coercion (string→number, string→date, etc.), .optional() / .nullable() / .nullish() for optionality, and .brand() for nominal typing. Transforms are essential for API response normalization, form data parsing, environment variable coercion, and building typed pipelines. When a schema has transforms, the input and output types differ — use z.input<> and z.output<> (or z.infer<> for output) to extract each. See [[zod/schemas]] for defining shapes and [[zod/validation]] for constraints.",
+  "parent": "zod",
+  "tags": ["zod", "transform", "coerce", "pipe", "preprocess", "default", "catch", "brand", "optional", "nullable"],
+  "aliases": [
+    "zod transform",
+    "zod coerce",
+    "zod pipe",
+    "zod preprocess",
+    "zod default",
+    "zod catch",
+    "zod brand",
+    "z.coerce",
+    "z.transform",
+    "z.pipe",
+    "z.preprocess",
+    "zod type coercion",
+    "zod data transformation",
+    "zod optional",
+    "zod nullable",
+    "zod nullish"
+  ],
+  "triggers": [
+    "transform data with zod",
+    "coerce string to number in zod",
+    "zod preprocess input",
+    "pipe zod schemas together",
+    "set default value in zod",
+    "zod catch fallback",
+    "brand a zod type",
+    "zod optional field",
+    "convert types with zod",
+    "chain zod transformations"
+  ],
+  "body": "# Zod Transforms\n\nTransforms reshape validated data. The input type can differ from the output type.\n\n## .transform()\n\n```typescript\nimport { z } from \"zod\";\n\n// String to number\nconst StringToNum = z.string().transform((val) => parseInt(val, 10));\ntype In = z.input<typeof StringToNum>;   // string\ntype Out = z.output<typeof StringToNum>; // number\n\nStringToNum.parse(\"42\"); // 42 (number)\n\n// Object reshaping\nconst ApiUser = z.object({\n  first_name: z.string(),\n  last_name: z.string(),\n  email_address: z.string().email(),\n}).transform((user) => ({\n  firstName: user.first_name,\n  lastName: user.last_name,\n  email: user.email_address,\n  fullName: `${user.first_name} ${user.last_name}`,\n}));\n\n// Chained transforms\nconst Pipeline = z.string()\n  .transform((s) => s.trim())\n  .transform((s) => s.toLowerCase())\n  .transform((s) => s.replace(/\\s+/g, \"-\"));\n\nPipeline.parse(\"  Hello World  \"); // \"hello-world\"\n\n// Async transforms\nconst WithLookup = z.string().uuid().transform(async (id) => {\n  const user = await db.users.findUnique({ where: { id } });\n  if (!user) throw new Error(\"User not found\");\n  return user;\n});\n// Must use .parseAsync() with async transforms\n```\n\n## z.coerce — Automatic Type Coercion\n\n```typescript\n// Coerces input through the type's constructor before validation\nz.coerce.string();  // String(input) — works on anything\nz.coerce.number();  // Number(input) — \"42\" → 42, \"abc\" → NaN (fails)\nz.coerce.boolean(); // Boolean(input) — truthy/falsy conversion\nz.coerce.date();    // new Date(input) — strings, numbers → Date\nz.coerce.bigint();  // BigInt(input) — strings, numbers → bigint\n\n// Common pattern: parse env vars\nconst PORT = z.coerce.number().int().positive().default(3000);\nconst DEBUG = z.coerce.boolean().default(false);\n\n// Coerce then validate\nz.coerce.number().int().min(0).max(65535); // port number from string\n```\n\n## .pipe() — Schema Chaining\n\n```typescript\n// Pipe the output of one schema into another\nconst NumberFromString = z.string()\n  .transform((val) => Number(val))\n  .pipe(z.number().int().positive());\n\n// Equivalent to transform + validate, but cleaner\n// Step 1: validate string\n// Step 2: transform to number\n// Step 3: validate number is int and positive\n\nNumberFromString.parse(\"42\");  // 42 ✓\nNumberFromString.parse(\"-1\");  // ZodError: not positive\nNumberFromString.parse(\"abc\"); // ZodError: NaN is not a number\n\n// Useful for coerce-then-validate patterns\nconst SafeInt = z.coerce.number().pipe(z.number().int().safe());\n```\n\n## .preprocess()\n\n```typescript\n// Run a function on raw input BEFORE schema validation\nconst TrimmedString = z.preprocess(\n  (val) => (typeof val === \"string\" ? val.trim() : val),\n  z.string().min(1)\n);\n\n// Parse comma-separated string into array\nconst CSVArray = z.preprocess(\n  (val) => (typeof val === \"string\" ? val.split(\",\").map(s => s.trim()) : val),\n  z.array(z.string())\n);\n\nCSVArray.parse(\"a, b, c\"); // [\"a\", \"b\", \"c\"]\n```\n\n## .default() and .catch()\n\n```typescript\n// .default() — used when input is undefined\nconst WithDefault = z.string().default(\"anonymous\");\nWithDefault.parse(undefined); // \"anonymous\"\nWithDefault.parse(\"alice\");   // \"alice\"\n\n// .default() with a function for dynamic defaults\nconst WithTimestamp = z.date().default(() => new Date());\n\n// .catch() — used when validation FAILS\nconst Fallback = z.number().catch(0);\nFallback.parse(42);       // 42\nFallback.parse(\"invalid\"); // 0 (validation failed, caught)\n\n// Combine for robust parsing\nconst RobustPort = z.coerce.number().int().min(1).max(65535).catch(3000);\nRobustPort.parse(\"8080\");     // 8080\nRobustPort.parse(\"invalid\");  // 3000\nRobustPort.parse(undefined);  // 3000\n```\n\n## .optional(), .nullable(), .nullish()\n\n```typescript\n// .optional() — accepts undefined\nz.string().optional();  // string | undefined\n\n// .nullable() — accepts null\nz.string().nullable();  // string | null\n\n// .nullish() — accepts null or undefined\nz.string().nullish();   // string | null | undefined\n\n// Unwrap\nconst inner = z.string().optional().unwrap(); // z.ZodString\n```\n\n## .brand() — Nominal Typing\n\n```typescript\n// Brand creates opaque types that are structurally identical but nominally distinct\nconst UserId = z.string().uuid().brand<\"UserId\">();\ntype UserId = z.infer<typeof UserId>; // string & { __brand: \"UserId\" }\n\nconst OrderId = z.string().uuid().brand<\"OrderId\">();\ntype OrderId = z.infer<typeof OrderId>;\n\n// TypeScript prevents mixing branded types\nfunction getUser(id: UserId) { /* ... */ }\nconst userId = UserId.parse(\"550e8400-e29b-41d4-a716-446655440000\");\nconst orderId = OrderId.parse(\"550e8400-e29b-41d4-a716-446655440000\");\n\ngetUser(userId);  // ✓ correct type\n// getUser(orderId); // ✗ TypeScript error — OrderId is not UserId\n```\n\n## .readonly()\n\n```typescript\nconst ImmutableUser = z.object({\n  name: z.string(),\n  tags: z.array(z.string()),\n}).readonly();\n\ntype ImmutableUser = z.infer<typeof ImmutableUser>;\n// { readonly name: string; readonly tags: readonly string[] }\n```\n",
+  "sections": [
+    {
+      "id": "transform",
+      "title": ".transform() — reshape validated data",
+      "body": "`.transform(fn)` takes a function that receives the validated value and returns a new value. The output type becomes the schema's inferred type. Chain multiple `.transform()` calls for multi-step pipelines. Use async functions with `.parseAsync()`. Transforms run AFTER validation succeeds — if validation fails, the transform never executes. Use `z.input<typeof schema>` for the pre-transform type and `z.output<typeof schema>` (or `z.infer`) for the post-transform type.",
+      "tags": ["transform", "reshape", "map", "async", "input-output"]
+    },
+    {
+      "id": "coerce",
+      "title": "z.coerce — automatic type coercion",
+      "body": "`z.coerce.string()`, `z.coerce.number()`, `z.coerce.boolean()`, `z.coerce.date()`, `z.coerce.bigint()` pass raw input through the type's constructor before validation. `z.coerce.number()` calls `Number(input)`, so `\"42\"` becomes `42`. Essential for parsing environment variables, URL params, and form data where everything arrives as strings. Coerced schemas still support all validators: `z.coerce.number().int().positive()` coerces then validates.",
+      "tags": ["coerce", "type-coercion", "string-to-number", "env-vars", "form-data"]
+    },
+    {
+      "id": "pipe",
+      "title": ".pipe() — schema chaining",
+      "body": "`.pipe(nextSchema)` feeds the output of one schema as the input to another. Useful for coerce-then-validate patterns: `z.string().transform(Number).pipe(z.number().int())`. The first schema validates and optionally transforms, then the result is validated by the piped schema. Cleaner than chaining `.transform()` with runtime type checks.",
+      "tags": ["pipe", "chain", "pipeline", "compose"]
+    },
+    {
+      "id": "defaults-fallbacks",
+      "title": ".default() and .catch() — defaults and fallbacks",
+      "body": "`.default(value)` substitutes a value when input is `undefined`. Accepts a static value or a function for dynamic defaults. `.catch(value)` substitutes a value when validation FAILS — the schema never throws. Combine for robust parsing: `z.coerce.number().default(0).catch(0)` handles both undefined and invalid input. `.default()` affects `z.input` (input becomes optional) while `.catch()` does not.",
+      "tags": ["default", "catch", "fallback", "undefined", "optional"]
+    },
+    {
+      "id": "brand-readonly",
+      "title": ".brand() and .readonly() — nominal types and immutability",
+      "body": "`.brand<T>()` adds a nominal type brand to the inferred type, creating opaque types that prevent accidental mixing of structurally identical values (e.g., UserId vs OrderId). Branded types only exist at the type level — no runtime overhead. `.readonly()` makes the inferred type deeply readonly. Both are type-level-only transforms with zero runtime cost.",
+      "tags": ["brand", "nominal", "readonly", "immutable", "opaque-types"]
+    }
+  ],
+  "links": [
+    { "uri": "zod/schemas", "context": "Define the shapes that transforms operate on" },
+    { "uri": "zod/validation", "context": "Validation runs before transforms" },
+    { "uri": "zod/inference", "context": "Input vs output types differ with transforms" },
+    { "uri": "zod/patterns", "context": "Env parsing, API normalization use transforms" },
+    { "uri": "zod", "context": "Zod ecosystem overview" }
+  ],
+  "related": [
+    { "uri": "zod/schemas", "relation": "prerequisite", "note": "Define a schema shape before applying transforms" },
+    { "uri": "zod/validation", "relation": "prerequisite", "note": "Validation runs before transforms execute" },
+    { "uri": "zod/inference", "relation": "see-also", "note": "Transforms create different input and output types" }
+  ],
+  "scripts": [
+    {
+      "id": "transform-data",
+      "name": "Transform Data Through Schema Pipeline",
+      "description": "Parse raw data through a Zod schema with transforms, coercion, and defaults, returning the transformed output",
+      "lang": "typescript",
+      "runtime": "node>=18",
+      "entry": "./scripts/transform-data.ts",
+      "packages": ["zod", "tsx"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "schema": { "type": "string", "description": "Zod schema with transforms as TypeScript code" },
+        "data": { "description": "Raw input data to transform" }
+      },
+      "required": ["schema", "data"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "success": { "type": "boolean" },
+        "data": { "description": "Transformed output data" },
+        "inputType": { "type": "string", "description": "TypeScript type of schema input" },
+        "outputType": { "type": "string", "description": "TypeScript type of schema output" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "zod", "reason": "Zod must be installed" },
+    { "uri": "zod/schemas", "reason": "Schemas define the shapes that transforms operate on" }
+  ],
+  "more": {
+    "docs": "https://zod.dev",
+    "repo": "https://github.com/colinhacks/zod"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "TypeScript developers, AI agents",
+    "estimated_reading_time": "6 min",
+    "prerequisites": ["zod", "zod/schemas", "zod/validation"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

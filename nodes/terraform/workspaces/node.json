@@ -1,0 +1,149 @@
+{
+  "name": "workspaces",
+  "version": "1.0.0",
+  "uri": "terraform/workspaces",
+  "type": "skill",
+  "context": "Terraform workspaces -- manage multiple environments (dev, staging, prod) with the same configuration and separate state",
+  "info": "Terraform workspaces allow a single configuration to manage multiple isolated environments, each with its own state file. Workspaces are ideal for promoting infrastructure through dev, staging, and production using the same HCL code with workspace-aware variable selection. The terraform.workspace interpolation gives access to the current workspace name inside configuration, enabling conditional resource sizing, naming conventions, and environment-specific variable files. Workspaces share the same backend but store state under separate keys. This is lighter weight than full directory-based isolation but less appropriate when environments differ significantly in structure. For CI/CD, workspaces integrate cleanly with pipeline stages: select the workspace, plan, apply.",
+  "parent": "terraform",
+  "tags": ["terraform", "workspaces", "environments", "dev", "staging", "prod", "state-isolation", "multi-environment", "ci-cd"],
+  "aliases": [
+    "terraform workspaces",
+    "tf workspaces",
+    "terraform environments",
+    "terraform workspace management",
+    "terraform multi-environment",
+    "terraform workspace select",
+    "terraform dev staging prod",
+    "workspace isolation"
+  ],
+  "triggers": [
+    "create terraform workspace",
+    "manage terraform environments",
+    "terraform dev staging prod",
+    "switch terraform workspace",
+    "use workspaces for environments",
+    "terraform workspace list",
+    "separate state per environment",
+    "terraform.workspace variable",
+    "workspace vs directory isolation"
+  ],
+  "body": "# Terraform Workspaces\n\nWorkspaces let you run the same Terraform configuration against multiple isolated environments, each with its own state file. The default workspace is called `default`. Additional workspaces share the same backend but store state under separate keys, giving each environment its own resource tracking without duplicating configuration.\n\n## Core Commands\n\n```bash\n# List all workspaces (* marks current)\nterraform workspace list\n\n# Create a new workspace\nterraform workspace new dev\nterraform workspace new staging\nterraform workspace new prod\n\n# Switch to an existing workspace\nterraform workspace select staging\n\n# Show current workspace\nterraform workspace show\n\n# Delete a workspace (must switch away first, state must be empty)\nterraform workspace select default\nterraform workspace delete dev\n```\n\n## Using terraform.workspace in Configuration\n\nThe `terraform.workspace` value is a string containing the current workspace name. Use it to vary resource properties by environment:\n\n```hcl\nvariable \"instance_type\" {\n  type = map(string)\n  default = {\n    dev     = \"t3.micro\"\n    staging = \"t3.small\"\n    prod    = \"t3.large\"\n  }\n}\n\nresource \"aws_instance\" \"web\" {\n  ami           = data.aws_ami.ubuntu.id\n  instance_type = var.instance_type[terraform.workspace]\n\n  tags = {\n    Name        = \"web-${terraform.workspace}\"\n    Environment = terraform.workspace\n  }\n}\n\n# Conditional resource count by environment\nresource \"aws_instance\" \"worker\" {\n  count         = terraform.workspace == \"prod\" ? 3 : 1\n  ami           = data.aws_ami.ubuntu.id\n  instance_type = var.instance_type[terraform.workspace]\n\n  tags = {\n    Name        = \"worker-${terraform.workspace}-${count.index}\"\n    Environment = terraform.workspace\n  }\n}\n\n# Workspace-aware naming for unique S3 buckets\nresource \"aws_s3_bucket\" \"data\" {\n  bucket = \"myapp-data-${terraform.workspace}\"\n\n  tags = {\n    Environment = terraform.workspace\n    ManagedBy   = \"terraform\"\n  }\n}\n```\n\n## Workspace-Specific Variable Files\n\nUse `.tfvars` files per workspace to inject different values:\n\n```\nenvs/\n  dev.tfvars\n  staging.tfvars\n  prod.tfvars\n```\n\n```hcl\n# envs/dev.tfvars\ndb_instance_class  = \"db.t3.micro\"\nmin_capacity       = 1\nmax_capacity       = 2\nenable_monitoring   = false\n\n# envs/prod.tfvars\ndb_instance_class  = \"db.r6g.large\"\nmin_capacity       = 3\nmax_capacity       = 10\nenable_monitoring   = true\n```\n\n```bash\n# Apply with the workspace-matched var file\nterraform workspace select staging\nterraform plan -var-file=\"envs/staging.tfvars\"\nterraform apply -var-file=\"envs/staging.tfvars\"\n```\n\n## State Storage by Workspace\n\nWith a remote backend, each workspace stores state under a separate key:\n\n```hcl\n# S3 backend -- workspace state stored as env:/<workspace>/terraform.tfstate\nterraform {\n  backend \"s3\" {\n    bucket         = \"my-terraform-state\"\n    key            = \"app/terraform.tfstate\"\n    region         = \"us-east-1\"\n    dynamodb_table = \"terraform-locks\"\n    encrypt        = true\n  }\n}\n```\n\nState paths by workspace:\n- `default` -- `app/terraform.tfstate`\n- `dev` -- `env:/dev/app/terraform.tfstate`\n- `staging` -- `env:/staging/app/terraform.tfstate`\n- `prod` -- `env:/prod/app/terraform.tfstate`\n\nWith Terraform Cloud, each workspace maps to a distinct state in the organization.\n\n## CI/CD Patterns\n\nWorkspaces integrate naturally with pipeline stages:\n\n```yaml\n# GitHub Actions example\njobs:\n  deploy:\n    strategy:\n      matrix:\n        environment: [dev, staging, prod]\n    steps:\n      - uses: actions/checkout@v4\n      - uses: hashicorp/setup-terraform@v3\n\n      - name: Terraform Init\n        run: terraform init -input=false\n\n      - name: Select Workspace\n        run: terraform workspace select ${{ matrix.environment }} || terraform workspace new ${{ matrix.environment }}\n\n      - name: Terraform Plan\n        run: terraform plan -var-file=\"envs/${{ matrix.environment }}.tfvars\" -out=tfplan -input=false\n\n      - name: Terraform Apply\n        if: github.ref == 'refs/heads/main'\n        run: terraform apply -input=false tfplan\n```\n\n```bash\n# GitLab CI pattern\n# .gitlab-ci.yml\nstages:\n  - plan\n  - apply\n\n.terraform_base: &terraform_base\n  image: hashicorp/terraform:1.7\n  before_script:\n    - terraform init -input=false\n    - terraform workspace select $TF_WORKSPACE || terraform workspace new $TF_WORKSPACE\n\nplan:dev:\n  <<: *terraform_base\n  stage: plan\n  variables:\n    TF_WORKSPACE: dev\n  script:\n    - terraform plan -var-file=\"envs/dev.tfvars\" -out=tfplan\n  artifacts:\n    paths: [tfplan]\n\napply:dev:\n  <<: *terraform_base\n  stage: apply\n  variables:\n    TF_WORKSPACE: dev\n  script:\n    - terraform apply -input=false tfplan\n  when: manual\n```\n\n## Workspaces vs Directory-Based Isolation\n\n| Aspect | Workspaces | Directory Isolation |\n|--------|-----------|---------------------|\n| Configuration | Single set of .tf files shared | Separate .tf files per environment |\n| State | Separate state per workspace, same backend | Separate state files and backends |\n| Structural differences | Must handle via conditionals | Each environment can differ freely |\n| Complexity | Simpler for identical environments | Better for divergent environments |\n| Refactoring | One change affects all environments | Must update each directory |\n| Blast radius | Shared code can break all envs | Isolated -- one env cannot affect another |\n| Access control | Same backend permissions | Separate backends allow per-env IAM |\n\n**Use workspaces when**: environments are structurally identical and only differ in sizing, counts, and naming.\n\n**Use directory isolation when**: environments have different resources, providers, or significant structural differences. Also preferred when you need per-environment access control at the backend level.\n\n## Best Practices\n\n- Always use `terraform.workspace` in resource names to avoid naming collisions\n- Store workspace-specific values in `envs/<workspace>.tfvars` files\n- Use the `TF_WORKSPACE` environment variable in CI/CD instead of interactive `workspace select`\n- Never store sensitive values in `.tfvars` files committed to version control -- use `TF_VAR_*` environment variables or a secrets manager\n- Protect production workspaces with approval gates in CI/CD pipelines\n- Delete unused workspaces to reduce state sprawl: `terraform workspace delete <name>`\n- Consider Terraform Cloud workspaces for team collaboration with RBAC and run history\n",
+  "sections": [
+    {
+      "id": "core-commands",
+      "title": "Core workspace commands",
+      "body": "`terraform workspace list` shows all workspaces with an asterisk on the current one. `terraform workspace new <name>` creates and switches to a new workspace. `terraform workspace select <name>` switches to an existing workspace. `terraform workspace show` prints the current workspace name. `terraform workspace delete <name>` removes a workspace after its state is empty.",
+      "tags": ["commands", "list", "new", "select", "delete", "show"]
+    },
+    {
+      "id": "workspace-interpolation",
+      "title": "Using terraform.workspace in config",
+      "body": "The `terraform.workspace` expression returns the current workspace name as a string. Use it in resource names (`web-${terraform.workspace}`), map lookups for sizing (`var.instance_type[terraform.workspace]`), conditional counts (`terraform.workspace == \"prod\" ? 3 : 1`), and tags. This lets one configuration produce different infrastructure per environment.",
+      "tags": ["terraform-workspace", "interpolation", "conditional", "map-lookup"]
+    },
+    {
+      "id": "var-files",
+      "title": "Workspace-specific variable files",
+      "body": "Store per-environment variables in `envs/<workspace>.tfvars` files. Pass them with `-var-file=\"envs/${workspace}.tfvars\"` during plan and apply. Keep structure identical across files, varying only values. Do not commit secrets to .tfvars files -- use TF_VAR_ environment variables or a secrets manager.",
+      "tags": ["tfvars", "var-file", "per-environment", "variables"]
+    },
+    {
+      "id": "state-isolation",
+      "title": "State storage per workspace",
+      "body": "With S3 backend, workspace state is stored at `env:/<workspace>/<key>`. The default workspace uses the key directly. With Terraform Cloud, each workspace is a separate entity in the organization. State locking applies per workspace, so parallel operations on different workspaces do not conflict.",
+      "tags": ["state", "isolation", "s3", "backend", "locking"]
+    },
+    {
+      "id": "ci-cd-patterns",
+      "title": "CI/CD patterns with workspaces",
+      "body": "In GitHub Actions, use a matrix strategy over environments and `terraform workspace select $env || terraform workspace new $env`. In GitLab CI, set `TF_WORKSPACE` as a variable per job. Gate production applies behind manual approval. Save plan output as an artifact and apply the exact saved plan.",
+      "tags": ["ci-cd", "github-actions", "gitlab-ci", "pipeline", "automation"]
+    },
+    {
+      "id": "vs-directory-isolation",
+      "title": "Workspaces vs directory-based isolation",
+      "body": "Workspaces share one codebase with separate state -- ideal when environments are structurally identical. Directory isolation duplicates config per environment -- better when environments differ in structure, providers, or need separate backend access control. Many teams use workspaces for dev/staging and directory isolation when prod has a fundamentally different topology.",
+      "tags": ["comparison", "directory-isolation", "tradeoffs", "when-to-use"]
+    }
+  ],
+  "links": [
+    { "uri": "terraform", "context": "Terraform ecosystem root -- core workflow and concepts" },
+    { "uri": "terraform/state", "context": "State management -- backends and locking that underpin workspace isolation" },
+    { "uri": "terraform/hcl", "context": "HCL language -- terraform.workspace interpolation syntax" },
+    { "uri": "terraform/modules", "context": "Modules -- compose reusable infrastructure within workspace-based environments" },
+    { "uri": "terraform/troubleshooting", "context": "Common errors including workspace-related state issues" },
+    { "uri": "github/actions", "context": "GitHub Actions CI/CD integration for workspace-based deployment pipelines" }
+  ],
+  "related": [
+    { "uri": "terraform/state", "relation": "prerequisite", "note": "Understanding state backends is essential for workspace state isolation" },
+    { "uri": "terraform/modules", "relation": "see-also", "note": "Modules and workspaces together enable DRY multi-environment infrastructure" },
+    { "uri": "terraform/troubleshooting", "relation": "see-also", "note": "Workspace-related state lock and drift issues" }
+  ],
+  "scripts": [
+    {
+      "id": "workspace-manager",
+      "name": "Workspace Manager",
+      "description": "Create, select, and deploy to a Terraform workspace with the matching var file",
+      "lang": "bash",
+      "runtime": "terraform>=1.0",
+      "inline": "#!/usr/bin/env bash\nset -euo pipefail\n\nWORKSPACE=\"${WORKSPACE:?ERROR: WORKSPACE is required (e.g. dev, staging, prod)}\"\nACTION=\"${ACTION:-plan}\"\nVAR_FILE=\"${VAR_FILE:-envs/${WORKSPACE}.tfvars}\"\n\necho \"=== Terraform Workspace Manager ===\"\necho \"Workspace: $WORKSPACE\"\necho \"Action:    $ACTION\"\necho \"Var file:  $VAR_FILE\"\necho \"\"\n\n# Initialize\nterraform init -input=false\n\n# Create or select workspace\nif terraform workspace list | grep -q \"\\b${WORKSPACE}\\b\"; then\n  terraform workspace select \"$WORKSPACE\"\n  echo \"Selected existing workspace: $WORKSPACE\"\nelse\n  terraform workspace new \"$WORKSPACE\"\n  echo \"Created new workspace: $WORKSPACE\"\nfi\n\n# Build var-file flag\nVF_FLAG=\"\"\nif [ -f \"$VAR_FILE\" ]; then\n  VF_FLAG=\"-var-file=$VAR_FILE\"\n  echo \"Using var file: $VAR_FILE\"\nelse\n  echo \"Warning: $VAR_FILE not found, proceeding without it\"\nfi\n\ncase \"$ACTION\" in\n  plan)\n    terraform plan $VF_FLAG -out=tfplan -input=false\n    echo \"\\nPlan saved to tfplan. Run with ACTION=apply to apply.\"\n    ;;\n  apply)\n    if [ -f tfplan ]; then\n      terraform apply -input=false tfplan\n      rm -f tfplan\n    else\n      terraform apply $VF_FLAG -input=false -auto-approve\n    fi\n    echo \"\\n=== Applied to $WORKSPACE ===\"\n    ;;\n  destroy)\n    terraform destroy $VF_FLAG -input=false -auto-approve\n    echo \"\\n=== Destroyed $WORKSPACE ===\"\n    ;;\n  *)\n    echo \"ERROR: ACTION must be plan, apply, or destroy\"\n    exit 1\n    ;;\nesac\n\necho \"\\n=== Current workspace ===\"\nterraform workspace show",
+      "env": {
+        "WORKSPACE": { "required": true, "secret": false, "description": "Target workspace name (e.g. dev, staging, prod)" },
+        "ACTION": { "required": false, "secret": false, "default": "plan", "description": "Operation to perform: plan, apply, or destroy" },
+        "VAR_FILE": { "required": false, "secret": false, "description": "Path to .tfvars file (default: envs/<workspace>.tfvars)" }
+      }
+    },
+    {
+      "id": "workspace-list-states",
+      "name": "List Workspace States",
+      "description": "List all workspaces with their resource counts from state",
+      "lang": "bash",
+      "runtime": "terraform>=1.0",
+      "inline": "#!/usr/bin/env bash\nset -euo pipefail\n\nterraform init -input=false > /dev/null 2>&1\n\nCURRENT=$(terraform workspace show)\necho \"Workspace Resource Summary\"\necho \"==========================\"\n\nfor ws in $(terraform workspace list | sed 's/[* ]//g'); do\n  terraform workspace select \"$ws\" > /dev/null 2>&1\n  COUNT=$(terraform state list 2>/dev/null | wc -l | tr -d ' ')\n  MARKER=\"\"\n  if [ \"$ws\" = \"$CURRENT\" ]; then MARKER=\" (current)\"; fi\n  printf \"  %-20s %s resources%s\\n\" \"$ws\" \"$COUNT\" \"$MARKER\"\ndone\n\nterraform workspace select \"$CURRENT\" > /dev/null 2>&1",
+      "env": {}
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "workspace": { "type": "string", "description": "Workspace name to create or select" },
+        "action": { "type": "string", "enum": ["new", "select", "list", "delete", "plan", "apply"], "description": "Workspace operation to perform" },
+        "varFile": { "type": "string", "description": "Path to workspace-specific .tfvars file" }
+      },
+      "required": ["workspace", "action"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "currentWorkspace": { "type": "string", "description": "Active workspace after operation" },
+        "workspaces": { "type": "array", "items": { "type": "string" }, "description": "List of all available workspaces" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "terraform", "reason": "Terraform CLI must be installed" },
+    { "uri": "terraform/state", "reason": "Workspace state isolation requires a configured backend" }
+  ],
+  "more": {
+    "docs": "https://developer.hashicorp.com/terraform/language/state/workspaces",
+    "cli": "https://developer.hashicorp.com/terraform/cli/workspaces"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents, DevOps engineers",
+    "estimated_reading_time": "8 min",
+    "prerequisites": ["terraform", "terraform/state"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://github.com/hashicorp/terraform",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

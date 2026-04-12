@@ -1,0 +1,156 @@
+{
+  "name": "functions",
+  "version": "1.0.0",
+  "uri": "firebase/functions",
+  "type": "skill",
+  "context": "Run serverless backend code triggered by HTTP requests, Firestore events, Auth events, Storage events, and scheduled jobs using Cloud Functions for Firebase",
+  "info": "Cloud Functions for Firebase (2nd gen) run on Cloud Run and provide event-driven serverless compute tightly integrated with Firebase services. Trigger types include onRequest and onCall for HTTP, onDocumentCreated/Updated/Deleted/Written for Firestore, onAuthUserCreated/Deleted for Authentication, onObjectFinalized for Cloud Storage, onSchedule for cron jobs, and onMessagePublished for Pub/Sub. Functions are written in TypeScript, JavaScript, or Python, live in the functions/ directory, and export from src/index.ts. The v2 API uses subpath imports: firebase-functions/v2/https, firebase-functions/v2/firestore, firebase-functions/v2/auth, firebase-functions/v2/storage, firebase-functions/v2/scheduler, firebase-functions/v2/pubsub. Environment configuration uses defineSecret() for secrets from Google Secret Manager and defineString()/defineInt() for parameterized config. The Firebase Emulator Suite runs functions locally on port 5001 for testing against emulated Firestore, Auth, and Storage. Deploy with firebase deploy --only functions or target individual functions with --only functions:functionName. Cold starts are mitigated with minInstances. 2nd gen functions support up to 32 GiB memory, 60-minute timeout, and configurable concurrency (multiple requests per instance). Set region explicitly for production. See [[firebase/cli]] for CLI setup and [[firebase/config]] for firebase.json configuration.",
+  "parent": "firebase",
+  "tags": ["functions", "serverless", "triggers", "http", "firestore-triggers", "auth-triggers", "storage-triggers", "scheduled", "cloud-run"],
+  "aliases": [
+    "firebase functions",
+    "cloud functions",
+    "firebase serverless",
+    "firebase backend",
+    "firebase triggers",
+    "firebase cloud functions",
+    "gcf"
+  ],
+  "triggers": [
+    "create a firebase function",
+    "add firestore trigger",
+    "deploy cloud functions",
+    "set up firebase http endpoint",
+    "schedule a firebase function",
+    "write a callable function",
+    "add auth trigger firebase",
+    "firebase storage trigger",
+    "firebase onRequest handler",
+    "deploy firebase backend"
+  ],
+  "body": "# Cloud Functions for Firebase\n\nCloud Functions for Firebase (2nd gen) run serverless backend code in response to events from Firebase services and HTTP requests. Functions are built on Cloud Run and scale automatically from zero.\n\n## Project Structure\n\n```\nmy-app/\n├── firebase.json             # Deploy targets — \"functions\" config\n├── .firebaserc               # Project aliases\n├── functions/\n│   ├── package.json          # Dependencies (firebase-functions, firebase-admin)\n│   ├── tsconfig.json         # TypeScript config\n│   ├── .env                  # Environment variables (non-secret)\n│   ├── .secret.local         # Secrets for emulator\n│   └── src/\n│       └── index.ts          # Entry point — all exports become deployed functions\n```\n\n## Initialize Functions\n\n```bash\nfirebase init functions\n# Select: TypeScript\n# Creates: functions/ directory with package.json, tsconfig.json, src/index.ts\n```\n\n## HTTP Function (onRequest)\n\n```typescript\n// functions/src/index.ts\nimport { onRequest } from \"firebase-functions/v2/https\";\n\nexport const api = onRequest((req, res) => {\n  const name = req.query.name || \"World\";\n  res.json({ message: `Hello, ${name}!` });\n});\n```\n\nDeploys to: `https://<region>-<project>.cloudfunctions.net/api`\n\n## Callable Function (onCall)\n\n```typescript\nimport { onCall, HttpsError } from \"firebase-functions/v2/https\";\n\nexport const addMessage = onCall((request) => {\n  // request.auth is automatically populated from client SDK\n  if (!request.auth) {\n    throw new HttpsError(\"unauthenticated\", \"Must be logged in\");\n  }\n\n  const text = request.data.text;\n  const uid = request.auth.uid;\n\n  // Write to Firestore, process data, etc.\n  return { result: `Message from ${uid}: ${text}` };\n});\n```\n\nClient invocation:\n\n```typescript\nimport { getFunctions, httpsCallable } from \"firebase/functions\";\nconst functions = getFunctions();\nconst addMessage = httpsCallable(functions, \"addMessage\");\nconst result = await addMessage({ text: \"Hello\" });\n```\n\n## Firestore Trigger\n\n```typescript\nimport { onDocumentCreated } from \"firebase-functions/v2/firestore\";\n\nexport const onUserCreated = onDocumentCreated(\"users/{userId}\", (event) => {\n  const snapshot = event.data;\n  if (!snapshot) return;\n\n  const userData = snapshot.data();\n  console.log(`New user: ${event.params.userId}`, userData);\n\n  // Send welcome email, create profile, etc.\n  return snapshot.ref.update({ welcomeEmailSent: true });\n});\n```\n\nOther Firestore triggers:\n\n```typescript\nimport {\n  onDocumentUpdated,\n  onDocumentDeleted,\n  onDocumentWritten,\n} from \"firebase-functions/v2/firestore\";\n\nexport const onProfileUpdated = onDocumentUpdated(\"profiles/{profileId}\", (event) => {\n  const before = event.data?.before.data();\n  const after = event.data?.after.data();\n  console.log(`Profile changed from`, before, `to`, after);\n});\n\nexport const onPostDeleted = onDocumentDeleted(\"posts/{postId}\", (event) => {\n  const deletedData = event.data?.data();\n  console.log(`Post deleted:`, deletedData);\n});\n\nexport const onOrderWritten = onDocumentWritten(\"orders/{orderId}\", (event) => {\n  // Fires on create, update, and delete\n  const before = event.data?.before.data(); // undefined on create\n  const after = event.data?.after.data();   // undefined on delete\n});\n```\n\n## Auth Trigger\n\n```typescript\nimport { onAuthUserCreated, onAuthUserDeleted } from \"firebase-functions/v2/identity\";\n\nexport const welcomeNewUser = onAuthUserCreated((event) => {\n  const user = event.data;\n  console.log(`New user signed up: ${user.uid}, email: ${user.email}`);\n  // Create user profile, send welcome email, etc.\n});\n\nexport const cleanupDeletedUser = onAuthUserDeleted((event) => {\n  const user = event.data;\n  console.log(`User deleted: ${user.uid}`);\n  // Clean up user data across collections\n});\n```\n\n## Storage Trigger\n\n```typescript\nimport { onObjectFinalized } from \"firebase-functions/v2/storage\";\n\nexport const processUpload = onObjectFinalized((event) => {\n  const filePath = event.data.name;          // \"uploads/photo.jpg\"\n  const contentType = event.data.contentType; // \"image/jpeg\"\n  const fileSize = event.data.size;           // bytes\n  const bucket = event.data.bucket;\n\n  console.log(`File uploaded: gs://${bucket}/${filePath}`);\n\n  if (!contentType?.startsWith(\"image/\")) {\n    console.log(\"Not an image, skipping.\");\n    return;\n  }\n\n  // Generate thumbnail, scan for content, update metadata, etc.\n});\n```\n\n## Scheduled Function\n\n```typescript\nimport { onSchedule } from \"firebase-functions/v2/scheduler\";\n\nexport const dailyCleanup = onSchedule(\"every day 02:00\", async (event) => {\n  console.log(\"Running daily cleanup...\");\n  // Delete expired records, send digest emails, etc.\n});\n\nexport const frequentSync = onSchedule(\"every 5 minutes\", async (event) => {\n  console.log(\"Running sync...\");\n});\n\n// Cron syntax also works\nexport const weeklyReport = onSchedule(\"0 9 * * 1\", async (event) => {\n  console.log(\"Generating weekly report...\");\n});\n```\n\n## Environment Config and Secrets\n\n```typescript\nimport { defineSecret, defineString, defineInt } from \"firebase-functions/params\";\n\n// Secrets — stored in Google Secret Manager, injected at runtime\nconst stripeKey = defineSecret(\"STRIPE_SECRET_KEY\");\nconst openaiKey = defineSecret(\"OPENAI_API_KEY\");\n\n// Parameterized config — prompted during deploy or set in .env\nconst appName = defineString(\"APP_NAME\", { default: \"My App\" });\nconst maxRetries = defineInt(\"MAX_RETRIES\", { default: 3 });\n\nexport const processPayment = onRequest(\n  { secrets: [stripeKey] },  // Declare which secrets the function needs\n  (req, res) => {\n    const key = stripeKey.value();  // Access the secret value\n    res.json({ app: appName.value(), retries: maxRetries.value() });\n  }\n);\n```\n\n```bash\n# Set secrets\nfirebase functions:secrets:set STRIPE_SECRET_KEY\n# Prompts for value, stores in Google Secret Manager\n\n# Set .env variables (non-secret)\n# functions/.env\nAPP_NAME=My Production App\nMAX_RETRIES=5\n\n# functions/.env.local (emulator only)\nAPP_NAME=My Dev App\n```\n\n## Function Options\n\n```typescript\nimport { onRequest } from \"firebase-functions/v2/https\";\n\nexport const heavyApi = onRequest(\n  {\n    region: \"us-central1\",        // Set region explicitly\n    memory: \"1GiB\",               // 128MiB to 32GiB\n    timeoutSeconds: 300,           // Up to 3600 (60 min) for v2\n    minInstances: 1,               // Keep warm — avoid cold starts\n    maxInstances: 100,             // Limit scaling\n    concurrency: 80,               // Requests per instance (v2 only)\n    cors: true,                    // Enable CORS\n  },\n  (req, res) => {\n    res.json({ status: \"ok\" });\n  }\n);\n```\n\n## Deployment\n\n```bash\n# Deploy all functions\nfirebase deploy --only functions\n\n# Deploy a specific function\nfirebase deploy --only functions:api\n\n# Deploy multiple specific functions\nfirebase deploy --only functions:api,functions:onUserCreated\n\n# View deployed functions\nfirebase functions:list\n\n# Delete a function\nfirebase functions:delete api --region us-central1\n\n# View function logs\nfirebase functions:log --only api\n```\n\n## Emulator\n\n```bash\n# Start functions emulator (with Firestore, Auth, Storage)\nfirebase emulators:start --only functions\n\n# Start all emulators\nfirebase emulators:start\n\n# Functions emulator runs on port 5001 by default\n# Test HTTP functions: curl http://localhost:5001/<project>/<region>/api\n```\n\n## v2 Import Paths\n\n| Trigger Type | Import Path |\n|-------------|-------------|\n| HTTP / Callable | `firebase-functions/v2/https` |\n| Firestore | `firebase-functions/v2/firestore` |\n| Auth | `firebase-functions/v2/identity` |\n| Storage | `firebase-functions/v2/storage` |\n| Scheduled | `firebase-functions/v2/scheduler` |\n| Pub/Sub | `firebase-functions/v2/pubsub` |\n| Alerts | `firebase-functions/v2/alerts` |\n| Params / Config | `firebase-functions/params` |\n",
+  "sections": [
+    {
+      "id": "http-functions",
+      "title": "HTTP functions",
+      "body": "HTTP functions use `onRequest` from `firebase-functions/v2/https` and receive Express-compatible `(req, res)` arguments. They deploy to a public URL at `https://REGION-PROJECT.cloudfunctions.net/FUNCTION_NAME`. Set `cors: true` in options for browser access. Use `--only functions:name` to deploy individually. For authenticated client calls, use `onCall` instead — it automatically parses the Firebase Auth token.",
+      "tags": ["http", "onRequest", "endpoint", "rest-api", "cors"]
+    },
+    {
+      "id": "callable-functions",
+      "title": "Callable functions",
+      "body": "Callable functions use `onCall` from `firebase-functions/v2/https`. The client SDK invokes them via `httpsCallable(functions, 'name')`. The `request.auth` object is automatically populated with the caller's UID, email, and token claims. Throw `HttpsError` for structured error responses. Callable functions handle CORS, auth token validation, and request/response serialization automatically.",
+      "tags": ["callable", "onCall", "httpsCallable", "authenticated", "sdk"]
+    },
+    {
+      "id": "firestore-triggers",
+      "title": "Firestore triggers",
+      "body": "Firestore triggers fire when documents change. `onDocumentCreated('path/{id}', handler)` fires on new documents. `onDocumentUpdated` provides `event.data.before` and `event.data.after` snapshots. `onDocumentDeleted` fires when a document is removed. `onDocumentWritten` fires on any change (create, update, delete). Path parameters like `{userId}` are available in `event.params`. Import from `firebase-functions/v2/firestore`.",
+      "tags": ["firestore", "trigger", "onDocumentCreated", "onDocumentUpdated", "onDocumentDeleted", "onDocumentWritten"]
+    },
+    {
+      "id": "auth-triggers",
+      "title": "Auth triggers",
+      "body": "`onAuthUserCreated` fires when a new user signs up (any provider). `onAuthUserDeleted` fires when a user account is deleted. The `event.data` object contains the user record (uid, email, displayName, photoURL, etc.). Import from `firebase-functions/v2/identity`. Common uses: create user profile documents, send welcome emails, clean up user data on deletion.",
+      "tags": ["auth", "onAuthUserCreated", "onAuthUserDeleted", "identity", "user-lifecycle"]
+    },
+    {
+      "id": "storage-triggers",
+      "title": "Storage triggers",
+      "body": "`onObjectFinalized` fires when a file upload completes or an existing object is overwritten. The `event.data` object contains `name` (file path), `bucket`, `contentType`, `size`, and `metadata`. Import from `firebase-functions/v2/storage`. Use for image processing, virus scanning, metadata extraction, or triggering downstream workflows on file upload.",
+      "tags": ["storage", "onObjectFinalized", "upload", "file-processing", "gcs"]
+    },
+    {
+      "id": "scheduled-functions",
+      "title": "Scheduled functions",
+      "body": "`onSchedule` from `firebase-functions/v2/scheduler` runs functions on a cron schedule. Accepts App Engine cron syntax ('every 5 minutes', 'every day 02:00') or standard cron expressions ('0 9 * * 1'). Backed by Cloud Scheduler. Use for cleanup jobs, report generation, data sync, and digest emails. Set `timeoutSeconds` appropriately for long-running scheduled tasks.",
+      "tags": ["schedule", "cron", "onSchedule", "periodic", "cloud-scheduler"]
+    },
+    {
+      "id": "environment-config",
+      "title": "Environment and secrets configuration",
+      "body": "Use `defineSecret('NAME')` from `firebase-functions/params` for sensitive values stored in Google Secret Manager. Use `defineString('NAME')` and `defineInt('NAME')` for non-secret config with defaults. Secrets must be declared in the function's options object (`{ secrets: [mySecret] }`). Non-secret env vars go in `functions/.env` (deployed) or `functions/.env.local` (emulator only). Access values with `.value()` at runtime.",
+      "tags": ["secrets", "environment", "config", "defineSecret", "defineString", "secret-manager"]
+    },
+    {
+      "id": "deployment",
+      "title": "Deployment and emulator",
+      "body": "`firebase deploy --only functions` deploys all exported functions from src/index.ts. Target specific functions with `--only functions:name`. The emulator (`firebase emulators:start --only functions`) runs on port 5001 and integrates with emulated Firestore, Auth, and Storage. View logs with `firebase functions:log`. Delete functions with `firebase functions:delete name`. Functions not exported from index.ts are automatically deleted on deploy.",
+      "tags": ["deploy", "emulator", "logs", "delete", "firebase-deploy"]
+    }
+  ],
+  "links": [
+    { "uri": "firebase", "context": "Firebase platform overview — project setup, client SDK, admin SDK" },
+    { "uri": "firebase/firestore", "context": "Cloud Firestore — the database that triggers onDocumentCreated/Updated/Deleted" },
+    { "uri": "firebase/auth", "context": "Firebase Auth — triggers onAuthUserCreated/Deleted, provides request.auth in callables" },
+    { "uri": "firebase/storage", "context": "Cloud Storage — triggers onObjectFinalized on file uploads" },
+    { "uri": "firebase/cli", "context": "Firebase CLI — firebase init functions, firebase deploy, firebase emulators" },
+    { "uri": "firebase/config", "context": "firebase.json configuration — functions deploy targets and emulator ports" }
+  ],
+  "related": [
+    { "uri": "firebase", "relation": "prerequisite", "note": "Firebase project must be initialized before adding Cloud Functions" },
+    { "uri": "firebase/firestore", "relation": "see-also", "note": "Firestore document events are a primary trigger source for Cloud Functions" },
+    { "uri": "gcp/functions", "relation": "see-also", "note": "Google Cloud Functions is the underlying platform — Firebase Functions adds Firebase-specific triggers and tooling" }
+  ],
+  "scripts": [
+    {
+      "id": "create-function",
+      "name": "Create Firebase Cloud Function",
+      "description": "Generate a Cloud Function with the correct v2 API boilerplate for the specified trigger type",
+      "lang": "bash",
+      "runtime": "bash>=4",
+      "entry": "./scripts/create-function.sh",
+      "env": {
+        "FUNCTION_NAME": { "required": true, "secret": false, "description": "Name of the function to create" },
+        "TRIGGER": { "required": false, "secret": false, "default": "http", "description": "Trigger type: http, callable, firestore, auth, storage, schedule" },
+        "REGION": { "required": false, "secret": false, "default": "us-central1", "description": "Deployment region" },
+        "RUNTIME": { "required": false, "secret": false, "default": "nodejs20", "description": "Runtime: nodejs20, python312" }
+      },
+      "packages": ["firebase-tools"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "functionName": { "type": "string", "description": "Name of the Cloud Function to create or deploy" },
+        "trigger": { "type": "string", "enum": ["http", "callable", "firestore", "auth", "storage", "schedule"], "default": "http", "description": "Trigger type" },
+        "region": { "type": "string", "default": "us-central1", "description": "Deployment region" },
+        "memory": { "type": "string", "default": "256MiB", "description": "Memory allocation (128MiB to 32GiB)" },
+        "minInstances": { "type": "integer", "default": 0, "description": "Minimum instances to keep warm (0 = scale to zero)" }
+      },
+      "required": ["functionName"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "functionUrl": { "type": "string", "description": "HTTP URL of the deployed function (HTTP/callable only)" },
+        "deploymentStatus": { "type": "string", "description": "Deployment result status" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "firebase/cli", "reason": "Firebase CLI is required for init, deploy, and emulator commands" },
+    { "uri": "firebase/config", "reason": "firebase.json must be configured with functions deploy targets" }
+  ],
+  "more": {
+    "docs": "https://firebase.google.com/docs/functions",
+    "api": "https://firebase.google.com/docs/reference/functions",
+    "examples": "https://github.com/firebase/functions-samples"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "8 min",
+    "prerequisites": ["firebase/cli", "firebase/config"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

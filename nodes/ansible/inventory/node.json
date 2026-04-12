@@ -1,0 +1,228 @@
+{
+  "name": "inventory",
+  "version": "1.0.0",
+  "uri": "ansible/inventory",
+  "type": "skill",
+  "context": "Inspect, validate, and target Ansible inventory so automation runs against the correct hosts",
+  "info": "Inventory is the execution boundary for Ansible: it declares managed hosts, groups, connection variables, and environment-specific data that every ad-hoc command and playbook resolves before it runs. This skill focuses on the practical inventory jobs agents perform repeatedly: list resolved hosts, graph group relationships, inspect host variables, work with multiple inventory sources, separate environments to reduce blast radius, and confirm targeting before running disruptive automation. It uses `ansible-inventory` and the inventory guide rather than guessing from raw files, which matters whenever host/group vars, plugins, or multiple sources change what Ansible actually sees.",
+  "parent": "ansible",
+  "sub": [],
+  "tags": [
+    "ansible",
+    "inventory",
+    "ansible-inventory",
+    "groups",
+    "host-vars",
+    "group-vars",
+    "dynamic-inventory",
+    "targeting",
+    "patterns"
+  ],
+  "aliases": [
+    "ansible inventory",
+    "inventory file",
+    "ansible-inventory",
+    "host vars",
+    "group vars",
+    "dynamic inventory",
+    "inventory graph",
+    "inventory plugin"
+  ],
+  "triggers": [
+    "inspect ansible inventory",
+    "show me the resolved ansible inventory",
+    "graph ansible groups",
+    "check what hosts ansible will target",
+    "view host vars from inventory",
+    "work with dynamic inventory",
+    "debug ansible inventory resolution"
+  ],
+  "body": "# Ansible Inventory\n\nInventory tells Ansible what exists, how to connect, and what data is attached to each host or group. If you skip inventory validation, every later step is built on an assumption that may be wrong. Before running [[ansible/ad-hoc]] or [[ansible/playbooks]], inspect the resolved inventory exactly as Ansible sees it.\n\n## Static Inventory Example\n\n```yaml\nall:\n  children:\n    web:\n      hosts:\n        app1.example.com:\n        app2.example.com:\n      vars:\n        ansible_user: deploy\n    db:\n      hosts:\n        db1.example.com:\n          ansible_host: 10.0.10.21\n          ansible_python_interpreter: /usr/bin/python3\n```\n\n## Inspect the Resolved Result\n\n```bash\nansible-inventory -i inventory.yml --list\nansible-inventory -i inventory.yml --graph\nansible-inventory -i inventory.yml --host app1.example.com\n```\n\n## Typical Layout\n\n```text\ninventory/\n  hosts.yml\n  group_vars/\n    all.yml\n    web.yml\n  host_vars/\n    app1.example.com.yml\n```\n\n## Multiple Sources and Dynamic Inventory\n\nAnsible can merge multiple `-i` sources and inventory plugins. Prefer plugins over legacy scripts for cloud, CMDB, or API-backed inventory. Keep separate inventories for environments such as `test`, `staging`, and `prod` so it is harder to change the wrong fleet accidentally.\n\n## Targeting with Patterns\n\nPatterns are how later commands choose hosts from inventory: `all`, `web`, `db:&prod`, `web:!canary`, or a hostname directly. Validate the set before execution:\n\n```bash\nansible-inventory -i inventory.yml --graph\nansible web -i inventory.yml -m ansible.builtin.ping --limit canary\n```\n",
+  "sections": [
+    {
+      "id": "formats",
+      "title": "Static files, directories, and plugins",
+      "body": "Inventory can be a single file, a directory of files, or one or more plugin-backed sources. Static YAML inventory is easier to review in Git. Directories scale better because `group_vars/` and `host_vars/` can live next to the source. Dynamic inventory plugins are preferred over legacy scripts for cloud and CMDB-backed sources. Use separate sources per environment when blast radius matters.",
+      "tags": ["static", "dynamic", "plugins", "directories", "git"]
+    },
+    {
+      "id": "inspection",
+      "title": "Use ansible-inventory instead of guessing",
+      "body": "Run `ansible-inventory -i SOURCE --list` for the resolved machine-readable inventory, `--graph` for group structure, and `--host NAME` for the final variables on one host. This exposes inheritance, plugin output, and file merges that are not obvious from raw YAML or INI files. Load this node whenever targeting is in doubt.",
+      "tags": ["inspection", "graph", "list", "host", "resolution"]
+    },
+    {
+      "id": "patterns",
+      "title": "Patterns decide which hosts execute",
+      "body": "Patterns such as `web`, `db:&prod`, and `web:!canary` are the selector language used by both [[ansible/ad-hoc]] and [[ansible/playbooks]]. Validate patterns against inventory before doing anything destructive. If a playbook uses `-l` or `--limit`, that limit is applied after inventory resolution and can save you from a full-fleet mistake.",
+      "tags": ["patterns", "limit", "selectors", "blast-radius"]
+    },
+    {
+      "id": "vars-layout",
+      "title": "host_vars and group_vars layout",
+      "body": "Keep shared defaults in `group_vars/all.yml`, role or tier data in group files such as `group_vars/web.yml`, and machine-specific settings in `host_vars/<hostname>.yml`. Inventory variables are high-impact because they often control connection user, interpreter path, become behavior, and service endpoints. See [[ansible/config]] for how these values interact with CLI flags and extra vars.",
+      "tags": ["host-vars", "group-vars", "variables", "layout", "precedence"]
+    }
+  ],
+  "links": [
+    {
+      "uri": "ansible/ad-hoc",
+      "context": "Run one-off commands against the hosts selected from inventory"
+    },
+    {
+      "uri": "ansible/playbooks",
+      "context": "Playbooks use inventory groups, limits, and host variables"
+    },
+    {
+      "uri": "ansible/playbooks#tags-limits",
+      "context": "Stage rollouts by combining inventory patterns with tags and limits"
+    },
+    {
+      "uri": "ansible/config",
+      "context": "Inventory interacts with config, env vars, and precedence rules"
+    },
+    {
+      "uri": "ansible/config#precedence",
+      "context": "See how inventory variables compete with config, keywords, and extra vars"
+    },
+    {
+      "uri": "ansible/troubleshooting",
+      "context": "Inventory mistakes often surface as unreachable hosts or wrong vars"
+    },
+    {
+      "uri": "ssh/config",
+      "context": "SSH settings often pair with inventory connection variables"
+    }
+  ],
+  "related": [
+    {
+      "uri": "ansible/ad-hoc",
+      "relation": "implements",
+      "note": "Ad-hoc execution consumes inventory patterns and host variables"
+    },
+    {
+      "uri": "ansible/playbooks",
+      "relation": "implements",
+      "note": "Playbooks resolve hosts and vars from inventory before tasks run"
+    },
+    {
+      "uri": "ssh/config",
+      "relation": "see-also",
+      "note": "Inventory variables often mirror or override SSH configuration choices"
+    }
+  ],
+  "scripts": [
+    {
+      "id": "inspect-inventory",
+      "name": "Inspect Inventory",
+      "description": "List, graph, or inspect an Ansible inventory source with ansible-inventory",
+      "lang": "bash",
+      "runtime": "ansible-core>=2.15",
+      "entry": "./scripts/inspect-inventory.sh",
+      "env": {
+        "ANSIBLE_INVENTORY_ACTION": {
+          "required": false,
+          "secret": false,
+          "default": "list",
+          "description": "Inventory action: list, graph, host, or vars"
+        },
+        "ANSIBLE_INVENTORY_SOURCE": {
+          "required": false,
+          "secret": false,
+          "default": "inventory",
+          "description": "Path to an inventory file, directory, or plugin source"
+        },
+        "ANSIBLE_INVENTORY_FORMAT": {
+          "required": false,
+          "secret": false,
+          "default": "json",
+          "description": "Output format for list or host actions: json or yaml"
+        },
+        "ANSIBLE_HOST_NAME": {
+          "required": false,
+          "secret": false,
+          "description": "Host name required when action=host"
+        }
+      },
+      "packages": [
+        "ansible-core"
+      ]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "action": {
+          "type": "string",
+          "enum": [
+            "list",
+            "graph",
+            "host",
+            "vars"
+          ],
+          "default": "list",
+          "description": "Inventory inspection mode"
+        },
+        "inventorySource": {
+          "type": "string",
+          "description": "Inventory file, directory, or plugin source"
+        },
+        "format": {
+          "type": "string",
+          "enum": [
+            "json",
+            "yaml"
+          ],
+          "default": "json",
+          "description": "Output format for list and host actions"
+        },
+        "host": {
+          "type": "string",
+          "description": "Host name for host inspection"
+        }
+      }
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "action": {
+          "type": "string",
+          "description": "Action executed by the inventory wrapper"
+        },
+        "inventorySource": {
+          "type": "string",
+          "description": "Source that was inspected"
+        },
+        "output": {
+          "type": "string",
+          "description": "Rendered inventory output from ansible-inventory"
+        }
+      }
+    }
+  },
+  "depends": [],
+  "more": {
+    "docs": "https://docs.ansible.com/projects/ansible/latest/inventory_guide/intro_inventory.html",
+    "cli": "https://docs.ansible.com/projects/ansible/latest/cli/ansible-inventory.html",
+    "dynamic": "https://docs.ansible.com/projects/ansible/latest/inventory_guide/intro_dynamic_inventory.html"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, DevOps engineers, AI agents",
+    "estimated_reading_time": "6 min",
+    "prerequisites": [
+      "ansible"
+    ],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://github.com/ansible/ansible",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

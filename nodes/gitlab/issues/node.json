@@ -1,0 +1,274 @@
+{
+  "name": "issues",
+  "version": "1.0.0",
+  "uri": "gitlab/issues",
+  "type": "skill",
+  "context": "Create, list, inspect, update, close, and reopen GitLab issues inside a project using the REST API",
+  "info": "This skill covers the operational issue workflow in GitLab: list project issues by state, search text, labels, and assignees; create issues with title, description, labels, confidentiality, due date, and issue type; inspect a single issue by IID; and update or transition issues through close and reopen events. Agents use it for bug filing, intake automation, release work tracking, and incident or task management within the same project that owns the code.",
+  "parent": "gitlab",
+  "tags": [
+    "gitlab",
+    "issues",
+    "bugs",
+    "tasks",
+    "incidents",
+    "triage",
+    "labels",
+    "api"
+  ],
+  "aliases": [
+    "gitlab issues",
+    "gitlab issue",
+    "create gitlab issue",
+    "close gitlab issue",
+    "reopen gitlab issue",
+    "issue iid",
+    "issue tracker"
+  ],
+  "triggers": [
+    "create a gitlab issue",
+    "list issues in a gitlab project",
+    "close a gitlab issue",
+    "reopen a gitlab issue",
+    "search gitlab issues by label"
+  ],
+  "body": "# GitLab Issues\n\nGitLab issues are project-scoped work items for bugs, tasks, incidents, and test cases. Most automation starts by resolving the project path, then listing by label or state, then creating or updating an issue by its project-specific IID.\n\n```bash\npython ./scripts/manage-issues.py create group/project 'Bug: deploy pipeline fails' \\\n  --labels bug,platform \\\n  --description 'Failed after the build stage on main'\n\npython ./scripts/manage-issues.py close group/project 42\n```\n\nIssue endpoints use the project's internal issue IID rather than the global issue ID for most update operations. If a project has issues disabled, creation fails with `403 Forbidden`. Related merge requests can be discovered from the issue view and should route into [[gitlab/merge-requests]].",
+  "sections": [
+    {
+      "id": "list-and-filter",
+      "title": "List and filter project issues",
+      "body": "`GET /projects/:id/issues` supports filters such as `state`, `labels`, `search`, `assignee_id`, `author_id`, and `iids[]`. This is the right entry point for triage automation, release filtering, and checking whether a similar issue already exists before creating a new one. Use `page` and `per_page` for pagination.",
+      "tags": [
+        "list",
+        "filter",
+        "labels",
+        "search",
+        "pagination"
+      ]
+    },
+    {
+      "id": "create",
+      "title": "Create issues with metadata",
+      "body": "`POST /projects/:id/issues` requires `title` and optionally accepts `description`, `labels`, `confidential`, `due_date`, `issue_type`, and assignee fields. `labels` is a comma-separated string, and GitLab creates any missing labels in the project automatically. Issue creation can be rate-limited, so high-volume intake automation should retry with backoff rather than blindly replaying requests.",
+      "tags": [
+        "create",
+        "title",
+        "description",
+        "labels",
+        "issue-type"
+      ]
+    },
+    {
+      "id": "update-close",
+      "title": "Update, close, and reopen",
+      "body": "`PUT /projects/:id/issues/:issue_iid` updates issue content and also handles state transitions through `state_event=close` or `state_event=reopen`. At least one mutable field is required on update. Use `add_labels` or `remove_labels` when you need incremental label changes instead of replacing the entire label set.",
+      "tags": [
+        "update",
+        "close",
+        "reopen",
+        "state-event",
+        "labels"
+      ]
+    },
+    {
+      "id": "iid-model",
+      "title": "IID versus global issue ID",
+      "body": "GitLab returns both a global issue `id` and a project-scoped `iid`. Most project issue operations use the `iid`, which is the number users see in the UI (`#42`). Agents should store the pair `{ project, iid }` when they intend to revisit the issue later, because the global `id` is not the update key for project-scoped endpoints.",
+      "tags": [
+        "iid",
+        "id",
+        "identity"
+      ]
+    }
+  ],
+  "links": [
+    {
+      "uri": "gitlab/auth",
+      "context": "Choose the right token before calling the Issues API"
+    },
+    {
+      "uri": "gitlab/auth#tokens",
+      "context": "Private and confidential issue access depends on token scope and header choice"
+    },
+    {
+      "uri": "gitlab/projects",
+      "context": "Issue automation starts with the correct project path or ID"
+    },
+    {
+      "uri": "gitlab/projects#identifiers",
+      "context": "Issues use project paths and project-scoped IIDs together"
+    },
+    {
+      "uri": "gitlab/merge-requests",
+      "context": "Issues often lead to merge requests or have related merge requests"
+    },
+    {
+      "uri": "gitlab/merge-requests#merge",
+      "context": "Closing an issue often leads into a guarded merge of the fixing merge request"
+    },
+    {
+      "uri": "linear/issues",
+      "context": "Alternative issue tracking workflow on another platform"
+    },
+    {
+      "uri": "github/issues",
+      "context": "Comparable issue workflow on GitHub"
+    }
+  ],
+  "related": [
+    {
+      "uri": "gitlab/auth",
+      "relation": "prerequisite",
+      "note": "Private projects and confidential issues require an authenticated token with project access"
+    },
+    {
+      "uri": "gitlab/projects",
+      "relation": "prerequisite",
+      "note": "Issues are always scoped to a project"
+    },
+    {
+      "uri": "gitlab/merge-requests#merge",
+      "relation": "see-also",
+      "note": "Issue resolution often ends when the related merge request lands on the target branch"
+    },
+    {
+      "uri": "github/issues",
+      "relation": "alternative",
+      "note": "GitHub Issues is the closest equivalent when work is not tracked in GitLab"
+    }
+  ],
+  "scripts": [
+    {
+      "id": "manage-issues",
+      "name": "Manage GitLab Issues",
+      "description": "List, create, inspect, update, close, and reopen GitLab issues",
+      "lang": "python",
+      "runtime": "python>=3.10",
+      "entry": "./scripts/manage-issues.py",
+      "env": {
+        "GITLAB_TOKEN": {
+          "required": false,
+          "secret": true,
+          "description": "Preferred API token; use unless OAUTH_TOKEN or CI_JOB_TOKEN is provided instead"
+        },
+        "OAUTH_TOKEN": {
+          "required": false,
+          "secret": true,
+          "description": "Optional OAuth bearer token"
+        },
+        "CI_JOB_TOKEN": {
+          "required": false,
+          "secret": true,
+          "description": "Optional CI job token for in-pipeline automation"
+        },
+        "GITLAB_HOST": {
+          "required": false,
+          "default": "https://gitlab.com",
+          "description": "GitLab host, including scheme"
+        },
+        "GITLAB_HTTP_DEBUG": {
+          "required": false,
+          "default": "0",
+          "description": "Set to 1 to print request details to stderr"
+        }
+      }
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "action": {
+          "type": "string",
+          "enum": [
+            "list",
+            "get",
+            "create",
+            "update",
+            "close",
+            "reopen"
+          ]
+        },
+        "project": {
+          "type": "string",
+          "description": "Numeric project ID or full path like group/project"
+        },
+        "issueIid": {
+          "type": "integer",
+          "description": "Project-scoped issue IID"
+        },
+        "title": {
+          "type": "string"
+        },
+        "labels": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "state": {
+          "type": "string",
+          "enum": [
+            "opened",
+            "closed",
+            "all"
+          ]
+        }
+      },
+      "required": [
+        "action",
+        "project"
+      ]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "iid": {
+          "type": "integer"
+        },
+        "title": {
+          "type": "string"
+        },
+        "state": {
+          "type": "string"
+        },
+        "webUrl": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "depends": [
+    {
+      "uri": "gitlab/auth",
+      "reason": "Authenticated project access is required for private issue operations"
+    },
+    {
+      "uri": "gitlab/projects",
+      "reason": "Issue calls require the target project path or ID"
+    }
+  ],
+  "more": {
+    "docs": "https://docs.gitlab.com/api/issues/",
+    "user-guide": "https://docs.gitlab.com/user/project/issues/"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents, project maintainers",
+    "estimated_reading_time": "6 min",
+    "prerequisites": [
+      "gitlab/auth",
+      "gitlab/projects"
+    ],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://gitlab.com/gitlab-org/gitlab",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

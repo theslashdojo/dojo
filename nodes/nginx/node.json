@@ -1,0 +1,94 @@
+{
+  "name": "nginx",
+  "version": "1.0.0",
+  "uri": "nginx",
+  "type": "ecosystem",
+  "context": "Configure and manage nginx as a reverse proxy, web server, and load balancer for production deployments",
+  "info": "Nginx is a high-performance HTTP server and reverse proxy used to front application servers, terminate SSL/TLS, balance load across backends, serve static files, and handle WebSocket connections. This ecosystem covers the core nginx configuration language (directives, contexts, blocks), reverse proxy setup with upstream groups, SSL/TLS certificate management including Let's Encrypt automation, and troubleshooting common issues. Agents use these skills to set up production-ready web infrastructure: configuring virtual hosts, proxying traffic to Node.js/Python/Go backends, enabling HTTPS with strong cipher suites, and diagnosing 502/504 errors. All operations use the nginx CLI and configuration files — no third-party tools required beyond certbot for automated certificate provisioning.",
+  "parent": null,
+  "tags": ["nginx", "reverse-proxy", "web-server", "load-balancer", "ssl", "tls", "proxy", "http"],
+  "aliases": [
+    "nginx",
+    "engine-x",
+    "enginex",
+    "ngx",
+    "nginx server",
+    "nginx proxy",
+    "nginx reverse proxy",
+    "nginx load balancer",
+    "nginx web server",
+    "nginx config",
+    "nginx ssl"
+  ],
+  "triggers": [
+    "set up nginx",
+    "configure nginx",
+    "nginx reverse proxy",
+    "proxy traffic with nginx",
+    "set up SSL with nginx",
+    "nginx load balancing",
+    "nginx configuration",
+    "serve a site with nginx",
+    "put nginx in front of my app",
+    "configure a web server",
+    "set up HTTPS",
+    "nginx 502 bad gateway"
+  ],
+  "body": "# Nginx Ecosystem\n\nNginx is the most widely deployed reverse proxy and web server, handling over 30% of all web traffic. It uses an event-driven, non-blocking architecture that efficiently handles thousands of concurrent connections with minimal memory.\n\n## Architecture\n\nNginx uses a master/worker process model:\n- **Master process**: reads config, manages workers, handles signals\n- **Worker processes**: handle actual request processing (set via `worker_processes auto`)\n\n## Configuration Hierarchy\n\nNginx config uses nested contexts:\n\n```\nmain (global)\n├── events { }          # connection handling\n└── http { }            # HTTP server config\n    └── server { }      # virtual host\n        └── location { } # URI matching\n```\n\n## Skills\n\n- **[[nginx/config]]** — Write, validate, and reload nginx configuration files\n- **[[nginx/reverse-proxy]]** — Proxy HTTP/WebSocket traffic to backend servers with load balancing\n- **[[nginx/ssl]]** — Configure SSL/TLS certificates, protocols, and HTTPS termination\n- **[[nginx/troubleshooting]]** — Diagnose and fix common nginx errors (502, 504, permission denied)\n\n## Key Files\n\n| Path | Purpose |\n|------|----------|\n| `/etc/nginx/nginx.conf` | Main configuration file |\n| `/etc/nginx/conf.d/*.conf` | Drop-in server blocks |\n| `/etc/nginx/sites-available/` | Available virtual hosts (Debian/Ubuntu) |\n| `/etc/nginx/sites-enabled/` | Enabled virtual hosts (symlinks) |\n| `/var/log/nginx/access.log` | Access log |\n| `/var/log/nginx/error.log` | Error log |\n| `/var/run/nginx.pid` | Master process PID |\n\n## Signal Commands\n\n```bash\nnginx -s reload    # Reload configuration gracefully\nnginx -s quit      # Graceful shutdown\nnginx -s stop      # Fast shutdown\nnginx -s reopen    # Reopen log files\nnginx -t           # Test configuration syntax\nnginx -T           # Test and dump full config\n```\n\n## Quick Start\n\n```nginx\n# /etc/nginx/conf.d/myapp.conf\nserver {\n    listen 80;\n    server_name example.com;\n\n    location / {\n        proxy_pass http://127.0.0.1:3000;\n        proxy_set_header Host $host;\n        proxy_set_header X-Real-IP $remote_addr;\n        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;\n        proxy_set_header X-Forwarded-Proto $scheme;\n    }\n}\n```\n\n```bash\nnginx -t && nginx -s reload\n```\n",
+  "sections": [
+    {
+      "id": "process-model",
+      "title": "Process model",
+      "body": "Nginx uses a master/worker architecture. The master process reads configuration, binds ports, and manages worker processes. Workers handle all client connections using an event loop (epoll on Linux, kqueue on BSD). Set `worker_processes auto` to match CPU cores. Each worker can handle thousands of simultaneous connections via `worker_connections` in the `events` block.",
+      "tags": ["master", "worker", "processes", "event-loop", "epoll"]
+    },
+    {
+      "id": "config-contexts",
+      "title": "Configuration contexts",
+      "body": "Nginx config is hierarchical: `main` → `http` → `server` → `location`. Directives inherit downward — a directive set in `http` applies to all `server` blocks unless overridden. The `events` block sits at the main level and controls connection handling. `upstream` blocks define backend server groups and sit at the `http` level alongside `server` blocks.",
+      "tags": ["http", "server", "location", "upstream", "events", "inheritance"]
+    },
+    {
+      "id": "location-matching",
+      "title": "Location matching order",
+      "body": "Nginx evaluates `location` blocks in a specific order:\n1. Exact match (`= /path`) — highest priority, stops search\n2. Prefix match with `^~` — stops regex search if longest match\n3. Regex match (`~ /pattern` or `~* /pattern` for case-insensitive) — first match wins\n4. Longest prefix match (no modifier) — lowest priority\n\nExample: `location = /` handles only the root, `location /api/` matches anything under `/api/`, `location ~ \\.php$` matches PHP files.",
+      "tags": ["location", "matching", "regex", "prefix", "exact"]
+    },
+    {
+      "id": "common-variables",
+      "title": "Common nginx variables",
+      "body": "Key variables available in nginx config:\n- `$host` — request Host header or server_name\n- `$remote_addr` — client IP address\n- `$request_uri` — original full URI with args\n- `$uri` — current normalized URI (may change with rewrites)\n- `$args` — query string\n- `$scheme` — http or https\n- `$server_name` — matched server_name\n- `$proxy_add_x_forwarded_for` — X-Forwarded-For with client IP appended\n- `$upstream_cache_status` — HIT, MISS, BYPASS, EXPIRED, STALE, etc.",
+      "tags": ["variables", "host", "remote-addr", "scheme", "uri"]
+    }
+  ],
+  "sub": ["nginx/config", "nginx/reverse-proxy", "nginx/ssl", "nginx/troubleshooting"],
+  "links": [
+    { "uri": "nginx/config", "context": "Write, validate, and manage nginx configuration files" },
+    { "uri": "nginx/reverse-proxy", "context": "Proxy traffic to backends with upstream groups and load balancing" },
+    { "uri": "nginx/ssl", "context": "Configure SSL/TLS certificates and HTTPS termination" },
+    { "uri": "nginx/troubleshooting", "context": "Diagnose 502s, 504s, permission errors, and config issues" }
+  ],
+  "related": [
+    { "uri": "shell/processes", "relation": "see-also", "note": "Managing nginx processes — start, stop, find PIDs, check ports" },
+    { "uri": "ssh/tunnel", "relation": "see-also", "note": "SSH tunnels can expose local services for nginx to proxy" }
+  ],
+  "more": {
+    "docs": "https://nginx.org/en/docs/",
+    "wiki": "https://www.nginx.com/resources/wiki/",
+    "repo": "https://github.com/nginx/nginx"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, devops, AI agents",
+    "estimated_reading_time": "5 min",
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

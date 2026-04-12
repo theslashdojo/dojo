@@ -1,0 +1,124 @@
+{
+  "name": "volumes",
+  "version": "1.0.0",
+  "uri": "kubernetes/volumes",
+  "type": "skill",
+  "context": "Persist data in Kubernetes with PersistentVolumes, PersistentVolumeClaims, and StorageClasses",
+  "info": "Containers are ephemeral — when a Pod restarts, its filesystem is lost. Kubernetes Volumes provide persistent storage that survives Pod restarts and rescheduling. PersistentVolumes (PV) represent storage resources, PersistentVolumeClaims (PVC) request storage from PVs, and StorageClasses enable dynamic provisioning. Agents use volumes to persist databases, file uploads, logs, and shared data between containers. This skill covers volume types (emptyDir, hostPath, PVC), the PV/PVC/StorageClass lifecycle, access modes, and CSI drivers.",
+  "parent": "kubernetes",
+  "tags": ["volumes", "persistent-storage", "pv", "pvc", "storageclass", "emptydir", "csi", "data-persistence"],
+  "aliases": [
+    "kubernetes volumes",
+    "k8s volumes",
+    "persistent volume",
+    "pv",
+    "pvc",
+    "persistent volume claim",
+    "storage class",
+    "kubernetes storage",
+    "emptydir",
+    "hostpath",
+    "csi driver"
+  ],
+  "triggers": [
+    "create a persistent volume",
+    "add storage to a pod",
+    "create a pvc",
+    "set up persistent storage in kubernetes",
+    "mount a volume in a pod",
+    "create a storage class",
+    "data is lost when pod restarts",
+    "share storage between containers"
+  ],
+  "body": "# Volumes\n\nKubernetes Volumes decouple storage from the Pod lifecycle. Data in volumes survives container restarts and can survive Pod deletion (PersistentVolumes).\n\n## Volume Types\n\n| Type | Lifecycle | Use Case |\n|------|-----------|----------|\n| `emptyDir` | Pod lifetime | Scratch space, shared data between containers in a Pod |\n| `hostPath` | Node lifetime | Development only — ties Pod to a specific node |\n| `PersistentVolumeClaim` | Independent | Production persistent storage (databases, uploads) |\n| `configMap` / `secret` | ConfigMap lifetime | Mount config files and secrets as files |\n| `projected` | Pod lifetime | Combine multiple volume sources (configMap, secret, downwardAPI) |\n\n## emptyDir\n\nCreated when a Pod is assigned to a node, deleted when the Pod is removed:\n\n```yaml\nspec:\n  containers:\n    - name: app\n      image: myregistry/my-app:v1.2.0\n      volumeMounts:\n        - name: cache\n          mountPath: /tmp/cache\n    - name: sidecar\n      image: myregistry/sidecar:latest\n      volumeMounts:\n        - name: cache\n          mountPath: /data/cache\n  volumes:\n    - name: cache\n      emptyDir:\n        sizeLimit: 1Gi\n```\n\nUse `emptyDir.medium: Memory` for a tmpfs (RAM-backed) volume — fast but counts against memory limits.\n\n## PersistentVolume and PersistentVolumeClaim\n\nThe PV/PVC model decouples storage provisioning from consumption:\n\n```\nAdmin/StorageClass → PersistentVolume (storage resource)\n                          ↕ bound\nDeveloper → PersistentVolumeClaim (storage request) → Pod\n```\n\n### PersistentVolume (PV)\n\n```yaml\napiVersion: v1\nkind: PersistentVolume\nmetadata:\n  name: data-pv\nspec:\n  capacity:\n    storage: 50Gi\n  accessModes:\n    - ReadWriteOnce\n  persistentVolumeReclaimPolicy: Retain\n  storageClassName: standard\n  hostPath:          # development only\n    path: /mnt/data\n```\n\n### PersistentVolumeClaim (PVC)\n\n```yaml\napiVersion: v1\nkind: PersistentVolumeClaim\nmetadata:\n  name: data-pvc\n  namespace: production\nspec:\n  accessModes:\n    - ReadWriteOnce\n  resources:\n    requests:\n      storage: 20Gi\n  storageClassName: standard\n```\n\n### Using PVC in a Pod\n\n```yaml\nspec:\n  containers:\n    - name: db\n      image: postgres:16\n      volumeMounts:\n        - name: data\n          mountPath: /var/lib/postgresql/data\n  volumes:\n    - name: data\n      persistentVolumeClaim:\n        claimName: data-pvc\n```\n\n## StorageClasses (Dynamic Provisioning)\n\nStorageClasses enable automatic PV creation when a PVC is created:\n\n```yaml\napiVersion: storage.k8s.io/v1\nkind: StorageClass\nmetadata:\n  name: fast-ssd\nprovisioner: ebs.csi.aws.com    # AWS EBS CSI driver\nparameters:\n  type: gp3\n  iopsPerGB: \"50\"\nreclaimPolicy: Delete\nvolumeBindingMode: WaitForFirstConsumer\nallowVolumeExpansion: true\n```\n\nCommon provisioners:\n\n| Cloud | Provisioner | Storage |\n|-------|-------------|----------|\n| AWS | `ebs.csi.aws.com` | EBS volumes (gp2, gp3, io1) |\n| GCP | `pd.csi.storage.gke.io` | Persistent Disks |\n| Azure | `disk.csi.azure.com` | Azure Disks |\n| Local | `rancher.io/local-path` | Local node storage (k3s, Rancher) |\n\n## Access Modes\n\n| Mode | Abbreviation | Description |\n|------|-------------|-------------|\n| `ReadWriteOnce` | RWO | One node can mount read-write |\n| `ReadOnlyMany` | ROX | Many nodes can mount read-only |\n| `ReadWriteMany` | RWX | Many nodes can mount read-write |\n| `ReadWriteOncePod` | RWOP | One Pod can mount read-write (k8s 1.27+) |\n\nMost block storage (EBS, GCE PD) supports only RWO. For RWX, use network filesystems (EFS, NFS, CephFS).\n\n## Reclaim Policies\n\n| Policy | Behavior |\n|--------|----------|\n| `Retain` | PV is kept when PVC is deleted — manual cleanup required |\n| `Delete` | PV and underlying storage are deleted when PVC is deleted |\n| `Recycle` | Deprecated — use dynamic provisioning instead |\n\n## kubectl Commands\n\n```bash\n# List PVs and PVCs\nkubectl get pv\nkubectl get pvc -n production\n\n# Describe (shows capacity, access modes, status, bound claim)\nkubectl describe pv data-pv\nkubectl describe pvc data-pvc -n production\n\n# Check storage classes\nkubectl get storageclass\nkubectl get sc\n\n# Expand a PVC (if allowVolumeExpansion: true)\nkubectl patch pvc data-pvc -n production -p '{\"spec\":{\"resources\":{\"requests\":{\"storage\":\"50Gi\"}}}}'\n\n# Delete PVC\nkubectl delete pvc data-pvc -n production\n```\n\n## Volume Expansion\n\nExpand PVCs if the StorageClass has `allowVolumeExpansion: true`:\n\n```bash\nkubectl edit pvc data-pvc -n production\n# Change spec.resources.requests.storage to larger value\n```\n\nSome CSI drivers require a Pod restart to complete the resize.\n\n## Environment Variables\n\n| Variable | Purpose |\n|----------|----------|\n| `KUBECONFIG` | Path to kubeconfig file |\n| `KUBE_NAMESPACE` | Default namespace |\n",
+  "sections": [
+    {
+      "id": "pv-pvc",
+      "title": "PersistentVolume and PersistentVolumeClaim",
+      "body": "PV is a cluster-scoped storage resource (provisioned manually or dynamically via StorageClass). PVC is a namespace-scoped storage request. When a PVC is created, Kubernetes binds it to a matching PV (by size, access mode, storage class). The PVC is then referenced in Pod specs as a volume. This indirection decouples storage provisioning (ops) from consumption (dev).",
+      "tags": ["pv", "pvc", "binding", "provisioning", "cluster-scoped", "namespace-scoped"]
+    },
+    {
+      "id": "storage-classes",
+      "title": "StorageClasses and dynamic provisioning",
+      "body": "StorageClasses automate PV creation. When a PVC references a StorageClass, the provisioner (CSI driver) creates the underlying storage dynamically. Set `volumeBindingMode: WaitForFirstConsumer` to delay provisioning until a Pod uses the PVC — this ensures the volume is created in the same zone as the Pod. Enable `allowVolumeExpansion: true` to allow PVC resizing.",
+      "tags": ["storage-class", "dynamic-provisioning", "csi", "wait-for-first-consumer", "expansion"]
+    },
+    {
+      "id": "volume-types",
+      "title": "Volume types",
+      "body": "**emptyDir** — ephemeral, deleted with Pod. Use for caches and inter-container sharing. **hostPath** — node-local directory. Development only — breaks portability. **PVC** — production persistent storage via PV binding. **configMap/secret** — mount configuration as files (see [[kubernetes/configmaps]]). **projected** — combine multiple sources. **downwardAPI** — expose Pod metadata as files. **nfs** — network filesystem, supports RWX access mode.",
+      "tags": ["emptydir", "hostpath", "pvc", "nfs", "projected", "downwardapi", "types"]
+    }
+  ],
+  "links": [
+    { "uri": "kubernetes/pods", "context": "Pods mount volumes via volumeMounts" },
+    { "uri": "kubernetes/configmaps", "context": "ConfigMaps and Secrets are volume types" },
+    { "uri": "kubernetes/namespaces", "context": "PVCs are namespaced, PVs are cluster-scoped" },
+    { "uri": "kubernetes/deployments", "context": "Deployments define volume mounts in Pod templates" },
+    { "uri": "kubernetes/troubleshooting", "context": "Debug PVC binding failures and mount issues" }
+  ],
+  "related": [
+    { "uri": "kubernetes/configmaps", "relation": "see-also", "note": "ConfigMaps and Secrets are special volume types for config data" },
+    { "uri": "kubernetes/pods", "relation": "prerequisite", "note": "Volumes are mounted into Pod containers" },
+    { "uri": "docker/volumes", "relation": "similar", "note": "Kubernetes volumes are analogous to Docker volumes but with richer lifecycle management" }
+  ],
+  "scripts": [
+    {
+      "id": "create-pvc",
+      "name": "Create PVC",
+      "description": "Create a PersistentVolumeClaim with a specified size and access mode",
+      "lang": "bash",
+      "runtime": "kubectl",
+      "entry": "./scripts/create-pvc.sh",
+      "inline": "#!/bin/bash\nset -euo pipefail\nNAME=${1:?Usage: create-pvc.sh <name> <size> [storage-class] [access-mode]}\nSIZE=${2:?Usage: create-pvc.sh <name> <size> [storage-class] [access-mode]}\nSC=${3:-standard}\nACCESS=${4:-ReadWriteOnce}\nNS=${KUBE_NAMESPACE:-default}\n\ncat <<EOF | kubectl apply -f -\napiVersion: v1\nkind: PersistentVolumeClaim\nmetadata:\n  name: ${NAME}\n  namespace: ${NS}\nspec:\n  accessModes:\n    - ${ACCESS}\n  resources:\n    requests:\n      storage: ${SIZE}\n  storageClassName: ${SC}\nEOF\n\necho \"PVC $NAME created in namespace $NS:\"\nkubectl get pvc \"$NAME\" -n \"$NS\"",
+      "env": {
+        "KUBECONFIG": { "required": false, "secret": false, "default": "~/.kube/config", "description": "Path to kubeconfig file" },
+        "KUBE_NAMESPACE": { "required": false, "secret": false, "default": "default", "description": "Target namespace" }
+      },
+      "packages": []
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "description": "PVC name" },
+        "namespace": { "type": "string", "default": "default" },
+        "size": { "type": "string", "description": "Storage size (e.g., 10Gi, 50Gi)" },
+        "accessMode": { "type": "string", "enum": ["ReadWriteOnce", "ReadOnlyMany", "ReadWriteMany"], "default": "ReadWriteOnce" },
+        "storageClassName": { "type": "string", "description": "StorageClass name" }
+      },
+      "required": ["name", "size"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "pvcName": { "type": "string" },
+        "status": { "type": "string", "enum": ["Pending", "Bound", "Lost"] },
+        "volumeName": { "type": "string", "description": "Name of the bound PV" }
+      }
+    }
+  },
+  "depends": [],
+  "more": {
+    "docs": "https://kubernetes.io/docs/concepts/storage/persistent-volumes/",
+    "api": "https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.31/#persistentvolumeclaim-v1-core",
+    "storage-classes": "https://kubernetes.io/docs/concepts/storage/storage-classes/"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, DevOps engineers, SREs, AI agents",
+    "estimated_reading_time": "5 min",
+    "prerequisites": [],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

@@ -1,0 +1,150 @@
+{
+  "name": "plugins",
+  "version": "1.0.0",
+  "uri": "vite/plugins",
+  "type": "skill",
+  "context": "Add, configure, and author Vite plugins — official plugins, community registry, enforce ordering, conditional apply, and custom plugin hooks",
+  "info": "Vite's plugin system extends the Rollup/Rolldown plugin interface with Vite-specific hooks for dev server middleware, HMR, and HTML transforms. Official plugins cover the major frameworks: @vitejs/plugin-react (uses Oxc Transformer for Fast Refresh), @vitejs/plugin-react-swc (uses SWC for even faster React transforms), @vitejs/plugin-vue (Vue 3 SFC compilation), @vitejs/plugin-vue-jsx (Vue 3 JSX/TSX support), @vitejs/plugin-legacy (generates legacy chunks for older browsers via @babel/preset-env and SystemJS), and @vitejs/plugin-rsc (experimental React Server Components support). The community plugin registry lives at registry.vite.dev/plugins and lists hundreds of maintained plugins for Markdown, PWA, icons, federation, and more. Plugins are added to the `plugins` array in [[vite/config]]. Each plugin is a factory function that returns an object with a `name` property and hook methods. Key hooks include `config` (modify resolved config), `configResolved` (read final config), `configureServer` (add dev server middleware), `transformIndexHtml` (inject tags into HTML), `resolveId` (custom module resolution), `load` (provide virtual module content), `transform` (transform module source), and `handleHotUpdate` (custom HMR handling). Plugin ordering is controlled via `enforce: 'pre'` or `enforce: 'post'`, and conditional application via `apply: 'serve'` or `apply: 'build'`. Rollup plugins that do not use Rollup-only hooks work directly in Vite; those that do should be listed in [[vite/config]] under `build.rollupOptions.plugins`. Virtual modules use the `virtual:` prefix convention and must resolve IDs prefixed with `\\0` to exclude them from other plugins. See [[vite/dev-server]] for server-side hooks and [[vite/build]] for build-time plugin behavior.",
+  "parent": "vite",
+  "tags": ["plugins", "vite-plugin", "plugin-react", "plugin-vue", "plugin-svelte", "enforce", "plugin-api", "virtual-modules", "plugin-legacy", "rollup-plugins"],
+  "aliases": [
+    "vite plugins",
+    "vite plugin",
+    "@vitejs/plugin-react",
+    "@vitejs/plugin-vue",
+    "@vitejs/plugin-react-swc",
+    "@vitejs/plugin-legacy",
+    "vite-plugin",
+    "plugin api",
+    "add vite plugin",
+    "vite plugin hooks",
+    "vite virtual modules"
+  ],
+  "triggers": [
+    "add a vite plugin",
+    "install react plugin for vite",
+    "write a custom vite plugin",
+    "vite plugin ordering",
+    "use vue with vite",
+    "add svelte support to vite",
+    "create a vite transform plugin",
+    "use legacy browser support in vite",
+    "add a virtual module in vite",
+    "configure vite plugin enforce order"
+  ],
+  "body": "# Vite Plugins\n\nPlugins extend Vite's capabilities — adding framework support, transforming code, injecting HTML, and providing virtual modules. The plugin interface builds on Rollup's plugin API with Vite-specific hooks for the dev server, HMR, and HTML transforms.\n\n## Installing and Adding Official Plugins\n\nOfficial plugins are scoped under `@vitejs/`:\n\n```bash\n# React (Oxc Transformer + Fast Refresh)\nnpm install -D @vitejs/plugin-react\n\n# React (SWC — faster alternative)\nnpm install -D @vitejs/plugin-react-swc\n\n# Vue 3 SFC\nnpm install -D @vitejs/plugin-vue\n\n# Vue 3 JSX\nnpm install -D @vitejs/plugin-vue-jsx\n\n# Legacy browser support\nnpm install -D @vitejs/plugin-legacy\n```\n\nThen register in [[vite/config]]:\n\n```typescript\nimport { defineConfig } from 'vite';\nimport react from '@vitejs/plugin-react';\n\nexport default defineConfig({\n  plugins: [\n    react(),\n  ],\n});\n```\n\n## Official Plugin Reference\n\n| Plugin | Package | Purpose |\n|--------|---------|----------|\n| React | `@vitejs/plugin-react` | JSX/TSX via Oxc Transformer + React Fast Refresh |\n| React SWC | `@vitejs/plugin-react-swc` | JSX/TSX via SWC + React Fast Refresh |\n| Vue | `@vitejs/plugin-vue` | Vue 3 Single File Components (.vue) |\n| Vue JSX | `@vitejs/plugin-vue-jsx` | Vue 3 JSX/TSX support |\n| Legacy | `@vitejs/plugin-legacy` | Generates legacy chunks for old browsers |\n| RSC | `@vitejs/plugin-rsc` | Experimental React Server Components |\n\n## Plugin Ordering with `enforce`\n\nPlugins run in this order:\n\n1. Alias resolution (Vite internal)\n2. Plugins with `enforce: 'pre'`\n3. Vite core plugins\n4. Plugins without `enforce` (normal)\n5. Vite build plugins\n6. Plugins with `enforce: 'post'`\n7. Vite post-build plugins (minify, manifest, reporting)\n\n```typescript\nfunction myPrePlugin() {\n  return {\n    name: 'my-pre-plugin',\n    enforce: 'pre' as const,\n    transform(code, id) {\n      // Runs before normal plugins and Vite core\n    },\n  };\n}\n```\n\n## Conditional Plugins with `apply`\n\nRestrict a plugin to dev or build only:\n\n```typescript\nfunction devOnlyPlugin() {\n  return {\n    name: 'dev-only',\n    apply: 'serve' as const,  // Only during dev server\n    configureServer(server) {\n      server.middlewares.use((req, res, next) => {\n        console.log(req.url);\n        next();\n      });\n    },\n  };\n}\n\nfunction buildOnlyPlugin() {\n  return {\n    name: 'build-only',\n    apply: 'build' as const,  // Only during production build\n    generateBundle(options, bundle) {\n      // Post-process build output\n    },\n  };\n}\n```\n\nOr pass a function for fine-grained control:\n\n```typescript\napply(config, { command }) {\n  return command === 'build' && !config.build?.ssr;\n}\n```\n\n## Writing a Custom Plugin\n\nA Vite plugin is a factory function returning an object with a `name` and hooks:\n\n```typescript\nimport type { Plugin } from 'vite';\n\nfunction myTransformPlugin(options?: { prefix?: string }): Plugin {\n  const prefix = options?.prefix ?? '/* transformed */';\n  return {\n    name: 'my-transform',\n    transform(code, id) {\n      if (id.endsWith('.ts')) {\n        return {\n          code: `${prefix}\\n${code}`,\n          map: null,\n        };\n      }\n    },\n  };\n}\n\nexport default myTransformPlugin;\n```\n\n## Virtual Modules\n\nVirtual modules provide synthetic content that doesn't exist on disk. Convention: prefix with `virtual:`, resolve with `\\0`:\n\n```typescript\nfunction virtualConfigPlugin(appConfig: Record<string, unknown>): Plugin {\n  const virtualModuleId = 'virtual:app-config';\n  const resolvedId = '\\0' + virtualModuleId;\n\n  return {\n    name: 'virtual-app-config',\n    resolveId(id) {\n      if (id === virtualModuleId) return resolvedId;\n    },\n    load(id) {\n      if (id === resolvedId) {\n        return `export default ${JSON.stringify(appConfig)}`;\n      }\n    },\n  };\n}\n```\n\nConsume in application code:\n\n```typescript\nimport config from 'virtual:app-config';\nconsole.log(config.apiUrl);\n```\n\nDeclare the type in a `.d.ts` file:\n\n```typescript\ndeclare module 'virtual:app-config' {\n  const config: Record<string, unknown>;\n  export default config;\n}\n```\n\n## Key Plugin Hooks\n\n| Hook | Phase | Purpose |\n|------|-------|---------|\n| `config` | config | Mutate or merge user config before resolution |\n| `configResolved` | config | Read the final resolved config (read-only) |\n| `configureServer` | dev | Add middleware or intercept [[vite/dev-server]] requests |\n| `transformIndexHtml` | both | Inject tags, scripts, or styles into `index.html` |\n| `resolveId` | both | Resolve custom or virtual module IDs |\n| `load` | both | Return content for a resolved module ID |\n| `transform` | both | Transform module source code (return code + sourcemap) |\n| `handleHotUpdate` | dev | Custom HMR invalidation and update logic |\n| `buildStart` | build | Rollup hook — runs at build start |\n| `generateBundle` | build | Rollup hook — post-process or emit additional files |\n| `closeBundle` | build | Rollup hook — runs after bundle is written |\n\n## Rollup Plugin Compatibility\n\nRollup plugins that only use these hooks work directly in Vite's `plugins` array: `buildStart`, `resolveId`, `load`, `transform`, `buildEnd`, `generateBundle`, `closeBundle`. Plugins using Rollup-only hooks like `moduleParsed` or `renderChunk` should go in `build.rollupOptions.plugins` instead. Check the [Vite Rollup Plugins](https://vite-rollup-plugins.patak.dev/) compatibility list.\n\n## Community Plugins\n\nBrowse the registry at [registry.vite.dev/plugins](https://registry.vite.dev/plugins). Popular community plugins:\n\n- `vite-plugin-pwa` — Progressive Web App support\n- `unplugin-auto-import` — auto-import APIs\n- `unplugin-vue-components` — auto-import Vue components\n- `vite-plugin-svgr` — import SVGs as React components\n- `vite-plugin-dts` — emit `.d.ts` files for library mode\n- `vite-plugin-checker` — run TypeScript, ESLint, vue-tsc in a worker thread\n\n## Environment Variables\n\n| Variable | Purpose |\n|----------|----------|\n| `PLUGIN` | Plugin type to install: react, vue, svelte, solid, legacy |\n| `PROJECT_DIR` | Target project directory |\n",
+  "sections": [
+    {
+      "id": "official-plugins",
+      "title": "Official plugins",
+      "body": "Vite maintains official plugins under the `@vitejs/` scope. @vitejs/plugin-react uses Oxc Transformer for JSX and React Fast Refresh. @vitejs/plugin-react-swc swaps Oxc for SWC — faster for large codebases. @vitejs/plugin-vue compiles Vue 3 Single File Components. @vitejs/plugin-vue-jsx adds Vue 3 JSX/TSX support. @vitejs/plugin-legacy generates legacy-compatible bundles using @babel/preset-env and SystemJS polyfills for browsers that lack native ESM. @vitejs/plugin-rsc provides experimental React Server Components support. Each plugin is a factory function that accepts options and returns a plugin object.",
+      "tags": ["official", "react", "vue", "legacy", "swc", "rsc"]
+    },
+    {
+      "id": "adding-plugins",
+      "title": "Adding plugins to config",
+      "body": "Plugins are added to the `plugins` array in [[vite/config]]. Each entry is a function call (not the import itself — call the factory). The array is flattened, so you can nest arrays and falsy values are ignored, enabling conditional plugins: `plugins: [react(), isLegacy && legacy()]`. Plugins are resolved in array order, subject to `enforce` overrides.",
+      "tags": ["config", "plugins-array", "conditional", "flatten"]
+    },
+    {
+      "id": "plugin-ordering",
+      "title": "Plugin ordering and enforce",
+      "body": "Plugins run in order: alias -> enforce:'pre' -> Vite core -> normal plugins -> Vite build -> enforce:'post' -> Vite post-build. Set `enforce: 'pre'` to run a plugin before Vite core transforms (useful for raw source manipulation). Set `enforce: 'post'` to run after Vite's built-in plugins (useful for post-processing transformed code). Most plugins do not need `enforce` — only set it when order-dependent behavior requires it.",
+      "tags": ["enforce", "ordering", "pre", "post", "priority"]
+    },
+    {
+      "id": "custom-plugins",
+      "title": "Writing custom plugins",
+      "body": "A Vite plugin is a factory function returning an object with a `name` string and one or more hook methods. The `transform(code, id)` hook receives source code and module ID, returning `{ code, map }` or null to skip. The `resolveId(source, importer)` hook intercepts module resolution. The `load(id)` hook returns content for a resolved ID. The `configureServer(server)` hook adds Express-compatible middleware to the [[vite/dev-server]]. The `transformIndexHtml(html)` hook injects scripts, links, or meta tags into the HTML entry. Always return sourcemaps from `transform` for accurate debugging — return `map: null` if you cannot produce one.",
+      "tags": ["custom", "authoring", "transform", "hooks", "factory"]
+    },
+    {
+      "id": "virtual-modules",
+      "title": "Virtual modules",
+      "body": "Virtual modules provide synthetic content at import time without corresponding files on disk. Convention: use `virtual:` prefix for the module ID (e.g., `virtual:app-config`). In `resolveId`, match the virtual ID and return it prefixed with `\\0` — this tells Rollup/Vite the module is virtual and prevents other plugins from trying to resolve it. In `load`, match the `\\0`-prefixed ID and return the generated source. Declare a TypeScript module declaration in a `.d.ts` file for type safety. Virtual modules are useful for build-time code generation, injecting configuration, and providing compile-time constants.",
+      "tags": ["virtual", "virtual-modules", "resolveId", "load", "codegen"]
+    },
+    {
+      "id": "rollup-compat",
+      "title": "Rollup plugin compatibility",
+      "body": "Vite supports most Rollup plugins directly in the `plugins` array, as long as they only use compatible hooks: `buildStart`, `resolveId`, `load`, `transform`, `buildEnd`, `generateBundle`, `closeBundle`. Plugins that rely on Rollup-specific hooks like `moduleParsed`, `renderChunk`, or `augmentChunkHash` should be placed in `build.rollupOptions.plugins` instead, where they only run during the production build. The compatibility list at vite-rollup-plugins.patak.dev tracks which Rollup plugins are verified to work in Vite.",
+      "tags": ["rollup", "compatibility", "rolldown", "build-only"]
+    },
+    {
+      "id": "community-registry",
+      "title": "Community plugin registry",
+      "body": "The official community plugin registry at registry.vite.dev/plugins lists hundreds of maintained plugins. Popular categories include framework integrations (Svelte, Solid, Qwik), DX tools (auto-import, component auto-registration, TypeScript checker), asset handling (SVG-as-component, image optimization, Markdown), PWA support, module federation, and SSR helpers. When evaluating a community plugin, check its download count, last publish date, and compatibility with your Vite version.",
+      "tags": ["community", "registry", "ecosystem", "third-party"]
+    }
+  ],
+  "links": [
+    { "uri": "vite/config", "context": "Register plugins in the plugins array of vite.config.ts" },
+    { "uri": "vite/dev-server", "context": "Server-side hooks like configureServer run during dev" },
+    { "uri": "vite/build", "context": "Build-time hooks and Rollup plugin compatibility" },
+    { "uri": "vite/env", "context": "Plugins can read env via configResolved hook" },
+    { "uri": "vite/troubleshooting", "context": "Debug plugin ordering and hook issues" }
+  ],
+  "related": [
+    { "uri": "vite/config", "relation": "prerequisite", "note": "A vite.config.ts must exist to register plugins in the plugins array" },
+    { "uri": "vite", "relation": "prerequisite", "note": "Vite must be installed in the project before adding plugins" },
+    { "uri": "vite/dev-server", "relation": "see-also", "note": "The configureServer hook adds middleware to the dev server" },
+    { "uri": "vite/build", "relation": "see-also", "note": "Build-only plugins use apply:'build' and Rollup-compatible hooks" }
+  ],
+  "scripts": [
+    {
+      "id": "add-plugin",
+      "name": "Add Plugin",
+      "description": "Install and configure a Vite framework plugin (react, vue, svelte, solid, or legacy)",
+      "lang": "bash",
+      "runtime": "bash",
+      "entry": "./scripts/add-plugin.sh",
+      "env": {
+        "PLUGIN": { "required": true, "secret": false, "description": "Plugin type: react, react-swc, vue, svelte, solid, legacy" },
+        "USE_TYPESCRIPT": { "required": false, "secret": false, "description": "Whether project uses TypeScript (true/false, default true)" },
+        "PROJECT_DIR": { "required": false, "secret": false, "description": "Target project directory (default: current directory)" }
+      },
+      "packages": []
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "plugin": { "type": "string", "description": "Plugin to install: react, react-swc, vue, svelte, solid, legacy", "enum": ["react", "react-swc", "vue", "svelte", "solid", "legacy"] },
+        "project_dir": { "type": "string", "description": "Target project directory (default: current directory)" }
+      },
+      "required": ["plugin"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "installed": { "type": "boolean", "description": "Whether the npm package was installed successfully" },
+        "configUpdated": { "type": "boolean", "description": "Whether instructions for config update were provided" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "vite/config", "reason": "A vite.config.ts must exist to register plugins" }
+  ],
+  "more": {
+    "docs": "https://vite.dev/guide/api-plugin",
+    "repo": "https://github.com/vitejs/vite/tree/main/packages",
+    "registry": "https://registry.vite.dev/plugins",
+    "rollup-compat": "https://vite-rollup-plugins.patak.dev/"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "5 min",
+    "prerequisites": ["vite/config"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

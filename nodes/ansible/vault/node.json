@@ -1,0 +1,255 @@
+{
+  "name": "vault",
+  "version": "1.0.0",
+  "uri": "ansible/vault",
+  "type": "skill",
+  "context": "Encrypt, view, rekey, and inject Ansible secrets without leaving plaintext in the repository",
+  "info": "Ansible Vault is the built-in secret-handling surface for playbooks and inventory: it encrypts structured vars files, entire task files, or individual secret strings while preserving Git-friendly workflows. Agents use this skill when they need to protect production credentials, rekey files between environments, encrypt inline variables for `group_vars` or `host_vars`, and execute playbooks with the correct vault identity. The operational hazards are leaking password files, printing secrets to stdout, and mixing vault IDs incorrectly, so this node emphasizes file hygiene and run-time secret injection rather than casual encryption.",
+  "parent": "ansible",
+  "sub": [],
+  "tags": [
+    "ansible",
+    "vault",
+    "ansible-vault",
+    "secrets",
+    "encryption",
+    "vars-files",
+    "vault-id",
+    "rekey"
+  ],
+  "aliases": [
+    "ansible vault",
+    "ansible-vault",
+    "encrypt ansible secrets",
+    "vault id",
+    "vault password file",
+    "encrypt string for ansible",
+    "rekey vault"
+  ],
+  "triggers": [
+    "encrypt a vars file with ansible vault",
+    "view an ansible vaulted file",
+    "rekey ansible vault secrets",
+    "encrypt a string for group vars",
+    "run a playbook with vault id",
+    "keep ansible secrets out of git"
+  ],
+  "body": "# Ansible Vault\n\nVault protects secret material while keeping the rest of your project readable in Git. Use it for credentials, API tokens, passwords, certificates, and other values that [[ansible/playbooks]] or [[ansible/inventory]] must consume at runtime.\n\n## File Operations\n\n```bash\nansible-vault encrypt group_vars/prod/secrets.yml --vault-id prod@prompt\nansible-vault view group_vars/prod/secrets.yml --vault-id prod@~/.ansible/prod.vault\nansible-vault rekey group_vars/prod/secrets.yml --vault-id prod@prompt --new-vault-id prod@~/.ansible/new-prod.vault\n```\n\n## Inline Secret Example\n\n```bash\nansible-vault encrypt_string --vault-id dev@prompt --name db_password supersecret\n```\n\nThe output can be pasted into `group_vars`, `host_vars`, or role vars files without exposing the plaintext value.\n\n## Playbook Integration\n\n```bash\nansible-playbook -i inventory site.yml --vault-id prod@prompt\nansible-playbook -i inventory site.yml --vault-password-file ~/.ansible/prod.vault\n```\n\n## Secret Hygiene\n\n- Keep vault password files out of Git and out of shared temp directories.\n- Use different vault IDs for different environments when separation matters.\n- Apply `no_log: true` to tasks that might echo sensitive values.\n- Prefer encrypted vars files to copying secrets into shell history or CI logs.\n",
+  "sections": [
+    {
+      "id": "file-operations",
+      "title": "encrypt, decrypt, view, and rekey files",
+      "body": "Use `ansible-vault encrypt` to protect an existing file, `view` to inspect it without leaving a decrypted copy on disk, and `rekey` to rotate secrets or move a file to a new vault identity. Rekeying is a normal maintenance task for environment rotation and offboarding. When multiple vault IDs are present, specify the encryption identity explicitly.",
+      "tags": ["encrypt", "decrypt", "view", "rekey", "rotation"]
+    },
+    {
+      "id": "encrypt-string",
+      "title": "encrypt_string for inline variables",
+      "body": "Use `ansible-vault encrypt_string --name secret_name value` when you only need to protect one or two values inside an otherwise readable vars file. This keeps the surrounding YAML understandable while still storing ciphertext in Git. It is often the least disruptive way to add one secret to an existing project.",
+      "tags": ["encrypt-string", "inline", "yaml", "vars"]
+    },
+    {
+      "id": "vault-ids",
+      "title": "vault-id lets one repo carry multiple secret domains",
+      "body": "Vault IDs let you separate secret material by environment or trust boundary, for example `dev`, `staging`, and `prod`. Pass `--vault-id env@prompt` or `--vault-id env@/path/to/file` so Ansible knows which secret to use. This becomes important when one repository carries playbooks that can target more than one environment.",
+      "tags": ["vault-id", "environments", "separation", "prompt"]
+    },
+    {
+      "id": "safe-handling",
+      "title": "Keep secrets out of logs and history",
+      "body": "Even when the source file is encrypted, secrets can leak during execution if a task prints them or if a password file is handled carelessly. Use `no_log: true` on sensitive tasks, store password files in protected locations, and avoid exposing secret values through shell history, CI annotations, or debug output.",
+      "tags": ["no-log", "history", "logs", "password-files", "safety"]
+    }
+  ],
+  "links": [
+    {
+      "uri": "ansible/playbooks",
+      "context": "Playbooks consume vaulted vars files and vault identities at runtime"
+    },
+    {
+      "uri": "ansible/playbooks#vault-integration",
+      "context": "See the playbook-side execution pattern for vaulted vars and files"
+    },
+    {
+      "uri": "ansible/inventory",
+      "context": "Inventory and vars directories commonly contain vaulted files"
+    },
+    {
+      "uri": "ansible/inventory#vars-layout",
+      "context": "Keep encrypted vars in a structured host_vars or group_vars layout"
+    },
+    {
+      "uri": "ansible/config",
+      "context": "Configuration and environment variables can affect vault handling"
+    },
+    {
+      "uri": "ansible/troubleshooting",
+      "context": "Debug wrong vault IDs, missing password files, and secret leakage risks"
+    }
+  ],
+  "related": [
+    {
+      "uri": "ansible/playbooks",
+      "relation": "implements",
+      "note": "Vault exists to feed secret data safely into playbook execution"
+    },
+    {
+      "uri": "ansible/inventory",
+      "relation": "see-also",
+      "note": "group_vars and host_vars are common homes for vaulted files"
+    },
+    {
+      "uri": "shell/environment",
+      "relation": "see-also",
+      "note": "Password file locations and process environment handling affect secret exposure"
+    }
+  ],
+  "scripts": [
+    {
+      "id": "manage-vault",
+      "name": "Manage Vault Secrets",
+      "description": "Encrypt, view, rekey, decrypt, or encrypt a string with ansible-vault",
+      "lang": "bash",
+      "runtime": "ansible-core>=2.15",
+      "entry": "./scripts/manage-vault.sh",
+      "env": {
+        "ANSIBLE_VAULT_ACTION": {
+          "required": true,
+          "secret": false,
+          "description": "Vault action: encrypt, decrypt, view, edit, create, encrypt-string, or rekey"
+        },
+        "ANSIBLE_VAULT_TARGET": {
+          "required": false,
+          "secret": false,
+          "description": "Target file for file-based actions"
+        },
+        "ANSIBLE_VAULT_PASSWORD_FILE": {
+          "required": false,
+          "secret": true,
+          "description": "Path to the current vault password file"
+        },
+        "ANSIBLE_VAULT_ID": {
+          "required": false,
+          "secret": false,
+          "description": "Vault identity such as prod@prompt or dev@/path/to/file"
+        },
+        "ANSIBLE_VAULT_STRING": {
+          "required": false,
+          "secret": true,
+          "description": "Plaintext value used when action=encrypt-string"
+        },
+        "ANSIBLE_VAULT_NAME": {
+          "required": false,
+          "secret": false,
+          "default": "secret_value",
+          "description": "Variable name emitted by encrypt-string"
+        },
+        "ANSIBLE_VAULT_NEW_ID": {
+          "required": false,
+          "secret": false,
+          "description": "New vault identity used during rekey"
+        },
+        "ANSIBLE_VAULT_NEW_PASSWORD_FILE": {
+          "required": false,
+          "secret": true,
+          "description": "New vault password file used during rekey"
+        },
+        "ANSIBLE_VAULT_ENCRYPT_ID": {
+          "required": false,
+          "secret": false,
+          "description": "Explicit encryption identity for encrypt-string"
+        }
+      },
+      "packages": [
+        "ansible-core"
+      ]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "action": {
+          "type": "string",
+          "enum": [
+            "encrypt",
+            "decrypt",
+            "view",
+            "edit",
+            "create",
+            "encrypt-string",
+            "rekey"
+          ],
+          "description": "Vault action to run"
+        },
+        "target": {
+          "type": "string",
+          "description": "Path to the target file for file-based actions"
+        },
+        "vaultId": {
+          "type": "string",
+          "description": "Vault identity such as prod@prompt or dev@file"
+        },
+        "passwordFile": {
+          "type": "string",
+          "description": "Path to the current vault password file"
+        },
+        "value": {
+          "type": "string",
+          "description": "Plaintext value for encrypt-string"
+        },
+        "name": {
+          "type": "string",
+          "description": "Variable name for encrypt-string output"
+        },
+        "newVaultId": {
+          "type": "string",
+          "description": "New vault identity used when rekeying"
+        }
+      },
+      "required": [
+        "action"
+      ]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "command": {
+          "type": "string",
+          "description": "The ansible-vault command that was executed"
+        },
+        "stdout": {
+          "type": "string",
+          "description": "Rendered vault output"
+        },
+        "exitCode": {
+          "type": "integer",
+          "description": "Process exit code"
+        }
+      }
+    }
+  },
+  "depends": [],
+  "more": {
+    "docs": "https://docs.ansible.com/ansible/latest/vault_guide/vault_encrypting_content.html",
+    "cli": "https://docs.ansible.com/projects/ansible/latest/cli/ansible-vault.html"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, SREs, security-conscious AI agents",
+    "estimated_reading_time": "6 min",
+    "prerequisites": [
+      "ansible"
+    ],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://github.com/ansible/ansible",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

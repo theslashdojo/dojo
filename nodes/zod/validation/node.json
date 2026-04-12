@@ -1,0 +1,140 @@
+{
+  "name": "validation",
+  "version": "1.0.0",
+  "uri": "zod/validation",
+  "type": "skill",
+  "context": "Validate, constrain, and refine data with Zod's built-in validators, custom refinements, and error handling",
+  "info": "This skill covers everything about validating data with Zod: built-in validators for strings (.min, .max, .length, .email, .url, .uuid, .regex, .startsWith, .endsWith, .trim, .toLowerCase, .toUpperCase, .datetime, .ip, .cuid, .cuid2, .ulid, .includes, .emoji), numbers (.gt, .gte, .lt, .lte, .int, .positive, .nonnegative, .negative, .nonpositive, .multipleOf, .finite, .safe), dates (.min, .max), and arrays (.nonempty, .min, .max, .length). Custom validation via .refine() for simple checks and .superRefine() for full control over error issues. Error handling with ZodError, .flatten(), .format(), custom error messages, error maps, and path tracking. Parsing modes: .parse() (throws), .safeParse() (returns result), and async variants. See [[zod/schemas]] for defining shapes and [[zod/transform]] for data transformation.",
+  "parent": "zod",
+  "tags": ["zod", "validation", "refine", "parse", "safeParse", "error-handling", "constraints", "validators"],
+  "aliases": [
+    "zod validation",
+    "zod parse",
+    "zod safeParse",
+    "zod refine",
+    "zod superRefine",
+    "zod error",
+    "ZodError",
+    "zod validators",
+    "zod constraints",
+    "z.parse",
+    "z.safeParse",
+    "zod email validator",
+    "zod string validation",
+    "zod number validation",
+    "zod error handling",
+    "zod custom validation",
+    "zod error messages"
+  ],
+  "triggers": [
+    "validate data with zod",
+    "add zod validation constraints",
+    "custom zod validation",
+    "handle zod errors",
+    "zod email validation",
+    "zod parse vs safeParse",
+    "refine a zod schema",
+    "custom error messages in zod",
+    "validate string length with zod",
+    "zod number range validation",
+    "format zod errors"
+  ],
+  "body": "# Zod Validation\n\nValidation is the core purpose of Zod. Define constraints, parse data, handle errors.\n\n## Parsing Modes\n\n```typescript\nimport { z } from \"zod\";\n\nconst schema = z.string().email();\n\n// .parse() — throws ZodError on failure\ntry {\n  const email = schema.parse(input);\n} catch (e) {\n  if (e instanceof z.ZodError) {\n    console.error(e.issues);\n  }\n}\n\n// .safeParse() — never throws, returns discriminated union\nconst result = schema.safeParse(input);\nif (result.success) {\n  result.data; // string (validated email)\n} else {\n  result.error; // ZodError\n}\n\n// Async variants (required if schema has async refinements/transforms)\nconst asyncResult = await schema.safeParseAsync(input);\n```\n\n## String Validators\n\n```typescript\nz.string().min(1)                  // min length\nz.string().max(255)                // max length\nz.string().length(10)              // exact length\nz.string().email()                 // email format\nz.string().url()                   // URL format\nz.string().uuid()                  // UUID format\nz.string().cuid()                  // CUID format\nz.string().cuid2()                 // CUID2 format\nz.string().ulid()                  // ULID format\nz.string().regex(/^[A-Z]+$/)       // regex match\nz.string().includes(\"needle\")      // contains substring\nz.string().startsWith(\"https://\")  // prefix check\nz.string().endsWith(\".com\")        // suffix check\nz.string().datetime()              // ISO 8601 datetime\nz.string().ip()                    // IPv4 or IPv6\nz.string().trim()                  // trims whitespace (transform)\nz.string().toLowerCase()           // lowercases (transform)\nz.string().toUpperCase()           // uppercases (transform)\nz.string().emoji()                 // emoji characters only\n```\n\n## Number Validators\n\n```typescript\nz.number().gt(0)            // > 0 (exclusive)\nz.number().gte(0)           // >= 0 (inclusive) — alias: .min(0)\nz.number().lt(100)          // < 100\nz.number().lte(100)         // <= 100 — alias: .max(100)\nz.number().int()            // integer only\nz.number().positive()       // > 0\nz.number().nonnegative()    // >= 0\nz.number().negative()       // < 0\nz.number().nonpositive()    // <= 0\nz.number().multipleOf(5)    // divisible by 5 — alias: .step(5)\nz.number().finite()         // not Infinity or -Infinity\nz.number().safe()           // within Number.MIN_SAFE_INTEGER..MAX_SAFE_INTEGER\n```\n\n## Date Validators\n\n```typescript\nz.date().min(new Date(\"2020-01-01\"))  // after date\nz.date().max(new Date(\"2030-12-31\"))  // before date\n```\n\n## Custom Refinements\n\n```typescript\n// .refine() — simple custom validation\nconst PasswordSchema = z.string()\n  .min(8)\n  .refine((val) => /[A-Z]/.test(val), {\n    message: \"Must contain at least one uppercase letter\",\n  })\n  .refine((val) => /[0-9]/.test(val), {\n    message: \"Must contain at least one number\",\n  });\n\n// .superRefine() — full control over error issues\nconst ConfirmPassword = z.object({\n  password: z.string().min(8),\n  confirm: z.string(),\n}).superRefine((data, ctx) => {\n  if (data.password !== data.confirm) {\n    ctx.addIssue({\n      code: z.ZodIssueCode.custom,\n      message: \"Passwords don't match\",\n      path: [\"confirm\"],\n    });\n  }\n});\n\n// Async refinements\nconst UniqueEmail = z.string().email().refine(\n  async (email) => {\n    const exists = await checkEmailExists(email);\n    return !exists;\n  },\n  { message: \"Email already in use\" }\n);\n// Must use .parseAsync() or .safeParseAsync() with async refinements\n```\n\n## Error Handling\n\n```typescript\nconst UserSchema = z.object({\n  name: z.string().min(1, \"Name is required\"),\n  email: z.string().email(\"Invalid email\"),\n  age: z.number({ invalid_type_error: \"Age must be a number\" })\n    .int(\"Age must be a whole number\")\n    .positive(\"Age must be positive\"),\n});\n\nconst result = UserSchema.safeParse(input);\nif (!result.success) {\n  // .issues — array of ZodIssue objects\n  result.error.issues;\n  // [{ code: \"too_small\", minimum: 1, path: [\"name\"], message: \"Name is required\" }]\n\n  // .flatten() — flat object with fieldErrors and formErrors\n  result.error.flatten();\n  // { formErrors: [], fieldErrors: { name: [\"Name is required\"], email: [\"Invalid email\"] } }\n\n  // .format() — nested object matching schema shape\n  result.error.format();\n  // { name: { _errors: [\"Name is required\"] }, email: { _errors: [\"Invalid email\"] } }\n}\n```\n\n## Custom Error Messages\n\n```typescript\n// Inline on validators\nz.string().min(1, \"Required\")\nz.string().min(1, { message: \"Required\" })\nz.number().max(100, \"Too large\")\n\n// On the base type\nz.string({ required_error: \"Name is required\", invalid_type_error: \"Must be a string\" })\nz.number({ invalid_type_error: \"Expected a number\" })\n\n// Global error map\nz.setErrorMap((issue, ctx) => {\n  if (issue.code === z.ZodIssueCode.too_small) {\n    return { message: `Minimum length is ${issue.minimum}` };\n  }\n  return { message: ctx.defaultError };\n});\n```\n\n## ZodError Issue Types\n\nCommon issue codes: `invalid_type`, `invalid_literal`, `custom`, `invalid_union`, `invalid_union_discriminator`, `invalid_enum_value`, `unrecognized_keys`, `invalid_arguments`, `invalid_return_type`, `invalid_date`, `invalid_string`, `too_small`, `too_big`, `invalid_intersection_types`, `not_multiple_of`, `not_finite`.\n",
+  "sections": [
+    {
+      "id": "parse-modes",
+      "title": "Parsing modes",
+      "body": "`.parse(data)` validates and returns typed data, throwing `ZodError` on failure. `.safeParse(data)` returns `{ success: true, data }` or `{ success: false, error }` without throwing — preferred for user-facing validation. Async variants `.parseAsync()` and `.safeParseAsync()` are required when schemas contain async refinements or transforms. All methods strip unknown keys by default (configurable via `.passthrough()` or `.strict()` on [[zod/schemas]] objects).",
+      "tags": ["parse", "safeParse", "async", "throws", "error"]
+    },
+    {
+      "id": "string-validators",
+      "title": "String validators",
+      "body": "Zod provides built-in string validators: `.min(n)` / `.max(n)` / `.length(n)` for length, `.email()` / `.url()` / `.uuid()` / `.cuid()` / `.cuid2()` / `.ulid()` for format, `.regex(re)` for pattern matching, `.includes(str)` / `.startsWith(str)` / `.endsWith(str)` for substring checks, `.datetime()` for ISO 8601, `.ip()` for IP addresses, `.emoji()` for emoji-only. Transform methods: `.trim()`, `.toLowerCase()`, `.toUpperCase()`. All accept an optional custom error message as the last argument.",
+      "tags": ["string", "email", "url", "uuid", "regex", "min", "max", "trim", "datetime"]
+    },
+    {
+      "id": "number-validators",
+      "title": "Number validators",
+      "body": "Number constraints: `.gt(n)` / `.gte(n)` (alias `.min(n)`), `.lt(n)` / `.lte(n)` (alias `.max(n)`), `.int()`, `.positive()` / `.nonnegative()` / `.negative()` / `.nonpositive()`, `.multipleOf(n)` (alias `.step(n)`), `.finite()`, `.safe()`. Each accepts an optional custom error message. Combine freely: `z.number().int().positive().lte(100)` validates a positive integer up to 100.",
+      "tags": ["number", "int", "positive", "range", "finite", "multipleOf"]
+    },
+    {
+      "id": "custom-refinements",
+      "title": "Custom refinements with .refine() and .superRefine()",
+      "body": "`.refine(validator, options)` adds a custom validation check. The validator function receives the parsed value and returns a boolean (or Promise<boolean> for async). Options: `{ message, path, params }`. Chain multiple `.refine()` calls for multiple checks. `.superRefine((val, ctx) => { ... })` gives full control — call `ctx.addIssue()` to add custom errors with specific codes, paths, and messages. Use `.superRefine()` for cross-field validation on objects, like password confirmation matching.",
+      "tags": ["refine", "superRefine", "custom-validation", "cross-field", "async"]
+    },
+    {
+      "id": "error-handling",
+      "title": "Error handling and formatting",
+      "body": "Validation failures produce a `ZodError` instance with `.issues` (array of ZodIssue objects). Each issue has `code`, `path`, `message`, and type-specific fields. Format errors with `.flatten()` for flat `{ formErrors, fieldErrors }` objects (great for form UIs), or `.format()` for nested objects matching the schema shape. Customize messages inline (`z.string().min(1, \"Required\")`), at the type level (`z.string({ required_error: \"...\" })`), or globally via `z.setErrorMap()`. Issue codes include `invalid_type`, `too_small`, `too_big`, `invalid_string`, `custom`, and more.",
+      "tags": ["ZodError", "flatten", "format", "issues", "error-map", "custom-messages"]
+    }
+  ],
+  "links": [
+    { "uri": "zod/schemas", "context": "Define the data shapes that validation runs against" },
+    { "uri": "zod/transform", "context": "Transform data after validation" },
+    { "uri": "zod/patterns", "context": "Common validation patterns for APIs and forms" },
+    { "uri": "zod/inference", "context": "Infer types from validated schemas" },
+    { "uri": "zod", "context": "Zod ecosystem overview" }
+  ],
+  "related": [
+    { "uri": "zod/schemas", "relation": "prerequisite", "note": "Define a schema before adding validation constraints" },
+    { "uri": "zod/transform", "relation": "see-also", "note": "Transforms run after validation passes" },
+    { "uri": "zod/patterns", "relation": "see-also", "note": "Real-world validation patterns using these primitives" }
+  ],
+  "scripts": [
+    {
+      "id": "validate-data",
+      "name": "Validate Data Against Schema",
+      "description": "Parse and validate JSON data against a Zod schema, returning typed data or formatted errors",
+      "lang": "typescript",
+      "runtime": "node>=18",
+      "entry": "./scripts/validate-data.ts",
+      "packages": ["zod", "tsx"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "schema": { "type": "string", "description": "Zod schema definition as TypeScript code string" },
+        "data": { "description": "The data to validate (any JSON-serializable value)" },
+        "mode": { "type": "string", "enum": ["parse", "safeParse"], "default": "safeParse", "description": "Parsing mode — parse throws on error, safeParse returns result" }
+      },
+      "required": ["schema", "data"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "success": { "type": "boolean" },
+        "data": { "description": "Validated and typed data (if success)" },
+        "errors": { "type": "object", "description": "Flattened error object (if failure)" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "zod", "reason": "Zod must be installed for validation" },
+    { "uri": "zod/schemas", "reason": "A schema must be defined before validation" }
+  ],
+  "more": {
+    "docs": "https://zod.dev",
+    "repo": "https://github.com/colinhacks/zod"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "TypeScript developers, AI agents",
+    "estimated_reading_time": "7 min",
+    "prerequisites": ["zod", "zod/schemas"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

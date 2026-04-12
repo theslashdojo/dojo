@@ -1,0 +1,133 @@
+{
+  "name": "composition",
+  "version": "1.0.0",
+  "uri": "terraform/modules/composition",
+  "type": "skill",
+  "context": "Compose multiple Terraform modules into complex infrastructure stacks with clean data flow and state boundaries",
+  "info": "Module composition is the practice of combining multiple Terraform modules to build complete infrastructure. This skill covers composition patterns (flat, nested, wrapper), data flow between modules via outputs and variables, dependency management, module-to-module interface design, state boundary decisions, and Terragrunt for DRY multi-module orchestration. Real-world infrastructure is rarely a single module -- it is a composition of networking, compute, database, and security modules wired together. See [[terraform/modules]] for module fundamentals and [[terraform/modules/authoring]] for building composable modules.",
+  "parent": "terraform/modules",
+  "tags": ["terraform", "composition", "modules", "patterns", "data-flow", "state", "terragrunt", "orchestration", "infrastructure"],
+  "aliases": [
+    "terraform module composition",
+    "compose terraform modules",
+    "terraform module patterns",
+    "terraform orchestration",
+    "terragrunt",
+    "terraform module wiring",
+    "multi-module terraform",
+    "terraform module dependencies"
+  ],
+  "triggers": [
+    "compose terraform modules together",
+    "pass data between terraform modules",
+    "wire terraform modules",
+    "terraform module dependency",
+    "terraform module composition pattern",
+    "split terraform state",
+    "use terragrunt",
+    "terraform module to module",
+    "organize complex terraform",
+    "terraform vpc eks rds together"
+  ],
+  "body": "# Module Composition\n\nReal-world infrastructure is built by composing multiple modules together. A production environment typically combines networking (VPC), compute (EKS, ECS, EC2), databases (RDS, ElastiCache), and security (IAM, security groups) modules into a cohesive stack.\n\n## Composition Patterns\n\n### 1. Flat Composition\n\nThe most common pattern. The root module calls multiple child modules at the same level:\n\n```hcl\n# Root module: environments/production/main.tf\n\nmodule \"vpc\" {\n  source = \"./modules/vpc\"\n  cidr   = \"10.0.0.0/16\"\n  azs    = [\"us-east-1a\", \"us-east-1b\", \"us-east-1c\"]\n}\n\nmodule \"eks\" {\n  source     = \"./modules/eks\"\n  vpc_id     = module.vpc.vpc_id\n  subnet_ids = module.vpc.private_subnet_ids\n\n  cluster_name    = \"production\"\n  cluster_version = \"1.29\"\n  node_groups = {\n    default = {\n      instance_types = [\"m6i.xlarge\"]\n      min_size       = 3\n      max_size       = 10\n    }\n  }\n}\n\nmodule \"rds\" {\n  source     = \"./modules/rds\"\n  vpc_id     = module.vpc.vpc_id\n  subnet_ids = module.vpc.database_subnet_ids\n\n  engine         = \"postgres\"\n  engine_version = \"15.4\"\n  instance_class = \"db.r6g.xlarge\"\n  database_name  = \"app\"\n\n  allowed_security_group_ids = [module.eks.node_security_group_id]\n}\n```\n\nFlat composition is easy to understand and debug. Dependencies are explicit through output references.\n\n### 2. Nested Modules\n\nModules calling other modules internally. Useful for building higher-level abstractions:\n\n```hcl\n# modules/platform/main.tf\n# A \"platform\" module that internally composes VPC + EKS\n\nmodule \"vpc\" {\n  source = \"../vpc\"\n  cidr   = var.vpc_cidr\n  azs    = var.azs\n}\n\nmodule \"eks\" {\n  source     = \"../eks\"\n  vpc_id     = module.vpc.vpc_id\n  subnet_ids = module.vpc.private_subnet_ids\n\n  cluster_name    = var.cluster_name\n  cluster_version = var.cluster_version\n}\n\n# Expose key outputs\noutput \"cluster_endpoint\" {\n  value = module.eks.cluster_endpoint\n}\n\noutput \"vpc_id\" {\n  value = module.vpc.vpc_id\n}\n```\n\nNested modules reduce the root module's complexity but can hide important details. Use sparingly -- prefer flat composition unless there is a strong abstraction boundary.\n\n### 3. Module Wrapper Pattern\n\nA thin wrapper that configures an upstream module with organizational defaults:\n\n```hcl\n# modules/org-vpc/main.tf\n# Wrapper around the community VPC module with org defaults\n\nmodule \"vpc\" {\n  source  = \"terraform-aws-modules/vpc/aws\"\n  version = \"~> 5.0\"\n\n  name = var.name\n  cidr = var.cidr\n  azs  = var.azs\n\n  private_subnets  = var.private_subnets\n  public_subnets   = var.public_subnets\n  database_subnets = var.database_subnets\n\n  # Organizational defaults\n  enable_nat_gateway   = true\n  single_nat_gateway   = var.environment != \"production\"\n  enable_dns_hostnames = true\n  enable_dns_support   = true\n\n  tags = merge(var.tags, {\n    ManagedBy   = \"terraform\"\n    Environment = var.environment\n    CostCenter  = var.cost_center\n  })\n}\n\n# Pass through all outputs\noutput \"vpc_id\" {\n  value = module.vpc.vpc_id\n}\n\noutput \"private_subnet_ids\" {\n  value = module.vpc.private_subnets\n}\n```\n\nWrappers enforce standards (tagging, naming, security) while leveraging community-maintained modules.\n\n## Passing Data Between Modules\n\nModules communicate exclusively through outputs and variables. There is no shared state or global scope:\n\n```hcl\n# Module A exposes an output\noutput \"vpc_id\" {\n  description = \"The VPC ID\"\n  value       = aws_vpc.this.id\n}\n\n# Module B consumes it as a variable\nvariable \"vpc_id\" {\n  description = \"VPC ID to deploy into\"\n  type        = string\n}\n\n# Root module wires them together\nmodule \"a\" {\n  source = \"./modules/a\"\n}\n\nmodule \"b\" {\n  source = \"./modules/b\"\n  vpc_id = module.a.vpc_id  # output -> variable\n}\n```\n\nThis creates an implicit dependency: Terraform knows `module.b` depends on `module.a` because it references `module.a.vpc_id`. In rare cases where there is a dependency without a data reference, use explicit `depends_on`:\n\n```hcl\nmodule \"app\" {\n  source = \"./modules/app\"\n\n  depends_on = [module.iam_policies]\n}\n```\n\n## Module-to-Module Contracts\n\nDesign clear interfaces between modules. A module's outputs are its API:\n\n```hcl\n# VPC module contract (outputs.tf)\n# Any compute module can consume these outputs\noutput \"vpc_id\"              { value = aws_vpc.this.id }\noutput \"private_subnet_ids\"  { value = aws_subnet.private[*].id }\noutput \"public_subnet_ids\"   { value = aws_subnet.public[*].id }\noutput \"database_subnet_ids\" { value = aws_subnet.database[*].id }\noutput \"vpc_cidr_block\"      { value = aws_vpc.this.cidr_block }\n\n# EKS module contract (variables.tf)\n# Expects outputs from a VPC-like module\nvariable \"vpc_id\"     { type = string }\nvariable \"subnet_ids\" { type = list(string) }\n```\n\nStable contracts allow modules to evolve independently. Adding new outputs is safe; removing or renaming outputs is a breaking change (major version bump).\n\n## Real-World Composition: VPC + EKS + RDS\n\nA complete production stack wiring three modules together:\n\n```hcl\nlocals {\n  environment = \"production\"\n  region      = \"us-east-1\"\n  azs         = [\"us-east-1a\", \"us-east-1b\", \"us-east-1c\"]\n}\n\nmodule \"vpc\" {\n  source = \"./modules/vpc\"\n\n  name = \"prod\"\n  cidr = \"10.0.0.0/16\"\n  azs  = local.azs\n\n  private_subnets  = [\"10.0.1.0/24\", \"10.0.2.0/24\", \"10.0.3.0/24\"]\n  public_subnets   = [\"10.0.101.0/24\", \"10.0.102.0/24\", \"10.0.103.0/24\"]\n  database_subnets = [\"10.0.201.0/24\", \"10.0.202.0/24\", \"10.0.203.0/24\"]\n}\n\nmodule \"eks\" {\n  source = \"./modules/eks\"\n\n  cluster_name = \"prod-cluster\"\n  vpc_id       = module.vpc.vpc_id\n  subnet_ids   = module.vpc.private_subnet_ids\n}\n\nmodule \"rds\" {\n  source = \"./modules/rds\"\n\n  identifier = \"prod-db\"\n  vpc_id     = module.vpc.vpc_id\n  subnet_ids = module.vpc.database_subnet_ids\n\n  # Allow EKS nodes to connect\n  allowed_security_group_ids = [module.eks.node_security_group_id]\n}\n\n# Wire database connection to EKS via SSM Parameter Store\nresource \"aws_ssm_parameter\" \"db_endpoint\" {\n  name  = \"/prod/database/endpoint\"\n  type  = \"SecureString\"\n  value = module.rds.endpoint\n}\n```\n\nDependency graph: `vpc` -> `eks` and `rds` (both depend on VPC outputs), `rds` -> `eks` (needs security group ID). Terraform resolves the graph automatically.\n\n## Terragrunt for DRY Multi-Module Orchestration\n\nTerragrunt is a thin wrapper around Terraform that reduces repetition across environments:\n\n```hcl\n# terragrunt.hcl (root)\nremote_state {\n  backend = \"s3\"\n  generate = {\n    path      = \"backend.tf\"\n    if_exists = \"overwrite_terragrunt\"\n  }\n  config = {\n    bucket         = \"my-terraform-state\"\n    key            = \"${path_relative_to_include()}/terraform.tfstate\"\n    region         = \"us-east-1\"\n    dynamodb_table = \"terraform-locks\"\n    encrypt        = true\n  }\n}\n\n# environments/production/vpc/terragrunt.hcl\nterraform {\n  source = \"../../../modules/vpc\"\n}\n\ninclude \"root\" {\n  path = find_in_parent_folders()\n}\n\ninputs = {\n  name = \"prod\"\n  cidr = \"10.0.0.0/16\"\n}\n\n# environments/production/eks/terragrunt.hcl\nterraform {\n  source = \"../../../modules/eks\"\n}\n\ninclude \"root\" {\n  path = find_in_parent_folders()\n}\n\ndependency \"vpc\" {\n  config_path = \"../vpc\"\n}\n\ninputs = {\n  cluster_name = \"prod\"\n  vpc_id       = dependency.vpc.outputs.vpc_id\n  subnet_ids   = dependency.vpc.outputs.private_subnet_ids\n}\n```\n\nTerragrunt provides: `dependency` blocks for cross-state references, `include` for DRY configuration, `run-all` for applying multiple modules in dependency order, and auto-generated backend configs.\n",
+  "sections": [
+    {
+      "id": "patterns",
+      "title": "Composition patterns",
+      "body": "Three main patterns: (1) **Flat composition** -- root module calls multiple child modules side-by-side, wiring outputs to variables. Simple, transparent, recommended as the default. (2) **Nested modules** -- modules calling other modules internally for higher-level abstractions. Hides complexity but can make debugging harder. Use when there is a genuine abstraction boundary. (3) **Module wrapper pattern** -- thin wrapper around community or upstream modules that applies organizational defaults (tagging, naming, security). Enables standardization while leveraging maintained modules. Choose flat for most cases; nest sparingly; wrap to enforce policy.",
+      "tags": ["patterns", "flat", "nested", "wrapper", "abstraction", "composition"]
+    },
+    {
+      "id": "data-flow",
+      "title": "Data flow between modules",
+      "body": "Modules communicate through outputs and variables. The root module wires them: `module.a.output_name` feeds into `module.b`'s variable. This creates implicit dependencies that Terraform resolves automatically. For dependencies without data references, use `depends_on`. Design module outputs as stable APIs -- adding outputs is safe, removing them is a breaking change. Avoid `terraform_remote_state` inside modules; accept values as variables instead. See [[terraform/modules/authoring#best-practices]] for output design guidelines.",
+      "tags": ["data-flow", "outputs", "variables", "dependencies", "depends-on", "wiring", "implicit"]
+    },
+    {
+      "id": "state-boundaries",
+      "title": "State boundaries",
+      "body": "By default, all modules in a root configuration share one state file. Split into separate state files when: (1) different teams own different modules, (2) blast radius must be limited (networking vs application), (3) apply times are too long, (4) different change frequencies (VPC changes rarely, app config changes often). Use `terraform_remote_state` data source or Terragrunt `dependency` blocks to reference outputs across state boundaries. Separate state files add complexity -- only split when the benefits outweigh the cost. See [[terraform/state]] for state management details.",
+      "tags": ["state", "state-boundary", "blast-radius", "remote-state", "split", "teams"]
+    },
+    {
+      "id": "terragrunt",
+      "title": "Terragrunt orchestration",
+      "body": "Terragrunt is a wrapper around Terraform that provides: `dependency` blocks for cross-state module references, `include` for DRY root configuration, `run-all` for applying multiple modules in dependency order, auto-generated backend configurations, and environment-level variable files. Directory structure mirrors environments: `environments/<env>/<module>/terragrunt.hcl`. Each module gets its own state file. Terragrunt resolves the dependency graph and applies in the correct order. Alternative approaches include Terraform workspaces ([[terraform/workspaces]]) and CI/CD pipeline orchestration.",
+      "tags": ["terragrunt", "orchestration", "dependency", "run-all", "include", "dry", "environments"]
+    }
+  ],
+  "links": [
+    { "uri": "terraform/modules", "context": "Module fundamentals: sources, variables, outputs, versioning" },
+    { "uri": "terraform/modules/authoring", "context": "Author composable modules with clean interfaces" },
+    { "uri": "terraform/modules/registry", "context": "Use registry modules as building blocks in compositions" },
+    { "uri": "terraform/modules/authoring#best-practices", "context": "Output design guidelines for composable modules" },
+    { "uri": "terraform/modules/registry#popular-modules", "context": "Popular community modules used in compositions" },
+    { "uri": "terraform/state", "context": "State management and state splitting for composed modules" },
+    { "uri": "terraform/workspaces", "context": "Workspaces as an alternative to Terragrunt for multi-environment" },
+    { "uri": "terraform/hcl", "context": "HCL syntax for module blocks, locals, and outputs" }
+  ],
+  "related": [
+    { "uri": "terraform/modules", "relation": "prerequisite", "note": "Module fundamentals are required before composition" },
+    { "uri": "terraform/modules/authoring", "relation": "prerequisite", "note": "Well-authored modules with clean interfaces are needed for composition" },
+    { "uri": "terraform/modules/registry", "relation": "see-also", "note": "Registry modules are common building blocks in compositions" },
+    { "uri": "terraform/state", "relation": "see-also", "note": "State boundaries are a key composition decision" },
+    { "uri": "terraform/workspaces", "relation": "alternative", "note": "Workspaces offer a simpler alternative to Terragrunt for multi-environment" }
+  ],
+  "scripts": [
+    {
+      "id": "composition-scaffold",
+      "name": "Scaffold Module Composition",
+      "description": "Generate a root module that composes VPC, compute, and database modules with proper wiring",
+      "lang": "bash",
+      "runtime": "bash>=4",
+      "inline": "#!/usr/bin/env bash\nset -euo pipefail\n\n# Scaffold a module composition with VPC + compute + database\n# Usage: ENVIRONMENT=production STACK_DIR=./environments/production bash composition-scaffold.sh\n\nENVIRONMENT=\"${ENVIRONMENT:?ENVIRONMENT is required (e.g. dev, staging, production)}\"\nSTACK_DIR=\"${STACK_DIR:-./environments/${ENVIRONMENT}}\"\nMODULES_DIR=\"${MODULES_DIR:-./modules}\"\n\necho \"Scaffolding composition for environment: ${ENVIRONMENT}\"\necho \"Stack directory: ${STACK_DIR}\"\n\nmkdir -p \"${STACK_DIR}\"\n\n# main.tf\ncat > \"${STACK_DIR}/main.tf\" << HCL\n# ${ENVIRONMENT} environment composition\n# Composes VPC + compute + database modules\n\nlocals {\n  environment = \"${ENVIRONMENT}\"\n  name_prefix = \"${ENVIRONMENT}\"\n}\n\nmodule \"vpc\" {\n  source = \"${MODULES_DIR}/vpc\"\n\n  name        = \"\\${local.name_prefix}-vpc\"\n  cidr        = var.vpc_cidr\n  azs         = var.azs\n  environment = local.environment\n  tags        = var.tags\n}\n\nmodule \"compute\" {\n  source = \"${MODULES_DIR}/compute\"\n\n  name        = \"\\${local.name_prefix}-compute\"\n  vpc_id      = module.vpc.vpc_id\n  subnet_ids  = module.vpc.private_subnet_ids\n  environment = local.environment\n  tags        = var.tags\n}\n\nmodule \"database\" {\n  source = \"${MODULES_DIR}/database\"\n\n  name        = \"\\${local.name_prefix}-db\"\n  vpc_id      = module.vpc.vpc_id\n  subnet_ids  = module.vpc.database_subnet_ids\n  environment = local.environment\n  tags        = var.tags\n\n  # Allow compute layer to connect\n  allowed_security_group_ids = [module.compute.security_group_id]\n}\nHCL\n\n# variables.tf\ncat > \"${STACK_DIR}/variables.tf\" << 'HCL'\nvariable \"vpc_cidr\" {\n  description = \"CIDR block for the VPC\"\n  type        = string\n  default     = \"10.0.0.0/16\"\n}\n\nvariable \"azs\" {\n  description = \"Availability zones\"\n  type        = list(string)\n}\n\nvariable \"tags\" {\n  description = \"Common tags for all resources\"\n  type        = map(string)\n  default     = {}\n}\nHCL\n\n# outputs.tf\ncat > \"${STACK_DIR}/outputs.tf\" << 'HCL'\noutput \"vpc_id\" {\n  description = \"VPC ID\"\n  value       = module.vpc.vpc_id\n}\n\noutput \"compute_endpoint\" {\n  description = \"Compute layer endpoint\"\n  value       = module.compute.endpoint\n}\n\noutput \"database_endpoint\" {\n  description = \"Database endpoint\"\n  value       = module.database.endpoint\n  sensitive   = true\n}\nHCL\n\n# terraform.tfvars\ncat > \"${STACK_DIR}/terraform.tfvars\" << HCL\nvpc_cidr = \"10.0.0.0/16\"\nazs      = [\"us-east-1a\", \"us-east-1b\", \"us-east-1c\"]\n\ntags = {\n  Environment = \"${ENVIRONMENT}\"\n  ManagedBy   = \"terraform\"\n}\nHCL\n\n# backend.tf\ncat > \"${STACK_DIR}/backend.tf\" << HCL\nterraform {\n  backend \"s3\" {\n    bucket         = \"my-terraform-state\"\n    key            = \"${ENVIRONMENT}/terraform.tfstate\"\n    region         = \"us-east-1\"\n    dynamodb_table = \"terraform-locks\"\n    encrypt        = true\n  }\n}\nHCL\n\necho \"\"\necho \"Composition scaffolded at ${STACK_DIR}/\"\necho \"Files created:\"\nfind \"${STACK_DIR}\" -type f | sort | sed 's|^|  |'\necho \"\"\necho \"Next steps:\"\necho \"  1. Ensure module directories exist in ${MODULES_DIR}/\"\necho \"  2. Update terraform.tfvars with your values\"\necho \"  3. Update backend.tf with your state bucket\"\necho \"  4. Run: cd ${STACK_DIR} && terraform init && terraform plan\"",
+      "env": {
+        "ENVIRONMENT": { "required": true, "secret": false, "description": "Target environment (e.g. dev, staging, production)" },
+        "STACK_DIR": { "required": false, "secret": false, "description": "Directory for the composition (default: ./environments/<ENVIRONMENT>)" },
+        "MODULES_DIR": { "required": false, "secret": false, "default": "./modules", "description": "Path to the shared modules directory" }
+      }
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "environment": { "type": "string", "description": "Target environment name" },
+        "stackDir": { "type": "string", "description": "Directory for the composition stack" },
+        "modulesDir": { "type": "string", "description": "Path to shared modules directory" }
+      },
+      "required": ["environment"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "stackDir": { "type": "string", "description": "Path to the scaffolded composition directory" },
+        "files": { "type": "array", "items": { "type": "string" }, "description": "List of created file paths" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "terraform/modules", "reason": "Module fundamentals are required" },
+    { "uri": "terraform/modules/authoring", "reason": "Composable modules must be well-authored with clean interfaces" }
+  ],
+  "more": {
+    "docs": "https://developer.hashicorp.com/terraform/language/modules/develop/composition",
+    "terragrunt": "https://terragrunt.gruntwork.io/",
+    "patterns": "https://developer.hashicorp.com/terraform/language/modules/develop/composition"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "DevOps engineers, platform engineers, AI agents",
+    "estimated_reading_time": "12 min",
+    "prerequisites": ["terraform/modules", "terraform/modules/authoring"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

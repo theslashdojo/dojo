@@ -1,0 +1,132 @@
+{
+  "name": "dns",
+  "version": "1.0.0",
+  "uri": "cloudflare/dns",
+  "type": "skill",
+  "context": "Create, update, list, and delete DNS records for Cloudflare-managed zones via API and CLI",
+  "info": "Cloudflare DNS provides authoritative DNS hosting with sub-10ms global resolution from 300+ edge locations. Zones represent domains added to a Cloudflare account. DNS records (A, AAAA, CNAME, MX, TXT, SRV, etc.) are managed via the REST API or Wrangler. The orange cloud (proxied) toggle routes traffic through Cloudflare's CDN and security layer; grey cloud (DNS-only) resolves directly to the origin. Agents use this skill to point domains at Workers, Pages, and origin servers, configure email routing (MX, SPF, DKIM, DMARC), and verify domain ownership. The API is fully CRUD with list, create, update, patch, and delete operations on DNS records.",
+  "parent": "cloudflare",
+  "tags": ["dns", "domains", "records", "zones", "a-record", "cname", "mx", "txt"],
+  "aliases": [
+    "cloudflare dns",
+    "cf dns",
+    "dns records",
+    "manage dns",
+    "dns zone",
+    "cloudflare domain",
+    "add dns record",
+    "cloudflare nameservers",
+    "dns management"
+  ],
+  "triggers": [
+    "add a dns record",
+    "manage cloudflare dns",
+    "point domain to cloudflare",
+    "create an a record",
+    "add a cname record",
+    "configure dns for a domain",
+    "list dns records",
+    "update dns record",
+    "set up email dns records"
+  ],
+  "body": "# Cloudflare DNS\n\nCloudflare provides authoritative DNS with global anycast resolution under 10ms. Manage zones and records via API or CLI.\n\n## Concepts\n\n- **Zone** — A domain (e.g., example.com) managed by Cloudflare\n- **Record** — A DNS entry (A, AAAA, CNAME, MX, TXT, etc.) within a zone\n- **Proxied (orange cloud)** — Traffic routes through Cloudflare CDN/WAF\n- **DNS-only (grey cloud)** — DNS resolves directly to origin IP\n\n## Adding a Domain\n\n```bash\n# Add a zone via API\ncurl -X POST \"https://api.cloudflare.com/client/v4/zones\" \\\n  -H \"Authorization: Bearer $CLOUDFLARE_API_TOKEN\" \\\n  -H \"Content-Type: application/json\" \\\n  --data '{\"name\":\"example.com\",\"type\":\"full\"}'\n# Then update nameservers at your registrar to Cloudflare's assigned NS\n```\n\n## Managing DNS Records\n\n### Create Records\n\n```bash\n# A record — point domain to an IP\ncurl -X POST \"https://api.cloudflare.com/client/v4/zones/$ZONE_ID/dns_records\" \\\n  -H \"Authorization: Bearer $CLOUDFLARE_API_TOKEN\" \\\n  -H \"Content-Type: application/json\" \\\n  --data '{\n    \"type\": \"A\",\n    \"name\": \"app\",\n    \"content\": \"192.0.2.1\",\n    \"ttl\": 1,\n    \"proxied\": true\n  }'\n\n# CNAME record — alias to another domain\ncurl -X POST \"https://api.cloudflare.com/client/v4/zones/$ZONE_ID/dns_records\" \\\n  -H \"Authorization: Bearer $CLOUDFLARE_API_TOKEN\" \\\n  -H \"Content-Type: application/json\" \\\n  --data '{\n    \"type\": \"CNAME\",\n    \"name\": \"www\",\n    \"content\": \"app.example.com\",\n    \"ttl\": 1,\n    \"proxied\": true\n  }'\n\n# TXT record — domain verification, SPF, etc.\ncurl -X POST \"https://api.cloudflare.com/client/v4/zones/$ZONE_ID/dns_records\" \\\n  -H \"Authorization: Bearer $CLOUDFLARE_API_TOKEN\" \\\n  -H \"Content-Type: application/json\" \\\n  --data '{\n    \"type\": \"TXT\",\n    \"name\": \"@\",\n    \"content\": \"v=spf1 include:_spf.google.com ~all\",\n    \"ttl\": 1\n  }'\n\n# MX record — email routing\ncurl -X POST \"https://api.cloudflare.com/client/v4/zones/$ZONE_ID/dns_records\" \\\n  -H \"Authorization: Bearer $CLOUDFLARE_API_TOKEN\" \\\n  -H \"Content-Type: application/json\" \\\n  --data '{\n    \"type\": \"MX\",\n    \"name\": \"@\",\n    \"content\": \"mail.example.com\",\n    \"priority\": 10,\n    \"ttl\": 1\n  }'\n```\n\n### List Records\n\n```bash\n# List all DNS records for a zone\ncurl \"https://api.cloudflare.com/client/v4/zones/$ZONE_ID/dns_records\" \\\n  -H \"Authorization: Bearer $CLOUDFLARE_API_TOKEN\"\n\n# Filter by type\ncurl \"https://api.cloudflare.com/client/v4/zones/$ZONE_ID/dns_records?type=A\" \\\n  -H \"Authorization: Bearer $CLOUDFLARE_API_TOKEN\"\n\n# Filter by name\ncurl \"https://api.cloudflare.com/client/v4/zones/$ZONE_ID/dns_records?name=app.example.com\" \\\n  -H \"Authorization: Bearer $CLOUDFLARE_API_TOKEN\"\n```\n\n### Update a Record\n\n```bash\n# Update (full replace)\ncurl -X PUT \"https://api.cloudflare.com/client/v4/zones/$ZONE_ID/dns_records/$RECORD_ID\" \\\n  -H \"Authorization: Bearer $CLOUDFLARE_API_TOKEN\" \\\n  -H \"Content-Type: application/json\" \\\n  --data '{\n    \"type\": \"A\",\n    \"name\": \"app\",\n    \"content\": \"198.51.100.1\",\n    \"ttl\": 1,\n    \"proxied\": true\n  }'\n\n# Patch (partial update)\ncurl -X PATCH \"https://api.cloudflare.com/client/v4/zones/$ZONE_ID/dns_records/$RECORD_ID\" \\\n  -H \"Authorization: Bearer $CLOUDFLARE_API_TOKEN\" \\\n  -H \"Content-Type: application/json\" \\\n  --data '{\"content\": \"198.51.100.2\"}'\n```\n\n### Delete a Record\n\n```bash\ncurl -X DELETE \"https://api.cloudflare.com/client/v4/zones/$ZONE_ID/dns_records/$RECORD_ID\" \\\n  -H \"Authorization: Bearer $CLOUDFLARE_API_TOKEN\"\n```\n\n## Finding Your Zone ID\n\n```bash\n# List zones to find zone ID\ncurl \"https://api.cloudflare.com/client/v4/zones?name=example.com\" \\\n  -H \"Authorization: Bearer $CLOUDFLARE_API_TOKEN\" | jq '.result[0].id'\n```\n\n## Node.js SDK\n\n```javascript\nimport Cloudflare from 'cloudflare';\n\nconst cf = new Cloudflare({ apiToken: process.env.CLOUDFLARE_API_TOKEN });\n\n// List zones\nconst zones = await cf.zones.list({ name: 'example.com' });\nconst zoneId = zones.result[0].id;\n\n// Create A record\nconst record = await cf.dns.records.create({\n  zone_id: zoneId,\n  type: 'A',\n  name: 'api',\n  content: '192.0.2.1',\n  proxied: true,\n});\n\n// List records\nconst records = await cf.dns.records.list({ zone_id: zoneId });\n\n// Delete record\nawait cf.dns.records.delete(record.id, { zone_id: zoneId });\n```\n\n## Common Patterns\n\n### Point Domain to Workers\n\nUse a CNAME record or Workers route. For Workers custom domains:\n```bash\n# Workers custom domain (automatic DNS)\n# In wrangler.toml:\n# routes = [{ pattern = \"api.example.com\", custom_domain = true }]\n```\n\n### Point Domain to Pages\n\nAdd a custom domain in Dashboard > Pages > project > Custom domains. Cloudflare auto-creates the CNAME record.\n\n### Email Setup (Google Workspace)\n\n```bash\n# MX records\n# Priority 1: aspmx.l.google.com\n# Priority 5: alt1.aspmx.l.google.com\n# Priority 5: alt2.aspmx.l.google.com\n\n# SPF\n# TXT @ \"v=spf1 include:_spf.google.com ~all\"\n\n# DKIM\n# TXT google._domainkey \"v=DKIM1; k=rsa; p=...\"\n\n# DMARC\n# TXT _dmarc \"v=DMARC1; p=quarantine; rua=mailto:dmarc@example.com\"\n```\n",
+  "sections": [
+    {
+      "id": "records-crud",
+      "title": "DNS record CRUD",
+      "body": "Create records with POST to `/zones/{zone_id}/dns_records` with `type`, `name`, `content`, `ttl`, and `proxied`. List with GET. Update with PUT (full replace) or PATCH (partial). Delete with DELETE. Record types: A (IPv4), AAAA (IPv6), CNAME (alias), MX (email), TXT (verification/SPF), SRV (service), NS (nameserver). TTL=1 means automatic (Cloudflare-managed).",
+      "tags": ["create", "update", "delete", "list", "a-record", "cname", "mx", "txt"]
+    },
+    {
+      "id": "proxied-vs-unproxied",
+      "title": "Proxied vs DNS-only",
+      "body": "Set `proxied: true` (orange cloud) to route traffic through Cloudflare's CDN, WAF, and DDoS protection. The origin IP is hidden. Set `proxied: false` (grey cloud) for DNS-only resolution — traffic goes directly to the origin. MX, TXT, and SRV records cannot be proxied. A and CNAME records support proxying.",
+      "tags": ["proxied", "orange-cloud", "grey-cloud", "cdn", "waf"]
+    },
+    {
+      "id": "zone-id",
+      "title": "Finding zone and record IDs",
+      "body": "Get zone ID by listing zones filtered by name: `GET /zones?name=example.com`. Get record IDs by listing records: `GET /zones/{zone_id}/dns_records`. The zone ID also appears in the Cloudflare dashboard URL: `dash.cloudflare.com/{account_id}/{zone_name}` — the zone ID is in the Overview sidebar.",
+      "tags": ["zone-id", "record-id", "lookup"]
+    },
+    {
+      "id": "email-dns",
+      "title": "Email DNS records",
+      "body": "Email requires MX records (mail routing), SPF via TXT (sender verification), DKIM via TXT (message signing), and DMARC via TXT (policy enforcement). MX records have priority values — lower numbers are tried first. SPF example: `v=spf1 include:_spf.google.com ~all`. DMARC example: `v=DMARC1; p=quarantine`.",
+      "tags": ["email", "mx", "spf", "dkim", "dmarc"]
+    }
+  ],
+  "links": [
+    { "uri": "cloudflare/auth", "context": "API token with Zone:DNS:Edit permission" },
+    { "uri": "cloudflare/workers/routes", "context": "Point domains to Workers via routes" },
+    { "uri": "cloudflare/pages", "context": "Custom domains for Pages projects" },
+    { "uri": "cloudflare/wrangler", "context": "CLI for worker domain configuration" },
+    { "uri": "cloudflare/troubleshooting", "context": "Debug DNS propagation issues" }
+  ],
+  "related": [
+    { "uri": "cloudflare/auth", "relation": "prerequisite", "note": "Zone:DNS:Edit permission required" },
+    { "uri": "cloudflare/workers/routes", "relation": "see-also", "note": "Routes connect Workers to domains managed in DNS" },
+    { "uri": "cloudflare/pages", "relation": "see-also", "note": "Pages custom domains auto-create DNS records" },
+    { "uri": "vercel/domains", "relation": "alternative", "note": "Vercel also manages DNS for deployed projects" }
+  ],
+  "scripts": [
+    {
+      "id": "dns-ops",
+      "name": "DNS Operations",
+      "description": "Create, list, update, and delete DNS records for Cloudflare zones",
+      "lang": "bash",
+      "runtime": "bash>=4",
+      "entry": "./scripts/dns-ops.sh",
+      "env": {
+        "CLOUDFLARE_API_TOKEN": { "required": true, "secret": true, "description": "API token with Zone:DNS:Edit permission" },
+        "ZONE_ID": { "required": true, "secret": false, "description": "Cloudflare zone ID for the target domain" }
+      },
+      "packages": ["curl", "jq"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "action": { "type": "string", "enum": ["create", "list", "update", "delete"], "description": "DNS operation to perform" },
+        "zoneId": { "type": "string", "description": "Cloudflare zone ID" },
+        "type": { "type": "string", "enum": ["A", "AAAA", "CNAME", "MX", "TXT", "SRV", "NS"], "description": "DNS record type" },
+        "name": { "type": "string", "description": "Record name (e.g., 'app' for app.example.com)" },
+        "content": { "type": "string", "description": "Record content (IP, hostname, or text)" },
+        "proxied": { "type": "boolean", "default": false, "description": "Route through Cloudflare (orange cloud)" },
+        "recordId": { "type": "string", "description": "Record ID for update/delete" }
+      },
+      "required": ["action", "zoneId"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "recordId": { "type": "string", "description": "Created/updated record ID" },
+        "records": { "type": "array", "description": "Listed DNS records" },
+        "success": { "type": "boolean" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "cloudflare/auth", "reason": "Zone:DNS:Edit permission required for DNS management" }
+  ],
+  "more": {
+    "docs": "https://developers.cloudflare.com/dns/",
+    "api": "https://developers.cloudflare.com/api/resources/dns/subresources/records/"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents, DevOps",
+    "estimated_reading_time": "5 min",
+    "prerequisites": ["cloudflare/auth"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

@@ -1,0 +1,125 @@
+{
+  "name": "edge-functions",
+  "version": "1.0.0",
+  "uri": "supabase/edge-functions",
+  "type": "skill",
+  "context": "Supabase Edge Functions — deploy Deno-based TypeScript functions for server-side logic, webhooks, and API endpoints",
+  "info": "Supabase Edge Functions are server-side TypeScript/JavaScript functions that run on Deno Deploy. Each function is an HTTP handler in `supabase/functions/<name>/index.ts` using the Web Standard `Request`/`Response` API. Functions have access to environment variables (secrets), can import npm packages via `npm:` specifiers, and can use the Supabase client with the service role key for admin operations. Deploy via `supabase functions deploy <name>`. Invoke from the client SDK via `supabase.functions.invoke('name', { body })` or directly via HTTP POST to `https://<ref>.supabase.co/functions/v1/<name>`. Edge Functions are ideal for: webhooks, third-party API integrations, Stripe payment processing, OpenAI/LLM calls, email sending, and any logic that shouldn't run on the client.",
+  "parent": "supabase",
+  "tags": ["edge-functions", "deno", "serverless", "functions", "typescript", "webhooks", "api"],
+  "aliases": [
+    "supabase edge functions",
+    "supabase functions",
+    "supabase serverless",
+    "deno edge functions",
+    "supabase function deploy",
+    "supabase backend functions",
+    "supabase api endpoints",
+    "supabase webhooks handler"
+  ],
+  "triggers": [
+    "create a supabase edge function",
+    "deploy supabase function",
+    "supabase serverless function",
+    "handle webhook in supabase",
+    "call openai from supabase",
+    "process stripe webhook supabase",
+    "send email from supabase",
+    "supabase server side code",
+    "invoke supabase function"
+  ],
+  "body": "# Supabase Edge Functions\n\nEdge Functions are Deno-based TypeScript functions for server-side logic. They run on Deno Deploy globally.\n\n## Create a Function\n\n```bash\nsupabase functions new hello-world\n# Creates: supabase/functions/hello-world/index.ts\n```\n\n## Basic Function\n\n```typescript\n// supabase/functions/hello-world/index.ts\nimport \"jsr:@supabase/functions-js/edge-runtime.d.ts\";\n\nDeno.serve(async (req: Request) => {\n  const { name } = await req.json();\n\n  return new Response(\n    JSON.stringify({ message: `Hello, ${name}!` }),\n    { headers: { 'Content-Type': 'application/json' } }\n  );\n});\n```\n\n## Function with Supabase Client\n\n```typescript\n// supabase/functions/create-profile/index.ts\nimport \"jsr:@supabase/functions-js/edge-runtime.d.ts\";\nimport { createClient } from \"npm:@supabase/supabase-js@2\";\n\nDeno.serve(async (req: Request) => {\n  // Get the JWT from the Authorization header\n  const authHeader = req.headers.get('Authorization')!;\n\n  // Create client with the user's JWT (respects RLS)\n  const supabase = createClient(\n    Deno.env.get('SUPABASE_URL')!,\n    Deno.env.get('SUPABASE_ANON_KEY')!,\n    { global: { headers: { Authorization: authHeader } } }\n  );\n\n  // Get the calling user\n  const { data: { user } } = await supabase.auth.getUser();\n  if (!user) {\n    return new Response('Unauthorized', { status: 401 });\n  }\n\n  // Use service role for admin operations\n  const supabaseAdmin = createClient(\n    Deno.env.get('SUPABASE_URL')!,\n    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!\n  );\n\n  const { data, error } = await supabaseAdmin\n    .from('profiles')\n    .upsert({ id: user.id, full_name: user.user_metadata.full_name })\n    .select()\n    .single();\n\n  if (error) {\n    return new Response(JSON.stringify({ error: error.message }), {\n      status: 400,\n      headers: { 'Content-Type': 'application/json' },\n    });\n  }\n\n  return new Response(JSON.stringify(data), {\n    headers: { 'Content-Type': 'application/json' },\n  });\n});\n```\n\n## Invoke from Client\n\n```typescript\n// From the Supabase SDK\nconst { data, error } = await supabase.functions.invoke('hello-world', {\n  body: { name: 'Alice' },\n});\n\nconsole.log(data); // { message: 'Hello, Alice!' }\n```\n\n```bash\n# Via curl\ncurl -X POST https://abcdefgh.supabase.co/functions/v1/hello-world \\\n  -H 'Authorization: Bearer <anon-key>' \\\n  -H 'Content-Type: application/json' \\\n  -d '{\"name\": \"Alice\"}'\n```\n\n## CORS Handling\n\n```typescript\nconst corsHeaders = {\n  'Access-Control-Allow-Origin': '*',\n  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',\n};\n\nDeno.serve(async (req: Request) => {\n  // Handle CORS preflight\n  if (req.method === 'OPTIONS') {\n    return new Response('ok', { headers: corsHeaders });\n  }\n\n  const data = { message: 'Hello!' };\n\n  return new Response(JSON.stringify(data), {\n    headers: { ...corsHeaders, 'Content-Type': 'application/json' },\n  });\n});\n```\n\n## Using npm Packages\n\n```typescript\n// Import npm packages with npm: specifier\nimport Stripe from \"npm:stripe@14\";\nimport OpenAI from \"npm:openai@4\";\n\nconst stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY')!);\nconst openai = new OpenAI({ apiKey: Deno.env.get('OPENAI_API_KEY')! });\n```\n\n## Secrets (Environment Variables)\n\n```bash\n# Set secrets for deployed functions\nsupabase secrets set STRIPE_SECRET_KEY=sk_live_...\nsupabase secrets set OPENAI_API_KEY=sk-...\n\n# List secrets\nsupabase secrets list\n\n# Unset secrets\nsupabase secrets unset STRIPE_SECRET_KEY\n```\n\nBuilt-in environment variables (always available):\n- `SUPABASE_URL` — Project API URL\n- `SUPABASE_ANON_KEY` — Public anon key\n- `SUPABASE_SERVICE_ROLE_KEY` — Service role key\n- `SUPABASE_DB_URL` — Direct Postgres connection\n\n## Local Development\n\n```bash\n# Serve all functions locally\nsupabase functions serve\n\n# Serve with environment variables from .env file\nsupabase functions serve --env-file .env.local\n\n# Test locally\ncurl -X POST http://localhost:54321/functions/v1/hello-world \\\n  -H 'Authorization: Bearer <local-anon-key>' \\\n  -H 'Content-Type: application/json' \\\n  -d '{\"name\": \"Alice\"}'\n```\n\n## Deploy\n\n```bash\n# Deploy a single function\nsupabase functions deploy hello-world\n\n# Deploy all functions\nsupabase functions deploy\n\n# Deploy with custom import map\nsupabase functions deploy hello-world --import-map ./import_map.json\n```\n\n## Webhook Handler Pattern\n\n```typescript\n// supabase/functions/stripe-webhook/index.ts\nimport \"jsr:@supabase/functions-js/edge-runtime.d.ts\";\nimport Stripe from \"npm:stripe@14\";\n\nconst stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY')!);\nconst endpointSecret = Deno.env.get('STRIPE_WEBHOOK_SECRET')!;\n\nDeno.serve(async (req: Request) => {\n  const body = await req.text();\n  const signature = req.headers.get('stripe-signature')!;\n\n  let event: Stripe.Event;\n  try {\n    event = stripe.webhooks.constructEvent(body, signature, endpointSecret);\n  } catch (err) {\n    return new Response(`Webhook Error: ${err.message}`, { status: 400 });\n  }\n\n  switch (event.type) {\n    case 'checkout.session.completed': {\n      const session = event.data.object;\n      // Handle successful payment\n      break;\n    }\n    case 'invoice.payment_failed': {\n      // Handle failed payment\n      break;\n    }\n  }\n\n  return new Response(JSON.stringify({ received: true }), {\n    headers: { 'Content-Type': 'application/json' },\n  });\n});\n```\n\n## Environment Variables\n\n| Variable | Purpose |\n|----------|----------|\n| `SUPABASE_URL` | Auto-injected project URL |\n| `SUPABASE_ANON_KEY` | Auto-injected anon key |\n| `SUPABASE_SERVICE_ROLE_KEY` | Auto-injected service role key |\n| `SUPABASE_DB_URL` | Auto-injected Postgres connection |\n",
+  "sections": [
+    {
+      "id": "create-deploy",
+      "title": "Create and deploy",
+      "body": "`supabase functions new <name>` creates `supabase/functions/<name>/index.ts`. Write a `Deno.serve()` handler using Web Standard Request/Response. `supabase functions serve` for local dev. `supabase functions deploy <name>` to deploy. Each function gets its own URL: `https://<ref>.supabase.co/functions/v1/<name>`.",
+      "tags": ["create", "deploy", "serve", "deno", "handler"]
+    },
+    {
+      "id": "invoke",
+      "title": "Invoking functions",
+      "body": "From the SDK: `supabase.functions.invoke('name', { body })`. Via HTTP: POST to the function URL with `Authorization: Bearer <key>` header. The anon key is passed automatically by the SDK. For unauthenticated access, set `--no-verify-jwt` when deploying. Functions receive the caller's JWT in the Authorization header.",
+      "tags": ["invoke", "call", "sdk", "http", "curl"]
+    },
+    {
+      "id": "secrets",
+      "title": "Secrets and environment",
+      "body": "`supabase secrets set KEY=value` stores encrypted env vars for functions. `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, and `SUPABASE_DB_URL` are auto-injected. Access with `Deno.env.get('KEY')`. For local dev, use `--env-file .env.local` with `supabase functions serve`.",
+      "tags": ["secrets", "env", "environment", "configuration"]
+    },
+    {
+      "id": "patterns",
+      "title": "Common patterns",
+      "body": "**Webhook handler**: Verify signature, parse event, process. **API proxy**: Call third-party APIs with server-side secrets. **Auth guard**: Extract JWT from Authorization header, call `supabase.auth.getUser()`. **Admin operations**: Use service role client to bypass RLS. **CORS**: Handle OPTIONS preflight and set Access-Control headers.",
+      "tags": ["webhook", "api-proxy", "auth-guard", "admin", "cors"]
+    }
+  ],
+  "links": [
+    { "uri": "supabase/cli", "context": "CLI commands for function management" },
+    { "uri": "supabase/client", "context": "Invoke functions via supabase.functions.invoke()" },
+    { "uri": "supabase/auth", "context": "Functions receive the caller's JWT for auth" },
+    { "uri": "supabase/database", "context": "Functions can query the database with service role" },
+    { "uri": "stripe/webhooks", "context": "Handle Stripe webhooks in edge functions" },
+    { "uri": "openai", "context": "Call OpenAI APIs from edge functions" }
+  ],
+  "related": [
+    { "uri": "supabase/cli", "relation": "see-also", "note": "CLI manages function creation, serving, and deployment" },
+    { "uri": "cloudflare/workers", "relation": "alternative", "note": "Cloudflare Workers are an alternative edge compute platform" },
+    { "uri": "vercel/serverless", "relation": "alternative", "note": "Vercel Serverless Functions are a Node.js-based alternative" },
+    { "uri": "aws/lambda", "relation": "alternative", "note": "AWS Lambda is a traditional serverless alternative" }
+  ],
+  "scripts": [
+    {
+      "id": "create-function",
+      "name": "Create and scaffold edge function",
+      "description": "Create a new Supabase edge function with CORS and auth boilerplate",
+      "lang": "bash",
+      "runtime": "bash",
+      "entry": "./scripts/create-function.sh",
+      "env": {},
+      "packages": ["supabase"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "description": "Function name (lowercase, hyphens)" },
+        "body": { "type": "object", "description": "JSON body to send to the function" },
+        "headers": { "type": "object", "description": "Additional headers" }
+      },
+      "required": ["name"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "data": { "description": "Function response data" },
+        "error": { "type": "object", "description": "Error if invocation failed" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "supabase/cli", "reason": "CLI is required for function creation, serving, and deployment" }
+  ],
+  "more": {
+    "docs": "https://supabase.com/docs/guides/functions",
+    "api": "https://supabase.com/docs/reference/javascript/functions-invoke",
+    "examples": "https://github.com/supabase/supabase/tree/master/examples/edge-functions"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "6 min",
+    "prerequisites": ["supabase/cli"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

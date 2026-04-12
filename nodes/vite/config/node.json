@@ -1,0 +1,176 @@
+{
+  "name": "config",
+  "version": "1.0.0",
+  "uri": "vite/config",
+  "type": "skill",
+  "context": "Create and configure vite.config.ts/js with defineConfig, conditional config, resolve.alias, CSS modules, preprocessors, and shared options",
+  "info": "This skill covers creating and configuring the Vite configuration file (vite.config.ts, vite.config.js, vite.config.mts, or vite.config.mjs). The defineConfig helper provides type-safe IntelliSense without manual type annotations. Config can be a static object or a function that receives { command, mode, isSsrBuild, isPreview } for conditional logic (e.g., different plugins for dev vs build). Async config is supported — return a promise or use top-level await for dynamic imports. The loadEnv(mode, envDir, prefixes?) helper reads .env files into a record, useful when config itself needs env values (import.meta.env is not available in config). Shared options include root (project root), base (public base path for deployment), mode (development/production/custom), define (global constant replacements at build time), plugins (array of Vite/Rollup plugins — see [[vite/plugins]]), publicDir (static assets copied as-is), cacheDir (dependency pre-bundle cache), resolve.alias (path mapping like @ -> ./src, compatible with [[typescript/config]] paths), resolve.extensions (import resolution order), css.modules (CSS Modules scoping and naming), css.preprocessorOptions (Sass/Less/Stylus global config), css.postcss (inline PostCSS config or path), css.lightningcss (Lightning CSS options), json.stringify (performance optimization), esbuild/oxc (transpiler options), assetsInclude (extra asset file extensions), logLevel (info/warn/error/silent), envDir (.env file directory), envPrefix (client-exposed env prefix, default VITE_), and appType (spa/mpa/custom). Server options are covered in [[vite/dev-server]], build options in [[vite/build]], preview in [[vite/dev-server]], SSR config in [[vite/build]], and environment variables in [[vite/env]].",
+  "parent": "vite",
+  "tags": ["config", "vite-config", "defineconfig", "resolve-alias", "css-modules", "css-preprocessors", "loadenv", "conditional-config", "path-alias", "vite-setup"],
+  "aliases": [
+    "vite config",
+    "vite.config.ts",
+    "vite.config.js",
+    "vite configuration",
+    "defineConfig",
+    "vite setup",
+    "configure vite",
+    "vite.config.mts",
+    "vite config file",
+    "vite resolve alias"
+  ],
+  "triggers": [
+    "create a vite config",
+    "configure vite",
+    "set up vite.config.ts",
+    "add path aliases in vite",
+    "configure css modules in vite",
+    "set up resolve alias in vite",
+    "use loadEnv in vite config",
+    "conditional vite config for dev and build",
+    "add sass to vite",
+    "define global constants in vite",
+    "vite config with react plugin",
+    "configure vite for vue",
+    "set up vite config from scratch"
+  ],
+  "body": "# Vite Configuration\n\nVite configuration lives in `vite.config.ts` (or `.js`/`.mts`/`.mjs`) at the project root. The `defineConfig` helper from `vite` provides full type safety without manual type annotations.\n\n## Basic Config\n\n```typescript\n// vite.config.ts\nimport { defineConfig } from 'vite';\nimport react from '@vitejs/plugin-react';\n\nexport default defineConfig({\n  plugins: [react()],\n  resolve: {\n    alias: {\n      '@': '/src',\n    },\n  },\n});\n```\n\nThe config file is auto-detected in this order: `vite.config.ts`, `vite.config.mts`, `vite.config.js`, `vite.config.mjs`, `vite.config.cjs`, `vite.config.cts`. Use `--config path/to/config.ts` to specify a custom location.\n\n## Conditional Config\n\nPass a function to `defineConfig` to access the current command and mode:\n\n```typescript\nimport { defineConfig } from 'vite';\n\nexport default defineConfig(({ command, mode, isSsrBuild, isPreview }) => {\n  if (command === 'serve') {\n    // Dev-specific config\n    return {\n      define: {\n        __DEV__: true,\n      },\n    };\n  } else {\n    // Build-specific config (command === 'build')\n    return {\n      define: {\n        __DEV__: false,\n      },\n    };\n  }\n});\n```\n\n`command` is `'serve'` during dev (`vite`, `vite dev`, `vite serve`) and `'build'` during production (`vite build`). `mode` defaults to `'development'` for serve and `'production'` for build, but can be overridden with `--mode`.\n\n## Async Config\n\nThe config function can be async — useful for dynamic imports or fetching configuration:\n\n```typescript\nimport { defineConfig } from 'vite';\n\nexport default defineConfig(async ({ command, mode }) => {\n  const data = await fetchRemoteConfig();\n  return {\n    define: {\n      __API_URL__: JSON.stringify(data.apiUrl),\n    },\n  };\n});\n```\n\n## Using loadEnv\n\n`import.meta.env` is not available inside the config file. Use `loadEnv` to read `.env` values during configuration:\n\n```typescript\nimport { defineConfig, loadEnv } from 'vite';\n\nexport default defineConfig(({ mode }) => {\n  // Load all env vars (including those without VITE_ prefix)\n  const env = loadEnv(mode, process.cwd(), '');\n\n  return {\n    define: {\n      __APP_TITLE__: JSON.stringify(env.APP_TITLE),\n    },\n    server: {\n      proxy: {\n        '/api': {\n          target: env.API_URL,\n          changeOrigin: true,\n        },\n      },\n    },\n  };\n});\n```\n\nThe third argument to `loadEnv` controls which prefixes to load. Pass `''` (empty string) to load all env vars, not just `VITE_`-prefixed ones. Pass `['VITE_', 'APP_']` to load multiple prefixes. See [[vite/env]] for full `.env` file behavior.\n\n## resolve.alias\n\nSet up path aliases so `import Foo from '@/components/Foo'` resolves to `./src/components/Foo`:\n\n```typescript\nimport { defineConfig } from 'vite';\nimport path from 'node:path';\n\nexport default defineConfig({\n  resolve: {\n    alias: {\n      '@': path.resolve(__dirname, 'src'),\n      '@components': path.resolve(__dirname, 'src/components'),\n      '@utils': path.resolve(__dirname, 'src/utils'),\n      '@assets': path.resolve(__dirname, 'src/assets'),\n    },\n  },\n});\n```\n\nFor TypeScript projects, mirror these aliases in `tsconfig.json` so the compiler resolves them too. See [[typescript/config]] for `paths` configuration:\n\n```json\n{\n  \"compilerOptions\": {\n    \"baseUrl\": \".\",\n    \"paths\": {\n      \"@/*\": [\"src/*\"],\n      \"@components/*\": [\"src/components/*\"],\n      \"@utils/*\": [\"src/utils/*\"],\n      \"@assets/*\": [\"src/assets/*\"]\n    }\n  }\n}\n```\n\nAlternatively, use the `vite-tsconfig-paths` plugin to automatically read aliases from tsconfig.json, avoiding duplication.\n\n## CSS Configuration\n\nVite handles CSS out of the box. Configure modules, preprocessors, and PostCSS via the `css` option:\n\n```typescript\nimport { defineConfig } from 'vite';\n\nexport default defineConfig({\n  css: {\n    // CSS Modules options\n    modules: {\n      localsConvention: 'camelCaseOnly',  // export class names as camelCase\n      scopeBehaviour: 'local',            // default: 'local'\n      generateScopedName: '[name]__[local]___[hash:base64:5]',\n    },\n\n    // Preprocessor options (requires installing the preprocessor)\n    preprocessorOptions: {\n      scss: {\n        // Inject variables/mixins into every .scss file\n        additionalData: `@use \"@/styles/variables\" as *;`,\n        api: 'modern-compiler',  // use modern Sass API (recommended)\n      },\n      less: {\n        math: 'always',\n        globalVars: {\n          primaryColor: '#4f46e5',\n        },\n      },\n    },\n\n    // PostCSS config (overrides postcss.config.js)\n    postcss: {\n      plugins: [\n        // inline PostCSS plugins\n      ],\n    },\n\n    // Use Lightning CSS instead of PostCSS (experimental)\n    // lightningcss: {\n    //   targets: browserslistToTargets(browserslist('>= 0.25%')),\n    // },\n  },\n});\n```\n\nCSS Modules are activated by naming files with `.module.css` (or `.module.scss`, `.module.less`). Install preprocessors separately: `npm i -D sass` for Sass, `npm i -D less` for Less, `npm i -D stylus` for Stylus.\n\n## define — Global Constants\n\nReplace global identifiers at build time. Values are replaced as-is during development and statically replaced during build:\n\n```typescript\nimport { defineConfig } from 'vite';\n\nexport default defineConfig({\n  define: {\n    __APP_VERSION__: JSON.stringify('1.2.3'),\n    __BUILD_TIME__: JSON.stringify(new Date().toISOString()),\n    __DEV__: JSON.stringify(process.env.NODE_ENV !== 'production'),\n    'process.env.CUSTOM': JSON.stringify('value'),\n  },\n});\n```\n\nString values must be wrapped in `JSON.stringify()` so they include quotes in the replacement. For TypeScript, declare the globals in a `.d.ts` file:\n\n```typescript\n// src/env.d.ts\ndeclare const __APP_VERSION__: string;\ndeclare const __BUILD_TIME__: string;\ndeclare const __DEV__: boolean;\n```\n\n## Framework Plugin Quick Reference\n\n| Framework | Plugin Package | Import |\n|-----------|---------------|--------|\n| React | `@vitejs/plugin-react` | `import react from '@vitejs/plugin-react'` |\n| React (SWC) | `@vitejs/plugin-react-swc` | `import react from '@vitejs/plugin-react-swc'` |\n| Vue | `@vitejs/plugin-vue` | `import vue from '@vitejs/plugin-vue'` |\n| Svelte | `@sveltejs/vite-plugin-svelte` | `import { svelte } from '@sveltejs/vite-plugin-svelte'` |\n| Solid | `vite-plugin-solid` | `import solid from 'vite-plugin-solid'` |\n| Preact | `@preact/preset-vite` | `import preact from '@preact/preset-vite'` |\n\nSee [[vite/plugins]] for plugin authoring and advanced plugin configuration.\n\n## All Shared Options\n\n| Option | Type | Default | Description |\n|--------|------|---------|-------------|\n| `root` | `string` | `process.cwd()` | Project root directory |\n| `base` | `string` | `'/'` | Public base path for deployment |\n| `mode` | `string` | `'development'`/`'production'` | Environment mode |\n| `define` | `Record<string, any>` | — | Global constant replacements |\n| `plugins` | `(Plugin \\| Plugin[])[]` | `[]` | Vite/Rollup plugins |\n| `publicDir` | `string \\| false` | `'public'` | Static asset directory |\n| `cacheDir` | `string` | `'node_modules/.vite'` | Pre-bundle cache directory |\n| `resolve.alias` | `Record<string, string>` | — | Import path aliases |\n| `resolve.extensions` | `string[]` | `['.mjs', '.js', '.mts', '.ts', '.jsx', '.tsx', '.json']` | Import resolution extensions |\n| `envDir` | `string` | `root` | Directory to search for .env files |\n| `envPrefix` | `string \\| string[]` | `'VITE_'` | Env vars exposed to client |\n| `appType` | `'spa' \\| 'mpa' \\| 'custom'` | `'spa'` | Application type |\n| `logLevel` | `'info' \\| 'warn' \\| 'error' \\| 'silent'` | `'info'` | Console output level |\n| `assetsInclude` | `string \\| RegExp \\| (string \\| RegExp)[]` | — | Extra asset file patterns |\n",
+  "sections": [
+    {
+      "id": "basic-config",
+      "title": "Basic config with defineConfig",
+      "body": "Create `vite.config.ts` at the project root and export a config object wrapped in `defineConfig` for type safety. Import and add the appropriate framework plugin to the `plugins` array: `@vitejs/plugin-react` for React, `@vitejs/plugin-vue` for Vue, `@sveltejs/vite-plugin-svelte` for Svelte, `vite-plugin-solid` for Solid. The config file uses native ESM — ensure `\"type\": \"module\"` is set in package.json or use `.mts`/`.mjs` extension. See [[vite/plugins]] for all framework plugins.",
+      "tags": ["basic", "defineconfig", "setup", "framework-plugin"]
+    },
+    {
+      "id": "conditional-config",
+      "title": "Conditional config (dev vs build)",
+      "body": "Pass a function to `defineConfig` that receives `{ command, mode, isSsrBuild, isPreview }`. `command` is `'serve'` during development and `'build'` during production. `mode` defaults to `'development'` or `'production'` but can be overridden with `--mode staging`. Use this to apply different plugins, define values, or server settings per environment. The function can be async for dynamic imports or remote config fetching.",
+      "tags": ["conditional", "command", "mode", "async-config", "environment"]
+    },
+    {
+      "id": "resolve-alias",
+      "title": "resolve.alias for path mapping",
+      "body": "Map import aliases like `@` to `./src` using `resolve.alias`. Values must be absolute paths — use `path.resolve(__dirname, 'src')` or `new URL('./src', import.meta.url).pathname`. For TypeScript, mirror aliases in `tsconfig.json` `compilerOptions.paths` (see [[typescript/config]]) or install `vite-tsconfig-paths` to read them automatically. Common pattern: `@` -> `src`, `@components` -> `src/components`, `@utils` -> `src/utils`. The `resolve.extensions` array controls which extensions are tried during resolution; the default covers `.mjs`, `.js`, `.mts`, `.ts`, `.jsx`, `.tsx`, `.json`.",
+      "tags": ["resolve", "alias", "path-mapping", "tsconfig-paths", "extensions"]
+    },
+    {
+      "id": "css-config",
+      "title": "CSS configuration: modules, preprocessors, PostCSS",
+      "body": "Configure CSS Modules via `css.modules` — set `localsConvention` to `'camelCaseOnly'` for cleaner imports, customize `generateScopedName` for readable class names in dev. Activate CSS Modules by naming files `.module.css` (or `.module.scss`/`.module.less`). Configure preprocessors via `css.preprocessorOptions`: inject global Sass variables with `additionalData`, set Less `globalVars`, or configure Stylus `define`. Install preprocessors separately (`npm i -D sass`). Override `postcss.config.js` with `css.postcss` for inline PostCSS configuration. Lightning CSS (`css.lightningcss`) is an alternative to PostCSS for transforms and minification.",
+      "tags": ["css", "css-modules", "sass", "scss", "less", "postcss", "preprocessor", "lightning-css"]
+    },
+    {
+      "id": "define-globals",
+      "title": "define — global constant replacement",
+      "body": "The `define` option replaces global identifiers with constant values at build time. String replacements must be wrapped in `JSON.stringify()` so the output includes quotes. Common uses: `__APP_VERSION__` for package version, `__DEV__` for development-only code, `__BUILD_TIME__` for build timestamps. For TypeScript, declare these globals in a `.d.ts` file (e.g., `src/env.d.ts`) so the compiler recognizes them. During development, values are injected as-is; during build, they are statically replaced and dead-code eliminated.",
+      "tags": ["define", "global-constants", "build-time", "dead-code-elimination"]
+    },
+    {
+      "id": "loadenv",
+      "title": "loadEnv for env vars in config",
+      "body": "Import `loadEnv` from `vite` to read `.env` files inside the config. Call `loadEnv(mode, envDir, prefixes?)` where `mode` matches the current Vite mode, `envDir` is the directory containing `.env` files (usually `process.cwd()`), and `prefixes` controls which env vars are loaded (default: `'VITE_'`, pass `''` for all vars). This is necessary because `import.meta.env` is not available during config evaluation. Common use: reading `API_URL` from `.env` to configure `server.proxy`, or reading `APP_TITLE` for `define` replacements. See [[vite/env]] for `.env` file naming and precedence.",
+      "tags": ["loadenv", "env", "dotenv", "environment-variables"]
+    },
+    {
+      "id": "shared-options",
+      "title": "Shared options reference",
+      "body": "Top-level options that affect both dev and build: `root` (project root, default `process.cwd()`), `base` (public base path for CDN/subpath deployment), `mode` (env mode override), `plugins` (array of Vite/Rollup plugins), `publicDir` (static assets directory, default `'public'`), `cacheDir` (pre-bundle cache, default `'node_modules/.vite'`), `resolve` (alias, extensions, conditions, mainFields), `css` (modules, preprocessorOptions, postcss, lightningcss), `json` (namedExports, stringify), `esbuild`/`oxc` (transpiler options), `assetsInclude` (extra asset patterns), `logLevel`, `envDir`, `envPrefix`, `appType`. Server options are in [[vite/dev-server]], build options in [[vite/build]].",
+      "tags": ["shared-options", "root", "base", "publicdir", "cachedir", "loglevel", "apptype"]
+    }
+  ],
+  "links": [
+    { "uri": "vite/plugins", "context": "Add and configure Vite plugins for React, Vue, Svelte, Solid" },
+    { "uri": "vite/dev-server", "context": "Dev server options: host, port, proxy, HMR, HTTPS" },
+    { "uri": "vite/build", "context": "Production build options: targets, minification, sourcemaps, library mode" },
+    { "uri": "vite/env", "context": "Environment variables, .env files, VITE_ prefix, import.meta.env" },
+    { "uri": "vite/troubleshooting", "context": "Debug common Vite issues" },
+    { "uri": "typescript/config", "context": "Mirror resolve.alias in tsconfig.json paths for TypeScript" },
+    { "uri": "tailwind/config", "context": "Tailwind CSS integrates via Vite plugin or PostCSS" },
+    { "uri": "testing/vitest", "context": "Vitest reuses vite.config.ts for test configuration" }
+  ],
+  "related": [
+    { "uri": "vite", "relation": "prerequisite", "note": "Vite must be installed in the project before configuring" },
+    { "uri": "vite/env", "relation": "see-also", "note": "Environment variables and .env file loading in Vite" },
+    { "uri": "typescript/config", "relation": "see-also", "note": "TypeScript paths must mirror resolve.alias for editor support" },
+    { "uri": "vite/plugins", "relation": "see-also", "note": "Plugins are the primary extension point configured in vite.config" },
+    { "uri": "testing/vitest", "relation": "see-also", "note": "Vitest reads vite.config.ts and extends it for testing" }
+  ],
+  "scripts": [
+    {
+      "id": "init-config",
+      "name": "Initialize Vite Config",
+      "description": "Create a vite.config.ts (or .js) with defineConfig, framework plugin, and resolve.alias for the given framework",
+      "lang": "bash",
+      "runtime": "node>=20",
+      "entry": "./scripts/init-config.sh",
+      "env": {
+        "FRAMEWORK": { "required": false, "description": "Framework: react, vue, svelte, solid, or vanilla (default: vanilla)" },
+        "USE_TYPESCRIPT": { "required": false, "description": "Whether to use TypeScript config (default: true)" },
+        "PROJECT_DIR": { "required": false, "description": "Target project directory (default: current directory)" }
+      },
+      "packages": ["vite"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "framework": {
+          "type": "string",
+          "enum": ["react", "vue", "svelte", "solid", "vanilla"],
+          "default": "vanilla",
+          "description": "Target framework for plugin selection"
+        },
+        "typescript": {
+          "type": "boolean",
+          "default": true,
+          "description": "Use TypeScript for the config file"
+        },
+        "aliases": {
+          "type": "object",
+          "additionalProperties": { "type": "string" },
+          "description": "Path alias mappings (e.g., { \"@\": \"./src\" })"
+        },
+        "cssModules": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable CSS Modules configuration with camelCase convention"
+        }
+      }
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "configPath": {
+          "type": "string",
+          "description": "Absolute path to the generated vite.config.ts or vite.config.js"
+        }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "vite", "reason": "Vite must be installed in the project" }
+  ],
+  "more": {
+    "docs": "https://vite.dev/config/",
+    "repo": "https://github.com/vitejs/vite",
+    "shared-options": "https://vite.dev/config/shared-options",
+    "api": "https://vite.dev/guide/api-javascript"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "7 min",
+    "prerequisites": ["vite"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

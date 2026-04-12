@@ -1,0 +1,124 @@
+{
+  "name": "rls",
+  "version": "1.0.0",
+  "uri": "supabase/rls",
+  "type": "skill",
+  "context": "Row Level Security — write Postgres policies that control per-user data access using auth.uid() and auth.jwt()",
+  "info": "Row Level Security (RLS) is Postgres's built-in mechanism for controlling which rows a user can SELECT, INSERT, UPDATE, or DELETE. Supabase enables RLS by default on new tables. Policies use `auth.uid()` (the authenticated user's UUID from the JWT) and `auth.jwt()` (the full JWT payload) to filter rows. Without RLS policies, tables with RLS enabled return zero rows to the anon key. The service role key bypasses RLS entirely. Policies are written in SQL and applied per-table, per-operation. Common patterns: users read/write their own data, public read access, role-based access via JWT claims. RLS is the security foundation of Supabase — it's what makes the anon key safe to expose publicly.",
+  "parent": "supabase",
+  "tags": ["rls", "row-level-security", "policies", "security", "auth-uid", "access-control", "permissions"],
+  "aliases": [
+    "supabase rls",
+    "row level security",
+    "supabase policies",
+    "rls policies",
+    "supabase security",
+    "supabase permissions",
+    "supabase access control",
+    "auth.uid()",
+    "supabase row policies"
+  ],
+  "triggers": [
+    "add row level security",
+    "write rls policies",
+    "secure supabase table",
+    "restrict access to user data",
+    "enable rls on table",
+    "supabase policy for authenticated users",
+    "allow users to read own data",
+    "supabase auth.uid policy",
+    "public read access policy"
+  ],
+  "body": "# Row Level Security (RLS)\n\nRLS is Postgres's built-in security layer that controls per-row access. It's what makes Supabase's anon key safe to expose — policies enforce who can see and modify which rows.\n\n## Enable RLS\n\n```sql\n-- Enable RLS on a table (required for policies to take effect)\nALTER TABLE posts ENABLE ROW LEVEL SECURITY;\n\n-- Force RLS for table owners too (recommended)\nALTER TABLE posts FORCE ROW LEVEL SECURITY;\n```\n\n**Without RLS enabled**, any authenticated user can read/write all rows. **With RLS enabled but no policies**, the table returns zero rows to non-superusers.\n\n## Core Functions\n\n| Function | Returns | Use |\n|----------|---------|------|\n| `auth.uid()` | UUID | The authenticated user's ID from the JWT |\n| `auth.jwt()` | JSON | The full JWT payload (role, metadata, etc.) |\n| `auth.role()` | text | The JWT role (`anon`, `authenticated`, `service_role`) |\n\n## Common Policy Patterns\n\n### Users read their own data\n\n```sql\nCREATE POLICY \"Users can read own profiles\"\n  ON profiles FOR SELECT\n  USING (auth.uid() = user_id);\n```\n\n### Users CRUD their own data\n\n```sql\nCREATE POLICY \"Users can insert own posts\"\n  ON posts FOR INSERT\n  WITH CHECK (auth.uid() = user_id);\n\nCREATE POLICY \"Users can update own posts\"\n  ON posts FOR UPDATE\n  USING (auth.uid() = user_id)\n  WITH CHECK (auth.uid() = user_id);\n\nCREATE POLICY \"Users can delete own posts\"\n  ON posts FOR DELETE\n  USING (auth.uid() = user_id);\n```\n\n### Public read, authenticated write\n\n```sql\n-- Anyone can read published posts\nCREATE POLICY \"Public can read published posts\"\n  ON posts FOR SELECT\n  USING (published = true);\n\n-- Authenticated users can insert\nCREATE POLICY \"Authenticated users can insert\"\n  ON posts FOR INSERT\n  TO authenticated\n  WITH CHECK (auth.uid() = user_id);\n```\n\n### Role-based access via JWT metadata\n\n```sql\n-- Admin-only access using user metadata\nCREATE POLICY \"Admins can do everything\"\n  ON posts FOR ALL\n  USING (\n    (auth.jwt() -> 'user_metadata' ->> 'role') = 'admin'\n  );\n```\n\n### Team/organization access\n\n```sql\n-- Users can access data from their team\nCREATE POLICY \"Team members can read team data\"\n  ON team_documents FOR SELECT\n  USING (\n    team_id IN (\n      SELECT team_id FROM team_members\n      WHERE user_id = auth.uid()\n    )\n  );\n```\n\n### Service role bypass\n\nThe service role key bypasses all RLS. Use it server-side for admin operations:\n\n```typescript\nimport { createClient } from '@supabase/supabase-js';\n\n// This client bypasses all RLS policies\nconst supabaseAdmin = createClient(\n  process.env.SUPABASE_URL!,\n  process.env.SUPABASE_SERVICE_ROLE_KEY!,\n  { auth: { autoRefreshToken: false, persistSession: false } }\n);\n```\n\n## Policy Anatomy\n\n```sql\nCREATE POLICY \"policy_name\"\n  ON table_name\n  FOR operation          -- SELECT | INSERT | UPDATE | DELETE | ALL\n  TO role                -- anon | authenticated | service_role (optional)\n  USING (condition)      -- Filter for SELECT/UPDATE/DELETE (which rows are visible)\n  WITH CHECK (condition) -- Validation for INSERT/UPDATE (which rows can be written)\n```\n\n- **USING**: Filters which existing rows are visible. Used by SELECT, UPDATE (which rows to update), DELETE.\n- **WITH CHECK**: Validates new/modified row data. Used by INSERT and UPDATE (the new values).\n- **FOR UPDATE** needs both: USING filters which rows to update, WITH CHECK validates the new values.\n\n## Debugging Policies\n\n```sql\n-- List all policies on a table\nSELECT * FROM pg_policies WHERE tablename = 'posts';\n\n-- Test a policy by setting the JWT\nSET request.jwt.claims = '{\"sub\": \"user-uuid-here\", \"role\": \"authenticated\"}';\nSELECT * FROM posts;  -- See what this user would see\nRESET request.jwt.claims;\n```\n\n## Performance\n\n- Add indexes on columns used in RLS policies (e.g., `user_id`, `team_id`)\n- Avoid subqueries in policies when possible — use joins or materialized views for complex access patterns\n- Use `security definer` functions for complex policy logic to avoid permission issues\n\n```sql\n-- Create an index for RLS performance\nCREATE INDEX idx_posts_user_id ON posts(user_id);\n```\n\n## Common Mistakes\n\n1. **Forgetting to enable RLS** — table is wide open\n2. **No policies after enabling RLS** — table returns zero rows\n3. **Missing WITH CHECK on INSERT** — inserts fail silently\n4. **Not indexing policy columns** — slow queries on large tables\n5. **Using `getSession()` server-side** — JWT not verified, can be spoofed\n",
+  "sections": [
+    {
+      "id": "enable",
+      "title": "Enabling RLS",
+      "body": "`ALTER TABLE x ENABLE ROW LEVEL SECURITY` activates RLS. Until policies are added, the table returns zero rows to non-superusers. `FORCE ROW LEVEL SECURITY` also applies policies to the table owner. Always enable RLS on all tables that hold user data.",
+      "tags": ["enable", "activate", "force", "setup"]
+    },
+    {
+      "id": "auth-functions",
+      "title": "Auth helper functions",
+      "body": "`auth.uid()` returns the authenticated user's UUID from `sub` in the JWT. `auth.jwt()` returns the full JWT as JSON — access claims with `auth.jwt() ->> 'email'` or nested metadata with `auth.jwt() -> 'user_metadata' ->> 'role'`. `auth.role()` returns the role: `anon` for unauthenticated, `authenticated` for logged-in users, `service_role` for server-side admin.",
+      "tags": ["auth-uid", "auth-jwt", "auth-role", "claims", "uuid"]
+    },
+    {
+      "id": "patterns",
+      "title": "Common policy patterns",
+      "body": "**Own data**: `USING (auth.uid() = user_id)`. **Public read**: `FOR SELECT USING (true)` or condition like `published = true`. **Role-based**: check `auth.jwt() -> 'user_metadata'`. **Team access**: subquery on membership table. **Admin bypass**: check role claim in JWT metadata. Combine patterns by creating multiple policies — Postgres ORs them together for the same operation.",
+      "tags": ["patterns", "own-data", "public", "role-based", "team", "admin"]
+    },
+    {
+      "id": "using-vs-check",
+      "title": "USING vs WITH CHECK",
+      "body": "`USING` filters which existing rows are visible (read path). `WITH CHECK` validates new data being written (write path). SELECT needs only USING. INSERT needs only WITH CHECK. UPDATE needs both: USING determines which rows can be updated, WITH CHECK validates the new values. DELETE needs only USING.",
+      "tags": ["using", "with-check", "select", "insert", "update", "delete"]
+    }
+  ],
+  "links": [
+    { "uri": "supabase/auth", "context": "Auth issues the JWTs that RLS policies evaluate" },
+    { "uri": "supabase/database", "context": "All database queries are subject to RLS" },
+    { "uri": "supabase/client", "context": "Service role client bypasses RLS" },
+    { "uri": "supabase/migrations", "context": "Define RLS policies in migration files" },
+    { "uri": "postgres", "context": "RLS is a native Postgres feature" }
+  ],
+  "related": [
+    { "uri": "supabase/auth", "relation": "prerequisite", "note": "Auth provides the JWT claims that RLS policies evaluate" },
+    { "uri": "supabase/database", "relation": "see-also", "note": "RLS policies filter all query results from the database" },
+    { "uri": "postgres", "relation": "implements", "note": "RLS is Postgres's native row-level security feature" }
+  ],
+  "scripts": [
+    {
+      "id": "rls-setup",
+      "name": "Set up RLS policies",
+      "description": "SQL script to enable RLS and create common policies",
+      "lang": "bash",
+      "runtime": "bash",
+      "entry": "./scripts/rls-setup.sh",
+      "env": {
+        "SUPABASE_DB_URL": { "required": true, "secret": true, "description": "Postgres connection string" }
+      },
+      "packages": []
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "table": { "type": "string", "description": "Table to secure with RLS" },
+        "ownerColumn": { "type": "string", "default": "user_id", "description": "Column containing the owner's user ID" },
+        "publicRead": { "type": "boolean", "default": false, "description": "Allow public read access" }
+      },
+      "required": ["table"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "sql": { "type": "string", "description": "Generated SQL for RLS policies" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "supabase/auth", "reason": "RLS policies depend on auth.uid() and auth.jwt() from authenticated sessions" }
+  ],
+  "more": {
+    "docs": "https://supabase.com/docs/guides/database/postgres/row-level-security",
+    "postgres": "https://www.postgresql.org/docs/current/ddl-rowsecurity.html"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "6 min",
+    "prerequisites": ["supabase/auth", "postgres"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

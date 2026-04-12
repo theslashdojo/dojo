@@ -1,0 +1,109 @@
+{
+  "name": "scripting",
+  "version": "1.0.0",
+  "uri": "shell/scripting",
+  "type": "context",
+  "content_type": "guide",
+  "context": "Write robust shell scripts with variables, conditionals, loops, functions, arrays, error handling, and traps",
+  "info": "Shell scripting turns one-off commands into repeatable, automated workflows. This context covers the complete scripting toolkit: shebang lines and portability, variables and arrays, conditionals (if/elif/else, case), loops (for, while, until), functions and return values, argument parsing ($1, $@, getopts), error handling (set -euo pipefail, trap), here-documents for templating, and best practices for robust scripts. Agents generate and execute shell scripts for build automation, deployment, data processing, environment setup, and system administration. See [[shell/bash]] for command syntax, [[shell/environment]] for configuration, [[shell/pipes]] for data flow, and [[shell/processes]] for process control within scripts.",
+  "parent": "shell",
+  "tags": ["scripting", "script", "shebang", "if", "for", "while", "function", "set-e", "trap", "arrays"],
+  "aliases": [
+    "shell script",
+    "bash script",
+    "shell scripting",
+    "bash scripting",
+    "shebang",
+    "script writing",
+    "automation script",
+    "set -e",
+    "set -euo pipefail",
+    "trap",
+    "getopts",
+    "bash function"
+  ],
+  "triggers": [
+    "write a shell script",
+    "write a bash script",
+    "use if/else in bash",
+    "loop over files in bash",
+    "parse arguments in a script",
+    "handle errors in a script",
+    "use trap for cleanup",
+    "define a function in bash",
+    "use arrays in bash",
+    "set -euo pipefail"
+  ],
+  "body": "# Shell Scripting\n\nShell scripts automate sequences of commands. A well-written script is repeatable, handles errors gracefully, and clearly communicates its intent.\n\n## Script Structure\n\n```bash\n#!/bin/bash\nset -euo pipefail\n\n# Description: What this script does\n# Usage: ./script.sh [options] <arguments>\n\n# ─── Configuration ──────────────────────\nREADONLY_VAR=\"immutable\"\nDEFAULT_PORT=\"${PORT:-8080}\"\n\n# ─── Functions ──────────────────────────\nusage() {\n  echo \"Usage: $0 [-v] [-p port] <name>\" >&2\n  exit 1\n}\n\nlog() {\n  echo \"[$(date '+%Y-%m-%d %H:%M:%S')] $*\" >&2\n}\n\ncleanup() {\n  log \"Cleaning up...\"\n  rm -f \"$tmpfile\"\n}\n\n# ─── Main ───────────────────────────────\ntrap cleanup EXIT\n\ntmpfile=$(mktemp)\nlog \"Starting...\"\n\n# ... script logic ...\n\nlog \"Done.\"\n```\n\n## Shebang\n\nThe first line tells the kernel which interpreter to use:\n\n```bash\n#!/bin/bash          # Bash (most common)\n#!/bin/sh            # POSIX sh (portable)\n#!/usr/bin/env bash  # Find bash in PATH (portable across systems)\n#!/usr/bin/env python3  # Python scripts\n```\n\nAlways use `#!/usr/bin/env bash` for portability — Bash may live at `/bin/bash`, `/usr/bin/bash`, or `/usr/local/bin/bash` depending on the system.\n\nMake scripts executable: `chmod +x script.sh`\n\n## Variables\n\n```bash\n# Assignment (no spaces around =)\nname=\"world\"\ncount=0\n\n# Readonly\nreadonly VERSION=\"1.0.0\"\ndeclare -r CONFIG_DIR=\"/etc/myapp\"\n\n# Local (inside functions)\nmy_func() {\n  local result=\"computed value\"\n  echo \"$result\"\n}\n\n# Default values\nport=\"${PORT:-8080}\"       # Use 8080 if PORT is unset or empty\nhost=\"${HOST:=localhost}\"  # Same, but also assigns\n\n# Positional parameters\n# $0 — script name\n# $1, $2, ... — arguments\n# $# — number of arguments\n# $@ — all arguments (individually quoted when in \"$@\")\n# $* — all arguments as single string\n\necho \"Script: $0\"\necho \"First arg: $1\"\necho \"All args: $@\"\necho \"Arg count: $#\"\n```\n\n## Arrays\n\n```bash\n# Indexed array\nfruits=(\"apple\" \"banana\" \"cherry\")\necho \"${fruits[0]}\"          # apple\necho \"${fruits[@]}\"          # All elements\necho \"${#fruits[@]}\"         # Length: 3\n\n# Append\nfruits+=(\"date\")\n\n# Iterate\nfor fruit in \"${fruits[@]}\"; do\n  echo \"$fruit\"\ndone\n\n# Associative array (Bash 4+)\ndeclare -A config\nconfig[host]=\"localhost\"\nconfig[port]=\"8080\"\necho \"${config[host]}:${config[port]}\"\n\n# Iterate associative array\nfor key in \"${!config[@]}\"; do\n  echo \"$key=${config[$key]}\"\ndone\n\n# Array from command output\nfiles=($(find . -name '*.sh' -type f))\n# Safer (handles spaces):\nmapfile -t files < <(find . -name '*.sh' -type f)\n```\n\n## Conditionals\n\n```bash\n# if/elif/else\nif [[ -f \"$config_file\" ]]; then\n  source \"$config_file\"\nelif [[ -f \"$default_config\" ]]; then\n  source \"$default_config\"\nelse\n  echo \"No config found\" >&2\n  exit 1\nfi\n\n# Inline conditional\n[[ -d \"$dir\" ]] || mkdir -p \"$dir\"\n[[ -f \"$file\" ]] && rm \"$file\"\n\n# case statement (pattern matching)\ncase \"$1\" in\n  start)\n    start_server\n    ;;\n  stop)\n    stop_server\n    ;;\n  restart)\n    stop_server\n    start_server\n    ;;\n  -h|--help)\n    usage\n    ;;\n  *)\n    echo \"Unknown command: $1\" >&2\n    usage\n    ;;\nesac\n```\n\n## Loops\n\n```bash\n# for — iterate over list\nfor file in *.txt; do\n  echo \"Processing: $file\"\ndone\n\n# for — iterate over array\nfor item in \"${array[@]}\"; do\n  process \"$item\"\ndone\n\n# for — C-style\nfor (( i=0; i<10; i++ )); do\n  echo \"$i\"\ndone\n\n# while — condition loop\ncount=0\nwhile (( count < 5 )); do\n  echo \"$count\"\n  (( count++ ))\ndone\n\n# while — read lines from file\nwhile IFS= read -r line; do\n  echo \"Line: $line\"\ndone < input.txt\n\n# while — read lines from command\nwhile IFS= read -r file; do\n  echo \"Found: $file\"\ndone < <(find . -name '*.log')\n\n# until — loop until condition is true\nuntil curl -sf http://localhost:8080/health; do\n  echo \"Waiting for server...\" >&2\n  sleep 1\ndone\n\n# Infinite loop with break\nwhile true; do\n  read -r -p \"Continue? [y/n] \" answer\n  case \"$answer\" in\n    [Yy]) ;;\n    [Nn]) break ;;\n  esac\ndone\n```\n\n## Functions\n\n```bash\n# Define function\ngreet() {\n  local name=\"$1\"\n  echo \"Hello, $name!\"\n}\n\n# Call function\ngreet \"World\"\n\n# Return values (exit codes only, 0-255)\ncheck_file() {\n  [[ -f \"$1\" ]]   # Returns 0 (true) or 1 (false)\n}\n\nif check_file \"config.json\"; then\n  echo \"Config exists\"\nfi\n\n# Return data via stdout\nget_timestamp() {\n  date '+%Y%m%d-%H%M%S'\n}\nts=$(get_timestamp)\n\n# Return data via global variable\nresult=\"\"\ncompute() {\n  result=$(( $1 * 2 ))\n}\ncompute 21\necho \"$result\"   # 42\n```\n\n## Argument Parsing\n\n```bash\n# Simple positional arguments\nif [[ $# -lt 2 ]]; then\n  echo \"Usage: $0 <source> <dest>\" >&2\n  exit 1\nfi\nsource_dir=\"$1\"\ndest_dir=\"$2\"\n\n# getopts — short options\nverbose=false\nport=8080\nwhile getopts ':vp:h' opt; do\n  case \"$opt\" in\n    v) verbose=true ;;\n    p) port=\"$OPTARG\" ;;\n    h) usage ;;\n    :) echo \"Option -$OPTARG requires an argument\" >&2; exit 1 ;;\n    ?) echo \"Unknown option -$OPTARG\" >&2; exit 1 ;;\n  esac\ndone\nshift $((OPTIND - 1))  # Remove parsed options, leaving positional args\n\n# Manual long option parsing\nwhile [[ $# -gt 0 ]]; do\n  case \"$1\" in\n    --verbose) verbose=true; shift ;;\n    --port) port=\"$2\"; shift 2 ;;\n    --port=*) port=\"${1#*=}\"; shift ;;\n    --help) usage ;;\n    --) shift; break ;;\n    -*) echo \"Unknown option: $1\" >&2; exit 1 ;;\n    *) break ;;\n  esac\ndone\n```\n\n## Error Handling\n\n```bash\n#!/bin/bash\nset -euo pipefail\n\n# set -e: Exit on any command failure\n# set -u: Error on undefined variables\n# set -o pipefail: Pipe fails if any command fails\n\n# trap — run cleanup on exit/error\ntmpdir=$(mktemp -d)\ntrap 'rm -rf \"$tmpdir\"' EXIT  # Always clean up, even on error\n\ntrap 'echo \"Error on line $LINENO\" >&2' ERR  # Log errors\n\n# Explicit error handling (when set -e is too aggressive)\nif ! result=$(some_command 2>&1); then\n  echo \"Command failed: $result\" >&2\n  exit 1\nfi\n\n# OR operator for recovery\ncd /some/path || { echo \"Directory not found\" >&2; exit 1; }\n\n# Check prerequisites\nfor cmd in git node npm; do\n  command -v \"$cmd\" &>/dev/null || {\n    echo \"Required command not found: $cmd\" >&2\n    exit 1\n  }\ndone\n\n# Retry pattern\nretry() {\n  local max_attempts=\"$1\"; shift\n  local attempt=1\n  while (( attempt <= max_attempts )); do\n    if \"$@\"; then\n      return 0\n    fi\n    echo \"Attempt $attempt/$max_attempts failed\" >&2\n    (( attempt++ ))\n    sleep 1\n  done\n  return 1\n}\nretry 3 curl -sf http://localhost:8080/health\n```\n\n## Best Practices\n\n1. **Always start with `set -euo pipefail`** — catches undefined variables, failed commands, and pipe failures\n2. **Quote all variable expansions** — `\"$var\"`, `\"$@\"`, `\"$(command)\"` — prevents word splitting bugs\n3. **Use `[[ ]]` instead of `[ ]`** — safer, supports `&&`, `||`, `=~`, no word splitting\n4. **Use `local` in functions** — prevents variable leaks to calling scope\n5. **Use `readonly` for constants** — prevents accidental reassignment\n6. **Use `trap cleanup EXIT`** — ensures cleanup runs even on error\n7. **Check prerequisites early** — verify required commands, files, and variables before doing work\n8. **Write to stderr for diagnostics** — `echo \"info\" >&2` keeps stdout clean for data\n9. **Use `mapfile`/`readarray` for array building** — safer than `arr=($(command))`\n10. **Lint with shellcheck** — `shellcheck script.sh` catches common errors statically\n",
+  "sections": [
+    {
+      "id": "error-handling",
+      "title": "Error handling and set options",
+      "body": "`set -e` exits on any command failure. `set -u` errors on undefined variables. `set -o pipefail` makes pipes fail if any command fails. Combine as `set -euo pipefail` at script top. `trap 'cleanup' EXIT` runs cleanup on script exit (success or failure). `trap 'echo error' ERR` catches errors. `$LINENO` gives the line number where error occurred. Use `command || { handle; }` for inline error handling. Sometimes `set -e` is too strict — disable with `set +e` for sections that may legitimately fail.",
+      "tags": ["error-handling", "set-e", "set-u", "pipefail", "trap", "exit", "cleanup"]
+    },
+    {
+      "id": "argument-parsing",
+      "title": "Argument parsing",
+      "body": "`$1` through `$9` are positional parameters. `$#` is the count. `$@` is all arguments (quote as `\"$@\"`). `$0` is the script name. `shift` removes the first argument. `getopts` parses short options (`-v`, `-p value`). For long options (`--verbose`, `--port=8080`), use a manual while/case loop. Always validate argument count early and provide a usage function. `$OPTIND` tracks getopts position — `shift $((OPTIND-1))` after getopts to access remaining positional args.",
+      "tags": ["arguments", "getopts", "positional", "shift", "optind", "usage"]
+    },
+    {
+      "id": "functions",
+      "title": "Functions and return values",
+      "body": "Define with `name() { body; }`. `local` makes variables function-scoped. Functions return exit codes (0-255) via `return`. Return data via stdout: `result=$(my_func)`. Functions share the global scope unless `local` is used — always use `local` for temporary variables. Functions can be exported to subshells with `export -f func_name`. Recursive functions work but watch for stack depth. Use `declare -f func_name` to print a function's definition.",
+      "tags": ["function", "local", "return", "stdout", "scope", "export-f", "declare-f"]
+    },
+    {
+      "id": "loops",
+      "title": "Loops and iteration",
+      "body": "`for x in list; do` iterates over a list. `for (( i=0; i<n; i++ )); do` is C-style. `while condition; do` loops while true. `until condition; do` loops until true. `while IFS= read -r line; do ... done < file` reads lines safely. `break` exits a loop. `continue` skips to next iteration. `break 2` breaks out of nested loops. Use `< <(command)` instead of `command | while` to avoid subshell variable scope issues.",
+      "tags": ["for", "while", "until", "break", "continue", "read", "iterate", "loop"]
+    },
+    {
+      "id": "arrays",
+      "title": "Arrays",
+      "body": "Indexed arrays: `arr=(a b c)`, access `${arr[0]}`, all elements `\"${arr[@]}\"`, length `${#arr[@]}`. Append: `arr+=(d)`. Delete: `unset 'arr[1]'`. Associative arrays (Bash 4+): `declare -A map`, set `map[key]=val`, keys `\"${!map[@]}\"`. Build array from command: `mapfile -t arr < <(command)` (safer than `arr=($(command))` which breaks on spaces). Iterate: `for x in \"${arr[@]}\"`. Slice: `\"${arr[@]:start:count}\"`.",
+      "tags": ["array", "associative-array", "mapfile", "declare-a", "index", "iterate"]
+    },
+    {
+      "id": "shellcheck",
+      "title": "Linting with ShellCheck",
+      "body": "ShellCheck is a static analysis tool for shell scripts. Install: `apt install shellcheck` or `brew install shellcheck`. Run: `shellcheck script.sh`. It catches common bugs: unquoted variables, useless cat, deprecated syntax, POSIX incompatibilities, unreachable code. Integrates with most editors and CI. Disable specific warnings with `# shellcheck disable=SC2034`. Online version: shellcheck.net. Every agent-generated script should pass shellcheck before execution.",
+      "tags": ["shellcheck", "lint", "static-analysis", "best-practices", "ci"]
+    }
+  ],
+  "links": [
+    { "uri": "shell", "context": "Parent shell ecosystem" },
+    { "uri": "shell/bash", "context": "Bash syntax underlying all scripts" },
+    { "uri": "shell/environment", "context": "Scripts configure and read environment variables" },
+    { "uri": "shell/pipes", "context": "Pipes and redirection in scripts" },
+    { "uri": "shell/processes", "context": "Process management with trap, wait, background" },
+    { "uri": "shell/files", "context": "File operations in scripts" }
+  ],
+  "related": [
+    { "uri": "shell/bash", "relation": "prerequisite", "note": "Scripts build on Bash command syntax" },
+    { "uri": "shell/environment", "relation": "see-also", "note": "Scripts read configuration from environment variables" },
+    { "uri": "shell/processes", "relation": "see-also", "note": "Scripts manage processes with trap, wait, and signal handling" },
+    { "uri": "shell/pipes", "relation": "see-also", "note": "Scripts use pipes for data processing within functions and loops" }
+  ],
+  "more": {
+    "docs": "https://www.gnu.org/software/bash/manual/bash.html",
+    "wiki": "https://wiki.bash-hackers.org/",
+    "shellcheck": "https://www.shellcheck.net/"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "AI agents, developers",
+    "estimated_reading_time": "8 min",
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

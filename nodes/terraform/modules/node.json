@@ -1,0 +1,103 @@
+{
+  "name": "modules",
+  "version": "1.0.0",
+  "uri": "terraform/modules",
+  "type": "context",
+  "content_type": "guide",
+  "context": "Terraform modules -- reusable, composable infrastructure packages for organizing and sharing HCL configurations",
+  "info": "Terraform modules are the primary mechanism for packaging and reusing infrastructure code. A module is a container for multiple resources that are used together. Every Terraform configuration has at least one module (the root module), and modules can call other modules to include their resources. Modules can be sourced from local paths, the Terraform Registry, GitHub, S3, GCS, or HTTP URLs. This branch covers module fundamentals, authoring best practices via [[terraform/modules/authoring]], the public and private registries via [[terraform/modules/registry]], and composing modules into complex infrastructure via [[terraform/modules/composition]].",
+  "parent": "terraform",
+  "sub": [
+    "terraform/modules/authoring",
+    "terraform/modules/registry",
+    "terraform/modules/composition"
+  ],
+  "tags": ["terraform", "modules", "iac", "hcl", "reusable", "infrastructure", "composition", "registry"],
+  "aliases": [
+    "terraform modules",
+    "tf modules",
+    "terraform module",
+    "hcl modules",
+    "infrastructure modules",
+    "terraform reusable code",
+    "terraform packages",
+    "module blocks"
+  ],
+  "triggers": [
+    "use a terraform module",
+    "create a terraform module",
+    "what are terraform modules",
+    "how do terraform modules work",
+    "call a module in terraform",
+    "reuse terraform code",
+    "organize terraform into modules",
+    "source a module from github",
+    "use a module from the registry"
+  ],
+  "body": "# Terraform Modules\n\nA Terraform module is a container for multiple resources that are used together. Modules are the main way to package and reuse resource configurations in Terraform. Every Terraform configuration has at least one module -- the **root module** -- which consists of the `.tf` files in the main working directory.\n\n## What is a Module?\n\nA module is simply a directory containing `.tf` files. When you run `terraform apply` in a directory, that directory is the root module. You can call other modules (child modules) to organize your infrastructure into logical, reusable components.\n\n```hcl\n# Root module calling a child module\nmodule \"vpc\" {\n  source  = \"./modules/vpc\"\n  version = \"1.0.0\"\n\n  cidr_block = \"10.0.0.0/16\"\n  environment = \"production\"\n}\n```\n\n## Root Module vs Child Modules\n\n| Aspect | Root Module | Child Module |\n|--------|------------|---------------|\n| Location | Working directory where `terraform apply` runs | Referenced via `source` argument |\n| State | Owns the state file | Resources appear in caller's state |\n| Variables | Set via `.tfvars`, env vars, or CLI flags | Set via module block arguments |\n| Outputs | Printed after apply | Accessed via `module.<NAME>.<OUTPUT>` |\n| Provider config | Defined here | Inherited from root (or passed explicitly) |\n\n## Module Sources\n\nTerraform supports multiple source types for locating modules:\n\n```hcl\n# Local path\nmodule \"vpc\" {\n  source = \"./modules/vpc\"\n}\n\n# Terraform Registry\nmodule \"vpc\" {\n  source  = \"terraform-aws-modules/vpc/aws\"\n  version = \"~> 5.0\"\n}\n\n# GitHub\nmodule \"vpc\" {\n  source = \"github.com/terraform-aws-modules/terraform-aws-vpc?ref=v5.0.0\"\n}\n\n# S3 bucket\nmodule \"vpc\" {\n  source = \"s3::https://s3-eu-west-1.amazonaws.com/my-bucket/modules/vpc.zip\"\n}\n\n# GCS bucket\nmodule \"vpc\" {\n  source = \"gcs::https://www.googleapis.com/storage/v1/my-bucket/modules/vpc.zip\"\n}\n\n# Generic HTTP\nmodule \"vpc\" {\n  source = \"https://example.com/modules/vpc.zip\"\n}\n```\n\n## Passing Variables and Accessing Outputs\n\nModules communicate through input variables and output values. The caller passes arguments to the module block; the module exposes results via outputs:\n\n```hcl\n# In the calling module\nmodule \"database\" {\n  source = \"./modules/rds\"\n\n  # Input variables\n  instance_class = \"db.t3.medium\"\n  engine         = \"postgres\"\n  engine_version = \"15.4\"\n  vpc_id         = module.vpc.vpc_id          # Output from another module\n  subnet_ids     = module.vpc.database_subnets # Output from another module\n}\n\n# Accessing module outputs\nresource \"aws_ssm_parameter\" \"db_endpoint\" {\n  name  = \"/app/db-endpoint\"\n  type  = \"String\"\n  value = module.database.endpoint\n}\n```\n\n## Module Versioning\n\nWhen using registry modules, pin versions with constraints to avoid breaking changes:\n\n```hcl\nmodule \"vpc\" {\n  source  = \"terraform-aws-modules/vpc/aws\"\n  version = \"~> 5.0\"   # >= 5.0.0, < 6.0.0 (pessimistic constraint)\n}\n```\n\nVersion constraint operators: `=` (exact), `!=` (exclude), `>`, `>=`, `<`, `<=`, `~>` (pessimistic). The `~>` operator is the most common -- it allows patch and minor updates while preventing major version bumps. See [[terraform/modules/registry#version-constraints]] for full details.\n\n## When to Use Modules\n\n- **DRY principle** -- avoid duplicating resource blocks across environments\n- **Team boundaries** -- separate concerns (networking team owns VPC module, app team consumes it)\n- **Standardization** -- enforce organizational patterns (tagging, naming, security groups)\n- **Testing** -- test infrastructure components in isolation\n- **Sharing** -- publish to a registry for cross-team or community use\n",
+  "sections": [
+    {
+      "id": "module-basics",
+      "title": "Module fundamentals",
+      "body": "A module is a directory of `.tf` files. The root module is the working directory. Child modules are called via `module` blocks with a `source` argument. After adding or changing module sources, run `terraform init` to download modules. Modules appear in `.terraform/modules/` locally. Each module call creates a separate namespace -- resources in different module calls do not conflict.",
+      "tags": ["module", "root-module", "child-module", "terraform-init", "namespace"]
+    },
+    {
+      "id": "sources",
+      "title": "Module sources",
+      "body": "Local paths (`./modules/vpc`) are resolved relative to the calling module. Registry sources (`terraform-aws-modules/vpc/aws`) use the format `<NAMESPACE>/<NAME>/<PROVIDER>`. GitHub sources support `?ref=` for branch, tag, or commit pinning. S3 and GCS sources reference zipped module archives. HTTP sources download `.zip` or `.tar.gz` archives. Private git repos use SSH URLs (`git::ssh://git@github.com/org/repo.git`). See [[terraform/modules/registry]] for registry-specific details.",
+      "tags": ["source", "local", "registry", "github", "s3", "gcs", "http", "git"]
+    },
+    {
+      "id": "variables-outputs",
+      "title": "Variables and outputs",
+      "body": "Modules accept input via `variable` blocks and expose results via `output` blocks. Callers set inputs as arguments in the `module` block and read outputs with `module.<NAME>.<OUTPUT>`. Required variables have no `default`. Sensitive variables and outputs are redacted from CLI output. Use `description` on every variable and output for documentation. Variable validation blocks enforce constraints at plan time. See [[terraform/modules/authoring#best-practices]] for design guidance.",
+      "tags": ["variables", "outputs", "input", "sensitive", "validation", "description"]
+    },
+    {
+      "id": "versioning",
+      "title": "Module versioning",
+      "body": "Registry modules support semantic versioning with constraint operators: `=` (exact), `!=` (not equal), `>`, `>=`, `<`, `<=`, `~>` (pessimistic). The `~>` operator is recommended -- `~> 5.0` allows `5.x` but not `6.0`. Local modules do not support version constraints. For git-sourced modules, pin with `?ref=v1.2.3` tags. Always pin versions in production to prevent unexpected changes. See [[terraform/modules/registry#version-constraints]].",
+      "tags": ["versioning", "semver", "constraints", "pessimistic", "pin", "registry"]
+    }
+  ],
+  "links": [
+    { "uri": "terraform/modules/authoring", "context": "Write and publish reusable Terraform modules with best practices" },
+    { "uri": "terraform/modules/registry", "context": "Discover and use modules from public and private registries" },
+    { "uri": "terraform/modules/composition", "context": "Compose multiple modules into complex infrastructure stacks" },
+    { "uri": "terraform/modules/authoring#best-practices", "context": "Module design best practices: single responsibility, sane defaults" },
+    { "uri": "terraform/modules/registry#version-constraints", "context": "Version constraint operators for pinning module versions" },
+    { "uri": "terraform/modules/composition#patterns", "context": "Flat, nested, and wrapper module composition patterns" },
+    { "uri": "terraform/modules/composition#data-flow", "context": "Passing data between modules via outputs and variables" },
+    { "uri": "terraform/hcl", "context": "HCL syntax fundamentals used in module definitions" },
+    { "uri": "terraform/state", "context": "How modules interact with Terraform state" },
+    { "uri": "terraform/providers", "context": "Provider configurations inherited by child modules" }
+  ],
+  "related": [
+    { "uri": "terraform/hcl", "relation": "prerequisite", "note": "HCL syntax knowledge is required before writing modules" },
+    { "uri": "terraform/state", "relation": "see-also", "note": "Module resources are tracked in the caller's state file" },
+    { "uri": "terraform/providers", "relation": "see-also", "note": "Providers are configured in the root module and inherited by child modules" },
+    { "uri": "terraform/workspaces", "relation": "see-also", "note": "Workspaces enable running the same modules across environments" },
+    { "uri": "aws/cloudformation", "relation": "alternative", "note": "CloudFormation is AWS's native IaC alternative to Terraform modules" }
+  ],
+  "more": {
+    "docs": "https://developer.hashicorp.com/terraform/language/modules",
+    "registry": "https://registry.terraform.io/",
+    "repo": "https://github.com/hashicorp/terraform"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, DevOps engineers, AI agents",
+    "estimated_reading_time": "8 min",
+    "prerequisites": ["terraform/hcl"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

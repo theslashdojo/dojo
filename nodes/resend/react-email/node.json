@@ -1,0 +1,131 @@
+{
+  "name": "react-email",
+  "version": "1.0.0",
+  "uri": "resend/react-email",
+  "type": "skill",
+  "context": "Build email templates with React components using @react-email/components and render them for Resend delivery",
+  "info": "React Email is a library for building email templates using React components instead of raw HTML. It provides a set of pre-built, email-client-compatible components (Html, Head, Body, Container, Text, Button, Link, Img, Section, Row, Column, Hr, Preview, Heading, Tailwind) that render to cross-client HTML. Templates are authored as standard React components with props for dynamic content, then passed to Resend's `react` parameter for server-side rendering and delivery. The `@react-email/components` package bundles all components, and the `react-email` CLI provides a local dev server with hot reload for previewing templates. Agents use this skill to create professional email templates (welcome emails, invoices, notifications, marketing) without writing raw HTML tables. See [[resend/send]] for sending rendered templates and [[resend/auth]] for authentication.",
+  "parent": "resend",
+  "tags": ["react-email", "email-templates", "react", "email-components", "jsx", "tsx", "template-engine"],
+  "aliases": [
+    "react email",
+    "react-email",
+    "react email templates",
+    "email components react",
+    "resend react",
+    "react email resend",
+    "email template react",
+    "jsx email",
+    "tsx email template",
+    "@react-email/components"
+  ],
+  "triggers": [
+    "create an email template with react",
+    "build react email template",
+    "use react email with resend",
+    "create email component",
+    "design email with react",
+    "email template with react components",
+    "preview email template locally",
+    "convert html email to react"
+  ],
+  "body": "# React Email Templates\n\nReact Email lets you build email templates using React components. Instead of writing fragile HTML tables, you compose emails from typed, email-client-compatible components.\n\n## Installation\n\n```bash\nnpm install @react-email/components react react-dom\n```\n\nFor the dev preview server:\n\n```bash\nnpm install react-email -D\n```\n\n## Basic Template\n\n```tsx\nimport {\n  Html,\n  Head,\n  Body,\n  Container,\n  Text,\n  Button,\n  Preview,\n  Heading,\n  Hr,\n  Section,\n} from '@react-email/components';\n\ninterface WelcomeEmailProps {\n  firstName: string;\n  loginUrl: string;\n}\n\nexport function WelcomeEmail({ firstName, loginUrl }: WelcomeEmailProps) {\n  return (\n    <Html>\n      <Head />\n      <Preview>Welcome to Acme, {firstName}!</Preview>\n      <Body style={{ backgroundColor: '#f6f9fc', fontFamily: 'sans-serif' }}>\n        <Container style={{ maxWidth: '600px', margin: '0 auto', padding: '20px' }}>\n          <Heading as=\"h1\">Welcome, {firstName}!</Heading>\n          <Text>Thanks for signing up for Acme. We're excited to have you.</Text>\n          <Hr />\n          <Section style={{ textAlign: 'center', marginTop: '20px' }}>\n            <Button\n              href={loginUrl}\n              style={{\n                backgroundColor: '#000',\n                color: '#fff',\n                padding: '12px 24px',\n                borderRadius: '6px',\n                textDecoration: 'none',\n              }}\n            >\n              Get Started\n            </Button>\n          </Section>\n          <Text style={{ color: '#666', fontSize: '14px', marginTop: '20px' }}>\n            If you didn't create this account, please ignore this email.\n          </Text>\n        </Container>\n      </Body>\n    </Html>\n  );\n}\n```\n\n## Available Components\n\n| Component | Purpose | Key Props |\n|-----------|---------|----------|\n| `Html` | Root `<html>` wrapper | `lang`, `dir` |\n| `Head` | `<head>` with meta tags | children (styles, meta) |\n| `Body` | `<body>` wrapper | `style` |\n| `Container` | Centered content wrapper | `style` (maxWidth) |\n| `Section` | Grouping element | `style` |\n| `Row` | Table row layout | `style` |\n| `Column` | Table column layout | `style`, `colSpan` |\n| `Text` | Paragraph text | `style` |\n| `Heading` | h1-h6 heading | `as` (`h1`-`h6`), `style` |\n| `Button` | CTA button with link | `href`, `style` |\n| `Link` | Anchor link | `href`, `style` |\n| `Img` | Image | `src`, `alt`, `width`, `height` |\n| `Hr` | Horizontal rule | `style` |\n| `Preview` | Preheader text (visible in inbox) | children (text) |\n| `Tailwind` | Tailwind CSS support | `config` (optional) |\n| `CodeBlock` | Code display | `code`, `language`, `theme` |\n| `CodeInline` | Inline code | `style` |\n| `Markdown` | Render markdown | `markdownCustomStyles`, `markdownContainerStyles` |\n| `Font` | Custom font face | `fontFamily`, `fallbackFontFamily`, `webFont` |\n\n## Using with Resend\n\n```typescript\nimport { Resend } from 'resend';\nimport { WelcomeEmail } from './emails/welcome';\n\nconst resend = new Resend(process.env.RESEND_API_KEY);\n\n// Pass as function call, NOT JSX\nconst { data, error } = await resend.emails.send({\n  from: 'Acme <hello@yourdomain.com>',\n  to: ['user@example.com'],\n  subject: 'Welcome to Acme',\n  react: WelcomeEmail({ firstName: 'John', loginUrl: 'https://app.acme.com/login' }),\n});\n```\n\n**Important**: Pass React components as function calls (`WelcomeEmail({ ... })`) not JSX (`<WelcomeEmail />`). The Resend SDK renders them server-side.\n\n## Rendering to HTML String\n\nIf you need the raw HTML (for SDKs that don't support `react` parameter):\n\n```typescript\nimport { render } from '@react-email/render';\nimport { WelcomeEmail } from './emails/welcome';\n\nconst html = await render(WelcomeEmail({ firstName: 'John', loginUrl: 'https://...' }));\nconst text = await render(WelcomeEmail({ firstName: 'John', loginUrl: 'https://...' }), { plainText: true });\n\n// Use with any email provider\nawait resend.emails.send({\n  from: 'Acme <hello@yourdomain.com>',\n  to: ['user@example.com'],\n  subject: 'Welcome',\n  html,\n  text,\n});\n```\n\n## Using Tailwind CSS\n\n```tsx\nimport { Tailwind, Html, Body, Container, Text, Button } from '@react-email/components';\n\nexport function StyledEmail({ name }: { name: string }) {\n  return (\n    <Tailwind>\n      <Html>\n        <Body className=\"bg-gray-100 font-sans\">\n          <Container className=\"max-w-xl mx-auto p-6 bg-white rounded-lg shadow\">\n            <Text className=\"text-2xl font-bold text-gray-900\">Hello, {name}!</Text>\n            <Text className=\"text-gray-600 mt-2\">Welcome to our platform.</Text>\n            <Button\n              href=\"https://example.com\"\n              className=\"bg-blue-600 text-white px-6 py-3 rounded-md mt-4 inline-block\"\n            >\n              Get Started\n            </Button>\n          </Container>\n        </Body>\n      </Html>\n    </Tailwind>\n  );\n}\n```\n\n## Dev Preview Server\n\nAdd to `package.json`:\n\n```json\n{\n  \"scripts\": {\n    \"email:dev\": \"email dev --dir ./emails --port 3030\"\n  }\n}\n```\n\nPlace templates in `./emails/` directory:\n\n```\nemails/\n  welcome.tsx\n  invoice.tsx\n  password-reset.tsx\n```\n\nRun `npm run email:dev` to preview templates at `http://localhost:3030` with hot reload.\n\n## Project Structure\n\n```\nsrc/\n  emails/              # Email templates\n    welcome.tsx\n    invoice.tsx\n    password-reset.tsx\n  lib/\n    send-email.ts      # Resend send helper\n```\n\n## Environment Variables\n\n| Variable | Required | Description |\n|----------|----------|-------------|\n| `RESEND_API_KEY` | Yes | Required when sending via Resend |\n",
+  "sections": [
+    {
+      "id": "components",
+      "title": "Available components",
+      "body": "The `@react-email/components` package provides email-client-compatible React components: `Html`, `Head`, `Body`, `Container`, `Section`, `Row`, `Column`, `Text`, `Heading`, `Button`, `Link`, `Img`, `Hr`, `Preview`, `Tailwind`, `CodeBlock`, `CodeInline`, `Markdown`, and `Font`. These render to the HTML table layouts and inline styles required for cross-client email compatibility. Import all from `@react-email/components`.",
+      "tags": ["components", "html", "button", "text", "container", "tailwind"]
+    },
+    {
+      "id": "resend-integration",
+      "title": "Integration with Resend",
+      "body": "Pass React Email components to Resend's `react` parameter: `resend.emails.send({ react: MyTemplate({ prop }) })`. Components must be called as functions, not JSX. The SDK renders them to HTML server-side. For non-Node.js SDKs, use `render()` from `@react-email/render` to get the HTML string, then pass it to the `html` parameter. See [[resend/send]] for full sending details.",
+      "tags": ["resend", "integration", "render", "server-side"]
+    },
+    {
+      "id": "tailwind",
+      "title": "Tailwind CSS in emails",
+      "body": "Wrap templates in the `<Tailwind>` component to use Tailwind utility classes. The component inlines all Tailwind styles at render time, making them compatible with email clients. Optionally pass a `config` prop for custom theme values. This eliminates the need for manual inline styles.",
+      "tags": ["tailwind", "css", "styling", "utility-classes"]
+    },
+    {
+      "id": "dev-server",
+      "title": "Local development preview",
+      "body": "Install `react-email` as a dev dependency and run `email dev --dir ./emails` to start a local preview server. Place `.tsx` templates in the specified directory. The server provides hot reload, responsive previews, and HTML source inspection. Add `\"email:dev\": \"email dev --dir ./emails --port 3030\"` to your package.json scripts.",
+      "tags": ["dev-server", "preview", "hot-reload", "development"]
+    },
+    {
+      "id": "rendering",
+      "title": "Rendering to HTML string",
+      "body": "Use `render()` from `@react-email/render` to convert React components to HTML strings: `const html = await render(MyTemplate({ props }))`. Pass `{ plainText: true }` for a text-only version. Useful when sending via SDKs that don't support the `react` parameter directly, or when you need to store/cache rendered email HTML.",
+      "tags": ["render", "html-string", "plain-text", "convert"]
+    }
+  ],
+  "links": [
+    { "uri": "resend/send", "context": "Send rendered React Email templates via Resend" },
+    { "uri": "resend/auth", "context": "API key for Resend sending" },
+    { "uri": "resend", "context": "Resend ecosystem overview" },
+    { "uri": "tailwind", "context": "Tailwind CSS utility classes for email styling" }
+  ],
+  "related": [
+    { "uri": "resend/send", "relation": "see-also", "note": "React Email templates are passed to the react parameter when sending" },
+    { "uri": "tailwind", "relation": "see-also", "note": "The Tailwind component enables Tailwind CSS in email templates" },
+    { "uri": "nextjs", "relation": "see-also", "note": "React Email is commonly used in Next.js API routes for transactional emails" },
+    { "uri": "typescript", "relation": "see-also", "note": "React Email templates are authored in TypeScript (TSX) for type-safe props" }
+  ],
+  "scripts": [
+    {
+      "id": "create-template",
+      "name": "Create Email Template",
+      "description": "Scaffold a new React Email template with common components and Resend integration",
+      "lang": "bash",
+      "runtime": "bash",
+      "entry": "./scripts/create-template.sh",
+      "packages": ["@react-email/components", "react", "react-dom", "resend"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "templateName": { "type": "string", "description": "Name for the email template (e.g., welcome, invoice, password-reset)" },
+        "props": { "type": "object", "description": "Template props definition (e.g., { firstName: string, url: string })" },
+        "useTailwind": { "type": "boolean", "default": false, "description": "Whether to use Tailwind CSS styling" }
+      },
+      "required": ["templateName"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "templatePath": { "type": "string", "description": "Path to the created template file" },
+        "html": { "type": "string", "description": "Rendered HTML output for testing" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "resend/send", "reason": "Templates are sent via the Resend send skill", "optional": true },
+    { "uri": "resend/auth", "reason": "API key is required when sending templates via Resend", "optional": true }
+  ],
+  "more": {
+    "docs": "https://react.email/docs/introduction",
+    "repo": "https://github.com/resend/react-email",
+    "examples": "https://react.email/examples",
+    "wiki": "https://react.email/docs/components/html"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "5 min",
+    "prerequisites": [],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

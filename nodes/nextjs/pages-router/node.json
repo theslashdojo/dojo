@@ -1,0 +1,129 @@
+{
+  "name": "pages-router",
+  "version": "1.0.0",
+  "uri": "nextjs/pages-router",
+  "type": "skill",
+  "context": "Build Next.js apps with the Pages Router — getStaticProps, getServerSideProps, _app.tsx, and classic file-based routing",
+  "info": "The Pages Router is Next.js's original routing system using the `pages/` directory. Each file in `pages/` becomes a route: `pages/index.tsx` maps to `/`, `pages/about.tsx` maps to `/about`. Data fetching uses exported functions: `getStaticProps` for static generation at build time, `getServerSideProps` for server-side rendering per request, and `getStaticPaths` for dynamic routes with static generation. Custom `_app.tsx` wraps all pages with shared layout and state, `_document.tsx` customizes the HTML document structure. API routes live in `pages/api/`. The Pages Router is stable and widely deployed but no longer receives new features — the App Router is recommended for new projects. Agents encounter Pages Router in existing codebases that haven't migrated.",
+  "parent": "nextjs",
+  "tags": ["pages-router", "getstaticprops", "getserversideprops", "ssr", "ssg", "nextjs", "routing"],
+  "aliases": [
+    "pages router",
+    "pages directory",
+    "pages dir",
+    "next pages router",
+    "nextjs pages",
+    "getStaticProps",
+    "getServerSideProps",
+    "getStaticPaths",
+    "_app.tsx",
+    "_document.tsx",
+    "classic next routing",
+    "next 12 routing"
+  ],
+  "triggers": [
+    "use getStaticProps",
+    "use getServerSideProps",
+    "add a page with pages router",
+    "create _app.tsx",
+    "customize _document.tsx",
+    "static generation in next.js",
+    "server-side rendering with next",
+    "migrate from pages to app router",
+    "getStaticPaths for dynamic routes"
+  ],
+  "body": "# Pages Router\n\nThe Pages Router uses the `pages/` directory for file-based routing. Each `.tsx` file becomes a route, and data fetching happens through exported functions.\n\n## Directory Structure\n\n```\npages/\n├── _app.tsx           # Custom App — wraps all pages\n├── _document.tsx      # Custom Document — controls <html> and <body>\n├── index.tsx          # / (home page)\n├── about.tsx          # /about\n├── blog/\n│   ├── index.tsx      # /blog\n│   └── [slug].tsx     # /blog/:slug\n└── api/\n    └── hello.ts       # /api/hello (see [[nextjs/api-routes]])\n```\n\n## Basic Page\n\n```tsx\n// pages/about.tsx → /about\nexport default function AboutPage() {\n  return <h1>About Us</h1>\n}\n```\n\n## Static Generation (getStaticProps)\n\n```tsx\n// pages/blog.tsx\nimport type { InferGetStaticPropsType, GetStaticProps } from 'next'\n\ntype Post = { id: string; title: string; content: string }\n\nexport const getStaticProps: GetStaticProps<{ posts: Post[] }> = async () => {\n  const res = await fetch('https://api.example.com/posts')\n  const posts: Post[] = await res.json()\n\n  return {\n    props: { posts },\n    revalidate: 60, // ISR: regenerate every 60 seconds\n  }\n}\n\nexport default function BlogPage({\n  posts,\n}: InferGetStaticPropsType<typeof getStaticProps>) {\n  return (\n    <ul>\n      {posts.map(post => (\n        <li key={post.id}>{post.title}</li>\n      ))}\n    </ul>\n  )\n}\n```\n\n## Dynamic Routes with getStaticPaths\n\n```tsx\n// pages/blog/[slug].tsx\nimport type { GetStaticPaths, GetStaticProps } from 'next'\n\nexport const getStaticPaths: GetStaticPaths = async () => {\n  const res = await fetch('https://api.example.com/posts')\n  const posts = await res.json()\n\n  const paths = posts.map((post: { slug: string }) => ({\n    params: { slug: post.slug },\n  }))\n\n  return {\n    paths,\n    fallback: false, // 404 for unknown slugs\n    // fallback: true — show loading then render\n    // fallback: 'blocking' — SSR on first request, then cache\n  }\n}\n\nexport const getStaticProps: GetStaticProps = async ({ params }) => {\n  const res = await fetch(`https://api.example.com/posts/${params?.slug}`)\n  const post = await res.json()\n\n  return { props: { post }, revalidate: 60 }\n}\n\nexport default function PostPage({ post }: { post: { title: string; content: string } }) {\n  return (\n    <article>\n      <h1>{post.title}</h1>\n      <div dangerouslySetInnerHTML={{ __html: post.content }} />\n    </article>\n  )\n}\n```\n\n## Server-Side Rendering (getServerSideProps)\n\n```tsx\n// pages/dashboard.tsx\nimport type { GetServerSideProps } from 'next'\n\nexport const getServerSideProps: GetServerSideProps = async (context) => {\n  const { req, res, params, query } = context\n  const token = req.cookies.session\n\n  if (!token) {\n    return { redirect: { destination: '/login', permanent: false } }\n  }\n\n  const data = await fetchDashboard(token)\n  return { props: { data } }\n}\n\nexport default function DashboardPage({ data }: { data: DashboardData }) {\n  return <Dashboard data={data} />\n}\n```\n\n## Custom App (_app.tsx)\n\n```tsx\n// pages/_app.tsx\nimport type { AppProps } from 'next/app'\nimport '@/styles/globals.css'\n\nexport default function App({ Component, pageProps }: AppProps) {\n  return (\n    <Layout>\n      <Component {...pageProps} />\n    </Layout>\n  )\n}\n```\n\n## Custom Document (_document.tsx)\n\n```tsx\n// pages/_document.tsx\nimport { Html, Head, Main, NextScript } from 'next/document'\n\nexport default function Document() {\n  return (\n    <Html lang=\"en\">\n      <Head>\n        <link rel=\"icon\" href=\"/favicon.ico\" />\n      </Head>\n      <body>\n        <Main />\n        <NextScript />\n      </body>\n    </Html>\n  )\n}\n```\n\n## Per-Page Layouts\n\n```tsx\n// pages/dashboard.tsx\nimport type { ReactElement } from 'react'\nimport DashboardLayout from '@/components/DashboardLayout'\n\nexport default function DashboardPage() {\n  return <h1>Dashboard</h1>\n}\n\nDashboardPage.getLayout = function getLayout(page: ReactElement) {\n  return <DashboardLayout>{page}</DashboardLayout>\n}\n```\n\n```tsx\n// pages/_app.tsx\nimport type { ReactElement, ReactNode } from 'react'\nimport type { NextPage } from 'next'\nimport type { AppProps } from 'next/app'\n\ntype NextPageWithLayout = NextPage & {\n  getLayout?: (page: ReactElement) => ReactNode\n}\n\ntype AppPropsWithLayout = AppProps & {\n  Component: NextPageWithLayout\n}\n\nexport default function App({ Component, pageProps }: AppPropsWithLayout) {\n  const getLayout = Component.getLayout ?? ((page) => page)\n  return getLayout(<Component {...pageProps} />)\n}\n```\n\n## Client-Side Data Fetching\n\n```tsx\nimport useSWR from 'swr'\n\nconst fetcher = (url: string) => fetch(url).then(r => r.json())\n\nexport default function Profile() {\n  const { data, error, isLoading } = useSWR('/api/user', fetcher)\n\n  if (isLoading) return <div>Loading...</div>\n  if (error) return <div>Error loading profile</div>\n  return <div>Hello {data.name}</div>\n}\n```\n",
+  "sections": [
+    {
+      "id": "getstaticprops",
+      "title": "getStaticProps (Static Generation)",
+      "body": "Export `getStaticProps` from a page to fetch data at build time. Returns `{ props }` passed to the page component. Add `revalidate: seconds` for Incremental Static Regeneration (ISR). The function runs only on the server — code here is never bundled to the client. Use for content that can be pre-rendered: blog posts, product pages, marketing pages.",
+      "tags": ["getstaticprops", "ssg", "isr", "revalidate", "build-time"]
+    },
+    {
+      "id": "getserversideprops",
+      "title": "getServerSideProps (Server-Side Rendering)",
+      "body": "Export `getServerSideProps` from a page to fetch data on every request. Receives `context` with `req`, `res`, `params`, `query`, and `resolvedUrl`. Returns `{ props }`, `{ redirect }`, or `{ notFound: true }`. Use for pages that need request-time data: user dashboards, authenticated pages, real-time data. Slower than static generation since it runs per-request.",
+      "tags": ["getserversideprops", "ssr", "per-request", "context", "redirect"]
+    },
+    {
+      "id": "getstaticpaths",
+      "title": "getStaticPaths (Dynamic Static Routes)",
+      "body": "Export `getStaticPaths` alongside `getStaticProps` for dynamic routes. Returns `{ paths, fallback }`. `paths` is an array of `{ params }` objects defining which routes to pre-render. `fallback: false` returns 404 for unknown paths, `fallback: true` renders a loading state then generates the page, `fallback: 'blocking'` server-renders on first request then caches.",
+      "tags": ["getstaticpaths", "dynamic-routes", "fallback", "pre-render"]
+    },
+    {
+      "id": "custom-app-document",
+      "title": "Custom App and Document",
+      "body": "`_app.tsx` wraps every page — use for global layout, state providers, CSS imports, and error boundaries. `_document.tsx` controls the HTML shell — use for custom `<html>` attributes, `<head>` elements, and `<body>` attributes. `_document.tsx` only renders on the server. Both files are optional but common in production apps.",
+      "tags": ["_app", "_document", "global-layout", "providers", "html-shell"]
+    }
+  ],
+  "links": [
+    { "uri": "nextjs/app-router", "context": "Recommended routing model — consider migrating" },
+    { "uri": "nextjs/api-routes", "context": "API routes in pages/api/ directory" },
+    { "uri": "nextjs/data-fetching", "context": "Data fetching patterns including Pages Router methods" },
+    { "uri": "nextjs/config", "context": "Configure Pages Router behavior" },
+    { "uri": "nextjs/deployment", "context": "Deploy Pages Router applications" }
+  ],
+  "related": [
+    { "uri": "nextjs/app-router", "relation": "evolution", "note": "App Router is the successor to Pages Router with Server Components and streaming" },
+    { "uri": "nextjs/data-fetching", "relation": "see-also", "note": "getStaticProps and getServerSideProps are Pages Router data fetching methods" },
+    { "uri": "nextjs/api-routes", "relation": "see-also", "note": "API routes in pages/api/ are part of the Pages Router" }
+  ],
+  "scripts": [
+    {
+      "id": "create-pages-route",
+      "name": "Create Pages Router Route",
+      "description": "Scaffold a new Pages Router page with data fetching",
+      "lang": "bash",
+      "runtime": "bash",
+      "entry": "./scripts/create-page.sh",
+      "env": {
+        "PAGE_NAME": { "required": true, "description": "Page file name without extension (e.g., 'about' or 'blog/[slug]')" },
+        "FETCH_METHOD": { "required": false, "default": "none", "description": "Data fetching method: 'static', 'server', or 'none'" },
+        "PROJECT_DIR": { "required": false, "default": ".", "description": "Next.js project root directory" }
+      },
+      "packages": []
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "pageName": { "type": "string", "description": "Page name (e.g., 'about' or 'blog/[slug]')" },
+        "fetchMethod": { "type": "string", "enum": ["static", "server", "none"], "default": "none", "description": "Data fetching method" }
+      },
+      "required": ["pageName"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "createdFile": { "type": "string", "description": "Path to the created page file" },
+        "routeUrl": { "type": "string", "description": "URL this page maps to" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "nextjs", "reason": "Pages Router is part of the Next.js framework" }
+  ],
+  "more": {
+    "docs": "https://nextjs.org/docs/pages/building-your-application/routing",
+    "migration": "https://nextjs.org/docs/app/guides/migrating/app-router-migration"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "7 min",
+    "prerequisites": ["nextjs"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

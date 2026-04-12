@@ -1,0 +1,166 @@
+{
+  "name": "playwright",
+  "version": "1.0.0",
+  "uri": "testing/playwright",
+  "type": "skill",
+  "context": "Write and run cross-browser end-to-end tests with Playwright — auto-waiting, network mocking, visual regression, codegen, trace viewer, parallel execution",
+  "info": "Playwright is Microsoft's cross-browser end-to-end testing framework for web applications. It drives Chromium, Firefox, and WebKit with a single API, providing auto-waiting that eliminates flaky sleeps, network interception for mocking API responses, visual comparison via screenshots and snapshots, codegen for recording user actions as test code, and a trace viewer for debugging failures. Tests run in parallel across configurable projects (browser/device combos) with isolated browser contexts. The @playwright/test package includes a built-in test runner with fixtures (page, context, browser), expect assertions, and HTML reporter. Use [[testing/playwright]] when testing web UI flows, browser automation, form interactions, authentication flows, or visual regression. Pair with [[testing/ci]] for headless CI execution and [[testing/mocking]] for broader mocking strategies.",
+  "parent": "testing",
+  "tags": ["playwright", "e2e", "end-to-end", "browser-testing", "cross-browser", "chromium", "firefox", "webkit", "auto-wait", "visual-testing", "codegen", "trace-viewer", "network-mocking"],
+  "aliases": [
+    "playwright",
+    "playwright test",
+    "e2e testing",
+    "end-to-end testing",
+    "browser testing",
+    "cross-browser testing",
+    "playwright e2e",
+    "web testing",
+    "ui testing",
+    "browser automation",
+    "visual regression testing",
+    "playwright codegen"
+  ],
+  "triggers": [
+    "write e2e tests",
+    "set up playwright",
+    "test web application in browser",
+    "write browser tests",
+    "automate browser interactions",
+    "test across multiple browsers",
+    "mock api responses in e2e tests",
+    "record tests with codegen",
+    "debug failing e2e tests with trace",
+    "take screenshots in tests",
+    "test authentication flows",
+    "run playwright tests in ci",
+    "visual regression testing"
+  ],
+  "body": "# Playwright End-to-End Testing\n\nPlaywright automates Chromium, Firefox, and WebKit with a single API. It eliminates flaky tests through auto-waiting, provides network interception for mocking, and includes visual comparison, codegen, and trace viewing out of the box.\n\n## Quick Start\n\n```bash\n# Initialize a new Playwright project\nnpm init playwright@latest\n\n# Or add to an existing project\nnpm install -D @playwright/test\nnpx playwright install --with-deps\n```\n\nThis creates `playwright.config.ts`, a `tests/` directory with an example test, and installs browser binaries.\n\n## First Test\n\n```typescript\n// tests/example.spec.ts\nimport { test, expect } from '@playwright/test';\n\ntest('homepage has title', async ({ page }) => {\n  await page.goto('https://example.com');\n  await expect(page).toHaveTitle(/Example/);\n});\n\ntest('login flow', async ({ page }) => {\n  await page.goto('/login');\n  await page.getByLabel('Email').fill('user@example.com');\n  await page.getByLabel('Password').fill('secret');\n  await page.getByRole('button', { name: 'Sign in' }).click();\n  await expect(page.getByText('Welcome')).toBeVisible();\n});\n```\n\n```bash\n# Run all tests\nnpx playwright test\n\n# Run with UI mode (interactive)\nnpx playwright test --ui\n\n# Run a specific file\nnpx playwright test tests/login.spec.ts\n\n# Run in headed mode (see the browser)\nnpx playwright test --headed\n\n# Run only tests matching a pattern\nnpx playwright test --grep \"login\"\n\n# Run in a specific project/browser\nnpx playwright test --project=chromium\n\n# Show HTML report\nnpx playwright show-report\n```\n\n## Configuration\n\n```typescript\n// playwright.config.ts\nimport { defineConfig, devices } from '@playwright/test';\n\nexport default defineConfig({\n  testDir: './tests',\n  fullyParallel: true,\n  forbidOnly: !!process.env.CI,\n  retries: process.env.CI ? 2 : 0,\n  workers: process.env.CI ? 1 : undefined,\n  reporter: process.env.CI ? 'blob' : 'html',\n  use: {\n    baseURL: 'http://localhost:3000',\n    trace: 'on-first-retry',\n    screenshot: 'only-on-failure',\n    video: 'retain-on-failure',\n  },\n  projects: [\n    { name: 'chromium', use: { ...devices['Desktop Chrome'] } },\n    { name: 'firefox', use: { ...devices['Desktop Firefox'] } },\n    { name: 'webkit', use: { ...devices['Desktop Safari'] } },\n    { name: 'mobile-chrome', use: { ...devices['Pixel 5'] } },\n    { name: 'mobile-safari', use: { ...devices['iPhone 13'] } },\n  ],\n  webServer: {\n    command: 'npm run dev',\n    url: 'http://localhost:3000',\n    reuseExistingServer: !process.env.CI,\n  },\n});\n```\n\nKey config options:\n- `fullyParallel` — run tests in parallel within files (not just across files)\n- `forbidOnly` — fail in CI if `.only` is left in tests\n- `retries` — retry failed tests (useful in CI)\n- `workers` — number of parallel workers\n- `trace` — `'on-first-retry'` captures traces only on first retry for debugging\n- `webServer` — automatically start your dev server before tests\n- `projects` — run the same tests across multiple browser/device configurations\n\n## Writing Tests — Page Interactions\n\n```typescript\nimport { test, expect } from '@playwright/test';\n\ntest('fill out form and submit', async ({ page }) => {\n  await page.goto('/register');\n\n  // Fill form fields\n  await page.getByLabel('Full name').fill('Alice Johnson');\n  await page.getByLabel('Email').fill('alice@example.com');\n  await page.getByLabel('Password').fill('Str0ng!Pass');\n\n  // Select from dropdown\n  await page.getByLabel('Country').selectOption('US');\n\n  // Check a checkbox\n  await page.getByLabel('I agree to the terms').check();\n\n  // Click submit\n  await page.getByRole('button', { name: 'Create account' }).click();\n\n  // Assert success\n  await expect(page.getByText('Account created')).toBeVisible();\n  await expect(page).toHaveURL('/dashboard');\n});\n```\n\nCommon page actions:\n- `page.goto(url)` — navigate to URL\n- `page.click(selector)` — click an element\n- `page.fill(selector, value)` — clear and type into an input\n- `page.type(selector, value)` — type character by character\n- `page.selectOption(selector, value)` — select dropdown option\n- `page.check(selector)` / `page.uncheck(selector)` — checkbox\n- `page.press(selector, key)` — press a key (e.g., `'Enter'`)\n- `page.waitForURL(pattern)` — wait for navigation\n- `page.waitForResponse(urlOrPredicate)` — wait for network response\n\n## Locator Strategies\n\nPlaywright recommends user-facing locators that mirror how users find elements:\n\n```typescript\n// PREFERRED: role-based locators (most resilient)\npage.getByRole('button', { name: 'Submit' });\npage.getByRole('heading', { name: 'Dashboard' });\npage.getByRole('link', { name: 'Settings' });\npage.getByRole('textbox', { name: 'Search' });\npage.getByRole('checkbox', { name: 'Remember me' });\n\n// Text-based\npage.getByText('Welcome back');\npage.getByText('Welcome', { exact: false });\n\n// Label-based (for form fields)\npage.getByLabel('Email address');\npage.getByLabel('Password');\n\n// Placeholder-based\npage.getByPlaceholder('Search...');\n\n// Test ID (when no better semantic locator exists)\npage.getByTestId('nav-menu');\n\n// CSS and XPath (escape hatch — avoid when possible)\npage.locator('.card-container >> .title');\npage.locator('css=button.primary');\npage.locator('xpath=//div[@data-id=\"main\"]');\n\n// Chaining and filtering\npage.getByRole('listitem').filter({ hasText: 'Product A' });\npage.getByRole('listitem').filter({ has: page.getByRole('button') });\npage.locator('.card').nth(2);\npage.locator('.card').first();\npage.locator('.card').last();\n```\n\nLocator priority (most to least resilient):\n1. `getByRole` — accessibility-based, survives refactors\n2. `getByLabel` — form fields by associated label\n3. `getByPlaceholder` — inputs by placeholder text\n4. `getByText` — visible text content\n5. `getByTestId` — data-testid attributes (explicit contract)\n6. `locator('css')` — CSS selectors (fragile, avoid)\n\n## Assertions\n\n```typescript\nimport { test, expect } from '@playwright/test';\n\ntest('assertions demo', async ({ page }) => {\n  await page.goto('/products');\n\n  // Page-level assertions\n  await expect(page).toHaveTitle('Products | My Store');\n  await expect(page).toHaveURL(/\\/products/);\n\n  // Visibility\n  await expect(page.getByText('Featured')).toBeVisible();\n  await expect(page.getByText('Admin Panel')).toBeHidden();\n  await expect(page.getByText('Admin Panel')).not.toBeVisible();\n\n  // Text content\n  await expect(page.getByRole('heading')).toHaveText('Products');\n  await expect(page.getByRole('heading')).toContainText('Prod');\n\n  // Count\n  await expect(page.getByRole('listitem')).toHaveCount(5);\n\n  // Form state\n  await expect(page.getByLabel('Email')).toHaveValue('user@test.com');\n  await expect(page.getByLabel('Email')).toBeEditable();\n  await expect(page.getByRole('button', { name: 'Submit' })).toBeEnabled();\n  await expect(page.getByRole('button', { name: 'Submit' })).toBeDisabled();\n\n  // Checkbox / radio\n  await expect(page.getByLabel('Newsletter')).toBeChecked();\n  await expect(page.getByLabel('Newsletter')).not.toBeChecked();\n\n  // CSS\n  await expect(page.locator('.alert')).toHaveClass(/alert-danger/);\n  await expect(page.locator('.header')).toHaveCSS('color', 'rgb(0, 0, 0)');\n\n  // Attributes\n  await expect(page.getByRole('link')).toHaveAttribute('href', '/home');\n\n  // Soft assertions (continue test on failure, report at end)\n  await expect.soft(page.getByText('Beta')).toBeVisible();\n});\n```\n\nAll `expect(locator)` assertions auto-wait and auto-retry until the condition is met or the timeout expires. Default timeout is 5 seconds, configurable per-assertion or globally.\n\n## Network Mocking\n\n```typescript\nimport { test, expect } from '@playwright/test';\n\ntest('mock API response', async ({ page }) => {\n  // Intercept API calls and return mock data\n  await page.route('**/api/products', async (route) => {\n    await route.fulfill({\n      status: 200,\n      contentType: 'application/json',\n      body: JSON.stringify([\n        { id: 1, name: 'Widget', price: 9.99 },\n        { id: 2, name: 'Gadget', price: 19.99 },\n      ]),\n    });\n  });\n\n  await page.goto('/products');\n  await expect(page.getByText('Widget')).toBeVisible();\n  await expect(page.getByText('Gadget')).toBeVisible();\n});\n\ntest('mock error response', async ({ page }) => {\n  await page.route('**/api/products', async (route) => {\n    await route.fulfill({ status: 500, body: 'Internal Server Error' });\n  });\n\n  await page.goto('/products');\n  await expect(page.getByText('Failed to load')).toBeVisible();\n});\n\ntest('modify real response', async ({ page }) => {\n  await page.route('**/api/user', async (route) => {\n    const response = await route.fetch();\n    const json = await response.json();\n    json.name = 'Test User';\n    await route.fulfill({ response, body: JSON.stringify(json) });\n  });\n\n  await page.goto('/profile');\n  await expect(page.getByText('Test User')).toBeVisible();\n});\n\ntest('abort requests', async ({ page }) => {\n  // Block analytics and tracking\n  await page.route('**/*analytics*', (route) => route.abort());\n  await page.route('**/ads/**', (route) => route.abort());\n  await page.goto('/home');\n});\n\ntest('wait for specific response', async ({ page }) => {\n  const responsePromise = page.waitForResponse('**/api/data');\n  await page.getByRole('button', { name: 'Load' }).click();\n  const response = await responsePromise;\n  expect(response.status()).toBe(200);\n});\n```\n\n## Visual Testing — Screenshots and Snapshots\n\n```typescript\nimport { test, expect } from '@playwright/test';\n\ntest('visual comparison', async ({ page }) => {\n  await page.goto('/dashboard');\n\n  // Full page screenshot comparison\n  await expect(page).toHaveScreenshot('dashboard.png');\n\n  // Element screenshot comparison\n  await expect(page.locator('.chart')).toHaveScreenshot('chart.png');\n\n  // With options\n  await expect(page).toHaveScreenshot('dashboard-full.png', {\n    fullPage: true,\n    maxDiffPixelRatio: 0.05,  // allow 5% pixel difference\n  });\n\n  // Mask dynamic content\n  await expect(page).toHaveScreenshot('dashboard-stable.png', {\n    mask: [page.locator('.timestamp'), page.locator('.avatar')],\n  });\n});\n\ntest('snapshot comparison (text)', async ({ page }) => {\n  await page.goto('/api/health');\n  const body = await page.textContent('body');\n  expect(body).toMatchSnapshot('health-response.txt');\n});\n```\n\nFirst run creates reference screenshots in a `*-snapshots/` directory. Subsequent runs compare against the reference. Update snapshots with `npx playwright test --update-snapshots`.\n\n## Authentication — Reusing Login State\n\n```typescript\n// auth.setup.ts — runs once, saves login state\nimport { test as setup, expect } from '@playwright/test';\n\nconst authFile = 'playwright/.auth/user.json';\n\nsetup('authenticate', async ({ page }) => {\n  await page.goto('/login');\n  await page.getByLabel('Email').fill('user@example.com');\n  await page.getByLabel('Password').fill('password');\n  await page.getByRole('button', { name: 'Sign in' }).click();\n  await page.waitForURL('/dashboard');\n  await page.context().storageState({ path: authFile });\n});\n```\n\n```typescript\n// playwright.config.ts — configure auth setup and reuse\nimport { defineConfig } from '@playwright/test';\n\nexport default defineConfig({\n  projects: [\n    { name: 'setup', testMatch: /.*\\.setup\\.ts/ },\n    {\n      name: 'chromium',\n      dependencies: ['setup'],\n      use: {\n        storageState: 'playwright/.auth/user.json',\n      },\n    },\n  ],\n});\n```\n\nThis runs the auth setup once, saves cookies and localStorage to a JSON file, and reuses that state for all subsequent tests. Tests run already authenticated — no repeated login flows.\n\n## Custom Fixtures\n\n```typescript\nimport { test as base, expect } from '@playwright/test';\n\n// Define custom fixture types\ntype Fixtures = {\n  todoPage: TodoPage;\n  loggedInPage: Page;\n};\n\nclass TodoPage {\n  constructor(private page: Page) {}\n\n  async addTodo(text: string) {\n    await this.page.getByPlaceholder('What needs to be done?').fill(text);\n    await this.page.getByPlaceholder('What needs to be done?').press('Enter');\n  }\n\n  async getTodoCount() {\n    return await this.page.getByTestId('todo-item').count();\n  }\n}\n\n// Extend base test with custom fixtures\nconst test = base.extend<Fixtures>({\n  todoPage: async ({ page }, use) => {\n    await page.goto('/todos');\n    await use(new TodoPage(page));\n  },\n});\n\ntest('add a todo', async ({ todoPage }) => {\n  await todoPage.addTodo('Buy groceries');\n  expect(await todoPage.getTodoCount()).toBe(1);\n});\n```\n\n## Codegen — Recording Tests\n\n```bash\n# Open codegen and record actions as test code\nnpx playwright codegen https://example.com\n\n# Record with specific viewport\nnpx playwright codegen --viewport-size=1280,720 https://example.com\n\n# Record for a specific device\nnpx playwright codegen --device=\"iPhone 13\" https://example.com\n\n# Save recorded test to a file\nnpx playwright codegen --output=tests/recorded.spec.ts https://example.com\n```\n\nCodegen opens a browser and an inspector window. Every click, fill, and navigation is recorded as Playwright test code in real time. Copy the generated code into your test files and refine.\n\n## Trace Viewer — Debugging Failures\n\nEnable traces in config:\n\n```typescript\n// playwright.config.ts\nuse: {\n  trace: 'on-first-retry',  // capture trace on first retry of a failed test\n}\n```\n\nTrace options: `'off'`, `'on'`, `'retain-on-failure'`, `'on-first-retry'`, `'on-all-retries'`.\n\n```bash\n# View traces from test results\nnpx playwright show-trace test-results/example-test/trace.zip\n\n# Or open trace viewer and drag-drop a trace file\nnpx playwright show-trace\n```\n\nThe trace viewer shows a timeline of every action, a DOM snapshot at each step, network requests, console logs, and the test source code. It is the primary tool for diagnosing why a test failed.\n\n## Parallel Execution\n\n```typescript\n// playwright.config.ts\nexport default defineConfig({\n  fullyParallel: true,          // parallelize within files\n  workers: process.env.CI ? 1 : undefined,  // auto-detect locally, single in CI\n});\n```\n\n```typescript\n// Force serial execution for tests that share state\ntest.describe.serial('checkout flow', () => {\n  test('add to cart', async ({ page }) => { /* ... */ });\n  test('enter shipping', async ({ page }) => { /* ... */ });\n  test('complete payment', async ({ page }) => { /* ... */ });\n});\n\n// Explicit parallel block\ntest.describe.parallel('independent tests', () => {\n  test('test A', async ({ page }) => { /* ... */ });\n  test('test B', async ({ page }) => { /* ... */ });\n});\n```\n\nEach test gets its own browser context (cookies, localStorage) by default. Tests are isolated without extra effort.\n\n## CI Setup\n\n```yaml\n# .github/workflows/playwright.yml\nname: Playwright Tests\non: [push, pull_request]\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n      - uses: actions/setup-node@v4\n        with:\n          node-version: 20\n      - run: npm ci\n      - run: npx playwright install --with-deps\n      - run: npx playwright test\n      - uses: actions/upload-artifact@v4\n        if: ${{ !cancelled() }}\n        with:\n          name: playwright-report\n          path: playwright-report/\n          retention-days: 30\n```\n\nCI best practices:\n- Always run `npx playwright install --with-deps` (installs browser binaries and OS dependencies)\n- Set `workers: 1` in CI config for deterministic results on resource-constrained runners\n- Set `retries: 2` in CI for resilience against transient failures\n- Upload the HTML report as an artifact for debugging\n- Use `forbidOnly: !!process.env.CI` to prevent `.only` from sneaking into CI\n\n## Environment Variables\n\n| Variable | Purpose |\n|----------|----------|\n| `CI` | Set automatically in CI — Playwright detects it for config switches |\n| `PLAYWRIGHT_BROWSERS_PATH` | Custom directory for browser binaries (useful for caching) |\n| `PWDEBUG` | Set to `1` to enable step-by-step debugging with inspector |\n| `PLAYWRIGHT_HTML_OPEN` | Set to `never` in CI to suppress opening report in browser |\n| `PLAYWRIGHT_TEST_BASE_URL` | Override `baseURL` from config without editing the file |\n| `PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD` | Set to `1` to skip browser download during npm install |\n\n## Project Layout\n\n```\nproject/\n  playwright.config.ts\n  tests/\n    example.spec.ts\n    auth.setup.ts\n    login.spec.ts\n    dashboard.spec.ts\n  playwright/\n    .auth/\n      user.json           # stored authentication state\n  test-results/           # test artifacts (traces, screenshots)\n  playwright-report/      # HTML report output\n  tests-examples/         # example tests from init (deletable)\n```\n",
+  "sections": [
+    {
+      "id": "quick-start",
+      "title": "Quick start — install, init, first test",
+      "body": "Run `npm init playwright@latest` to scaffold a project with config, example tests, and browser installs. Or add to existing: `npm install -D @playwright/test && npx playwright install --with-deps`. Write tests in `tests/*.spec.ts` using `test()` and `expect()` from `@playwright/test`. Run with `npx playwright test`. Use `--ui` for interactive mode, `--headed` to see the browser, `--project=chromium` for a single browser. The init wizard lets you choose TypeScript/JavaScript, test directory, and GitHub Actions setup.",
+      "tags": ["install", "init", "first-test", "setup", "getting-started"]
+    },
+    {
+      "id": "locators",
+      "title": "Finding elements — getByRole, getByText, getByTestId",
+      "body": "Playwright recommends user-facing locators that survive refactors. `getByRole('button', { name: 'Submit' })` is most resilient — it uses ARIA roles and accessible names. `getByLabel('Email')` finds form fields by label association. `getByText('Welcome')` matches visible text. `getByPlaceholder('Search...')` targets inputs. `getByTestId('nav')` uses data-testid attributes as an explicit contract. Fall back to `locator('css')` or `locator('xpath')` only when semantic locators are impossible. Chain with `.filter({ hasText: 'foo' })` or `.nth(0)`. Use `.first()` and `.last()` for ordered lists. All locators auto-wait for the element to be actionable before interacting.",
+      "tags": ["locators", "getByRole", "getByText", "getByLabel", "getByTestId", "getByPlaceholder", "css", "xpath", "filter"]
+    },
+    {
+      "id": "assertions",
+      "title": "Assertions — expect(locator) auto-retrying checks",
+      "body": "Playwright assertions auto-wait and auto-retry. `expect(locator).toBeVisible()` waits for the element to appear. `toHaveText('exact')` and `toContainText('partial')` check text. `toHaveCount(n)` verifies element count. `toBeEnabled()`, `toBeDisabled()`, `toBeChecked()` check form state. `toHaveValue('v')` checks input value. `toHaveAttribute('href', '/home')` checks attributes. `toHaveClass(/active/)` checks CSS classes. Page-level: `expect(page).toHaveTitle()`, `expect(page).toHaveURL()`. Use `expect.soft()` for non-blocking assertions that report at the end. Negate with `.not`: `expect(locator).not.toBeVisible()`. Default timeout is 5000ms, configurable via `expect: { timeout: 10000 }` in config.",
+      "tags": ["assertions", "expect", "toBeVisible", "toHaveText", "toHaveCount", "toBeEnabled", "toHaveURL", "soft-assertions", "auto-retry"]
+    },
+    {
+      "id": "network-mocking",
+      "title": "Intercepting and mocking API calls",
+      "body": "Use `page.route(urlPattern, handler)` to intercept network requests. `route.fulfill({ status, body, contentType })` returns a mock response without hitting the server. `route.fetch()` sends the real request and lets you modify the response before fulfilling. `route.abort()` blocks the request entirely — useful for disabling analytics or ads in tests. URL patterns support glob (`**/api/products`) and regex. Use `page.waitForResponse(url)` to wait for a specific response after an action. Mock error states (500, 404, timeouts) to test error handling. Combine route handlers with `route.continue()` to pass through requests you do not want to mock. Routes are per-context — set them in a fixture to apply across tests.",
+      "tags": ["network", "route", "mock-api", "fulfill", "abort", "intercept", "waitForResponse", "fetch"]
+    },
+    {
+      "id": "visual-testing",
+      "title": "Screenshot and snapshot comparisons",
+      "body": "Use `expect(page).toHaveScreenshot('name.png')` for pixel-by-pixel comparison against a reference image. First run generates the reference in a `*-snapshots/` directory alongside your test file. Subsequent runs compare and fail on pixel differences. Use `maxDiffPixelRatio` or `maxDiffPixels` to allow tolerance for antialiasing and rendering differences. `mask: [locator]` hides dynamic content (timestamps, avatars) during comparison. `fullPage: true` captures the entire scrollable page. For text-based comparison, `expect(value).toMatchSnapshot('name.txt')` compares strings. Update all snapshots with `npx playwright test --update-snapshots`. Store snapshot files in version control so they serve as the visual contract.",
+      "tags": ["screenshot", "visual-regression", "snapshot", "toHaveScreenshot", "toMatchSnapshot", "mask", "update-snapshots"]
+    },
+    {
+      "id": "authentication",
+      "title": "Reusing login state across tests",
+      "body": "Create an `auth.setup.ts` file that logs in via the UI and saves the browser's storage state (cookies, localStorage) with `page.context().storageState({ path: 'playwright/.auth/user.json' })`. In `playwright.config.ts`, define a `setup` project that runs `auth.setup.ts` and a main project that depends on it and uses `storageState: 'playwright/.auth/user.json'`. All tests in the dependent project start already authenticated — no repeated login flows. For multiple roles (admin, user), create separate setup files and separate projects with different storage state paths. Add `playwright/.auth/` to `.gitignore` since it contains session tokens.",
+      "tags": ["auth", "storageState", "login", "session", "setup-project", "cookies", "localStorage", "multiple-roles"]
+    },
+    {
+      "id": "codegen",
+      "title": "Recording tests with codegen",
+      "body": "Run `npx playwright codegen <url>` to open a browser and inspector. Every click, text input, and navigation is recorded as Playwright test code in real time. The inspector window shows generated code that you can copy into your test files. Use `--device='iPhone 13'` to emulate a mobile device during recording. Use `--output=tests/recorded.spec.ts` to save directly to a file. Codegen generates `getByRole` and `getByLabel` locators by default, producing resilient selectors. Use codegen as a starting point — refine the generated code by adding assertions, extracting page objects, and removing redundant waits.",
+      "tags": ["codegen", "record", "generate-tests", "inspector", "device-emulation"]
+    },
+    {
+      "id": "trace-viewer",
+      "title": "Debugging failed tests with traces",
+      "body": "Set `trace: 'on-first-retry'` in config to capture traces when tests fail and are retried. Traces record a timeline of every action, DOM snapshots before and after each step, network requests with headers and bodies, console logs, and the source code of the test. View traces with `npx playwright show-trace <path-to-trace.zip>` or open https://trace.playwright.dev and drag-drop the trace file. The trace viewer is the primary debugging tool — it shows exactly what happened at each step, making it far more effective than console.log debugging. For critical tests, use `trace: 'on'` to always capture traces regardless of pass/fail.",
+      "tags": ["trace", "debug", "trace-viewer", "timeline", "dom-snapshot", "network-log", "on-first-retry"]
+    }
+  ],
+  "sub": [],
+  "links": [
+    { "uri": "testing/ci", "context": "Run Playwright tests in CI pipelines with headless browsers" },
+    { "uri": "testing/mocking", "context": "Broader mocking strategies beyond Playwright network mocking" },
+    { "uri": "testing/patterns", "context": "Structural testing patterns: Arrange-Act-Assert, page objects" },
+    { "uri": "typescript/compiler", "context": "TypeScript compilation for Playwright test files" }
+  ],
+  "related": [
+    { "uri": "testing/ci", "relation": "see-also", "note": "Running Playwright in CI requires browser install and headless configuration" },
+    { "uri": "testing/patterns", "relation": "see-also", "note": "Page Object Model is a common pattern for organizing Playwright tests" },
+    { "uri": "testing/mocking", "relation": "see-also", "note": "Network mocking in Playwright is one approach; broader mocking strategies apply too" },
+    { "uri": "typescript", "relation": "prerequisite", "note": "Playwright tests are typically written in TypeScript" }
+  ],
+  "scripts": [
+    {
+      "id": "run-tests",
+      "name": "Run Playwright tests",
+      "description": "Check environment, install browsers if needed, and run Playwright tests with configurable flags",
+      "lang": "bash",
+      "runtime": "bash",
+      "entry": "./scripts/run-tests.sh",
+      "inline": "#!/usr/bin/env bash\nset -euo pipefail\n\n# Check for @playwright/test\nif ! node -e \"require('@playwright/test')\" 2>/dev/null; then\n  echo \"Error: @playwright/test is not installed.\"\n  echo \"Run: npm install -D @playwright/test\"\n  exit 1\nfi\n\n# Install browsers if missing\nif ! npx playwright install --check 2>/dev/null; then\n  echo \"Installing Playwright browsers...\"\n  npx playwright install --with-deps\nfi\n\n# Forward all arguments to playwright test\nexec npx playwright test \"$@\"",
+      "env": {},
+      "packages": ["@playwright/test"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "testFile": { "type": "string", "description": "Specific test file or directory to run" },
+        "project": { "type": "string", "description": "Browser project to run (chromium, firefox, webkit)" },
+        "grep": { "type": "string", "description": "Only run tests matching this regex pattern" },
+        "headed": { "type": "boolean", "description": "Run in headed mode (visible browser)", "default": false },
+        "ui": { "type": "boolean", "description": "Open interactive UI mode", "default": false },
+        "workers": { "type": "integer", "description": "Number of parallel workers" },
+        "retries": { "type": "integer", "description": "Number of retries for failed tests" },
+        "updateSnapshots": { "type": "boolean", "description": "Update visual comparison snapshots", "default": false }
+      }
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "passed": { "type": "integer", "description": "Number of tests passed" },
+        "failed": { "type": "integer", "description": "Number of tests failed" },
+        "skipped": { "type": "integer", "description": "Number of tests skipped" },
+        "duration": { "type": "string", "description": "Total test duration" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "typescript", "reason": "Playwright tests and config are written in TypeScript" }
+  ],
+  "more": {
+    "docs": "https://playwright.dev/docs/intro",
+    "api": "https://playwright.dev/docs/api/class-playwright",
+    "codegen": "https://playwright.dev/docs/codegen-intro",
+    "trace": "https://playwright.dev/docs/trace-viewer-intro",
+    "ci": "https://playwright.dev/docs/ci",
+    "best_practices": "https://playwright.dev/docs/best-practices"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "12 min",
+    "prerequisites": ["typescript"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

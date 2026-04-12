@@ -1,0 +1,103 @@
+{
+  "name": "iam",
+  "version": "1.0.0",
+  "uri": "gcp/iam",
+  "type": "context",
+  "content_type": "reference",
+  "context": "GCP Identity & Access Management — roles, service accounts, policies, and Workload Identity Federation",
+  "info": "This context node covers Google Cloud IAM: the permission model (roles and bindings), predefined vs custom roles, service account creation and key management, IAM policy bindings at project/folder/org level, Workload Identity Federation for keyless auth from external providers, and the principle of least privilege. Agents consult this node when they need to grant access to a GCP resource, create a service account for automation, debug permission denied errors, or understand which role is needed for a specific operation. IAM is foundational — every [[gcp/compute]], [[gcp/storage]], and [[gcp/functions]] operation requires appropriate IAM roles. See [[gcp/gcloud]] for the CLI commands used to manage IAM.",
+  "parent": "gcp",
+  "tags": ["iam", "roles", "permissions", "service-account", "policy", "access-control", "workload-identity", "rbac", "least-privilege"],
+  "aliases": [
+    "gcp iam",
+    "google cloud iam",
+    "iam roles",
+    "service account",
+    "gcp permissions",
+    "gcp access control",
+    "iam policy",
+    "gcloud iam",
+    "workload identity",
+    "gcp rbac",
+    "google iam",
+    "iam binding"
+  ],
+  "triggers": [
+    "grant iam role on gcp",
+    "create a service account",
+    "fix permission denied on gcp",
+    "what role do i need for compute",
+    "set up workload identity federation",
+    "add iam policy binding",
+    "manage gcp permissions",
+    "create service account key",
+    "configure least privilege access",
+    "debug 403 forbidden on google cloud"
+  ],
+  "body": "# GCP Identity & Access Management\n\nIAM controls who (identity) can do what (role) on which resource. Every GCP API call is authorized by IAM. Understanding IAM is required before using any GCP service.\n\n## Core Concepts\n\n```\nPrincipal  +  Role  +  Resource  =  IAM Policy Binding\n(who)        (what)   (where)\n```\n\n**Principals** (who):\n- Google Account: `user:alice@example.com`\n- Service Account: `serviceAccount:my-sa@project.iam.gserviceaccount.com`\n- Google Group: `group:devs@example.com`\n- Domain: `domain:example.com`\n- All users: `allUsers` (public) or `allAuthenticatedUsers`\n\n**Roles** (what):\n- **Basic roles**: `roles/owner`, `roles/editor`, `roles/viewer` — broad, avoid in production\n- **Predefined roles**: `roles/storage.objectViewer`, `roles/compute.instanceAdmin.v1` — scoped to a service\n- **Custom roles**: project-specific roles with exact permissions you define\n\n**Resources** (where):\n- Organization → Folder → Project → Resource (bucket, VM, function)\n- Policies inherit downward: a project-level binding applies to all resources in the project\n\n## Common Roles by Service\n\n### Compute Engine\n| Role | Permissions |\n|------|------------|\n| `roles/compute.viewer` | Read-only access to all Compute Engine resources |\n| `roles/compute.instanceAdmin.v1` | Create, modify, and delete VMs and disks |\n| `roles/compute.networkAdmin` | Manage networking (firewalls, routes, subnets) |\n| `roles/compute.admin` | Full control of all Compute Engine resources |\n\n### Cloud Storage\n| Role | Permissions |\n|------|------------|\n| `roles/storage.objectViewer` | Read objects |\n| `roles/storage.objectCreator` | Create (upload) objects |\n| `roles/storage.objectAdmin` | Full control of objects (CRUD) |\n| `roles/storage.admin` | Full control of buckets and objects |\n\n### Cloud Functions\n| Role | Permissions |\n|------|------------|\n| `roles/cloudfunctions.viewer` | View functions |\n| `roles/cloudfunctions.developer` | Create, update, and delete functions |\n| `roles/cloudfunctions.invoker` | Invoke HTTP functions |\n| `roles/cloudfunctions.admin` | Full control of Cloud Functions |\n\n## Service Accounts\n\nService accounts are identities for applications and automation (not humans).\n\n```bash\n# Create a service account\ngcloud iam service-accounts create my-app-sa \\\n  --display-name=\"My Application Service Account\" \\\n  --description=\"Used by the app to access Cloud Storage\"\n\n# Grant a role to the service account\ngcloud projects add-iam-policy-binding $GOOGLE_CLOUD_PROJECT \\\n  --member=\"serviceAccount:my-app-sa@$GOOGLE_CLOUD_PROJECT.iam.gserviceaccount.com\" \\\n  --role=\"roles/storage.objectAdmin\"\n\n# Create a key file (avoid if possible — use Workload Identity instead)\ngcloud iam service-accounts keys create sa-key.json \\\n  --iam-account=my-app-sa@$GOOGLE_CLOUD_PROJECT.iam.gserviceaccount.com\n\n# List service accounts\ngcloud iam service-accounts list\n\n# Delete a service account key\ngcloud iam service-accounts keys delete KEY_ID \\\n  --iam-account=my-app-sa@$GOOGLE_CLOUD_PROJECT.iam.gserviceaccount.com\n```\n\n## IAM Policy Bindings\n\n```bash\n# Add a policy binding (grant a role)\ngcloud projects add-iam-policy-binding $GOOGLE_CLOUD_PROJECT \\\n  --member=\"user:alice@example.com\" \\\n  --role=\"roles/compute.instanceAdmin.v1\"\n\n# Remove a policy binding\ngcloud projects remove-iam-policy-binding $GOOGLE_CLOUD_PROJECT \\\n  --member=\"user:alice@example.com\" \\\n  --role=\"roles/compute.instanceAdmin.v1\"\n\n# View the full IAM policy for a project\ngcloud projects get-iam-policy $GOOGLE_CLOUD_PROJECT --format=json\n\n# Grant a role on a specific resource (bucket)\ngcloud storage buckets add-iam-policy-binding gs://my-bucket \\\n  --member=\"serviceAccount:my-app-sa@$GOOGLE_CLOUD_PROJECT.iam.gserviceaccount.com\" \\\n  --role=\"roles/storage.objectViewer\"\n\n# Test if a principal has a permission\ngcloud asset analyze-iam-policy \\\n  --organization=ORG_ID \\\n  --identity=\"user:alice@example.com\" \\\n  --full-resource-name=\"//compute.googleapis.com/projects/$GOOGLE_CLOUD_PROJECT/zones/us-central1-a/instances/my-vm\"\n```\n\n## Workload Identity Federation\n\nKeyless authentication from external identity providers (GitHub Actions, AWS, Azure AD).\n\n```bash\n# Create a workload identity pool\ngcloud iam workload-identity-pools create github-pool \\\n  --location=global \\\n  --display-name=\"GitHub Actions Pool\"\n\n# Create a provider for GitHub Actions\ngcloud iam workload-identity-pools providers create-oidc github-provider \\\n  --location=global \\\n  --workload-identity-pool=github-pool \\\n  --issuer-uri=\"https://token.actions.githubusercontent.com\" \\\n  --attribute-mapping=\"google.subject=assertion.sub,attribute.repository=assertion.repository\" \\\n  --attribute-condition=\"assertion.repository=='my-org/my-repo'\"\n\n# Allow the pool to impersonate a service account\ngcloud iam service-accounts add-iam-policy-binding \\\n  my-app-sa@$GOOGLE_CLOUD_PROJECT.iam.gserviceaccount.com \\\n  --member=\"principalSet://iam.googleapis.com/projects/PROJECT_NUMBER/locations/global/workloadIdentityPools/github-pool/attribute.repository/my-org/my-repo\" \\\n  --role=\"roles/iam.workloadIdentityUser\"\n```\n\n## Custom Roles\n\n```bash\n# Create a custom role\ngcloud iam roles create customStorageReader \\\n  --project=$GOOGLE_CLOUD_PROJECT \\\n  --title=\"Custom Storage Reader\" \\\n  --description=\"Read-only access to specific storage operations\" \\\n  --permissions=\"storage.objects.get,storage.objects.list,storage.buckets.get\" \\\n  --stage=GA\n```\n\n## Debugging Permission Errors\n\n```bash\n# Check what roles a user/SA has\ngcloud projects get-iam-policy $GOOGLE_CLOUD_PROJECT \\\n  --flatten=\"bindings[].members\" \\\n  --filter=\"bindings.members:user@example.com\" \\\n  --format=\"table(bindings.role)\"\n\n# Check if a permission is included in a role\ngcloud iam roles describe roles/storage.objectViewer --format=json\n\n# Enable audit logging to see denied requests\n# Check Cloud Audit Logs in Cloud Logging\ngcloud logging read 'protoPayload.status.code=7' --limit=10 --format=json\n```\n\n## Principle of Least Privilege\n\n1. **Use predefined roles** over basic roles (owner/editor/viewer)\n2. **Scope to specific resources** when possible (bucket-level, not project-level)\n3. **Use service accounts** for automation, not user accounts\n4. **Prefer Workload Identity Federation** over service account keys\n5. **Rotate keys** if you must use them — set key expiration\n6. **Use IAM Recommender** to right-size permissions based on actual usage\n\n```bash\n# Get IAM role recommendations\ngcloud recommender recommendations list \\\n  --project=$GOOGLE_CLOUD_PROJECT \\\n  --location=global \\\n  --recommender=google.iam.policy.Recommender\n```\n",
+  "sections": [
+    {
+      "id": "roles",
+      "title": "Roles and permissions",
+      "body": "GCP has three types of roles: **basic** (owner, editor, viewer — avoid in production), **predefined** (service-specific, like `roles/storage.objectViewer`), and **custom** (you define exact permissions). Roles contain permissions like `storage.objects.get`, `compute.instances.create`. A policy binding assigns a role to a principal on a resource. Use `gcloud projects add-iam-policy-binding` to grant roles. Always prefer the most specific predefined role that covers the needed permissions.",
+      "tags": ["roles", "permissions", "predefined", "custom", "basic", "binding"]
+    },
+    {
+      "id": "service-accounts",
+      "title": "Service accounts",
+      "body": "Service accounts represent applications, not humans. Create with `gcloud iam service-accounts create NAME`. Attach to resources (VMs, functions) so they inherit the SA identity without key files. If you must use key files, create with `gcloud iam service-accounts keys create` and set `GOOGLE_APPLICATION_CREDENTIALS=/path/to/key.json`. Prefer Workload Identity Federation over key files — keys are long-lived secrets that can be leaked. Each SA has a unique email: `NAME@PROJECT_ID.iam.gserviceaccount.com`.",
+      "tags": ["service-account", "key-file", "identity", "automation", "application-credentials"]
+    },
+    {
+      "id": "workload-identity",
+      "title": "Workload Identity Federation",
+      "body": "Workload Identity Federation allows external identities (GitHub Actions, AWS IAM, Azure AD, OIDC providers) to impersonate GCP service accounts without key files. Create a workload identity pool and provider, then bind the external identity to a service account. The external workload exchanges its identity token for a short-lived GCP access token. This eliminates the need to manage and rotate service account keys in CI/CD pipelines.",
+      "tags": ["workload-identity", "federation", "keyless", "github-actions", "oidc", "ci-cd"]
+    },
+    {
+      "id": "debugging",
+      "title": "Debugging permission errors",
+      "body": "When you see `403 Forbidden` or `PERMISSION_DENIED`: 1) Check the caller's identity (`gcloud auth list`). 2) Check what roles they have (`gcloud projects get-iam-policy PROJECT --flatten=... --filter=...`). 3) Check what permissions the required role includes (`gcloud iam roles describe ROLE`). 4) Check Cloud Audit Logs for the specific denied permission. 5) Use IAM Policy Troubleshooter in the console. Common issues: wrong project, SA missing a role, API not enabled, resource-level policy vs project-level.",
+      "tags": ["debug", "403", "permission-denied", "troubleshoot", "audit-logs"]
+    },
+    {
+      "id": "least-privilege",
+      "title": "Principle of least privilege",
+      "body": "Minimize blast radius by granting the narrowest possible access: use predefined roles (not basic), scope to specific resources (not projects), use service accounts (not user accounts), prefer Workload Identity over keys, set key expiration if keys are necessary, and use IAM Recommender to identify over-provisioned access. Review IAM policies regularly with `gcloud asset analyze-iam-policy`.",
+      "tags": ["least-privilege", "security", "best-practices", "recommender"]
+    }
+  ],
+  "links": [
+    { "uri": "gcp", "context": "GCP ecosystem overview and authentication patterns" },
+    { "uri": "gcp/gcloud", "context": "gcloud CLI commands for IAM management" },
+    { "uri": "gcp/compute", "context": "Compute Engine IAM roles and service account attachment" },
+    { "uri": "gcp/storage", "context": "Cloud Storage IAM roles and bucket policies" },
+    { "uri": "gcp/functions", "context": "Cloud Functions IAM roles and invoker permissions" }
+  ],
+  "related": [
+    { "uri": "gcp/gcloud", "relation": "see-also", "note": "All IAM operations are performed via gcloud CLI" },
+    { "uri": "gcp/compute", "relation": "see-also", "note": "VMs use attached service accounts for identity" },
+    { "uri": "gcp/storage", "relation": "see-also", "note": "Bucket IAM policies control object access" },
+    { "uri": "gcp/functions", "relation": "see-also", "note": "Functions require invoker role for authenticated access" }
+  ],
+  "more": {
+    "docs": "https://cloud.google.com/iam/docs",
+    "api": "https://cloud.google.com/iam/docs/reference/rest",
+    "spec": "https://cloud.google.com/iam/docs/understanding-roles"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents, security engineers",
+    "estimated_reading_time": "8 min",
+    "prerequisites": ["gcp/gcloud"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

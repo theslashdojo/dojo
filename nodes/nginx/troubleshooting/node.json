@@ -1,0 +1,122 @@
+{
+  "name": "troubleshooting",
+  "version": "1.0.0",
+  "uri": "nginx/troubleshooting",
+  "type": "context",
+  "content_type": "guide",
+  "context": "Diagnose and fix common nginx errors — 502 Bad Gateway, 504 Gateway Timeout, permission denied, config syntax",
+  "info": "This context node covers diagnosing and resolving the most common nginx problems: 502 Bad Gateway (backend unreachable), 504 Gateway Timeout (backend too slow), 403 Forbidden (permission issues), configuration syntax errors, SSL handshake failures, and performance bottlenecks. Each issue includes symptoms, root causes, diagnostic commands, and fixes. Agents use this when nginx returns unexpected errors or fails to start/reload. The primary diagnostic tools are `nginx -t` (config test), `error.log`, `journalctl -u nginx`, `ss`/`netstat` for port checks, and `curl` for testing. See [[nginx/config]] for config syntax reference, [[nginx/reverse-proxy]] for proxy-specific issues, and [[nginx/ssl]] for certificate problems.",
+  "parent": "nginx",
+  "tags": ["nginx", "troubleshooting", "502", "504", "403", "error", "debug", "diagnostics", "logs"],
+  "aliases": [
+    "nginx troubleshooting",
+    "nginx errors",
+    "nginx debug",
+    "nginx 502",
+    "nginx 504",
+    "nginx 403",
+    "nginx not working",
+    "nginx bad gateway",
+    "nginx gateway timeout",
+    "nginx permission denied",
+    "nginx won't start",
+    "nginx config error",
+    "fix nginx"
+  ],
+  "triggers": [
+    "nginx 502 bad gateway",
+    "nginx 504 gateway timeout",
+    "nginx returns 403",
+    "nginx won't start",
+    "nginx config test fails",
+    "nginx permission denied",
+    "nginx ssl handshake failed",
+    "nginx shows default page",
+    "nginx not serving my site",
+    "debug nginx error",
+    "nginx error log",
+    "nginx upstream connection refused"
+  ],
+  "body": "# Nginx Troubleshooting Guide\n\nThis guide covers the most common nginx issues, their root causes, and how to fix them. Always start with these diagnostic commands:\n\n## First Steps\n\n```bash\n# Test config syntax\nnginx -t\n\n# Check error log (most recent entries)\ntail -50 /var/log/nginx/error.log\n\n# Check nginx process status\nsystemctl status nginx\n\n# Check what ports nginx is listening on\nss -tlnp | grep nginx\n\n# Check nginx version and compiled modules\nnginx -V\n```\n\n## 502 Bad Gateway\n\n**Symptoms:** Client sees \"502 Bad Gateway\" error page.\n\n**Root Causes:**\n1. Backend server is not running\n2. Backend is listening on wrong address/port\n3. Unix socket doesn't exist or has wrong permissions\n4. SELinux blocking nginx from connecting to backend\n\n**Diagnosis:**\n\n```bash\n# Check if backend is running and listening\nss -tlnp | grep :3000  # replace with your backend port\n\n# Test backend directly\ncurl -v http://127.0.0.1:3000/\n\n# Check error log for upstream details\ngrep 'upstream' /var/log/nginx/error.log | tail -20\n\n# If using Unix socket\nls -la /var/run/myapp.sock\n\n# Check SELinux (CentOS/RHEL)\ngetsebool httpd_can_network_connect\n```\n\n**Fixes:**\n\n```bash\n# Start the backend\nsystemctl start myapp\n\n# Allow nginx to connect to network (SELinux)\nsudo setsebool -P httpd_can_network_connect 1\n\n# Fix Unix socket permissions\nchmod 660 /var/run/myapp.sock\nchown www-data:www-data /var/run/myapp.sock\n```\n\n## 504 Gateway Timeout\n\n**Symptoms:** Client sees \"504 Gateway Timeout\" after waiting.\n\n**Root Causes:**\n1. Backend is too slow to respond\n2. Proxy timeout values too low\n3. Backend is stuck/deadlocked\n4. DNS resolution taking too long\n\n**Diagnosis:**\n\n```bash\n# Check how long the backend takes\ntime curl -v http://127.0.0.1:3000/slow-endpoint\n\n# Check current timeout settings\nnginx -T | grep -E 'proxy_(connect|send|read)_timeout'\n\n# Check error log\ngrep 'timed out' /var/log/nginx/error.log | tail -20\n```\n\n**Fixes:**\n\n```nginx\n# Increase timeouts for slow endpoints\nlocation /api/reports/ {\n    proxy_pass http://backend;\n    proxy_connect_timeout 60s;\n    proxy_send_timeout 120s;\n    proxy_read_timeout 120s;\n}\n```\n\n## 403 Forbidden\n\n**Symptoms:** Client sees \"403 Forbidden\" for all or some requests.\n\n**Root Causes:**\n1. File permissions — nginx worker can't read files\n2. Missing index file and `autoindex off` (default)\n3. `deny` directive blocking access\n4. SELinux context wrong on files\n\n**Diagnosis:**\n\n```bash\n# Check which user nginx runs as\ngrep 'user ' /etc/nginx/nginx.conf\n\n# Check file permissions\nnamei -l /var/www/mysite/index.html\n\n# Check SELinux file context\nls -Z /var/www/mysite/\n\n# Check for deny directives\nnginx -T | grep -B5 'deny'\n```\n\n**Fixes:**\n\n```bash\n# Fix file ownership (nginx usually runs as www-data or nginx)\nchown -R www-data:www-data /var/www/mysite/\n\n# Fix permissions\nchmod -R 755 /var/www/mysite/\nfind /var/www/mysite/ -type f -exec chmod 644 {} \\;\n\n# Fix SELinux context\nrestorecon -Rv /var/www/mysite/\n\n# Or allow nginx to serve from home directories\nsetsebool -P httpd_enable_homedirs 1\n```\n\n## Config Syntax Errors\n\n**Symptoms:** `nginx -t` fails, nginx won't reload.\n\n**Diagnosis:**\n\n```bash\n# The error message tells you exactly what's wrong\nnginx -t\n# Output: nginx: [emerg] unknown directive \"proxy_psas\" in /etc/nginx/conf.d/myapp.conf:12\n\n# Dump full resolved config to find issues\nnginx -T\n```\n\n**Common Config Mistakes:**\n\n| Error | Cause | Fix |\n|-------|-------|-----|\n| `unknown directive` | Typo in directive name | Fix the spelling |\n| `directive not allowed here` | Directive in wrong context | Move to correct block |\n| `duplicate listen` | Two default_server on same port | Remove one `default_server` |\n| `host not found in upstream` | Backend hostname doesn't resolve | Use IP address or add `resolver` |\n| `open() failed (2: No such file)` | Certificate or include file missing | Check file paths |\n| `bind() to 0.0.0.0:80 failed` | Port 80 already in use | `ss -tlnp \\| grep :80` to find the process |\n\n## SSL/TLS Issues\n\n**Symptoms:** HTTPS doesn't work, browser shows certificate errors.\n\n**Diagnosis:**\n\n```bash\n# Test SSL connection\nopenssl s_client -connect example.com:443 -servername example.com </dev/null\n\n# Check certificate chain\nopenssl s_client -connect example.com:443 -servername example.com </dev/null 2>/dev/null | \\\n  openssl x509 -text -noout\n\n# Check certificate expiration\necho | openssl s_client -connect example.com:443 2>/dev/null | \\\n  openssl x509 -enddate -noout\n\n# Check error log for SSL errors\ngrep -i 'ssl\\|tls\\|certificate' /var/log/nginx/error.log | tail -20\n```\n\n**Common SSL Fixes:**\n\n```bash\n# Certificate expired — renew\nsudo certbot renew --force-renewal\n\n# Wrong certificate chain order — rebuild fullchain\ncat server.crt intermediate.crt > fullchain.pem\n\n# Key doesn't match certificate\nopenssl x509 -noout -modulus -in cert.pem | openssl md5\nopenssl rsa -noout -modulus -in key.pem | openssl md5\n# Both MD5 hashes must match\n\n# Permission denied on key file\nchmod 600 /etc/nginx/ssl/privkey.pem\nchown root:root /etc/nginx/ssl/privkey.pem\n```\n\n## Nginx Won't Start\n\n**Diagnosis:**\n\n```bash\n# Check systemd journal\njournalctl -u nginx --no-pager -n 50\n\n# Check if port is in use\nss -tlnp | grep ':80\\|:443'\n\n# Check config\nnginx -t\n\n# Try starting manually for more verbose output\nnginx -g 'daemon off;'\n```\n\n**Common Causes:**\n- Port 80/443 already in use (Apache, another nginx)\n- Config syntax error\n- Missing SSL certificate files\n- Missing log directory\n- PID file from previous crash\n\n```bash\n# Kill stale process\nkill $(cat /var/run/nginx.pid 2>/dev/null) 2>/dev/null\n\n# Remove stale PID file\nrm -f /var/run/nginx.pid\n\n# Create missing log directory\nmkdir -p /var/log/nginx\n\n# Start nginx\nsystemctl start nginx\n```\n\n## Wrong Site Served (Default Page)\n\n**Symptoms:** Nginx shows the default welcome page instead of your site.\n\n**Causes:**\n1. `server_name` doesn't match the request's Host header\n2. Config file not included (not in conf.d/ or not symlinked in sites-enabled/)\n3. Another server block is the default_server\n\n**Diagnosis:**\n\n```bash\n# Check what server_name values nginx knows about\nnginx -T | grep server_name\n\n# Test with explicit Host header\ncurl -H 'Host: example.com' http://localhost/\n\n# Check which configs are loaded\nnginx -T | grep 'configuration file'\n```\n\n## Performance Issues\n\n```bash\n# Check worker processes and connections\nnginx -T | grep -E 'worker_processes|worker_connections'\n\n# Check active connections\ncurl http://localhost/nginx_status  # requires stub_status module\n\n# Check for worker_connections exhaustion in error log\ngrep 'worker_connections are not enough' /var/log/nginx/error.log\n\n# Check open file limits\ncat /proc/$(cat /var/run/nginx.pid)/limits | grep 'open files'\n\n# Monitor real-time access\ntail -f /var/log/nginx/access.log\n```\n\n**Performance Checklist:**\n\n- [ ] `worker_processes auto` (matches CPU cores)\n- [ ] `worker_connections 1024` or higher\n- [ ] `sendfile on`\n- [ ] `tcp_nopush on`\n- [ ] `gzip on` with appropriate types\n- [ ] `keepalive_timeout 65`\n- [ ] Upstream keepalive enabled\n- [ ] Static assets have cache headers\n",
+  "sections": [
+    {
+      "id": "502-bad-gateway",
+      "title": "502 Bad Gateway",
+      "body": "A 502 means nginx reached the upstream server but got an invalid response (or no response). Primary causes: backend not running (`ss -tlnp | grep :PORT`), wrong address in `proxy_pass`, Unix socket missing or wrong permissions, SELinux blocking network connections (`setsebool -P httpd_can_network_connect 1`). Check `error.log` for `connect() failed (111: Connection refused)` or `no live upstreams`. Always test the backend directly: `curl http://127.0.0.1:3000/`.",
+      "tags": ["502", "bad-gateway", "connection-refused", "upstream", "selinux"]
+    },
+    {
+      "id": "504-gateway-timeout",
+      "title": "504 Gateway Timeout",
+      "body": "A 504 means the backend didn't respond within the timeout period. Default `proxy_read_timeout` is 60s. Increase for slow endpoints: `proxy_read_timeout 120s`. Check if backend is slow with `time curl http://backend:port/endpoint`. Look for `upstream timed out` in error.log. If the backend is fast but nginx still times out, check DNS resolution delays — use IP addresses in `proxy_pass` or configure `resolver`.",
+      "tags": ["504", "gateway-timeout", "timeout", "slow-backend", "proxy-read-timeout"]
+    },
+    {
+      "id": "403-forbidden",
+      "title": "403 Forbidden",
+      "body": "A 403 means nginx denies access. Check file ownership (`ls -la`), ensure nginx's user (www-data or nginx) can read files, verify directory permissions (755 for dirs, 644 for files). Check for `deny` directives in config (`nginx -T | grep deny`). On SELinux systems, check file contexts (`ls -Z`) and set `httpd_can_network_connect` if proxying. Missing `index` directive with no `autoindex on` also causes 403 on directory requests.",
+      "tags": ["403", "forbidden", "permissions", "ownership", "selinux"]
+    },
+    {
+      "id": "config-errors",
+      "title": "Configuration syntax errors",
+      "body": "Run `nginx -t` — it reports the exact file, line number, and error. Common mistakes: typos in directive names, directives in wrong context (e.g., `proxy_pass` outside `location`), duplicate `default_server`, missing semicolons, unresolved upstream hostnames. If config is valid but nginx won't reload, check `journalctl -u nginx` for runtime errors like port conflicts or missing certificate files.",
+      "tags": ["config", "syntax", "nginx-t", "validation", "typo"]
+    },
+    {
+      "id": "ssl-issues",
+      "title": "SSL/TLS certificate issues",
+      "body": "SSL problems: expired certificate (`openssl x509 -enddate -noout`), wrong chain order (server cert must be first in fullchain), key/cert mismatch (compare MD5 of modulus), missing intermediate certificates, wrong file permissions on private key (must be readable by nginx). For Let's Encrypt, run `certbot renew --force-renewal`. Test with `openssl s_client -connect host:443 -servername host`. Browser shows NET::ERR_CERT_AUTHORITY_INVALID for self-signed or missing chain certs.",
+      "tags": ["ssl", "tls", "certificate", "expired", "chain", "mismatch"]
+    },
+    {
+      "id": "startup-failures",
+      "title": "Nginx won't start",
+      "body": "Check `journalctl -u nginx -n 50` and `nginx -t`. Common causes: port 80/443 already bound (find with `ss -tlnp | grep :80`), config syntax errors, missing SSL cert files referenced in config, stale PID file from a crash (`rm /var/run/nginx.pid`), missing log directory (`mkdir -p /var/log/nginx`). Try `nginx -g 'daemon off;'` for foreground output. On systemd, `systemctl status nginx` shows the last few log lines.",
+      "tags": ["startup", "wont-start", "port-in-use", "pid", "systemd"]
+    },
+    {
+      "id": "wrong-site",
+      "title": "Wrong site or default page served",
+      "body": "Nginx shows the default page when no `server_name` matches the request's Host header. Check: is the config file loaded (`nginx -T | grep 'configuration file'`)? Is it in conf.d/ or symlinked in sites-enabled/? Does `server_name` match exactly? Test with `curl -H 'Host: example.com' http://localhost/`. Remove the default config if it's catching requests: `rm /etc/nginx/sites-enabled/default`. Add `default_server` to your listen directive if it should be the default.",
+      "tags": ["default-page", "wrong-site", "server-name", "host-header"]
+    },
+    {
+      "id": "diagnostic-commands",
+      "title": "Essential diagnostic commands",
+      "body": "Quick reference for nginx diagnostics:\n- `nginx -t` — test config syntax\n- `nginx -T` — test and dump full config\n- `nginx -V` — version and compiled modules\n- `tail -f /var/log/nginx/error.log` — watch errors live\n- `ss -tlnp | grep nginx` — check listening ports\n- `ps aux | grep nginx` — check running processes\n- `journalctl -u nginx -f` — follow systemd journal\n- `curl -vI http://localhost/` — test local response\n- `openssl s_client -connect host:443` — test SSL\n- `strace -p PID -e trace=network` — trace network calls",
+      "tags": ["diagnostics", "commands", "error-log", "ss", "curl", "openssl"]
+    }
+  ],
+  "links": [
+    { "uri": "nginx/config", "context": "Config syntax reference for fixing configuration errors" },
+    { "uri": "nginx/reverse-proxy", "context": "Proxy directives for debugging 502/504 issues" },
+    { "uri": "nginx/ssl", "context": "SSL configuration for fixing certificate issues" },
+    { "uri": "nginx", "context": "Nginx ecosystem overview" },
+    { "uri": "shell/processes", "context": "Process management for finding port conflicts and killing stale processes" }
+  ],
+  "related": [
+    { "uri": "nginx/config", "relation": "see-also", "note": "Config validation is the first step in most troubleshooting" },
+    { "uri": "nginx/reverse-proxy", "relation": "see-also", "note": "502 and 504 errors are proxy-related issues" },
+    { "uri": "nginx/ssl", "relation": "see-also", "note": "SSL handshake failures and certificate issues" },
+    { "uri": "shell/processes", "relation": "see-also", "note": "Finding processes on conflicting ports" }
+  ],
+  "more": {
+    "docs": "https://nginx.org/en/docs/debugging_log.html",
+    "wiki": "https://www.nginx.com/resources/wiki/start/topics/tutorials/debugging/"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, devops, AI agents",
+    "estimated_reading_time": "7 min",
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

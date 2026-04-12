@@ -1,0 +1,146 @@
+{
+  "name": "build",
+  "version": "1.0.0",
+  "uri": "vite/build",
+  "type": "skill",
+  "context": "Build production bundles with Vite — targets, minification (oxc/terser), sourcemaps, library mode, SSR, code splitting, manifest generation",
+  "info": "This skill covers Vite's production build pipeline powered by Rolldown. Key build options: build.target defaults to 'baseline-widely-available' (broadly supported modern features) but accepts ES versions (es2020), browser versions (chrome100, firefox115), and Node versions (node20); build.outDir defaults to 'dist'; build.assetsDir defaults to 'assets'; build.assetsInlineLimit (4096 bytes) controls when small assets are base64-inlined; build.cssCodeSplit (true) emits CSS per async chunk instead of one monolithic file; build.cssMinify defaults to 'lightningcss' for fast CSS minification; build.minify defaults to 'oxc' which is 30-90x faster than terser while producing comparable output — set to 'terser' for maximum compression or false to disable; build.sourcemap accepts false/true/'inline'/'hidden' for debugging production issues; build.rollupOptions (or build.rolldownOptions) exposes the underlying Rolldown bundler config for input/output/plugin customization; build.lib configures library mode with entry, name, formats (es/cjs/umd/iife), and fileName; build.manifest generates a manifest.json mapping source files to hashed output files for backend integration; build.ssrManifest generates a manifest for SSR preload directives; build.ssr sets the SSR entry point producing a Node-compatible bundle; build.emptyOutDir clears outDir before each build (defaults true when outDir is inside project root); build.copyPublicDir (true) copies the public/ directory; build.reportCompressedSize (true) reports gzip sizes but slows builds on large projects; build.chunkSizeWarningLimit (500 kB) warns on oversized chunks; build.watch enables Rolldown watch mode for incremental rebuilds; and build.modulePreload controls the module preload polyfill. Use [[vite/config]] to set these options in vite.config.ts, [[vite/plugins]] for build-time plugins like legacy browser support, and [[vite/env]] for environment-specific build modes.",
+  "parent": "vite",
+  "tags": ["build", "production", "bundle", "minify", "sourcemap", "library-mode", "ssr", "code-splitting", "rolldown", "manifest"],
+  "aliases": [
+    "vite build",
+    "vite production",
+    "vite bundle",
+    "build for production",
+    "vite dist",
+    "vite library mode",
+    "vite ssr build"
+  ],
+  "triggers": [
+    "build vite project",
+    "vite production build",
+    "create a library with vite",
+    "vite build targets",
+    "vite code splitting",
+    "vite ssr",
+    "configure vite minification",
+    "vite build sourcemaps",
+    "generate build manifest",
+    "vite library mode setup",
+    "optimize vite build output"
+  ],
+  "body": "# Production Builds with Vite\n\nVite's build command bundles your application for production using Rolldown, producing optimized, hashed, code-split output in `dist/`.\n\n## Basic Production Build\n\n```bash\n# Standard build (output to dist/)\nvite build\n\n# Custom mode (loads .env.staging)\nvite build --mode staging\n\n# With source maps\nvite build --sourcemap\n\n# Custom output directory\nvite build --outDir build\n\n# Watch mode for incremental rebuilds\nvite build --watch\n```\n\n## Build Configuration\n\n```typescript\nimport { defineConfig } from 'vite';\n\nexport default defineConfig({\n  build: {\n    target: 'es2020',                 // Browser/ES target\n    outDir: 'dist',                   // Output directory\n    assetsDir: 'assets',              // Asset subdirectory\n    assetsInlineLimit: 4096,          // Inline assets under 4kB as base64\n    sourcemap: true,                  // Generate source maps\n    minify: 'oxc',                    // 'oxc' (default, fastest), 'terser', 'esbuild', false\n    cssMinify: 'lightningcss',        // CSS minification engine\n    cssCodeSplit: true,               // Per-chunk CSS files\n    reportCompressedSize: true,       // Report gzip sizes in output\n    chunkSizeWarningLimit: 500,       // Warn on chunks > 500kB\n    emptyOutDir: true,                // Clear outDir before build\n    copyPublicDir: true,              // Copy public/ to outDir\n  },\n});\n```\n\nSee [[vite/config]] for the full config file reference.\n\n## Build Targets and Browser Support\n\nThe `build.target` option controls the JavaScript language level of output:\n\n```typescript\nexport default defineConfig({\n  build: {\n    // Default: broadly supported baseline features\n    target: 'baseline-widely-available',\n\n    // ES version\n    target: 'es2020',\n\n    // Specific browsers\n    target: ['chrome100', 'firefox115', 'safari16'],\n\n    // Node.js target (for SSR builds)\n    target: 'node20',\n\n    // Multiple targets (uses lowest common denominator)\n    target: ['es2020', 'edge88', 'firefox78', 'chrome87', 'safari14'],\n  },\n});\n```\n\nFor legacy browser support (IE11, older Safari), use the `@vitejs/plugin-legacy` plugin from [[vite/plugins]].\n\n## Library Mode\n\nBuild reusable libraries with `build.lib`:\n\n```typescript\nimport { defineConfig } from 'vite';\nimport { resolve } from 'path';\n\nexport default defineConfig({\n  build: {\n    lib: {\n      entry: resolve(__dirname, 'src/index.ts'),\n      name: 'MyLib',                  // UMD global name\n      formats: ['es', 'cjs', 'umd'],  // Output formats\n      fileName: (format) => `my-lib.${format}.js`,\n    },\n    rollupOptions: {\n      // Externalize deps that shouldn't be bundled\n      external: ['react', 'react-dom'],\n      output: {\n        globals: {\n          react: 'React',\n          'react-dom': 'ReactDOM',\n        },\n      },\n    },\n  },\n});\n```\n\nConfigure `package.json` exports for the library:\n\n```json\n{\n  \"name\": \"my-lib\",\n  \"type\": \"module\",\n  \"main\": \"dist/my-lib.cjs.js\",\n  \"module\": \"dist/my-lib.es.js\",\n  \"types\": \"dist/index.d.ts\",\n  \"exports\": {\n    \".\": {\n      \"import\": \"./dist/my-lib.es.js\",\n      \"require\": \"./dist/my-lib.cjs.js\"\n    }\n  },\n  \"files\": [\"dist\"]\n}\n```\n\nNote: library mode does not include type declarations. Use [[typescript/compiler]] (`tsc --emitDeclarationOnly`) to generate `.d.ts` files.\n\n## Code Splitting and Chunk Strategies\n\nVite automatically code-splits on dynamic imports:\n\n```typescript\n// Automatic chunk for dynamically imported modules\nconst module = await import('./heavy-module.ts');\n\n// React lazy loading creates separate chunks\nconst Dashboard = React.lazy(() => import('./Dashboard'));\n```\n\nCustomize chunking with `rollupOptions.output.manualChunks`:\n\n```typescript\nexport default defineConfig({\n  build: {\n    rollupOptions: {\n      output: {\n        manualChunks: {\n          // Group vendor libs into a shared chunk\n          vendor: ['react', 'react-dom', 'react-router-dom'],\n          // Separate UI library\n          ui: ['@radix-ui/react-dialog', '@radix-ui/react-dropdown-menu'],\n        },\n      },\n    },\n  },\n});\n\n// Or use a function for dynamic chunking\nexport default defineConfig({\n  build: {\n    rollupOptions: {\n      output: {\n        manualChunks(id) {\n          if (id.includes('node_modules')) {\n            return 'vendor';\n          }\n        },\n      },\n    },\n  },\n});\n```\n\n## Source Maps\n\nFour sourcemap modes for different deployment needs:\n\n```typescript\nexport default defineConfig({\n  build: {\n    // false — no source maps (default, smallest output)\n    sourcemap: false,\n\n    // true — separate .map files (for error tracking services)\n    sourcemap: true,\n\n    // 'inline' — embedded in output files (large, for debugging only)\n    sourcemap: 'inline',\n\n    // 'hidden' — .map files generated but not referenced in output\n    // Upload to Sentry/Datadog without exposing to browsers\n    sourcemap: 'hidden',\n  },\n});\n```\n\n## Minification Options\n\nVite supports three minifiers:\n\n| Minifier | Setting | Speed | Compression | Notes |\n|----------|---------|-------|-------------|-------|\n| Oxc | `'oxc'` (default) | Fastest (30-90x vs terser) | Good | Default since Vite 7, Rust-based |\n| esbuild | `'esbuild'` | Fast | Good | Go-based, former default |\n| Terser | `'terser'` | Slow | Best | Requires `npm i -D terser`, maximum compression |\n| Disabled | `false` | N/A | None | For debugging or custom post-processing |\n\n```typescript\nexport default defineConfig({\n  build: {\n    minify: 'oxc',     // Default — fast and effective\n    // minify: 'terser', // Maximum compression (install terser first)\n    // minify: false,    // Disable for debugging\n  },\n});\n```\n\n## SSR Builds\n\nBuild server-side rendered applications:\n\n```typescript\n// vite.config.ts for SSR\nexport default defineConfig({\n  build: {\n    ssr: true,                     // Or specify entry: 'src/entry-server.ts'\n    target: 'node20',             // Node.js target\n    rollupOptions: {\n      input: 'src/entry-server.ts',\n    },\n  },\n});\n```\n\nTypical SSR build script:\n\n```bash\n# Build client bundle\nvite build --outDir dist/client\n\n# Build server bundle\nvite build --outDir dist/server --ssr src/entry-server.ts\n```\n\nGenerate SSR manifest for preloading:\n\n```typescript\nexport default defineConfig({\n  build: {\n    ssrManifest: true,   // Generates ssr-manifest.json\n    manifest: true,      // Generates manifest.json for asset mapping\n  },\n});\n```\n\nSee [[vite/dev-server]] for SSR middleware mode in development.\n\n## Build Manifest for Backend Integration\n\nGenerate a manifest mapping source files to hashed output files:\n\n```typescript\nexport default defineConfig({\n  build: {\n    manifest: true,   // Generates .vite/manifest.json in outDir\n  },\n});\n```\n\nThe manifest maps original file paths to output info:\n\n```json\n{\n  \"src/main.tsx\": {\n    \"file\": \"assets/main-BkH2gR4a.js\",\n    \"src\": \"src/main.tsx\",\n    \"isEntry\": true,\n    \"css\": [\"assets/main-DiwrgTda.css\"],\n    \"imports\": [\"_vendor-C7BkSa0T.js\"]\n  }\n}\n```\n\nBackend frameworks (Rails, Laravel, Django) use this manifest to inject the correct `<script>` and `<link>` tags with cache-busted hashes.\n\n## Preview Production Builds\n\nLocally serve the production build for verification:\n\n```bash\n# Preview on default port 4173\nvite preview\n\n# Custom port\nvite preview --port 8080\n\n# Expose to network\nvite preview --host 0.0.0.0\n```\n\nThe preview server is a simple static file server — it is not a production server. Use it only for local verification before deploying.\n\n## Environment Variables\n\n| Variable | Purpose |\n|----------|----------|\n| `NODE_ENV` | Set to `production` during `vite build` |\n| `VITE_*` | Custom env vars included in the client bundle via `import.meta.env` |\n\nSee [[vite/env]] for `.env` file loading, mode configuration, and the `VITE_` prefix convention.\n",
+  "sections": [
+    {
+      "id": "basic-build",
+      "title": "Basic production build",
+      "body": "Run `vite build` to bundle the project into `dist/`. Vite reads `index.html` as the entry point, resolves all `<script type=\"module\">` imports, tree-shakes unused code, code-splits on dynamic imports, hashes filenames for caching, and minifies JS/CSS. Use `--mode <name>` to load environment-specific `.env.<mode>` files (see [[vite/env]]). Use `--outDir <path>` to change the output directory. The `public/` folder is copied as-is to the output root.",
+      "tags": ["build", "dist", "production", "tree-shaking", "hashing"]
+    },
+    {
+      "id": "targets",
+      "title": "Build targets and browser support",
+      "body": "The `build.target` option determines the JavaScript syntax level of output. Defaults to 'baseline-widely-available' which targets broadly supported modern features. Accepts ES version strings (es2015-es2024), specific browser versions (chrome100, firefox115, safari16, edge88), or 'esnext' for latest syntax. For Node targets use 'node20' etc. Under the hood Vite uses Oxc for transpilation. For legacy browser support (IE11, old Safari) install @vitejs/plugin-legacy from [[vite/plugins]].",
+      "tags": ["target", "browser-support", "es2020", "legacy", "esnext", "transpile"]
+    },
+    {
+      "id": "library-mode",
+      "title": "Library mode",
+      "body": "Set `build.lib` to produce a distributable library instead of an application. Configure `entry` (the library entry point), `name` (global variable for UMD/IIFE), `formats` (array of 'es', 'cjs', 'umd', 'iife'), and `fileName` (function or string for output names). Externalize framework dependencies like React or Vue via `build.rollupOptions.external` so consumers provide their own. Library mode does not generate type declarations — use [[typescript/compiler]] tsc with `--emitDeclarationOnly` for `.d.ts` output. Configure `package.json` exports with `main`, `module`, and `exports` fields.",
+      "tags": ["library", "lib", "npm-package", "umd", "cjs", "esm", "external"]
+    },
+    {
+      "id": "code-splitting",
+      "title": "Code splitting and chunk strategies",
+      "body": "Vite automatically creates separate chunks for dynamic imports (`import('./module')` and `React.lazy()`). Customize chunking with `build.rollupOptions.output.manualChunks` — pass an object mapping chunk names to module arrays, or a function that returns a chunk name for each module ID. Common strategy: group all `node_modules` into a `vendor` chunk for better caching. Use `build.chunkSizeWarningLimit` (default 500 kB) to flag oversized chunks. CSS is code-split per async chunk when `build.cssCodeSplit` is true (default).",
+      "tags": ["code-splitting", "chunks", "dynamic-import", "manual-chunks", "vendor", "lazy-loading"]
+    },
+    {
+      "id": "sourcemaps",
+      "title": "Source maps configuration",
+      "body": "Control source map generation with `build.sourcemap`: `false` (default, no maps), `true` (separate `.map` files alongside output), `'inline'` (maps embedded in output files — large, debug only), `'hidden'` (generates `.map` files but does not add the `//# sourceMappingURL` comment — ideal for uploading to Sentry/Datadog without exposing maps to browsers). Source maps increase build time and output size; enable only when needed for production debugging or error tracking.",
+      "tags": ["sourcemap", "debugging", "sentry", "error-tracking", "hidden-maps"]
+    },
+    {
+      "id": "ssr-builds",
+      "title": "SSR builds",
+      "body": "Set `build.ssr` to a server entry point to produce a Node-compatible SSR bundle. Typically you run two build passes: `vite build --outDir dist/client` for the client bundle and `vite build --outDir dist/server --ssr src/entry-server.ts` for the server bundle. Set `build.target` to 'node20' (or appropriate Node version) for SSR output. Enable `build.ssrManifest` to generate a manifest mapping modules to preload directives for the HTML shell. Enable `build.manifest` for the client build so the server can resolve hashed asset URLs. See [[vite/dev-server]] for SSR middleware mode during development.",
+      "tags": ["ssr", "server-side-rendering", "node", "preload", "ssr-manifest", "entry-server"]
+    }
+  ],
+  "links": [
+    { "uri": "vite/config", "context": "Configure build options in vite.config.ts with defineConfig" },
+    { "uri": "vite/plugins", "context": "Build-time plugins: legacy browsers, compression, visualizers" },
+    { "uri": "vite/env", "context": "Environment variables, .env files, and build modes" },
+    { "uri": "vite/troubleshooting", "context": "Debug build failures, chunk issues, and compatibility problems" },
+    { "uri": "vite/dev-server", "context": "Dev server and SSR middleware mode" }
+  ],
+  "related": [
+    { "uri": "vite/config", "relation": "prerequisite", "note": "Build options are configured inside vite.config.ts using defineConfig" },
+    { "uri": "vite/plugins", "relation": "see-also", "note": "Plugins like @vitejs/plugin-legacy extend build capabilities" },
+    { "uri": "typescript/compiler", "relation": "see-also", "note": "Use tsc for type declarations in library mode — Vite only transpiles, does not emit .d.ts" }
+  ],
+  "scripts": [
+    {
+      "id": "build-project",
+      "name": "Build Vite Project",
+      "description": "Run vite build with configurable mode, sourcemaps, output directory, and size reporting",
+      "lang": "bash",
+      "runtime": "bash",
+      "entry": "./scripts/build-project.sh",
+      "env": {
+        "PROJECT_DIR": { "required": true, "secret": false, "description": "Path to the Vite project root" },
+        "MODE": { "required": false, "secret": false, "description": "Build mode (default: production)" },
+        "SOURCEMAP": { "required": false, "secret": false, "description": "Enable sourcemaps: true, false, inline, hidden (default: false)" },
+        "OUT_DIR": { "required": false, "secret": false, "description": "Output directory (default: dist)" }
+      },
+      "packages": []
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "project_dir": { "type": "string", "description": "Path to the Vite project root directory" },
+        "mode": { "type": "string", "default": "production", "description": "Build mode — controls which .env file is loaded" },
+        "sourcemap": { "type": ["boolean", "string"], "default": false, "description": "Source map generation: false, true, 'inline', or 'hidden'" },
+        "minify": { "type": ["string", "boolean"], "default": "oxc", "description": "Minifier: 'oxc' (default), 'terser', 'esbuild', or false" },
+        "outDir": { "type": "string", "default": "dist", "description": "Output directory relative to project root" },
+        "target": { "type": ["string", "array"], "default": "baseline-widely-available", "description": "Build target: ES version, browser versions, or 'esnext'" }
+      },
+      "required": ["project_dir"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "outDir": { "type": "string", "description": "Absolute path to the build output directory" },
+        "files": { "type": "array", "items": { "type": "string" }, "description": "List of generated output files" },
+        "totalSize": { "type": "string", "description": "Total size of the build output (human-readable)" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "vite/config", "reason": "Build options configured in vite.config" }
+  ],
+  "more": {
+    "docs": "https://vite.dev/config/build-options",
+    "guide": "https://vite.dev/guide/build",
+    "library-mode": "https://vite.dev/guide/build#library-mode",
+    "ssr": "https://vite.dev/guide/ssr"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "7 min",
+    "prerequisites": ["vite/config"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

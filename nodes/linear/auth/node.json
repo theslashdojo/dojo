@@ -1,0 +1,75 @@
+{
+  "name": "auth",
+  "version": "1.0.0",
+  "uri": "linear/auth",
+  "type": "context",
+  "content_type": "reference",
+  "context": "Authenticate with Linear using personal API keys or OAuth 2.0 access tokens",
+  "info": "Linear supports two authentication methods: personal API keys for scripts and local tools, and OAuth 2.0 for published integrations. Both authenticate via the `Authorization` HTTP header against the GraphQL endpoint at https://api.linear.app/graphql. API keys are generated in Linear Settings → Security → API and sent as a bare token. OAuth tokens use Bearer format. OAuth follows the standard authorization code flow with PKCE support. Agents need this context before making any Linear API call.",
+  "parent": "linear",
+  "tags": ["auth", "api-key", "oauth", "token", "authentication", "authorization"],
+  "aliases": [
+    "linear auth",
+    "linear authentication",
+    "linear api key",
+    "linear oauth",
+    "linear token",
+    "linear access token",
+    "linear credentials"
+  ],
+  "triggers": [
+    "authenticate with linear",
+    "get a linear api key",
+    "set up linear oauth",
+    "linear authorization header",
+    "how to auth linear api"
+  ],
+  "body": "# Linear Authentication\n\nEvery Linear API call requires authentication via the `Authorization` HTTP header. There are two methods.\n\n## Personal API Keys\n\nFor scripts, CLI tools, and agent automation:\n\n1. Open Linear → Settings → Security → API\n2. Click **Create key** and give it a label\n3. Copy the key — it is shown only once\n\nUse the key directly in the Authorization header:\n\n```bash\ncurl -X POST https://api.linear.app/graphql \\\n  -H \"Content-Type: application/json\" \\\n  -H \"Authorization: lin_api_xxxxxxxxxxxx\" \\\n  -d '{\"query\": \"{ viewer { id name email } }\"}'\n```\n\nWith the SDK:\n\n```typescript\nimport { LinearClient } from \"@linear/sdk\";\n\nconst client = new LinearClient({\n  apiKey: process.env.LINEAR_API_KEY,\n});\n\nconst me = await client.viewer;\nconsole.log(me.name);\n```\n\n## OAuth 2.0\n\nFor published integrations that act on behalf of users:\n\n### 1. Register your application\n\nCreate an OAuth application in Linear Settings → API → OAuth Applications. You'll receive a **client ID** and **client secret**.\n\n### 2. Authorization request\n\nRedirect users to:\n\n```\nhttps://linear.app/oauth/authorize?\n  client_id=YOUR_CLIENT_ID&\n  redirect_uri=https://your-app.com/callback&\n  response_type=code&\n  scope=read,write&\n  state=random_state_string\n```\n\n**Available scopes:**\n- `read` — Read access to all resources\n- `write` — Write access to all resources\n- `issues:create` — Create issues only\n- `admin` — Admin access to workspace settings\n\n### 3. Exchange code for token\n\n```bash\ncurl -X POST https://api.linear.app/oauth/token \\\n  -H \"Content-Type: application/x-www-form-urlencoded\" \\\n  -d 'grant_type=authorization_code&\n      client_id=YOUR_CLIENT_ID&\n      client_secret=YOUR_CLIENT_SECRET&\n      redirect_uri=https://your-app.com/callback&\n      code=AUTHORIZATION_CODE'\n```\n\nResponse:\n\n```json\n{\n  \"access_token\": \"lin_oauth_xxxxxxxxxxxx\",\n  \"token_type\": \"Bearer\",\n  \"expires_in\": 315360000,\n  \"scope\": \"read,write\"\n}\n```\n\n### 4. Use the token\n\n```typescript\nimport { LinearClient } from \"@linear/sdk\";\n\nconst client = new LinearClient({\n  accessToken: process.env.LINEAR_OAUTH_ACCESS_TOKEN,\n});\n```\n\nOr in raw HTTP:\n\n```bash\ncurl -X POST https://api.linear.app/graphql \\\n  -H \"Content-Type: application/json\" \\\n  -H \"Authorization: Bearer lin_oauth_xxxxxxxxxxxx\" \\\n  -d '{\"query\": \"{ viewer { id name } }\"}'\n```\n\n## Environment Variables\n\n| Variable | Purpose | Method |\n|----------|---------|--------|\n| `LINEAR_API_KEY` | Personal API key | API Key |\n| `LINEAR_OAUTH_CLIENT_ID` | OAuth application client ID | OAuth |\n| `LINEAR_OAUTH_CLIENT_SECRET` | OAuth application client secret | OAuth |\n| `LINEAR_OAUTH_ACCESS_TOKEN` | OAuth access token | OAuth |\n\n## Security Notes\n\n- API keys have the same permissions as the user who created them\n- Store keys in environment variables or secret managers, never in code\n- OAuth tokens can be scoped to limit access\n- Rotate API keys periodically via Settings → Security → API\n- API keys prefixed with `lin_api_`, OAuth tokens with `lin_oauth_`",
+  "sections": [
+    {
+      "id": "api-keys",
+      "title": "Personal API keys",
+      "body": "Generated in Linear Settings → Security → API. Sent as a bare token in the `Authorization` header (no Bearer prefix). Keys have the same permissions as the creating user. Prefix: `lin_api_`. Use `LINEAR_API_KEY` environment variable. Best for: scripts, CLI tools, agent automation, local development.",
+      "tags": ["api-key", "personal-token", "lin-api"]
+    },
+    {
+      "id": "oauth",
+      "title": "OAuth 2.0 flow",
+      "body": "Standard authorization code flow. Register an OAuth app in Settings → API → OAuth Applications to get client ID and secret. Authorization URL: `https://linear.app/oauth/authorize`. Token endpoint: `https://api.linear.app/oauth/token`. Scopes: `read`, `write`, `issues:create`, `admin`. Tokens use Bearer format in the Authorization header. Best for: published integrations, multi-user apps, third-party tools.",
+      "tags": ["oauth", "oauth2", "authorization-code", "bearer-token", "scopes"]
+    },
+    {
+      "id": "security",
+      "title": "Security best practices",
+      "body": "Never commit API keys or secrets to source control. Use environment variables or a secret manager. Rotate API keys periodically. Prefer OAuth with minimal scopes for production integrations. API keys inherit the creating user's full permissions — use service accounts for automation when possible.",
+      "tags": ["security", "secrets", "rotation", "best-practices"]
+    }
+  ],
+  "links": [
+    { "uri": "linear", "context": "Linear ecosystem overview and data model" },
+    { "uri": "linear/issues", "context": "Create and manage issues after authenticating" },
+    { "uri": "linear/projects", "context": "Access projects after authenticating" },
+    { "uri": "linear/webhooks", "context": "Webhooks also require authentication to configure" }
+  ],
+  "related": [
+    { "uri": "github/auth", "relation": "similar", "note": "GitHub uses PATs and OAuth similarly" },
+    { "uri": "linear/issues", "relation": "see-also", "note": "Authentication is required before any issue operations" }
+  ],
+  "more": {
+    "docs": "https://linear.app/developers"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "3 min",
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

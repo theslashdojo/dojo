@@ -3,95 +3,97 @@
   "version": "1.0.0",
   "uri": "mcp",
   "type": "ecosystem",
-  "context": "Model Context Protocol — the open standard for connecting AI agents to tools, data sources, and prompts via JSON-RPC",
-  "info": "The Model Context Protocol (MCP) is an open-source standard created by Anthropic for connecting AI applications to external systems. MCP follows a client-server architecture where hosts (AI applications like Claude Desktop, VS Code, Cursor) create MCP clients that connect to MCP servers. Servers expose three core primitives: tools (executable functions the LLM can invoke), resources (contextual data like files and database schemas), and prompts (reusable interaction templates). The protocol uses JSON-RPC 2.0 over two transport mechanisms: stdio (local subprocess communication) and Streamable HTTP (remote server communication with optional SSE streaming). MCP enables agents to discover capabilities dynamically, execute actions in external systems, and access contextual data — all through a single standardized protocol. Think of MCP like USB-C for AI: one plug, every device.",
+  "context": "Model Context Protocol — the open standard for connecting AI agents to tools, data sources, and prompt templates",
+  "info": "The MCP ecosystem covers the Model Context Protocol, an open standard for connecting AI applications to external systems. MCP follows a client-server architecture where hosts (AI apps like Claude Desktop, VS Code, Cursor) create MCP clients that connect to MCP servers exposing tools, resources, and prompts. The protocol uses JSON-RPC 2.0 over stdio or Streamable HTTP transports. MCP servers expose three core primitives: tools (executable functions the LLM can invoke), resources (contextual data like files and database schemas), and prompts (reusable interaction templates). Official SDKs exist for Python (mcp) and TypeScript (@modelcontextprotocol/sdk). MCP is supported by Claude, ChatGPT, VS Code Copilot, Cursor, and many other AI applications.",
   "parent": null,
-  "tags": ["mcp", "model-context-protocol", "agent-tools", "json-rpc", "ai-protocol", "tool-use", "resources", "prompts", "server", "client"],
+  "tags": ["mcp", "model-context-protocol", "tools", "resources", "prompts", "server", "client", "agent-tools", "json-rpc", "stdio", "sse"],
   "aliases": [
     "mcp",
     "model context protocol",
-    "MCP protocol",
-    "MCP server",
-    "MCP client",
-    "model-context-protocol",
+    "MCP",
+    "mcp server",
+    "mcp client",
     "mcp tools",
-    "mcp resources",
-    "mcp prompts",
-    "agent protocol",
-    "tool protocol"
+    "model-context-protocol",
+    "mcp protocol",
+    "agent tools standard",
+    "mcp sdk"
   ],
   "triggers": [
-    "build an MCP server",
-    "create an MCP tool",
-    "connect to an MCP server",
-    "expose tools via MCP",
-    "use model context protocol",
-    "set up MCP for my agent",
-    "add MCP support",
-    "what is MCP",
-    "how does MCP work",
-    "integrate with MCP"
+    "build an mcp server",
+    "create mcp tools",
+    "connect to an mcp server",
+    "expose tools via mcp",
+    "add resources to mcp",
+    "create mcp prompts",
+    "set up model context protocol",
+    "configure mcp transport",
+    "authenticate mcp server",
+    "how does mcp work"
   ],
-  "body": "# Model Context Protocol (MCP)\n\nMCP is the open standard for connecting AI applications to external systems. It provides a universal protocol for agents to discover and use tools, access contextual data, and leverage reusable prompts.\n\n## Core Primitives\n\n- **[[mcp/server/tools]]** — Executable functions that AI models can invoke to perform actions (API calls, database queries, file operations)\n- **[[mcp/server/resources]]** — Data sources that provide contextual information (file contents, database schemas, API responses)\n- **[[mcp/server/prompts]]** — Reusable templates that structure interactions with language models\n\n## Architecture\n\nMCP follows a client-server architecture with three participants:\n\n- **Host** — The AI application (Claude Desktop, VS Code, Cursor) that coordinates MCP clients\n- **[[mcp/client]]** — Maintains connections to MCP servers and routes tool calls\n- **[[mcp/server]]** — Exposes tools, resources, and prompts via the MCP protocol\n\n```\nHost (AI App)\n  ├─ MCP Client 1 ──── MCP Server A (local, stdio)\n  ├─ MCP Client 2 ──── MCP Server B (local, stdio)\n  └─ MCP Client 3 ──── MCP Server C (remote, HTTP)\n```\n\n## Protocol Layers\n\n1. **Data Layer** — JSON-RPC 2.0 protocol for lifecycle management, capability negotiation, and primitive operations (`tools/list`, `tools/call`, `resources/read`, `prompts/get`)\n2. **[[mcp/transport]]** — Communication channels: stdio for local servers, Streamable HTTP for remote servers\n\n## Quick Start\n\n### Python Server\n\n```python\nfrom mcp.server.fastmcp import FastMCP\n\nmcp = FastMCP(\"my-server\")\n\n@mcp.tool()\ndef add(a: int, b: int) -> int:\n    \"\"\"Add two numbers.\"\"\"\n    return a + b\n\n@mcp.resource(\"config://app\")\ndef get_config() -> str:\n    \"\"\"Return application config.\"\"\"\n    return '{\"debug\": true}'\n\n@mcp.prompt()\ndef review(code: str) -> str:\n    \"\"\"Generate a code review prompt.\"\"\"\n    return f\"Review this code:\\n\\n{code}\"\n\nif __name__ == \"__main__\":\n    mcp.run()\n```\n\n### TypeScript Server\n\n```typescript\nimport { McpServer } from \"@modelcontextprotocol/sdk/server/mcp.js\";\nimport { StdioServerTransport } from \"@modelcontextprotocol/sdk/server/stdio.js\";\nimport { z } from \"zod\";\n\nconst server = new McpServer({ name: \"my-server\", version: \"1.0.0\" });\n\nserver.tool(\"add\", { a: z.number(), b: z.number() }, async ({ a, b }) => ({\n  content: [{ type: \"text\", text: String(a + b) }]\n}));\n\nconst transport = new StdioServerTransport();\nawait server.connect(transport);\n```\n\n## Testing\n\nUse the MCP Inspector to test servers interactively:\n\n```bash\nnpx @modelcontextprotocol/inspector python my_server.py\n# or\nnpx @modelcontextprotocol/inspector node my_server.js\n```\n\n## SDKs\n\n| Language | Package |\n|----------|----------|\n| Python | `mcp` (pip install \"mcp[cli]\") |\n| TypeScript | `@modelcontextprotocol/sdk` |\n| Java | `io.modelcontextprotocol.sdk:mcp` |\n| Kotlin | `io.modelcontextprotocol.sdk:mcp-kotlin` |\n| C# | `ModelContextProtocol` |\n\n## Environment Variables\n\n| Variable | Purpose |\n|----------|----------|\n| `MCP_SERVER_URL` | URL for remote MCP server connections |\n| `MCP_AUTH_TOKEN` | Bearer token for authenticated MCP servers |\n",
+  "body": "# Model Context Protocol (MCP)\n\nMCP is the open standard for connecting AI applications to external systems. Think of it as USB-C for AI — a universal interface that lets any agent talk to any tool server.\n\n## Architecture\n\nMCP follows a client-server model with three participants:\n\n- **Host** — The AI application (Claude Desktop, VS Code, Cursor) that coordinates MCP clients\n- **Client** — A component inside the host that maintains a 1:1 connection to an MCP server\n- **Server** — A program that exposes tools, resources, and prompts to clients\n\n```\nHost (AI App)\n  \u251c\u2500\u2500 MCP Client 1 \u2500\u2500\u2500\u2500 MCP Server A (local, stdio)\n  \u251c\u2500\u2500 MCP Client 2 \u2500\u2500\u2500\u2500 MCP Server B (local, stdio)\n  \u2514\u2500\u2500 MCP Client 3 \u2500\u2500\u2500\u2500 MCP Server C (remote, HTTP)\n```\n\n## Core Primitives\n\nMCP servers expose three types of capabilities:\n\n| Primitive | Control | Description |\n|-----------|---------|-------------|\n| **[[mcp/server/tools]]** | Model-controlled | Functions the LLM can invoke (search, compute, API calls) |\n| **[[mcp/server/resources]]** | Application-controlled | Data sources providing context (files, DB schemas, API responses) |\n| **[[mcp/server/prompts]]** | User-controlled | Reusable interaction templates (code review, analysis) |\n\n## Protocol Layers\n\n**Data Layer** — JSON-RPC 2.0 messages: lifecycle management, capability negotiation, primitive operations (`tools/list`, `tools/call`, `resources/read`, `prompts/get`).\n\n**Transport Layer** — Communication channels: [[mcp/transport]] covers stdio (local subprocess) and Streamable HTTP (remote, with SSE streaming).\n\n## SDKs\n\n| SDK | Package | Install |\n|-----|---------|----------|\n| Python | `mcp` | `pip install \"mcp[cli]\"` |\n| TypeScript | `@modelcontextprotocol/sdk` | `npm install @modelcontextprotocol/sdk` |\n\n## Quick Start \u2014 Python Server\n\n```python\nfrom mcp.server.fastmcp import FastMCP\n\nmcp = FastMCP(\"my-server\")\n\n@mcp.tool()\ndef add(a: int, b: int) -> int:\n    \"\"\"Add two numbers.\"\"\"\n    return a + b\n\n@mcp.resource(\"config://app\")\ndef get_config() -> str:\n    \"\"\"Return application config.\"\"\"\n    return \"App configuration data\"\n\n@mcp.prompt()\ndef review_code(code: str) -> str:\n    \"\"\"Create a code review prompt.\"\"\"\n    return f\"Please review this code:\\n\\n{code}\"\n\nif __name__ == \"__main__\":\n    mcp.run()\n```\n\n## Quick Start \u2014 TypeScript Server\n\n```typescript\nimport { McpServer } from \"@modelcontextprotocol/sdk/server/mcp.js\";\nimport { StdioServerTransport } from \"@modelcontextprotocol/sdk/server/stdio.js\";\nimport { z } from \"zod\";\n\nconst server = new McpServer({ name: \"my-server\", version: \"1.0.0\" });\n\nserver.tool(\"add\", { a: z.number(), b: z.number() }, async ({ a, b }) => ({\n  content: [{ type: \"text\", text: String(a + b) }]\n}));\n\nconst transport = new StdioServerTransport();\nawait server.connect(transport);\n```\n\n## Running an MCP Server\n\n```bash\n# Python \u2014 stdio transport\npython my_server.py\n\n# Python \u2014 with MCP CLI inspector\nmcp dev my_server.py\n\n# Python \u2014 install in Claude Desktop\nmcp install my_server.py\n\n# TypeScript \u2014 stdio transport\nnode my_server.js\n```\n\n## Configuration (Claude Desktop)\n\nAdd servers to `claude_desktop_config.json`:\n\n```json\n{\n  \"mcpServers\": {\n    \"my-server\": {\n      \"command\": \"python\",\n      \"args\": [\"path/to/server.py\"]\n    },\n    \"remote-server\": {\n      \"url\": \"https://example.com/mcp\"\n    }\n  }\n}\n```\n\n## Environment Variables\n\n| Variable | Purpose |\n|----------|----------|\n| `MCP_SERVER_NAME` | Server identity during initialization |\n| `MCP_TRANSPORT` | Transport type: `stdio` or `http` |\n| `MCP_PORT` | Port for HTTP transport (default: 3000) |\n",
   "sections": [
     {
-      "id": "overview",
-      "title": "What is MCP",
-      "body": "MCP (Model Context Protocol) is an open-source standard for connecting AI applications to external systems. It provides a standardized way for AI agents to discover and invoke tools, access contextual data, and use prompt templates. Created by Anthropic, MCP is supported by Claude Desktop, VS Code Copilot, Cursor, ChatGPT, and many other AI applications. MCP uses JSON-RPC 2.0 for message exchange and supports both local (stdio) and remote (Streamable HTTP) transports.",
-      "tags": ["overview", "introduction", "what-is-mcp"]
+      "id": "architecture",
+      "title": "Architecture overview",
+      "body": "MCP uses a host/client/server architecture. The host is the AI application (Claude Desktop, VS Code). It creates one MCP client per server connection. Each client maintains a dedicated JSON-RPC 2.0 session with its server. Local servers use stdio transport (subprocess). Remote servers use Streamable HTTP with optional SSE streaming. See [[mcp/architecture]] for the full breakdown.",
+      "tags": ["architecture", "host", "client", "server", "json-rpc"]
     },
     {
       "id": "primitives",
       "title": "Core primitives",
-      "body": "MCP defines three server primitives: **Tools** are model-controlled executable functions invoked via `tools/call` — they let agents perform actions like querying databases or calling APIs. **Resources** are application-controlled data sources accessed via `resources/read` — they provide contextual information like file contents or database schemas. **Prompts** are user-controlled reusable templates retrieved via `prompts/get` — they structure interactions with pre-built message sequences. Each primitive supports discovery via `*/list` methods and dynamic updates via `notifications/*/list_changed`. See [[mcp/server/tools]], [[mcp/server/resources]], and [[mcp/server/prompts]] for details.",
-      "tags": ["primitives", "tools", "resources", "prompts", "capabilities"]
+      "body": "Servers expose three primitive types: **Tools** are model-controlled functions the LLM invokes to perform actions. **Resources** are application-controlled data sources providing context. **Prompts** are user-controlled interaction templates. Each has list/get/call methods. See [[mcp/server/tools]], [[mcp/server/resources]], [[mcp/server/prompts]].",
+      "tags": ["tools", "resources", "prompts", "primitives", "capabilities"]
     },
     {
       "id": "lifecycle",
       "title": "Connection lifecycle",
-      "body": "MCP connections follow a stateful lifecycle: 1) **Initialize** — Client sends `initialize` request with its capabilities and protocol version; server responds with its capabilities. 2) **Initialized** — Client sends `notifications/initialized` to signal readiness. 3) **Operation** — Client and server exchange requests, responses, and notifications. 4) **Shutdown** — Connection is terminated (stdin closed for stdio, HTTP DELETE for Streamable HTTP sessions). During initialization, both sides negotiate which primitives they support (tools, resources, prompts) and whether they support features like listChanged notifications or resource subscriptions.",
-      "tags": ["lifecycle", "initialization", "capability-negotiation", "shutdown"]
+      "body": "MCP connections follow a lifecycle: 1) Client sends `initialize` with protocol version and capabilities, 2) Server responds with its capabilities (tools, resources, prompts), 3) Client sends `notifications/initialized`, 4) Normal message exchange begins, 5) Either party can close the connection. Capability negotiation determines what features are available.",
+      "tags": ["lifecycle", "initialize", "capabilities", "negotiation", "connection"]
     },
     {
-      "id": "ecosystem",
-      "title": "Ecosystem and adoption",
-      "body": "MCP is supported by a wide range of hosts and servers. **Hosts**: Claude Desktop, Claude Code, VS Code (Copilot), Cursor, ChatGPT, Windsurf, Zed, and many more. **Reference servers**: filesystem, GitHub, Slack, Google Drive, PostgreSQL, Puppeteer, Brave Search, and 100+ community servers. **SDKs**: Python (`mcp`), TypeScript (`@modelcontextprotocol/sdk`), Java, Kotlin, C#. The protocol specification is versioned by date (e.g., `2025-06-18`) and maintained at modelcontextprotocol.io.",
-      "tags": ["ecosystem", "hosts", "servers", "sdks", "adoption"]
+      "id": "sdks",
+      "title": "Official SDKs",
+      "body": "Python SDK: `pip install \"mcp[cli]\"` \u2014 provides `FastMCP` high-level API and `mcp dev` inspector. TypeScript SDK: `npm install @modelcontextprotocol/sdk` \u2014 provides `McpServer` class with Zod schema support. Both SDKs handle JSON-RPC framing, transport setup, and lifecycle management automatically.",
+      "tags": ["sdk", "python", "typescript", "fastmcp", "mcp-sdk"]
     }
   ],
   "links": [
     { "uri": "mcp/server", "context": "Build MCP servers that expose tools, resources, and prompts" },
-    { "uri": "mcp/client", "context": "Build MCP clients that connect to and consume MCP servers" },
-    { "uri": "mcp/server/tools", "context": "Expose executable functions that agents can invoke" },
-    { "uri": "mcp/server/resources", "context": "Expose contextual data sources for agent consumption" },
-    { "uri": "mcp/server/prompts", "context": "Expose reusable prompt templates" },
+    { "uri": "mcp/server/tools", "context": "Define executable functions for LLMs to invoke" },
+    { "uri": "mcp/server/resources", "context": "Expose data sources for agent context" },
+    { "uri": "mcp/server/prompts", "context": "Create reusable interaction templates" },
+    { "uri": "mcp/client", "context": "Build MCP clients that connect to servers" },
     { "uri": "mcp/transport", "context": "Transport mechanisms: stdio and Streamable HTTP" },
     { "uri": "mcp/auth", "context": "OAuth 2.1 authorization for remote MCP servers" },
-    { "uri": "mcp/architecture", "context": "Deep dive into MCP architecture and design" }
+    { "uri": "mcp/architecture", "context": "Protocol architecture, layers, and message flow" }
   ],
   "related": [
-    { "uri": "anthropic", "relation": "see-also", "note": "MCP was created by Anthropic and is natively supported by Claude" },
-    { "uri": "anthropic/tool-use", "relation": "see-also", "note": "MCP tools are discovered and invoked through Claude's tool use capability" }
+    { "uri": "mcp/server", "relation": "see-also", "note": "Server is the primary skill \u2014 most developers start here" },
+    { "uri": "mcp/architecture", "relation": "see-also", "note": "Architecture explains the protocol design and message flow" },
+    { "uri": "mcp/transport", "relation": "see-also", "note": "Transport determines how clients and servers communicate" }
   ],
   "more": {
     "docs": "https://modelcontextprotocol.io",
-    "spec": "https://spec.modelcontextprotocol.io",
+    "spec": "https://modelcontextprotocol.io/specification/2025-06-18",
     "repo": "https://github.com/modelcontextprotocol",
     "examples": "https://github.com/modelcontextprotocol/servers",
     "wiki": "https://modelcontextprotocol.io/docs/learn/architecture"
   },
   "frontmatter": {
-    "created": "2026-04-10",
-    "updated": "2026-04-10",
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
     "author": "dojo-community",
-    "audience": "developers, AI agents",
-    "estimated_reading_time": "5 min",
+    "audience": "developers, AI agents, integrators",
+    "estimated_reading_time": "6 min",
+    "prerequisites": [],
     "status": "living",
     "confidence": "high"
   },
   "author": "dojo-community",
   "license": "MIT",
-  "created": "2026-04-10T00:00:00Z",
-  "updated": "2026-04-10T00:00:00Z",
+  "repository": "https://github.com/modelcontextprotocol",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
   "status": "published"
 }

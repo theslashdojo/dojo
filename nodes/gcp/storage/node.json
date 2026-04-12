@@ -1,0 +1,142 @@
+{
+  "name": "storage",
+  "version": "1.0.0",
+  "uri": "gcp/storage",
+  "type": "skill",
+  "context": "Upload, download, and manage objects in Google Cloud Storage buckets — lifecycle, signed URLs, and access control",
+  "info": "This skill covers Google Cloud Storage (GCS) for object storage: creating and configuring buckets with location and storage class; uploading, downloading, and deleting objects; generating signed URLs for temporary access; configuring lifecycle rules for automatic deletion or class transitions; setting bucket-level and object-level ACLs or uniform bucket-level access; and enabling versioning for data protection. Operations use gsutil, gcloud storage commands, or the Python/Node.js client libraries. Agents use this skill to store application data, serve static assets, back up databases, and transfer files between services. See [[gcp/iam]] for storage-specific IAM roles (roles/storage.admin, roles/storage.objectViewer) and [[gcp/gcloud]] for CLI setup.",
+  "parent": "gcp",
+  "tags": ["storage", "gcs", "bucket", "object", "cloud-storage", "upload", "download", "signed-url", "lifecycle", "gsutil"],
+  "aliases": [
+    "cloud storage",
+    "gcs",
+    "google cloud storage",
+    "gsutil",
+    "gcp storage",
+    "gcloud storage",
+    "google storage bucket",
+    "gcs bucket",
+    "object storage gcp",
+    "gs://",
+    "google buckets"
+  ],
+  "triggers": [
+    "create a gcs bucket",
+    "upload a file to cloud storage",
+    "download from gcs",
+    "generate a signed url",
+    "set bucket lifecycle policy",
+    "make a bucket public",
+    "copy files to google cloud storage",
+    "list objects in a gcs bucket",
+    "sync files to gcs",
+    "manage cloud storage buckets"
+  ],
+  "body": "# Google Cloud Storage\n\nGoogle Cloud Storage (GCS) is an object storage service for any amount of data. Objects are stored in buckets, accessed via `gs://bucket-name/object-path` URIs. GCS provides four storage classes with different price/availability tradeoffs.\n\n## Storage Classes\n\n| Class | Min Duration | Use Case | Availability |\n|-------|-------------|----------|--------------|\n| Standard | None | Frequently accessed data | 99.99% |\n| Nearline | 30 days | Monthly access | 99.95% |\n| Coldline | 90 days | Quarterly access | 99.95% |\n| Archive | 365 days | Yearly access / compliance | 99.95% |\n\n## Creating Buckets\n\n```bash\n# Create a bucket (names are globally unique)\ngcloud storage buckets create gs://my-app-data-prod \\\n  --location=us-central1 \\\n  --default-storage-class=standard \\\n  --uniform-bucket-level-access\n\n# Create a multi-region bucket for high availability\ngcloud storage buckets create gs://my-app-static \\\n  --location=us \\\n  --default-storage-class=standard\n\n# List buckets in the project\ngcloud storage buckets list\n\n# Describe a bucket\ngcloud storage buckets describe gs://my-app-data-prod\n```\n\n## Uploading and Downloading\n\n```bash\n# Upload a file\ngcloud storage cp ./local-file.txt gs://my-bucket/path/file.txt\n\n# Upload a directory recursively\ngcloud storage cp -r ./build/ gs://my-bucket/static/\n\n# Download a file\ngcloud storage cp gs://my-bucket/path/file.txt ./local-file.txt\n\n# Download a directory\ngcloud storage cp -r gs://my-bucket/data/ ./local-data/\n\n# Sync a directory (only copy changed files)\ngcloud storage rsync -r ./local-dir/ gs://my-bucket/remote-dir/\n\n# Sync with delete (mirror source to destination)\ngcloud storage rsync -r -d ./local-dir/ gs://my-bucket/remote-dir/\n```\n\n## Listing and Managing Objects\n\n```bash\n# List objects in a bucket\ngcloud storage ls gs://my-bucket/\n\n# List with details (size, timestamp)\ngcloud storage ls -l gs://my-bucket/path/\n\n# Delete an object\ngcloud storage rm gs://my-bucket/path/file.txt\n\n# Delete all objects with a prefix\ngcloud storage rm gs://my-bucket/temp/** --recursive\n\n# Move/rename an object\ngcloud storage mv gs://my-bucket/old-name.txt gs://my-bucket/new-name.txt\n\n# Get object metadata\ngcloud storage objects describe gs://my-bucket/path/file.txt\n```\n\n## Signed URLs\n\nGenerate time-limited URLs for unauthenticated access:\n\n```bash\n# Generate a signed URL valid for 1 hour (requires service account key)\ngcloud storage sign-url gs://my-bucket/private/report.pdf \\\n  --private-key-file=sa-key.json \\\n  --duration=1h\n```\n\n```python\nfrom google.cloud import storage\nimport datetime\n\ndef generate_signed_url(bucket_name: str, blob_name: str, expiration_minutes: int = 60) -> str:\n    client = storage.Client()\n    bucket = client.bucket(bucket_name)\n    blob = bucket.blob(blob_name)\n    url = blob.generate_signed_url(\n        version=\"v4\",\n        expiration=datetime.timedelta(minutes=expiration_minutes),\n        method=\"GET\",\n    )\n    return url\n```\n\n## Lifecycle Rules\n\nAutomate object management with lifecycle policies:\n\n```bash\n# Set lifecycle via JSON config\ncat > lifecycle.json << 'EOF'\n{\n  \"rule\": [\n    {\n      \"action\": {\"type\": \"Delete\"},\n      \"condition\": {\"age\": 90}\n    },\n    {\n      \"action\": {\"type\": \"SetStorageClass\", \"storageClass\": \"NEARLINE\"},\n      \"condition\": {\"age\": 30, \"matchesStorageClass\": [\"STANDARD\"]}\n    }\n  ]\n}\nEOF\n\ngcloud storage buckets update gs://my-bucket --lifecycle-file=lifecycle.json\n```\n\n## Public Access\n\n```bash\n# Make a bucket publicly readable (uniform access)\ngcloud storage buckets add-iam-policy-binding gs://my-bucket \\\n  --member=allUsers \\\n  --role=roles/storage.objectViewer\n\n# Make a single object public\ngcloud storage objects update gs://my-bucket/public/index.html \\\n  --add-acl-grant=entity=allUsers,role=READER\n```\n\n## Python Client Library\n\n```python\nfrom google.cloud import storage\n\ndef upload_file(bucket_name: str, source_path: str, destination_blob: str) -> str:\n    client = storage.Client()\n    bucket = client.bucket(bucket_name)\n    blob = bucket.blob(destination_blob)\n    blob.upload_from_filename(source_path)\n    return f\"gs://{bucket_name}/{destination_blob}\"\n\ndef download_file(bucket_name: str, source_blob: str, destination_path: str) -> None:\n    client = storage.Client()\n    bucket = client.bucket(bucket_name)\n    blob = bucket.blob(source_blob)\n    blob.download_to_filename(destination_path)\n\ndef list_blobs(bucket_name: str, prefix: str = \"\") -> list[str]:\n    client = storage.Client()\n    blobs = client.list_blobs(bucket_name, prefix=prefix)\n    return [blob.name for blob in blobs]\n```\n\n## Environment Variables\n\n| Variable | Purpose |\n|----------|----------|\n| `GOOGLE_CLOUD_PROJECT` | Default project ID |\n| `GOOGLE_APPLICATION_CREDENTIALS` | Path to service account key file |\n| `CLOUDSDK_CORE_PROJECT` | Alternative project ID for gcloud |\n",
+  "sections": [
+    {
+      "id": "buckets",
+      "title": "Bucket creation and configuration",
+      "body": "Create buckets with `gcloud storage buckets create gs://NAME --location=LOCATION --default-storage-class=CLASS`. Bucket names are globally unique across all GCP projects. Locations can be regional (`us-central1`), dual-region (`us-central1+us-east1`), or multi-region (`us`, `eu`, `asia`). Enable uniform bucket-level access (`--uniform-bucket-level-access`) to use IAM exclusively instead of ACLs. See [[gcp/iam]] for storage roles.",
+      "tags": ["bucket", "create", "location", "storage-class", "uniform-access"]
+    },
+    {
+      "id": "upload-download",
+      "title": "Uploading and downloading objects",
+      "body": "Upload with `gcloud storage cp LOCAL gs://BUCKET/PATH`. Use `-r` for recursive directory uploads. Download with `gcloud storage cp gs://BUCKET/PATH LOCAL`. Sync directories with `gcloud storage rsync -r` (add `-d` to mirror deletions). For large files, gcloud auto-uses resumable uploads. Set Content-Type with `--content-type` or let it be auto-detected. Parallel uploads are default for multiple files.",
+      "tags": ["upload", "download", "cp", "rsync", "sync", "resumable"]
+    },
+    {
+      "id": "signed-urls",
+      "title": "Signed URLs",
+      "body": "Generate time-limited URLs for unauthenticated access with `gcloud storage sign-url gs://BUCKET/OBJECT --private-key-file=KEY --duration=DURATION`. Via Python: `blob.generate_signed_url(version='v4', expiration=timedelta(hours=1), method='GET')`. Signed URLs work for GET (download), PUT (upload), and DELETE operations. Maximum duration is 7 days (v4 signing). Requires a service account key or impersonation.",
+      "tags": ["signed-url", "presigned", "temporary-access", "v4-signing"]
+    },
+    {
+      "id": "lifecycle",
+      "title": "Lifecycle management",
+      "body": "Lifecycle rules automate object management: delete objects older than N days, transition storage classes based on age, delete non-current versions. Apply rules via `gcloud storage buckets update gs://BUCKET --lifecycle-file=FILE.json`. Rules evaluate daily. Combine with versioning for safe data retention — keep current versions in Standard, move non-current to Coldline after 30 days, delete after 365.",
+      "tags": ["lifecycle", "retention", "auto-delete", "storage-class-transition", "versioning"]
+    },
+    {
+      "id": "access-control",
+      "title": "Access control",
+      "body": "GCS supports two access models: **uniform bucket-level access** (recommended, IAM only) and **fine-grained** (ACLs per object). With uniform access, grant roles via `gcloud storage buckets add-iam-policy-binding`. Common roles: `roles/storage.objectViewer` (read), `roles/storage.objectCreator` (write), `roles/storage.admin` (full). For public websites, grant `allUsers` the objectViewer role. See [[gcp/iam]] for policy details.",
+      "tags": ["access-control", "iam", "acl", "public", "permissions"]
+    }
+  ],
+  "links": [
+    { "uri": "gcp", "context": "GCP ecosystem overview and authentication" },
+    { "uri": "gcp/iam", "context": "IAM roles for Cloud Storage access control" },
+    { "uri": "gcp/gcloud", "context": "gcloud CLI setup and authentication" },
+    { "uri": "gcp/compute", "context": "VMs that read/write data from Cloud Storage" },
+    { "uri": "gcp/functions", "context": "Cloud Functions triggered by GCS events" }
+  ],
+  "related": [
+    { "uri": "gcp/iam", "relation": "prerequisite", "note": "Requires storage roles: roles/storage.admin or roles/storage.objectAdmin" },
+    { "uri": "gcp/gcloud", "relation": "prerequisite", "note": "gcloud CLI must be installed and authenticated" },
+    { "uri": "gcp/functions", "relation": "see-also", "note": "Cloud Functions can trigger on GCS object create/delete/finalize events" },
+    { "uri": "gcp/compute", "relation": "see-also", "note": "VMs often read/write data in GCS buckets" }
+  ],
+  "scripts": [
+    {
+      "id": "storage-ops",
+      "name": "Cloud Storage Operations",
+      "description": "Create buckets, upload/download objects, generate signed URLs, and manage lifecycle policies",
+      "lang": "bash",
+      "runtime": "bash>=4",
+      "entry": "./scripts/storage-ops.sh",
+      "env": {
+        "GOOGLE_CLOUD_PROJECT": { "required": true, "secret": false, "description": "GCP project ID" },
+        "GOOGLE_APPLICATION_CREDENTIALS": { "required": false, "secret": false, "description": "Path to service account key (for signed URLs)" }
+      },
+      "packages": ["google-cloud-sdk"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "action": { "type": "string", "enum": ["create-bucket", "upload", "download", "list", "delete", "sign-url", "sync"], "description": "Operation to perform" },
+        "bucket": { "type": "string", "description": "Bucket name (without gs:// prefix)" },
+        "source": { "type": "string", "description": "Source path (local file or gs:// URI)" },
+        "destination": { "type": "string", "description": "Destination path (local file or gs:// URI)" },
+        "location": { "type": "string", "default": "us-central1", "description": "Bucket location for creation" },
+        "storage_class": { "type": "string", "default": "STANDARD", "enum": ["STANDARD", "NEARLINE", "COLDLINE", "ARCHIVE"], "description": "Storage class" }
+      },
+      "required": ["action"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "uri": { "type": "string", "description": "gs:// URI of the object or bucket" },
+        "signed_url": { "type": "string", "description": "Signed URL if sign-url action" },
+        "objects": { "type": "array", "items": { "type": "string" }, "description": "List of object paths if list action" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "gcp/gcloud", "reason": "gcloud CLI or gsutil must be installed and configured" },
+    { "uri": "gcp/iam", "reason": "Requires storage IAM roles for bucket/object operations" }
+  ],
+  "more": {
+    "docs": "https://cloud.google.com/storage/docs",
+    "api": "https://cloud.google.com/storage/docs/json_api/v1",
+    "examples": "https://cloud.google.com/storage/docs/samples"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents, DevOps engineers",
+    "estimated_reading_time": "6 min",
+    "prerequisites": ["gcp/gcloud", "gcp/iam"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

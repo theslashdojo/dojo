@@ -1,0 +1,100 @@
+{
+  "name": "wal",
+  "version": "1.0.0",
+  "uri": "sqlite/wal",
+  "type": "context",
+  "content_type": "explainer",
+  "context": "SQLite Write-Ahead Logging — enable concurrent readers and writers with PRAGMA journal_mode=WAL",
+  "info": "Write-Ahead Logging (WAL) is SQLite's concurrency mode. In the default rollback journal mode, writers block readers and readers block writers. WAL inverts this: changes are appended to a separate WAL file while readers continue reading the original database. This means readers never block writers and writers never block readers. WAL mode is enabled with `PRAGMA journal_mode=WAL` and persists across connections. It is the single most important PRAGMA for any multi-connection SQLite application. The tradeoff: WAL requires shared memory (no network filesystems), creates additional `-wal` and `-shm` files, and needs periodic checkpointing to transfer WAL data back to the main database. Agents should enable WAL mode on every SQLite database that might have concurrent access — web servers, background workers, CLI tools that might overlap, or any multi-threaded application.",
+  "parent": "sqlite",
+  "tags": ["wal", "write-ahead-log", "concurrency", "journal-mode", "checkpoint", "readers", "writers", "locking"],
+  "aliases": [
+    "sqlite wal",
+    "sqlite wal mode",
+    "write-ahead log",
+    "write ahead logging",
+    "sqlite journal mode",
+    "sqlite concurrency",
+    "wal mode",
+    "pragma journal_mode wal",
+    "sqlite concurrent access",
+    "sqlite locking",
+    "sqlite readers writers"
+  ],
+  "triggers": [
+    "enable wal mode in sqlite",
+    "sqlite concurrent readers and writers",
+    "sqlite database is locked",
+    "sqlite busy error",
+    "improve sqlite concurrency",
+    "what is wal mode",
+    "sqlite journal mode",
+    "configure sqlite for concurrency",
+    "sqlite checkpoint",
+    "sqlite wal vs rollback",
+    "sqlite multi-threaded"
+  ],
+  "body": "# Write-Ahead Logging (WAL)\n\nWAL is the concurrency mode for SQLite. It is the single most important configuration for any application where multiple connections, threads, or processes access the same database.\n\n## Enable WAL Mode\n\n```sql\nPRAGMA journal_mode = WAL;\n```\n\nThis returns `'wal'` on success. WAL mode is **persistent** — once set, it survives closing and reopening the database. You only need to set it once, but it's safe to set on every connection open.\n\n## How WAL Works\n\n### Rollback Journal (Default)\n```\nWRITE: copy original → journal → modify database → delete journal\nREAD:  blocked while writing\n```\n\n### WAL Mode\n```\nWRITE: append changes → WAL file → commit record\nREAD:  read from original database (unmodified) — never blocked\nCHECKPOINT: transfer WAL changes → back to database file\n```\n\nKey insight: **readers see a consistent snapshot** of the database at the point their transaction started. Writers append to the WAL file without touching the main database. This is why readers never block writers and writers never block readers.\n\n## Checkpointing\n\nCheckpointing transfers committed transactions from the WAL file back into the main database file. Without checkpointing, the WAL file grows indefinitely.\n\n### Automatic Checkpointing (Default)\n\nSQLite automatically checkpoints when the WAL file reaches **1000 pages** (~4MB with default page size):\n\n```sql\n-- Check current threshold\nPRAGMA wal_autocheckpoint;\n\n-- Change threshold (in pages)\nPRAGMA wal_autocheckpoint = 1000;   -- default\nPRAGMA wal_autocheckpoint = 0;      -- disable auto-checkpoint\n```\n\n### Manual Checkpoint\n\n```sql\n-- Passive: checkpoint without blocking (may not complete if readers active)\nPRAGMA wal_checkpoint(PASSIVE);\n\n-- Full: wait for readers to finish, then checkpoint\nPRAGMA wal_checkpoint(FULL);\n\n-- Truncate: checkpoint and truncate WAL file to zero bytes\nPRAGMA wal_checkpoint(TRUNCATE);\n```\n\nRecommendation: Run `PRAGMA wal_checkpoint(TRUNCATE)` during maintenance windows or at application shutdown.\n\n## Concurrency Model\n\n| Operation | Rollback Journal | WAL Mode |\n|-----------|-----------------|----------|\n| Reader + Reader | OK | OK |\n| Reader + Writer | **BLOCKED** | OK |\n| Writer + Reader | **BLOCKED** | OK |\n| Writer + Writer | **BLOCKED** | **BLOCKED** (one writer at a time) |\n\nWAL allows unlimited concurrent readers alongside a single writer. Multiple writers still serialize — only one write transaction can be active at a time.\n\n### BEGIN IMMEDIATE\n\nIf you know a transaction will write, start it with `BEGIN IMMEDIATE` to acquire the write lock immediately instead of upgrading from a read lock mid-transaction:\n\n```sql\nBEGIN IMMEDIATE;\nUPDATE accounts SET balance = balance - 100 WHERE id = 1;\nUPDATE accounts SET balance = balance + 100 WHERE id = 2;\nCOMMIT;\n```\n\nThis avoids the scenario where a read lock upgrade to a write lock fails because another writer got there first.\n\n## Recommended Configuration\n\nPair WAL with these PRAGMAs for optimal behavior:\n\n```sql\nPRAGMA journal_mode = WAL;            -- enable WAL\nPRAGMA synchronous = NORMAL;          -- safe with WAL, much faster than FULL\nPRAGMA busy_timeout = 5000;           -- wait 5s on lock instead of immediate SQLITE_BUSY\nPRAGMA wal_autocheckpoint = 1000;     -- default, or tune based on workload\n```\n\n### Why synchronous=NORMAL is safe with WAL\n\nIn WAL mode, `NORMAL` synchronous means the WAL file is synced before a checkpoint but not on every commit. Durability guarantee: you may lose the last transaction on a power failure, but the database will never be corrupted. For most applications, this is the right tradeoff — it makes writes 5-10x faster.\n\n## WAL Files\n\nWAL mode creates two additional files alongside the database:\n\n```\nmyapp.db          # main database file\nmyapp.db-wal      # write-ahead log (pending transactions)\nmyapp.db-shm      # shared memory index (readers use this)\n```\n\nBoth files are automatically created and deleted. When copying a database, **always copy all three files together** or checkpoint first:\n\n```bash\n# Safe copy: checkpoint then copy\nsqlite3 myapp.db 'PRAGMA wal_checkpoint(TRUNCATE);'\ncp myapp.db backup.db\n\n# Or copy all three files\ncp myapp.db myapp.db-wal myapp.db-shm backup/\n```\n\n## SQLITE_BUSY Handling\n\nEven in WAL mode, you can get `SQLITE_BUSY` when two writers compete:\n\n```sql\n-- Set busy timeout to auto-retry\nPRAGMA busy_timeout = 5000;\n```\n\nIn application code:\n\n```python\n# Python — busy_timeout via connect() or PRAGMA\nconn = sqlite3.connect('myapp.db', timeout=5.0)\n```\n\n```javascript\n// Node.js (better-sqlite3) — set via PRAGMA\ndb.pragma('busy_timeout = 5000');\n```\n\n## Limitations\n\n1. **No network filesystems** — WAL requires shared memory, which doesn't work over NFS, SMB, or other network mounts\n2. **Single writer** — only one write transaction at a time (multiple readers are fine)\n3. **Extra files** — `-wal` and `-shm` files must travel with the database\n4. **Cannot change page_size** — must exit WAL mode first to change page size\n5. **Checkpoint overhead** — long-running readers can prevent checkpoint completion, causing WAL growth\n\n## WAL vs Rollback Journal Decision\n\n| Factor | Use WAL | Use Rollback |\n|--------|---------|-------------|\n| Concurrent reads + writes | Yes | No |\n| Network filesystem | No | Yes |\n| Application file format | Maybe | Yes |\n| Web server / API | Yes | No |\n| Single-process CLI tool | Either | Either |\n| Transactions > 100MB | No | Yes |\n\n## WAL2 (Experimental)\n\nSQLite has an experimental WAL2 mode (BEGIN CONCURRENT) that allows multiple concurrent writers with optimistic locking. This is not yet in the main SQLite release but is available in some forks.\n",
+  "sections": [
+    {
+      "id": "enable",
+      "title": "Enabling WAL mode",
+      "body": "Run `PRAGMA journal_mode=WAL` on any connection to enable WAL for the database. It persists across connections and restarts. Returns `'wal'` on success. Safe to set every time you open a connection. Cannot be set inside a transaction. Pair with `PRAGMA synchronous=NORMAL` for best performance.",
+      "tags": ["enable", "pragma", "journal-mode", "setup"]
+    },
+    {
+      "id": "checkpointing",
+      "title": "Checkpointing",
+      "body": "Checkpointing transfers WAL data back to the main database file. Automatic checkpoint at 1000 pages by default. Manual modes: PASSIVE (non-blocking, may be partial), FULL (waits for readers), RESTART (resets WAL), TRUNCATE (resets and truncates WAL file). Run TRUNCATE during maintenance for clean state. Long-running readers can starve checkpoints — design for reader gaps.",
+      "tags": ["checkpoint", "wal-checkpoint", "truncate", "autocheckpoint"]
+    },
+    {
+      "id": "concurrency",
+      "title": "Concurrency model",
+      "body": "WAL allows unlimited concurrent readers alongside one writer. Readers see a snapshot from when their transaction started — they never see partial writes. Writers append to the WAL without touching the main database. Multiple writers serialize — use `BEGIN IMMEDIATE` when you know a transaction will write. Set `PRAGMA busy_timeout` to auto-retry on lock contention instead of failing immediately.",
+      "tags": ["concurrency", "readers", "writers", "snapshot", "begin-immediate", "busy-timeout"]
+    },
+    {
+      "id": "files",
+      "title": "WAL file management",
+      "body": "WAL creates `-wal` (log) and `-shm` (shared memory index) files. Both are auto-managed. When copying a database, checkpoint first or copy all three files. WAL files are deleted when the last connection closes cleanly. If the process crashes, WAL recovery happens automatically on next open.",
+      "tags": ["wal-file", "shm-file", "backup", "copy", "recovery"]
+    },
+    {
+      "id": "limitations",
+      "title": "WAL limitations",
+      "body": "No network filesystems (requires shared memory). Single writer at a time. Extra `-wal` and `-shm` files. Cannot change page_size while in WAL mode. Long-running readers prevent checkpoint completion. For transactions >100MB, rollback journal may be faster. WAL-mode databases written by SQLite 3.7.0+ cannot be read by older versions.",
+      "tags": ["limitations", "network-filesystem", "nfs", "page-size", "large-transactions"]
+    }
+  ],
+  "links": [
+    { "uri": "sqlite/performance", "context": "PRAGMAs that pair with WAL for optimal performance" },
+    { "uri": "sqlite/queries", "context": "Transactions and BEGIN IMMEDIATE in WAL mode" },
+    { "uri": "sqlite/schema", "context": "Schema operations and WAL mode interactions" },
+    { "uri": "sqlite", "context": "SQLite ecosystem overview and connection setup" }
+  ],
+  "related": [
+    { "uri": "sqlite/performance", "relation": "see-also", "note": "WAL mode is the foundation of SQLite performance tuning" },
+    { "uri": "sqlite", "relation": "prerequisite", "note": "Understanding SQLite basics before configuring WAL" },
+    { "uri": "sqlite/queries", "relation": "see-also", "note": "Transaction semantics change in WAL mode — readers see snapshots" }
+  ],
+  "more": {
+    "docs": "https://www.sqlite.org/wal.html",
+    "spec": "https://www.sqlite.org/pragma.html#pragma_journal_mode"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "5 min",
+    "prerequisites": ["sqlite"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

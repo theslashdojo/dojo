@@ -1,0 +1,90 @@
+{
+  "name": "flat-config",
+  "version": "1.0.0",
+  "uri": "eslint/flat-config",
+  "type": "context",
+  "content_type": "reference",
+  "context": "ESLint flat config format reference — eslint.config.js structure, config objects, cascading, and migration from eslintrc",
+  "info": "Flat config is ESLint 9+'s default configuration system, replacing the legacy .eslintrc format. A flat config file (eslint.config.js, .mjs, or .cjs) exports an array of configuration objects. Each object can specify files, ignores, rules, plugins, languageOptions, and linterOptions. Objects cascade in order — later objects override earlier ones for matching files. This node explains the format, cascading behavior, key differences from eslintrc, and migration path. Agents use this context when they need to understand why flat config works differently from eslintrc, how config objects cascade, and how to migrate legacy configurations.",
+  "parent": "eslint",
+  "tags": ["flat-config", "eslint-config", "eslintrc", "migration", "config-format"],
+  "aliases": [
+    "flat config",
+    "eslint flat config",
+    "eslint.config.js",
+    "eslint.config.mjs",
+    "eslint9 config",
+    "new eslint config",
+    "flat config format",
+    "eslint config format",
+    "eslintrc to flat config",
+    "eslintrc migration"
+  ],
+  "triggers": [
+    "what is eslint flat config",
+    "how does flat config work",
+    "migrate eslintrc to flat config",
+    "convert .eslintrc to eslint.config.js",
+    "flat config vs eslintrc",
+    "eslint config format",
+    "eslint.config.js structure",
+    "eslint flat config cascade",
+    "ESLINT_USE_FLAT_CONFIG"
+  ],
+  "body": "# ESLint Flat Config\n\nFlat config is the configuration system introduced in ESLint 8.21 and made default in ESLint 9. It replaces the legacy `.eslintrc.*` format with a single JavaScript file that exports an array of configuration objects.\n\n## File Names\n\nESLint searches for config files in this order:\n1. `eslint.config.js`\n2. `eslint.config.mjs`\n3. `eslint.config.cjs`\n\nThe search starts from the current working directory and stops at the first match. There is no upward traversal like `.eslintrc` — flat config acts as if `root: true` is always set.\n\n## Config Object Structure\n\nEach object in the exported array can have these properties:\n\n```javascript\n{\n  // File targeting (glob patterns)\n  files: [\"src/**/*.js\"],         // Which files this config applies to\n  ignores: [\"src/generated/**\"],  // Which files to skip\n\n  // Language configuration\n  languageOptions: {\n    ecmaVersion: 2024,            // JS version (2015-2025, \"latest\")\n    sourceType: \"module\",         // \"module\" | \"commonjs\" | \"script\"\n    globals: { ... },             // Global variables\n    parser: customParser,         // Custom parser (default: espree)\n    parserOptions: { ... },       // Parser-specific options\n  },\n\n  // Plugins\n  plugins: {\n    react: reactPlugin,           // Plugin objects (not strings)\n  },\n\n  // Rules\n  rules: {\n    \"no-unused-vars\": \"error\",\n    \"react/prop-types\": \"off\",\n  },\n\n  // Linter behavior\n  linterOptions: {\n    noInlineConfig: false,\n    reportUnusedDisableDirectives: \"warn\",\n    reportUnusedInlineConfigs: \"off\",\n  },\n\n  // Shared settings\n  settings: {\n    react: { version: \"detect\" },\n  },\n\n  // Processor for non-JS files\n  processor: \"markdown/markdown\",\n}\n```\n\n## Cascading Behavior\n\nConfig objects are applied in array order. Later objects override earlier ones for matching files:\n\n```javascript\nexport default [\n  // 1. Base: all files get recommended rules\n  js.configs.recommended,\n\n  // 2. Override: test files relax some rules\n  {\n    files: [\"**/*.test.js\"],\n    rules: { \"no-unused-expressions\": \"off\" },\n  },\n\n  // 3. Override: scripts disable no-console\n  {\n    files: [\"scripts/**\"],\n    rules: { \"no-console\": \"off\" },\n  },\n];\n```\n\nA config object without `files` applies to all files (except those matching `ignores`).\n\n## Global Ignores\n\nA config object with ONLY the `ignores` key (no `files`, `rules`, etc.) creates global ignores:\n\n```javascript\nexport default [\n  // Global ignore — these files are never linted\n  { ignores: [\"dist/\", \"build/\", \"node_modules/\", \"coverage/\"] },\n\n  // ... other config objects\n];\n```\n\nIf `ignores` appears alongside other keys, it only affects that specific config object.\n\n## Key Differences from eslintrc\n\n| Feature | eslintrc | Flat Config |\n|---------|----------|-------------|\n| Config file | `.eslintrc.js`, `.eslintrc.json`, `.eslintrc.yml` | `eslint.config.js`, `.mjs`, `.cjs` |\n| Format | Single object | Array of objects |\n| Plugins | Strings (`\"react\"`) | Imported objects (`import react from '...'`) |\n| Extends | `extends: [\"eslint:recommended\"]` | Spread configs: `js.configs.recommended` |\n| Environments | `env: { browser: true }` | `globals: { ...globals.browser }` |\n| Parser | `parser: \"@babel/eslint-parser\"` (string) | `parser: babelParser` (imported object) |\n| Overrides | `overrides: [{ files, rules }]` | Multiple config objects in array |\n| Ignore file | `.eslintignore` | `ignores` key in config object |\n| Root | `root: true` | Always root (no upward traversal) |\n| Cascading | Parent directories override child | Array order determines precedence |\n\n## Migration from eslintrc\n\n### Automated Migration\n\n```bash\n# Convert .eslintrc.json or .eslintrc.yml automatically\nnpx @eslint/migrate-config .eslintrc.json\n```\n\nThis generates an `eslint.config.mjs` file. Review the output — manual adjustments may be needed.\n\n### Manual Migration Patterns\n\n**extends → spread configs:**\n```javascript\n// Before: extends: [\"eslint:recommended\"]\n// After:\nimport js from \"@eslint/js\";\nexport default [js.configs.recommended];\n```\n\n**env → globals:**\n```javascript\n// Before: env: { browser: true, node: true }\n// After:\nimport globals from \"globals\";\nexport default [{\n  languageOptions: {\n    globals: { ...globals.browser, ...globals.node },\n  },\n}];\n```\n\n**plugins as strings → imported objects:**\n```javascript\n// Before: plugins: [\"react\"]\n// After:\nimport react from \"eslint-plugin-react\";\nexport default [{\n  plugins: { react },\n}];\n```\n\n**parser as string → imported object:**\n```javascript\n// Before: parser: \"@babel/eslint-parser\"\n// After:\nimport babelParser from \"@babel/eslint-parser\";\nexport default [{\n  languageOptions: { parser: babelParser },\n}];\n```\n\n### FlatCompat for Legacy Configs\n\nFor eslintrc-format configs that haven't been updated to flat config:\n\n```javascript\nimport { FlatCompat } from \"@eslint/eslintrc\";\nimport path from \"path\";\nimport { fileURLToPath } from \"url\";\n\nconst __dirname = path.dirname(fileURLToPath(import.meta.url));\nconst compat = new FlatCompat({ baseDirectory: __dirname });\n\nexport default [\n  ...compat.extends(\"eslint-config-airbnb\"),\n  // Your flat config objects...\n];\n```\n\nInstall: `npm install --save-dev @eslint/eslintrc`\n\n## defineConfig Helper\n\nESLint provides a `defineConfig` helper for better IDE support and the `extends` shorthand:\n\n```javascript\nimport { defineConfig } from \"eslint/config\";\nimport js from \"@eslint/js\";\n\nexport default defineConfig([\n  { extends: [js.configs.recommended] },\n  { files: [\"src/**/*.js\"], rules: { \"no-console\": \"warn\" } },\n]);\n```\n\n## Deprecated CLI Flags\n\nThese flags from eslintrc are no longer supported:\n- `--env` → Use `languageOptions.globals` in config\n- `--ignore-path` → Use `includeIgnoreFile()` from `@eslint/compat`\n- `--no-eslintrc` → Use `--no-config-lookup`\n- `--resolve-plugins-relative-to` → No longer needed\n- `--rulesdir` → Create inline plugin with local rules\n",
+  "sections": [
+    {
+      "id": "structure",
+      "title": "Config object structure",
+      "body": "Each config object can have: `files` (glob patterns for targeting), `ignores` (glob patterns to skip), `languageOptions` (parser, ecmaVersion, sourceType, globals), `plugins` (imported plugin objects), `rules` (rule severities and options), `linterOptions` (noInlineConfig, reportUnusedDisableDirectives), `settings` (shared settings for plugins), `processor` (for non-JS files).",
+      "tags": ["structure", "properties", "config-object"]
+    },
+    {
+      "id": "cascading",
+      "title": "Cascading behavior",
+      "body": "Config objects apply in array order — later objects override earlier ones for matching files. A config object without `files` applies to all files. A config object with only `ignores` creates global ignores. This replaces eslintrc's `overrides` array — each config object in flat config IS an override.",
+      "tags": ["cascading", "order", "override", "precedence"]
+    },
+    {
+      "id": "migration",
+      "title": "Migration from eslintrc",
+      "body": "Use `npx @eslint/migrate-config .eslintrc.json` for automated conversion. Key changes: `extends` becomes spread configs, `env` becomes `globals`, plugins are imported objects not strings, `overrides` become separate config objects in the array. Use `FlatCompat` from `@eslint/eslintrc` to wrap legacy configs that haven't been updated.",
+      "tags": ["migration", "eslintrc", "convert", "flatcompat", "migrate-config"]
+    },
+    {
+      "id": "differences",
+      "title": "Key differences from eslintrc",
+      "body": "Flat config always acts as `root: true` — no upward directory traversal. Plugins are JavaScript objects, not strings. `extends` is replaced by spreading config arrays. `env` is replaced by the `globals` package. `.eslintignore` is replaced by the `ignores` key. `overrides` are replaced by multiple config objects. The `package.json` `eslintConfig` field is no longer supported.",
+      "tags": ["differences", "comparison", "breaking-changes"]
+    }
+  ],
+  "links": [
+    { "uri": "eslint/config", "context": "Create and maintain config files using flat config format" },
+    { "uri": "eslint/plugins", "context": "Plugins are imported objects in flat config" },
+    { "uri": "eslint/rules", "context": "Rules are configured within config objects" },
+    { "uri": "eslint/troubleshooting", "context": "Debug flat config migration issues" }
+  ],
+  "related": [
+    { "uri": "eslint/config", "relation": "implements", "note": "eslint/config uses the flat config format described here" },
+    { "uri": "eslint/plugins", "relation": "see-also", "note": "Plugin integration differs significantly between flat config and eslintrc" }
+  ],
+  "more": {
+    "docs": "https://eslint.org/docs/latest/use/configure/configuration-files",
+    "migration": "https://eslint.org/docs/latest/use/configure/migration-guide",
+    "blog": "https://eslint.org/blog/2022/08/new-config-system-part-2/"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "6 min",
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

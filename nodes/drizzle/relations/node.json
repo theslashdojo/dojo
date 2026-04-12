@@ -1,0 +1,96 @@
+{
+  "name": "relations",
+  "version": "1.0.0",
+  "uri": "drizzle/relations",
+  "type": "context",
+  "content_type": "guide",
+  "context": "Define application-level relations in Drizzle using the relations() function for nested relational queries",
+  "info": "Drizzle relations are application-level abstractions defined with the `relations()` function from `drizzle-orm`. They are separate from database foreign keys — relations don't create constraints, and foreign keys don't create relations. You define them by calling `relations(table, callback)` where the callback receives `one()` and `many()` helpers. Relations enable the relational query API (`db.query.*.findMany/findFirst` with `with` clauses) which loads nested data without manual JOINs. One-to-one uses `one()` with `fields` and `references`. One-to-many uses `many()` on the parent and `one()` on the child. Many-to-many requires an explicit junction table with `many()` on both sides and `one()` on the junction. Use `relationName` to disambiguate multiple relations between the same tables. Relations must be exported alongside tables for drizzle to discover them. See [[drizzle/schema]] for table definitions and [[drizzle/queries]] for querying with relations.",
+  "parent": "drizzle",
+  "tags": ["relations", "one-to-one", "one-to-many", "many-to-many", "relational-query", "with", "nested", "join-table"],
+  "aliases": [
+    "drizzle relations",
+    "drizzle relation",
+    "drizzle relationships",
+    "drizzle one-to-many",
+    "drizzle many-to-many",
+    "drizzle one-to-one",
+    "drizzle with",
+    "drizzle nested query",
+    "drizzle relational",
+    "relations()",
+    "drizzle foreign key relation"
+  ],
+  "triggers": [
+    "define drizzle relations",
+    "create a one-to-many relation in drizzle",
+    "set up many-to-many in drizzle",
+    "drizzle nested query with relations",
+    "add relations to drizzle schema",
+    "drizzle one-to-one relation",
+    "use with in drizzle query",
+    "drizzle relation definition"
+  ],
+  "body": "# Drizzle Relations\n\nRelations in Drizzle are application-level definitions that enable the relational query API (`db.query.*.findMany` with `with` clauses). They are **separate from foreign keys** — you can have relations without foreign keys and vice versa.\n\n## Key Concepts\n\n- **Relations are not foreign keys.** Foreign keys are database constraints. Relations are TypeScript definitions that tell Drizzle how tables connect.\n- **Both sides must be defined.** A one-to-many relation needs `many()` on the parent and `one()` on the child.\n- **Relations must be exported.** Drizzle discovers them when you pass `{ schema }` to `drizzle()`.\n\n## One-to-Many\n\nThe most common pattern: a user has many posts.\n\n```typescript\nimport { relations } from 'drizzle-orm';\nimport { pgTable, serial, text, integer, timestamp } from 'drizzle-orm/pg-core';\n\n// Tables\nexport const users = pgTable('users', {\n  id: serial('id').primaryKey(),\n  name: text('name').notNull(),\n});\n\nexport const posts = pgTable('posts', {\n  id: serial('id').primaryKey(),\n  title: text('title').notNull(),\n  content: text('content'),\n  authorId: integer('author_id').notNull().references(() => users.id),\n});\n\n// Relations\nexport const usersRelations = relations(users, ({ many }) => ({\n  posts: many(posts),\n}));\n\nexport const postsRelations = relations(posts, ({ one }) => ({\n  author: one(users, {\n    fields: [posts.authorId],\n    references: [users.id],\n  }),\n}));\n```\n\nNow query with nested data:\n\n```typescript\nconst usersWithPosts = await db.query.users.findMany({\n  with: { posts: true },\n});\n// [{ id: 1, name: 'Dan', posts: [{ id: 1, title: 'Hello', authorId: 1 }] }]\n```\n\n## One-to-One\n\nA user has one profile.\n\n```typescript\nexport const profiles = pgTable('profiles', {\n  id: serial('id').primaryKey(),\n  bio: text('bio'),\n  userId: integer('user_id').notNull().unique().references(() => users.id),\n});\n\nexport const usersRelations = relations(users, ({ one }) => ({\n  profile: one(profiles),\n}));\n\nexport const profilesRelations = relations(profiles, ({ one }) => ({\n  user: one(users, {\n    fields: [profiles.userId],\n    references: [users.id],\n  }),\n}));\n```\n\nThe side that holds the foreign key provides `fields` and `references`. The other side just declares `one(table)` — the result is nullable when the FK is on the other table.\n\n## Many-to-Many\n\nRequires an explicit junction (join) table. Drizzle does not create implicit join tables.\n\n```typescript\nexport const posts = pgTable('posts', {\n  id: serial('id').primaryKey(),\n  title: text('title').notNull(),\n});\n\nexport const tags = pgTable('tags', {\n  id: serial('id').primaryKey(),\n  name: text('name').notNull().unique(),\n});\n\nexport const postsToTags = pgTable('posts_to_tags', {\n  postId: integer('post_id').notNull().references(() => posts.id),\n  tagId: integer('tag_id').notNull().references(() => tags.id),\n}, (table) => [\n  primaryKey({ columns: [table.postId, table.tagId] }),\n]);\n\n// Relations: both sides point to the junction table\nexport const postsRelations = relations(posts, ({ many }) => ({\n  postsToTags: many(postsToTags),\n}));\n\nexport const tagsRelations = relations(tags, ({ many }) => ({\n  postsToTags: many(postsToTags),\n}));\n\nexport const postsToTagsRelations = relations(postsToTags, ({ one }) => ({\n  post: one(posts, {\n    fields: [postsToTags.postId],\n    references: [posts.id],\n  }),\n  tag: one(tags, {\n    fields: [postsToTags.tagId],\n    references: [tags.id],\n  }),\n}));\n```\n\nQuery through the junction:\n\n```typescript\nconst postsWithTags = await db.query.posts.findMany({\n  with: {\n    postsToTags: {\n      with: {\n        tag: true,\n      },\n    },\n  },\n});\n```\n\n## Disambiguating Multiple Relations\n\nWhen two tables have multiple relations, use `relationName`:\n\n```typescript\nexport const posts = pgTable('posts', {\n  id: serial('id').primaryKey(),\n  content: text('content'),\n  authorId: integer('author_id').notNull(),\n  reviewerId: integer('reviewer_id'),\n});\n\nexport const usersRelations = relations(users, ({ many }) => ({\n  authoredPosts: many(posts, { relationName: 'author' }),\n  reviewedPosts: many(posts, { relationName: 'reviewer' }),\n}));\n\nexport const postsRelations = relations(posts, ({ one }) => ({\n  author: one(users, {\n    fields: [posts.authorId],\n    references: [users.id],\n    relationName: 'author',\n  }),\n  reviewer: one(users, {\n    fields: [posts.reviewerId],\n    references: [users.id],\n    relationName: 'reviewer',\n  }),\n}));\n```\n\n## Self-Referencing Relations\n\n```typescript\nexport const categories = pgTable('categories', {\n  id: serial('id').primaryKey(),\n  name: text('name').notNull(),\n  parentId: integer('parent_id'),\n});\n\nexport const categoriesRelations = relations(categories, ({ one, many }) => ({\n  parent: one(categories, {\n    fields: [categories.parentId],\n    references: [categories.id],\n    relationName: 'parent-child',\n  }),\n  children: many(categories, { relationName: 'parent-child' }),\n}));\n```\n\n## Relations vs Foreign Keys\n\n| Aspect | Foreign Key | Relation |\n|--------|------------|----------|\n| Level | Database constraint | Application abstraction |\n| Enforced by | Database engine | Drizzle runtime |\n| Required for | Data integrity | Relational query API |\n| Syntax | `.references(() => table.col)` | `relations(table, callback)` |\n| Can exist independently | Yes | Yes |\n\nBest practice: use both. Foreign keys for data integrity, relations for query convenience.\n\n## Querying with Relations\n\nSee [[drizzle/queries#relational]] for the full relational query API. Quick reference:\n\n```typescript\n// Pass schema to drizzle() to enable db.query\nconst db = drizzle(client, { schema });\n\n// Find many with nested relations\nawait db.query.users.findMany({\n  with: {\n    posts: {\n      with: { comments: true },\n      where: eq(posts.published, true),\n      limit: 10,\n      orderBy: desc(posts.createdAt),\n    },\n  },\n  columns: { id: true, name: true },\n});\n```\n\n## File Organization\n\nRelations can live in the same file as tables or in a separate file:\n\n```\nsrc/db/schema/\n  users.ts        # users table + usersRelations\n  posts.ts        # posts table + postsRelations\n  index.ts        # re-export all\n\n# OR\nsrc/db/\n  schema.ts       # all tables\n  relations.ts    # all relations\n```\n\nBoth approaches work — just ensure all exports are reachable from the schema path in [[drizzle/config]].\n",
+  "sections": [
+    {
+      "id": "one-to-many",
+      "title": "One-to-many relations",
+      "body": "Define `many(childTable)` on the parent's relations and `one(parentTable, { fields: [fk], references: [pk] })` on the child's relations. The `fields` array contains the foreign key column(s) on the current table; `references` contains the corresponding primary key column(s) on the related table. Both sides must be defined.",
+      "tags": ["one-to-many", "many", "one", "fields", "references"]
+    },
+    {
+      "id": "one-to-one",
+      "title": "One-to-one relations",
+      "body": "Same as one-to-many but with a unique constraint on the foreign key column. The side holding the FK defines `one(table, { fields, references })`. The other side defines `one(table)` without fields — the result is nullable. Ensure the FK column has `.unique()` in [[drizzle/schema]] to enforce the one-to-one constraint at the database level.",
+      "tags": ["one-to-one", "unique", "profile", "nullable"]
+    },
+    {
+      "id": "many-to-many",
+      "title": "Many-to-many relations",
+      "body": "Create an explicit junction table with foreign keys to both sides. Define `many(junctionTable)` on both parent tables. Define `one(parentA, { fields, references })` and `one(parentB, { fields, references })` on the junction table's relations. Query through the junction with nested `with` clauses. Drizzle never creates implicit join tables.",
+      "tags": ["many-to-many", "junction", "join-table", "pivot"]
+    },
+    {
+      "id": "relation-name",
+      "title": "Disambiguating with relationName",
+      "body": "When table A has multiple relations to table B (e.g., author and reviewer on posts), add `relationName: 'unique-name'` to both sides to match them. Without this, Drizzle cannot determine which FK maps to which relation. Use descriptive names like 'author', 'reviewer', 'parent-child'.",
+      "tags": ["relationName", "disambiguate", "multiple-relations"]
+    },
+    {
+      "id": "vs-foreign-keys",
+      "title": "Relations vs foreign keys",
+      "body": "Foreign keys (`.references()`) are database-level constraints enforced by the database engine. Relations (`relations()`) are application-level abstractions used only by Drizzle's relational query API. You can have one without the other. Best practice: define both — foreign keys for data integrity, relations for developer ergonomics and the `with` query syntax.",
+      "tags": ["foreign-key", "constraint", "application-level", "database-level"]
+    }
+  ],
+  "links": [
+    { "uri": "drizzle/schema", "context": "Table definitions that relations reference" },
+    { "uri": "drizzle/queries", "context": "Use the relational query API (findMany, findFirst) with relations" },
+    { "uri": "drizzle/queries#relational", "context": "Relational query API details with with, where, columns" }
+  ],
+  "related": [
+    { "uri": "drizzle/schema", "relation": "prerequisite", "note": "Tables and foreign key columns must be defined before relations" },
+    { "uri": "drizzle/queries", "relation": "see-also", "note": "The relational query API (db.query.*.findMany with: {}) requires relations to be defined" },
+    { "uri": "prisma/client/relations", "relation": "alternative", "note": "Prisma defines relations in the schema language; Drizzle uses separate TypeScript definitions" }
+  ],
+  "more": {
+    "docs": "https://orm.drizzle.team/docs/relations",
+    "queries": "https://orm.drizzle.team/docs/rqb"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "5 min",
+    "prerequisites": ["drizzle/schema"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

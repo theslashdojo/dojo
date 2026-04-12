@@ -1,0 +1,81 @@
+{
+  "name": "config",
+  "version": "1.0.0",
+  "uri": "ssh/config",
+  "type": "context",
+  "content_type": "reference",
+  "context": "Define repeatable SSH host settings with Host blocks, ProxyJump, identities, and multiplexing",
+  "info": "OpenSSH client configuration is the force multiplier that turns fragile command-line flags into stable automation. This node covers `~/.ssh/config` and `/etc/ssh/ssh_config`, including `Host` and `Match` blocks, `IdentityFile`, `ProxyJump`, `StrictHostKeyChecking`, `UserKnownHostsFile`, `BatchMode`, keepalives, and connection sharing with `ControlMaster`, `ControlPath`, and `ControlPersist`. Agents use it to normalize host aliases, bastions, keepalive behavior, and tunnel defaults across repeated workflows.",
+  "parent": "ssh",
+  "tags": ["ssh", "config", "ssh-config", "proxyjump", "controlmaster", "identityfile", "known-hosts"],
+  "aliases": [
+    "ssh config",
+    "ssh_config",
+    "openssh config",
+    "ssh host alias",
+    "proxyjump config",
+    "controlmaster",
+    "connection multiplexing"
+  ],
+  "triggers": [
+    "configure ssh hosts",
+    "use proxyjump in ssh config",
+    "set a default ssh key",
+    "reuse ssh connections",
+    "debug effective ssh config",
+    "write an ssh host alias"
+  ],
+  "body": "# SSH Client Config\n\nOpenSSH reads per-user config from `~/.ssh/config` and system config from `/etc/ssh/ssh_config`. Put stable hostnames, usernames, identities, bastions, and keepalives here so commands stay short and deterministic.\n\n## Host Blocks\n\n```sshconfig\nInclude ~/.ssh/config.d/*\n\nHost bastion\n  HostName bastion.example.com\n  User ops\n  IdentityFile ~/.ssh/id_ed25519\n  AddKeysToAgent yes\n\nHost prod-*\n  User deploy\n  IdentityFile ~/.ssh/id_ed25519\n  ServerAliveInterval 15\n  ServerAliveCountMax 3\n  StrictHostKeyChecking ask\n```\n\n`Host` patterns match aliases and real hostnames. `Include` lets you split large configs into smaller files.\n\n## Jump Hosts and Automation Defaults\n\n```sshconfig\nHost db-internal\n  HostName 10.0.2.15\n  ProxyJump bastion\n  BatchMode yes\n  IdentitiesOnly yes\n```\n\n`ProxyJump` is the config equivalent of `ssh -J`. `BatchMode yes` disables password prompts, which is safer for automation because failures become explicit instead of hanging.\n\n## Multiplexing\n\n```sshconfig\nHost *\n  ControlMaster auto\n  ControlPath ~/.ssh/cm-%r@%h:%p\n  ControlPersist 10m\n```\n\nConnection sharing reuses a master TCP session so later `ssh`, `scp`, and `sftp` commands connect faster. Use `ssh -O check host` to inspect the master and `ssh -O exit host` to stop it.\n",
+  "sections": [
+    {
+      "id": "host-blocks",
+      "title": "Host and Match blocks",
+      "body": "`Host` defines patterns that set per-target defaults like `User`, `HostName`, `Port`, and `IdentityFile`. `Match` applies settings conditionally based on user, host, or tags. Use `ssh -G host` to print the evaluated config after `Host` and `Match` processing.",
+      "tags": ["host", "match", "hostname", "user", "ssh-g"]
+    },
+    {
+      "id": "jump-hosts",
+      "title": "ProxyJump and bastions",
+      "body": "`ProxyJump` is the persistent form of `ssh -J`. It lets a client reach private hosts through one or more bastions. Command-line options generally apply to the final destination rather than the jump hosts, so use config files when bastions need their own identities or options. See [[ssh/connect]].",
+      "tags": ["proxyjump", "bastion", "jump-host", "proxy"]
+    },
+    {
+      "id": "multiplexing",
+      "title": "Connection multiplexing",
+      "body": "`ControlMaster`, `ControlPath`, and `ControlPersist` let later sessions reuse one authenticated connection. This reduces repeated handshakes for `ssh`, `scp`, and `sftp`. Active masters are controlled with `ssh -O check`, `ssh -O exit`, or `ssh -O forward`. Multiplexing is especially useful before bursts of transfers in [[ssh/copy]] or repeated commands in [[ssh/connect]].",
+      "tags": ["controlmaster", "controlpath", "controlpersist", "multiplexing"]
+    }
+  ],
+  "links": [
+    { "uri": "ssh/connect", "context": "Config settings shape interactive and batch SSH execution" },
+    { "uri": "ssh/copy", "context": "scp and sftp inherit SSH config including bastions and identities" },
+    { "uri": "ssh/tunnel", "context": "Forwarding can be defined with LocalForward and RemoteForward" },
+    { "uri": "ssh/agent", "context": "AddKeysToAgent and IdentityAgent affect agent-backed auth" },
+    { "uri": "ssh/known-hosts", "context": "StrictHostKeyChecking and UserKnownHostsFile define host verification behavior" },
+    { "uri": "ssh/troubleshooting#config-debugging", "context": "Use ssh -G and verbose logs to debug config resolution" }
+  ],
+  "related": [
+    { "uri": "ssh/connect", "relation": "extends", "note": "Config turns one-off SSH commands into repeatable host workflows" },
+    { "uri": "ssh/tunnel", "relation": "see-also", "note": "LocalForward, RemoteForward, and DynamicForward can live in config" },
+    { "uri": "ssh/agent", "relation": "see-also", "note": "Identity loading and agent behavior are often configured here" }
+  ],
+  "more": {
+    "docs": "https://man.openbsd.org/ssh_config",
+    "manual": "https://www.openssh.com/manual.html"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, SREs, AI agents",
+    "estimated_reading_time": "4 min",
+    "prerequisites": [],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

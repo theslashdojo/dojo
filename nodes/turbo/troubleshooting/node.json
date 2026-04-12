@@ -1,0 +1,119 @@
+{
+  "name": "troubleshooting",
+  "version": "1.0.0",
+  "uri": "turbo/troubleshooting",
+  "type": "context",
+  "content_type": "guide",
+  "context": "Debug Turborepo issues — cache misses, slow builds, task failures, workspace resolution, and daemon problems",
+  "info": "This context node provides systematic troubleshooting guidance for common Turborepo problems: unexpected cache misses, slow builds despite caching, task dependency errors, workspace discovery failures, remote cache connectivity issues, daemon crashes, and environment variable leaks. Each section covers symptoms, diagnosis steps, and fixes. Agents should consult this node when turbo commands fail, builds are slower than expected, or caching behavior is incorrect. See [[turbo/caching]] for cache internals, [[turbo/config]] for configuration reference, and [[turbo/pipelines]] for task dependency debugging.",
+  "parent": "turbo",
+  "tags": ["troubleshooting", "debugging", "cache-miss", "slow-build", "errors", "turbo-daemon", "workspace-errors"],
+  "aliases": [
+    "turbo troubleshooting",
+    "turbo debug",
+    "turbo problems",
+    "turbo not working",
+    "turbo cache miss",
+    "turbo slow",
+    "turbo error",
+    "turborepo issues",
+    "turbo build fails",
+    "turbo daemon",
+    "fix turbo"
+  ],
+  "triggers": [
+    "turbo build is slow",
+    "turbo cache not working",
+    "turbo task failed",
+    "turbo workspace not found",
+    "turbo daemon not running",
+    "turbo remote cache not connecting",
+    "why is turbo not caching",
+    "turbo build error",
+    "turbo dependency error",
+    "debug turborepo",
+    "turbo keeps rebuilding"
+  ],
+  "body": "# Turborepo Troubleshooting\n\nThis guide covers the most common Turborepo issues and how to diagnose and fix them.\n\n## Diagnostic Commands\n\nBefore diving into specific issues, these commands help gather information:\n\n```bash\n# See what turbo would run without executing\nturbo build --dry=json\n\n# Generate detailed run summary\nturbo build --summarize\n\n# Verbose logging\nturbo build -vvv\n\n# Check daemon status\nturbo daemon status\n\n# View task graph\nturbo build --graph=graph.svg\n\n# Check turbo version\nturbo --version\n\n# Validate turbo.json\nturbo run build --dry 2>&1 | head -20\n```\n\n## Cache Misses\n\n### Symptoms\n- Tasks re-run when you expect cache hits\n- `MISS` in turbo output instead of `HIT` or `FULL TURBO`\n- Builds are slow despite no code changes\n\n### Diagnosis\n\n```bash\n# Compare hashes between runs\nturbo build --summarize\n# Check .turbo/runs/<id>.json for hash details\n\n# Dry run to see current hashes\nturbo build --dry=json | jq '.tasks[] | {package, task, hash, inputs}'\n```\n\n### Common Causes and Fixes\n\n**1. Undeclared environment variable changed**\n```json\n{\n  \"globalEnv\": [\"NODE_ENV\"],\n  \"tasks\": {\n    \"build\": {\n      \"env\": [\"API_URL\"]\n    }\n  }\n}\n```\n\n**2. File outside inputs changed**\nIf a file affects the build but isn't in `inputs`, turbo won't know about it.\n```json\n{\n  \"globalDependencies\": [\".env\", \"tsconfig.base.json\"],\n  \"tasks\": {\n    \"build\": {\n      \"inputs\": [\"$TURBO_DEFAULT$\", \"../../shared-config/**\"]\n    }\n  }\n}\n```\n\n**3. Lockfile changed**\nAny lockfile change invalidates all caches. This is expected — dependency changes can affect any task.\n\n**4. turbo.json changed**\nConfiguration changes invalidate caches. This is expected.\n\n**5. Running on different OS/architecture**\nHashes include platform information. A build on macOS produces different hashes than Linux.\n\n**6. envMode is loose**\nIn loose mode, ALL env vars are available to tasks but only declared ones are hashed. An undeclared variable change won't invalidate the cache, leading to stale results.\n```json\n{\n  \"envMode\": \"strict\"\n}\n```\n\n## Slow Builds\n\n### Symptoms\n- Builds take longer than expected\n- Cache hits are slow\n- Parallelism seems limited\n\n### Diagnosis\n\n```bash\n# Profile the build\nturbo build --profile=profile\n# Opens Chrome-compatible trace file\n\n# Check concurrency\nturbo build -vv 2>&1 | grep -i concurrent\n```\n\n### Fixes\n\n**1. Increase concurrency**\n```json\n{\n  \"concurrency\": \"100%\"\n}\n```\nOr via CLI: `turbo build --concurrency=100%`\n\n**2. Reduce unnecessary dependencies**\nIf `test` depends on `build` but doesn't actually need build outputs, remove the dependency to allow parallel execution.\n\n**3. Use the transit pattern for type checking**\n```json\n{\n  \"transit\": { \"dependsOn\": [\"^transit\"] },\n  \"check-types\": { \"dependsOn\": [\"transit\"] }\n}\n```\n\n**4. Cache outputs are too large**\nIf cache restore takes longer than rebuilding, consider excluding large generated files:\n```json\n{\n  \"build\": {\n    \"outputs\": [\"dist/**\", \"!dist/sourcemaps/**\"]\n  }\n}\n```\n\n**5. Remote cache is slow**\nIncrease timeout or use local-only cache for fast tasks:\n```bash\nturbo build --cache=local:rw,remote:off\n```\n\n## Task Failures\n\n### Symptoms\n- `ERROR` in turbo output\n- Non-zero exit code from a task\n- Tasks fail in CI but pass locally\n\n### Diagnosis\n\n```bash\n# See full task output\nturbo build --output-logs=full\n\n# Continue past failures to see all errors\nturbo build --continue=always\n\n# Run a single task in isolation\nturbo build --filter=failing-package --only\n```\n\n### Common Causes\n\n**1. Missing dependency in dependsOn**\n```json\n{\n  \"build\": {\n    \"dependsOn\": [\"^build\"]\n  }\n}\n```\n\n**2. Environment variable missing in strict mode**\n```json\n{\n  \"build\": {\n    \"env\": [\"API_KEY\"]\n  }\n}\n```\n\n**3. Task depends on persistent task**\nPersistent tasks never complete, so dependents would deadlock. Remove the dependency or don't mark the upstream task as persistent.\n\n**4. Circular dependencies**\nRestructure dependsOn to break cycles. Use `turbo build --graph` to visualize.\n\n## Workspace Issues\n\n### Symptoms\n- `No workspaces found` error\n- Workspace not included in task runs\n- `package not found` when filtering\n\n### Diagnosis\n\n```bash\n# List all workspaces turbo sees\nturbo ls\n\n# Check if workspace is in package manager config\ncat pnpm-workspace.yaml  # or check package.json workspaces\n\n# Verify package.json exists in workspace\nls apps/my-app/package.json\n```\n\n### Fixes\n\n**1. Missing from workspace config**\nEnsure the workspace directory matches a glob in your package manager config:\n```yaml\n# pnpm-workspace.yaml\npackages:\n  - \"apps/*\"\n  - \"packages/*\"\n```\n\n**2. Missing package.json**\nEvery workspace needs its own package.json with at least a `name` field.\n\n**3. Nested workspace globs**\nTurborepo doesn't support `apps/**` — use `apps/*` and `apps/group/*` instead.\n\n**4. Name mismatch**\nThe `--filter` flag matches the `name` field in package.json, not the directory name.\n\n## Remote Cache Issues\n\n### Symptoms\n- `401 Unauthorized` or `403 Forbidden`\n- `Remote cache timeout`\n- Cache pushes succeed but pulls miss\n\n### Diagnosis\n\n```bash\n# Check auth\nturbo login --check\n\n# Verify env vars\necho $TURBO_TOKEN | head -c 10\necho $TURBO_TEAM\n\n# Test with verbose output\nturbo build -vvv 2>&1 | grep -i remote\n```\n\n### Fixes\n\n**1. Auth token expired**\n```bash\nturbo logout && turbo login\n```\n\n**2. Wrong team**\nVerify `TURBO_TEAM` matches your Vercel team slug, not display name.\n\n**3. Network timeout**\n```json\n{\n  \"remoteCache\": {\n    \"timeout\": 60,\n    \"uploadTimeout\": 120\n  }\n}\n```\n\n**4. Self-hosted cache server down**\nCheck your cache server health endpoint. Verify `remoteCache.apiUrl` in turbo.json.\n\n## Daemon Issues\n\n### Symptoms\n- `turbo daemon is not running` warnings\n- Slow file watching\n- `turbo watch` not picking up changes\n\n### Fixes\n\n```bash\n# Check daemon status\nturbo daemon status\n\n# Restart daemon\nturbo daemon stop && turbo daemon start\n\n# Run without daemon (slower but avoids daemon issues)\nTURBO_DAEMON=false turbo build\n```\n\n## Common Error Messages\n\n| Error | Cause | Fix |\n|-------|-------|-----|\n| `No turbo.json found` | Missing config file | Create turbo.json at repo root via [[turbo/config]] |\n| `Could not find package manager` | Missing lockfile | Run `npm install` / `pnpm install` to generate lockfile |\n| `Task not found in workspace` | Script missing from package.json | Add the script or remove from turbo.json tasks |\n| `Circular dependency detected` | dependsOn cycle | Use `--graph` to visualize and break the cycle |\n| `Package manager mismatch` | Wrong lockfile | Set `packageManager` in root package.json |\n| `TURBO_TOKEN not set` | Missing auth in CI | Set TURBO_TOKEN and TURBO_TEAM env vars |\n",
+  "sections": [
+    {
+      "id": "diagnostic-commands",
+      "title": "Diagnostic commands",
+      "body": "Essential diagnostic commands: `turbo build --dry=json` (preview hashes without running), `turbo build --summarize` (generate detailed run metadata), `turbo build -vvv` (trace-level logging), `turbo build --graph=graph.svg` (visualize task graph), `turbo daemon status` (check daemon), `turbo ls` (list workspaces). Always start with `--dry=json` to understand what turbo sees before investigating further.",
+      "tags": ["diagnostic", "dry-run", "summarize", "verbose", "graph"]
+    },
+    {
+      "id": "cache-misses",
+      "title": "Debugging cache misses",
+      "body": "Cache misses happen when any input changes. Use `--summarize` to compare hashes between runs. Common causes: undeclared env vars (add to env/globalEnv), file changes outside inputs (add to inputs/globalDependencies), lockfile changes, turbo.json changes, different platform, loose envMode hiding variable changes. Fix by declaring all relevant env vars and using strict envMode.",
+      "tags": ["cache-miss", "hash", "invalidation", "env-vars"]
+    },
+    {
+      "id": "slow-builds",
+      "title": "Slow build diagnosis",
+      "body": "Use `--profile` to generate Chrome-compatible trace files showing task timing. Common causes: low concurrency (increase to 100%), unnecessary dependsOn (remove if task doesn't actually need the dependency), large cache artifacts (exclude sourcemaps), slow remote cache (use local-only for fast tasks). The transit pattern optimizes type checking parallelism.",
+      "tags": ["slow", "performance", "concurrency", "profile", "optimization"]
+    },
+    {
+      "id": "task-failures",
+      "title": "Task failure debugging",
+      "body": "Use `--output-logs=full` to see complete task output. Use `--continue=always` to see all failures, not just the first. Common causes: missing topological dependency (add ^build), env var missing in strict mode (add to env), task depending on persistent task (remove dependency), circular dependsOn (use --graph to visualize). Run a single task with `--filter=pkg --only` to isolate.",
+      "tags": ["task-failure", "error", "depends-on", "strict-mode", "isolation"]
+    },
+    {
+      "id": "workspace-issues",
+      "title": "Workspace resolution problems",
+      "body": "Use `turbo ls` to see which workspaces turbo detects. Causes: directory not in workspace glob (check pnpm-workspace.yaml or package.json workspaces), missing package.json in workspace directory, nested globs (apps/** not supported), name mismatch (--filter matches package.json name, not directory). Ensure every workspace has a package.json with a unique name field.",
+      "tags": ["workspace", "not-found", "filter", "package-json"]
+    },
+    {
+      "id": "remote-cache-issues",
+      "title": "Remote cache connectivity",
+      "body": "Check auth with `turbo login --check`. Verify TURBO_TOKEN and TURBO_TEAM env vars. Use `-vvv` to see remote cache requests. Common issues: expired token (re-login), wrong team slug (use slug not display name), network timeout (increase remoteCache.timeout), self-hosted server down (check health endpoint). For CI, always set both TURBO_TOKEN and TURBO_TEAM.",
+      "tags": ["remote-cache", "auth", "token", "timeout", "ci"]
+    },
+    {
+      "id": "daemon-issues",
+      "title": "Daemon problems",
+      "body": "The turbo daemon provides file watching for `turbo watch` and the LSP. Check status with `turbo daemon status`. Restart with `turbo daemon stop && turbo daemon start`. Disable entirely with `TURBO_DAEMON=false`. Daemon issues typically manifest as slow file watching or turbo watch not detecting changes.",
+      "tags": ["daemon", "watch", "file-watching", "lsp"]
+    },
+    {
+      "id": "error-reference",
+      "title": "Common error messages",
+      "body": "Quick reference: 'No turbo.json found' — create one via [[turbo/config]]. 'Could not find package manager' — generate lockfile. 'Task not found in workspace' — add script to package.json. 'Circular dependency detected' — use --graph to find and break cycle. 'Package manager mismatch' — set packageManager in root package.json. 'TURBO_TOKEN not set' — set auth env vars for CI.",
+      "tags": ["errors", "error-messages", "reference"]
+    }
+  ],
+  "links": [
+    { "uri": "turbo", "context": "Parent Turborepo ecosystem" },
+    { "uri": "turbo/config", "context": "Configuration reference for fixing config issues" },
+    { "uri": "turbo/pipelines", "context": "Task dependency debugging" },
+    { "uri": "turbo/caching", "context": "Cache internals for debugging cache misses" },
+    { "uri": "turbo/workspaces", "context": "Workspace structure for resolving discovery issues" }
+  ],
+  "related": [
+    { "uri": "turbo/caching", "relation": "see-also", "note": "Cache internals help explain why misses occur" },
+    { "uri": "turbo/config", "relation": "see-also", "note": "Many issues trace back to turbo.json misconfiguration" },
+    { "uri": "turbo/pipelines", "relation": "see-also", "note": "Task dependency issues require understanding pipeline configuration" }
+  ],
+  "more": {
+    "docs": "https://turborepo.dev/repo/docs",
+    "github-issues": "https://github.com/vercel/turborepo/issues"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents, DevOps engineers",
+    "estimated_reading_time": "8 min",
+    "prerequisites": ["turbo/config", "turbo/caching"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

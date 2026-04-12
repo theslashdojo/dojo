@@ -1,0 +1,186 @@
+{
+  "name": "import",
+  "version": "1.0.0",
+  "uri": "terraform/state/import",
+  "type": "skill",
+  "context": "Import existing infrastructure resources into Terraform state so they can be managed as code",
+  "info": "Terraform import brings existing infrastructure — resources created manually, by other tools, or in a previous Terraform project — under Terraform management. The classic `terraform import` CLI command binds a real-world resource to a Terraform resource address in state. Starting with Terraform 1.5, `import` blocks in HCL allow declarative imports that integrate with `terraform plan`. Combined with `-generate-config-out`, Terraform can generate starter HCL configuration for imported resources. The workflow is: identify the resource, write a matching resource block, import the resource into state, run `terraform plan` to verify zero diff, and adjust config until the plan is clean. See [[terraform/state]] for state fundamentals and [[terraform/state/backends]] for where imported state is stored.",
+  "parent": "terraform/state",
+  "tags": ["terraform", "import", "state-import", "existing-infrastructure", "brownfield", "import-block", "generate-config"],
+  "aliases": [
+    "terraform import",
+    "tf import",
+    "import resource",
+    "import existing infrastructure",
+    "terraform import block",
+    "import into state",
+    "brownfield terraform",
+    "adopt existing resources",
+    "terraform generate config"
+  ],
+  "triggers": [
+    "import existing resource into terraform",
+    "terraform import aws instance",
+    "how to import infrastructure into terraform",
+    "terraform import block",
+    "generate terraform config from existing",
+    "bring existing resources under terraform",
+    "terraform import command",
+    "import s3 bucket into terraform",
+    "terraform import workflow",
+    "bulk import terraform resources",
+    "terraform import id format"
+  ],
+  "body": "# Importing Existing Infrastructure into Terraform\n\nWhen you have infrastructure that was created outside of Terraform — manually in the console, by scripts, or by another IaC tool — you can bring it under Terraform management with import. This lets you start managing existing resources as code without recreating them.\n\n## Classic Import Command\n\nThe `terraform import` command binds a real-world resource to a resource address in your Terraform configuration:\n\n```bash\n# Syntax: terraform import <resource_address> <resource_id>\nterraform import aws_instance.web i-1234567890abcdef0\n```\n\nBefore running import, you must have a corresponding resource block in your configuration:\n\n```hcl\nresource \"aws_instance\" \"web\" {\n  # Configuration will be filled in after import\n  ami           = \"ami-0c55b159cbfafe1f0\"\n  instance_type = \"t3.micro\"\n}\n```\n\nAfter import, the resource is in state. Run `terraform plan` to see what attributes differ between your config and the actual resource, then adjust your config until the plan shows no changes.\n\n## Import Blocks (Terraform 1.5+)\n\nDeclarative import blocks integrate with `terraform plan` for a safer, reviewable workflow:\n\n```hcl\nimport {\n  to = aws_instance.web\n  id = \"i-1234567890abcdef0\"\n}\n\nresource \"aws_instance\" \"web\" {\n  ami           = \"ami-0c55b159cbfafe1f0\"\n  instance_type = \"t3.micro\"\n  tags = {\n    Name = \"web-server\"\n  }\n}\n```\n\nWith import blocks:\n- `terraform plan` shows the import as a planned action alongside any diffs\n- `terraform apply` executes the import\n- The import block can be removed after successful import\n- Multiple import blocks can import several resources in a single apply\n\n## Generating Configuration (Terraform 1.5+)\n\nCombine import blocks with `-generate-config-out` to have Terraform write starter HCL:\n\n```hcl\n# main.tf — only the import block, no resource block yet\nimport {\n  to = aws_instance.web\n  id = \"i-1234567890abcdef0\"\n}\n```\n\n```bash\n# Generate the resource configuration\nterraform plan -generate-config-out=generated.tf\n```\n\nTerraform queries the provider API, reads the resource's current attributes, and writes a `resource` block to `generated.tf`. Review and refine the generated config — it may include computed attributes that should be removed, or use raw values where variables would be better.\n\n## Import Workflow\n\nThe standard workflow for importing a resource:\n\n1. **Identify the resource** — find its type and real-world ID\n2. **Write the resource block** — create a matching `resource` block in your config (or use `-generate-config-out`)\n3. **Import** — run `terraform import` or add an `import` block and run `terraform apply`\n4. **Plan** — run `terraform plan` to see the diff between config and actual state\n5. **Adjust** — modify your config until `terraform plan` shows no changes\n6. **Clean up** — remove the `import` block (if used) and commit the final config\n\n```bash\n# Full workflow example\nterraform import aws_s3_bucket.data my-data-bucket\nterraform plan                  # Review diffs\n# ... edit config to match actual resource ...\nterraform plan                  # Should show \"No changes\"\n```\n\n## Common Import ID Formats\n\nEvery resource type has its own import ID format. Here are common ones:\n\n| Resource Type | Import ID Format | Example |\n|--------------|------------------|----------|\n| `aws_instance` | Instance ID | `i-1234567890abcdef0` |\n| `aws_s3_bucket` | Bucket name | `my-bucket` |\n| `aws_security_group` | Security group ID | `sg-0123456789abcdef0` |\n| `aws_vpc` | VPC ID | `vpc-0123456789abcdef0` |\n| `aws_subnet` | Subnet ID | `subnet-0123456789abcdef0` |\n| `aws_iam_role` | Role name | `my-role` |\n| `aws_iam_policy` | Policy ARN | `arn:aws:iam::123456789012:policy/my-policy` |\n| `aws_db_instance` | DB identifier | `my-database` |\n| `aws_lambda_function` | Function name | `my-function` |\n| `aws_route53_zone` | Zone ID | `Z1234567890ABC` |\n| `aws_cloudfront_distribution` | Distribution ID | `E1234567890ABC` |\n| `google_compute_instance` | `projects/{project}/zones/{zone}/instances/{name}` | `projects/my-proj/zones/us-central1-a/instances/web` |\n| `azurerm_resource_group` | Resource ID | `/subscriptions/{sub}/resourceGroups/{name}` |\n\nConsult the provider documentation for the exact import ID format — it varies by resource type and provider.\n\n## Bulk Import Strategies\n\nFor importing many resources at once:\n\n### Shell Loop\n\n```bash\n#!/usr/bin/env bash\n# Import multiple resources from a CSV: address,id\nwhile IFS=, read -r address id; do\n  echo \"Importing ${address} with ID ${id}\"\n  terraform import \"$address\" \"$id\" || echo \"FAILED: ${address}\"\ndone < resources.csv\n```\n\n### Import Blocks (Recommended)\n\n```hcl\nimport {\n  to = aws_instance.web[0]\n  id = \"i-0abcdef1111111111\"\n}\n\nimport {\n  to = aws_instance.web[1]\n  id = \"i-0abcdef2222222222\"\n}\n\nimport {\n  to = aws_s3_bucket.logs\n  id = \"my-logs-bucket\"\n}\n```\n\nImport blocks are preferred because they are declarative, reviewable in plan output, and can be committed to version control during the migration process.\n\n### Generating Import Blocks with Scripts\n\n```bash\n#!/usr/bin/env bash\n# Generate import blocks for all EC2 instances\naws ec2 describe-instances \\\n  --query 'Reservations[].Instances[].InstanceId' \\\n  --output text | tr '\\t' '\\n' | while read -r id; do\n    NAME=$(aws ec2 describe-tags \\\n      --filters \"Name=resource-id,Values=${id}\" \"Name=key,Values=Name\" \\\n      --query 'Tags[0].Value' --output text 2>/dev/null || echo \"instance\")\n    SAFE_NAME=$(echo \"$NAME\" | tr '[:upper:]' '[:lower:]' | tr ' -' '__' | tr -cd 'a-z0-9_')\n    echo \"import {\"\n    echo \"  to = aws_instance.${SAFE_NAME}\"\n    echo \"  id = \\\"${id}\\\"\"\n    echo \"}\"\n    echo \"\"\ndone\n```\n\n## Limitations\n\n- **Pre-1.5**: `terraform import` does not generate configuration — you must write the resource block manually\n- **One at a time**: The `terraform import` CLI command imports one resource per invocation (import blocks solve this)\n- **No module support in CLI**: `terraform import` into module resources requires the full address (`module.name.resource.name`)\n- **Provider-specific IDs**: Import ID formats vary by provider and resource type — check documentation\n- **Computed attributes**: Generated config may include read-only attributes that cause plan diffs — remove them\n- **No data sources**: Only `resource` blocks can be imported, not `data` sources\n",
+  "sections": [
+    {
+      "id": "classic-import",
+      "title": "Classic import command",
+      "body": "The `terraform import <address> <id>` command binds a real-world resource to a resource address in state. You must have a matching `resource` block in your config before importing. After import, run `terraform plan` to see diffs and adjust config until the plan is clean. The command modifies state immediately — there is no plan/apply cycle for the classic command.",
+      "tags": ["terraform-import", "cli", "resource-address", "resource-id"]
+    },
+    {
+      "id": "import-blocks",
+      "title": "Import blocks (Terraform 1.5+)",
+      "body": "Declarative `import` blocks in HCL specify `to` (resource address) and `id` (real-world identifier). Import blocks integrate with `terraform plan` so imports appear as planned actions. Multiple import blocks can import several resources in a single `terraform apply`. Remove import blocks after successful import. This approach is preferred over the CLI command because it is reviewable and supports batch operations.",
+      "tags": ["import-block", "declarative", "terraform-15", "batch-import"]
+    },
+    {
+      "id": "generate-config",
+      "title": "Generating configuration",
+      "body": "With Terraform 1.5+, use `terraform plan -generate-config-out=generated.tf` alongside import blocks to auto-generate `resource` blocks. Terraform reads the real resource attributes from the provider API and writes HCL. Review the generated config — remove computed/read-only attributes, replace hardcoded values with variables, and refactor as needed. Generated config is a starting point, not production-ready code.",
+      "tags": ["generate-config", "generated-tf", "auto-generate", "starter-config"]
+    },
+    {
+      "id": "import-workflow",
+      "title": "Import workflow",
+      "body": "Standard workflow: (1) identify the resource type and real-world ID, (2) write a matching resource block or use `-generate-config-out`, (3) import via CLI command or import block, (4) run `terraform plan` to find diffs, (5) adjust config until plan shows no changes, (6) remove import blocks and commit. Always import into a non-production workspace first for validation.",
+      "tags": ["workflow", "best-practices", "zero-diff", "validation"]
+    },
+    {
+      "id": "import-id-formats",
+      "title": "Common import ID formats",
+      "body": "Import IDs are provider-specific. AWS resources typically use their native ID (instance ID, bucket name, ARN). Google Cloud uses long-form paths (`projects/{project}/zones/{zone}/instances/{name}`). Azure uses full resource IDs (`/subscriptions/{sub}/resourceGroups/{name}/...`). Always check the provider documentation for the exact format — using the wrong format produces cryptic errors.",
+      "tags": ["import-id", "aws", "gcp", "azure", "resource-id", "provider-docs"]
+    },
+    {
+      "id": "bulk-import",
+      "title": "Bulk import strategies",
+      "body": "For large-scale imports, use import blocks (Terraform 1.5+) for batch declarative imports. Alternatively, use shell scripts to loop over a CSV of resource addresses and IDs. Generate import blocks programmatically by querying cloud provider APIs (e.g., `aws ec2 describe-instances`). Third-party tools like `terraformer` and `cf-terraforming` can auto-generate both import commands and HCL config for entire accounts.",
+      "tags": ["bulk-import", "batch", "terraformer", "cf-terraforming", "scripting", "migration"]
+    },
+    {
+      "id": "limitations",
+      "title": "Limitations and caveats",
+      "body": "Pre-Terraform 1.5: the CLI command does not generate config. Each CLI import handles one resource. Generated config may include read-only attributes that must be removed. Import IDs vary by provider and resource type. Only `resource` blocks can be imported (not data sources). Modules require full qualified addresses (`module.name.resource.type.name`). Always plan after import to catch attribute mismatches.",
+      "tags": ["limitations", "caveats", "read-only", "modules", "data-sources"]
+    }
+  ],
+  "links": [
+    { "uri": "terraform/state", "context": "Import writes resource bindings into Terraform state" },
+    { "uri": "terraform/state/backends", "context": "Imported state is stored in the configured backend" },
+    { "uri": "terraform/state/locking", "context": "Import operations acquire a state lock" },
+    { "uri": "aws/s3", "context": "S3 buckets are commonly imported into Terraform management" },
+    { "uri": "aws/ec2", "context": "EC2 instances are among the most commonly imported resources" }
+  ],
+  "related": [
+    { "uri": "terraform/state", "relation": "prerequisite", "note": "Understanding state is required before importing resources into it" },
+    { "uri": "terraform/state/backends", "relation": "see-also", "note": "Imported state is persisted to the configured backend" },
+    { "uri": "terraform/state/locking", "relation": "see-also", "note": "Import operations acquire state locks to prevent concurrent modification" },
+    { "uri": "aws/cloudformation", "relation": "alternative", "note": "CloudFormation has its own import-stack-to-resource mechanism" }
+  ],
+  "scripts": [
+    {
+      "id": "import-resource",
+      "name": "Import Existing Resource into Terraform State",
+      "description": "Imports a resource into Terraform state, verifies with a plan, and reports the diff",
+      "lang": "bash",
+      "runtime": "bash>=4",
+      "inline": "#!/usr/bin/env bash\nset -euo pipefail\n\n# Import Existing Resource into Terraform State\n# Required env: TF_WORKING_DIR, RESOURCE_ADDRESS, RESOURCE_ID\n# Optional env: USE_IMPORT_BLOCK (true/false), GENERATE_CONFIG (true/false)\n\nTF_DIR=\"${TF_WORKING_DIR:?TF_WORKING_DIR is required (path to Terraform project)}\"\nADDRESS=\"${RESOURCE_ADDRESS:?RESOURCE_ADDRESS is required (e.g., aws_instance.web)}\"\nID=\"${RESOURCE_ID:?RESOURCE_ID is required (e.g., i-1234567890abcdef0)}\"\nUSE_BLOCK=\"${USE_IMPORT_BLOCK:-false}\"\nGEN_CONFIG=\"${GENERATE_CONFIG:-false}\"\n\ncd \"$TF_DIR\"\n\n# Ensure Terraform is initialized\nif [ ! -d .terraform ]; then\n  echo \"==> Initializing Terraform...\"\n  terraform init -input=false\nfi\n\nif [ \"$USE_BLOCK\" = \"true\" ]; then\n  echo \"==> Using import block approach (Terraform 1.5+)\"\n\n  # Create a temporary import block file\n  IMPORT_FILE=\"_import_$(echo \"$ADDRESS\" | tr '.' '_').tf\"\n  cat > \"$IMPORT_FILE\" <<EOF\nimport {\n  to = ${ADDRESS}\n  id = \"${ID}\"\n}\nEOF\n  echo \"    Created ${IMPORT_FILE}\"\n\n  if [ \"$GEN_CONFIG\" = \"true\" ]; then\n    echo \"==> Generating configuration...\"\n    terraform plan -generate-config-out=generated_import.tf -input=false 2>&1 || true\n    if [ -f generated_import.tf ]; then\n      echo \"    Generated: generated_import.tf\"\n      echo \"    --- Generated Config ---\"\n      cat generated_import.tf\n      echo \"    --- End Generated Config ---\"\n    fi\n  fi\n\n  echo \"==> Running terraform plan to preview import...\"\n  terraform plan -input=false\n\n  echo \"\"\n  echo \"==> To apply the import, run: terraform apply\"\n  echo \"==> After successful import, remove: ${IMPORT_FILE}\"\nelse\n  echo \"==> Using classic import command\"\n  echo \"    Address: ${ADDRESS}\"\n  echo \"    ID:      ${ID}\"\n  echo \"\"\n\n  echo \"==> Importing resource...\"\n  terraform import \"$ADDRESS\" \"$ID\"\n\n  echo \"\"\n  echo \"==> Import complete. Running plan to check for diffs...\"\n  echo \"\"\n  PLAN_OUTPUT=$(terraform plan -input=false -no-color 2>&1) || true\n  echo \"$PLAN_OUTPUT\"\n\n  if echo \"$PLAN_OUTPUT\" | grep -q \"No changes\"; then\n    echo \"\"\n    echo \"[OK] Import successful — config matches actual resource (zero diff).\"\n  else\n    echo \"\"\n    echo \"[!] Import successful but config has diffs.\"\n    echo \"    Review the plan output above and adjust your resource block\"\n    echo \"    until 'terraform plan' shows no changes.\"\n  fi\nfi\n\necho \"\"\necho \"==> Current state for ${ADDRESS}:\"\nterraform state show \"$ADDRESS\" 2>/dev/null || echo \"    Resource not yet in state\"\n\necho \"\"\necho \"==> Done.\"",
+      "env": {
+        "TF_WORKING_DIR": { "required": true, "secret": false, "description": "Path to the Terraform project directory" },
+        "RESOURCE_ADDRESS": { "required": true, "secret": false, "description": "Terraform resource address (e.g., aws_instance.web)" },
+        "RESOURCE_ID": { "required": true, "secret": false, "description": "Real-world resource ID (e.g., i-1234567890abcdef0)" },
+        "USE_IMPORT_BLOCK": { "required": false, "secret": false, "default": "false", "description": "Use import blocks instead of CLI command (requires Terraform 1.5+)" },
+        "GENERATE_CONFIG": { "required": false, "secret": false, "default": "false", "description": "Generate starter HCL config for the imported resource (requires Terraform 1.5+)" }
+      },
+      "packages": ["terraform"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "resource_address": {
+          "type": "string",
+          "description": "Terraform resource address (e.g., aws_instance.web, module.vpc.aws_subnet.public[0])"
+        },
+        "resource_id": {
+          "type": "string",
+          "description": "Real-world resource identifier (format varies by provider and resource type)"
+        },
+        "working_dir": {
+          "type": "string",
+          "description": "Path to the Terraform project directory"
+        },
+        "use_import_block": {
+          "type": "boolean",
+          "default": false,
+          "description": "Use declarative import blocks instead of the CLI command"
+        },
+        "generate_config": {
+          "type": "boolean",
+          "default": false,
+          "description": "Generate starter HCL configuration for the imported resource"
+        }
+      },
+      "required": ["resource_address", "resource_id"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "import_success": {
+          "type": "boolean",
+          "description": "Whether the resource was successfully imported into state"
+        },
+        "state_updated": {
+          "type": "boolean",
+          "description": "Whether the state file was updated with the imported resource"
+        },
+        "plan_clean": {
+          "type": "boolean",
+          "description": "Whether terraform plan shows no changes after import (config matches actual)"
+        },
+        "diff_attributes": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "List of attributes that differ between config and actual resource"
+        }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "terraform/state", "reason": "Import writes resource bindings into Terraform state" },
+    { "uri": "terraform/state/backends", "optional": true, "reason": "Imported state is persisted to the configured backend" }
+  ],
+  "more": {
+    "docs": "https://developer.hashicorp.com/terraform/cli/import",
+    "spec": "https://developer.hashicorp.com/terraform/language/import",
+    "wiki": "https://developer.hashicorp.com/terraform/cli/import/usage"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "devops engineers, platform engineers, AI agents",
+    "estimated_reading_time": "8 min",
+    "prerequisites": ["terraform/state"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

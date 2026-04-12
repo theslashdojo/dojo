@@ -1,0 +1,176 @@
+{
+  "name": "apply",
+  "version": "1.0.0",
+  "uri": "terraform/cli/apply",
+  "type": "skill",
+  "context": "Apply infrastructure changes with terraform apply, auto-approve for CI/CD, and handle partial failures",
+  "info": "The `terraform apply` command executes the changes required to reach the desired state defined in the Terraform configuration. It can apply a saved plan file (produced by `terraform plan -out`) for exact, pre-reviewed changes, or it can generate and apply a new plan in a single step. When run without a saved plan, apply performs an implicit plan and prompts for confirmation before proceeding. The `-auto-approve` flag skips the confirmation prompt, which is essential for CI/CD automation. Variables are supplied via `-var`, `-var-file`, or environment variables, identical to plan. The `-target` flag restricts application to specific resources, and `-parallelism` controls how many resource operations run concurrently (default 10). Apply updates the state file after each resource operation, so partial failures leave the state reflecting the actual infrastructure. After apply, `terraform output` reads output values from the updated state. The `-replace` flag forces recreation of a specific resource without tainting. Error handling in CI/CD pipelines should capture the exit code: 0 for success, 1 for errors.",
+  "parent": "terraform/cli",
+  "tags": ["terraform", "apply", "deploy", "infrastructure", "ci-cd", "auto-approve", "state", "parallelism", "outputs"],
+  "aliases": [
+    "terraform apply",
+    "tf apply",
+    "terraform deploy",
+    "terraform execute",
+    "terraform run",
+    "terraform apply plan",
+    "terraform auto-approve"
+  ],
+  "triggers": [
+    "run terraform apply",
+    "apply terraform changes",
+    "deploy infrastructure with terraform",
+    "apply a saved terraform plan",
+    "terraform auto approve in ci",
+    "terraform apply with variables",
+    "terraform apply specific resource",
+    "handle terraform apply failure",
+    "terraform apply parallelism",
+    "get terraform outputs after apply"
+  ],
+  "body": "# terraform apply\n\n`terraform apply` executes the changes necessary to reach the desired infrastructure state. It creates, updates, and destroys resources as needed, updating the state file after each operation.\n\n## Basic Usage\n\n```bash\n# Apply with interactive confirmation prompt\nterraform apply\n\n# Apply a saved plan file (no prompt, exact changes)\nterraform apply tfplan\n\n# Apply without confirmation (CI/CD)\nterraform apply -auto-approve\n\n# Apply in a different directory\nterraform -chdir=environments/production apply\n```\n\n## Saved Plan vs Direct Apply\n\nThere are two ways to use apply:\n\n### 1. Saved Plan (Recommended for CI/CD)\n\n```bash\n# Step 1: Create and review the plan\nterraform plan -out=tfplan\n\n# Step 2: Inspect it\nterraform show tfplan\n\n# Step 3: Apply the exact plan\nterraform apply tfplan\n```\n\nWhen applying a saved plan:\n- No confirmation prompt is shown (changes were pre-approved)\n- The exact changes from the plan are applied — no re-planning\n- Variable flags (`-var`, `-var-file`) are not accepted (they were baked into the plan)\n- If infrastructure changed between plan and apply, Terraform detects the drift and may error\n\n### 2. Direct Apply\n\n```bash\n# Generates a new plan and prompts for approval\nterraform apply\n\n# Same but with variables\nterraform apply -var=\"instance_type=t3.large\" -var-file=prod.tfvars\n\n# Skip the prompt\nterraform apply -auto-approve\n```\n\nDirect apply is convenient for development but risky in production. Always use saved plans in CI/CD.\n\n## Auto-Approve for CI/CD\n\nThe `-auto-approve` flag skips interactive confirmation:\n\n```bash\n# Direct apply without prompt\nterraform apply -auto-approve\n\n# Or via environment variable\nexport TF_CLI_ARGS_apply=\"-auto-approve -no-color\"\nterraform apply\n```\n\nIn CI/CD, the safer pattern is using saved plans:\n\n```bash\n# CI pipeline: plan -> save -> apply saved plan\nterraform plan -out=tfplan -input=false\nterraform apply tfplan  # no -auto-approve needed with saved plan\n```\n\n## Variable Input\n\n```bash\n# Single variable\nterraform apply -var=\"region=us-west-2\"\n\n# Variable file\nterraform apply -var-file=environments/prod.tfvars\n\n# Multiple sources\nterraform apply \\\n  -var-file=common.tfvars \\\n  -var-file=prod.tfvars \\\n  -var=\"deploy_version=v2.1.0\"\n\n# Environment variables\nexport TF_VAR_region=us-east-1\nexport TF_VAR_db_password=\"s3cret\"  # sensitive vars via env\nterraform apply\n```\n\n**Note:** When applying a saved plan file, variable flags are not accepted — variables are already encoded in the plan.\n\n## Targeted Apply\n\nRestrict apply to specific resources:\n\n```bash\n# Apply only a specific resource\nterraform apply -target=aws_instance.web\n\n# Apply an entire module\nterraform apply -target=module.database\n\n# Multiple targets\nterraform apply -target=aws_instance.web -target=aws_security_group.web\n```\n\nTargeted applies are a last resort. They skip dependency checks for non-targeted resources, which can leave infrastructure in an inconsistent state. Always follow up with a full `terraform plan` to verify.\n\n## Parallelism\n\nControl how many resource operations Terraform executes concurrently:\n\n```bash\n# Default parallelism is 10\nterraform apply -parallelism=10\n\n# Reduce parallelism for API rate-limited providers\nterraform apply -parallelism=3\n\n# Increase for large deployments with no rate limits\nterraform apply -parallelism=30\n```\n\nLower parallelism if you encounter API throttling. Raise it to speed up large deployments.\n\n## Force Resource Replacement\n\n```bash\n# Force recreation of a specific resource\nterraform apply -replace=aws_instance.web\n\n# Plan the replacement first\nterraform plan -replace=aws_instance.web -out=replace.tfplan\nterraform apply replace.tfplan\n```\n\nThe `-replace` flag supersedes the deprecated `terraform taint` command.\n\n## Error Handling and Partial Applies\n\nTerraform updates state after each resource operation. If apply fails midway:\n\n- Resources created before the error **remain in state and in the cloud**\n- Resources not yet processed are **unchanged**\n- The state file accurately reflects the current reality\n\n```bash\n# After a partial failure, review what was applied\nterraform state list\nterraform show\n\n# Re-run apply to retry the failed resources\nterraform apply\n\n# Check for drift after manual intervention\nterraform plan -refresh-only\n```\n\nIn CI/CD, capture the exit code:\n\n```bash\nterraform apply -auto-approve; EXIT_CODE=$?\nif [ $EXIT_CODE -ne 0 ]; then\n  echo \"Apply failed with exit code $EXIT_CODE\"\n  terraform show  # inspect current state\n  exit $EXIT_CODE\nfi\n```\n\n## Post-Apply Outputs\n\nRead output values from the state after a successful apply:\n\n```bash\n# List all outputs\nterraform output\n\n# Get a specific output\nterraform output -raw db_endpoint\n\n# Get output as JSON\nterraform output -json\n\n# Use in scripts\nDB_HOST=$(terraform output -raw db_endpoint)\nAPI_URL=$(terraform output -raw api_url)\necho \"Database: $DB_HOST\"\necho \"API: $API_URL\"\n```\n\n## Common Flags Reference\n\n| Flag | Purpose |\n|---|---|\n| `-auto-approve` | Skip interactive confirmation prompt |\n| `-var=\"key=value\"` | Set an input variable |\n| `-var-file=FILE` | Load variables from a .tfvars file |\n| `-target=ADDR` | Restrict apply to specific resource/module |\n| `-replace=ADDR` | Force recreation of a specific resource |\n| `-parallelism=N` | Concurrent resource operations (default 10) |\n| `-input=false` | Disable interactive variable prompts |\n| `-no-color` | Disable terminal color codes |\n| `-json` | Machine-readable JSON output |\n| `-compact-warnings` | Condense warning output |\n| `-refresh=false` | Skip state refresh before applying |\n| `-lock=false` | Disable state locking (not recommended) |\n| `-lock-timeout=DURATION` | Time to wait for state lock (e.g. 5m) |\n",
+  "sections": [
+    {
+      "id": "saved-plan-vs-direct",
+      "title": "Saved plan vs direct apply",
+      "body": "Direct apply runs an implicit plan and prompts for confirmation. Saved plan apply executes the exact pre-reviewed changes with no re-planning and no prompt. Saved plans are the standard for CI/CD because they guarantee what was reviewed is what gets applied. Variable flags are not accepted when applying a saved plan — they are baked in at plan time.",
+      "tags": ["saved-plan", "direct-apply", "ci-cd", "confirmation", "safety"]
+    },
+    {
+      "id": "auto-approve",
+      "title": "Auto-approve for CI/CD",
+      "body": "The -auto-approve flag skips the interactive confirmation prompt. This is required in non-interactive environments like CI/CD pipelines. The safer CI pattern is plan -out=tfplan followed by apply tfplan, which requires no -auto-approve because saved plans have no prompt. Use TF_CLI_ARGS_apply to set auto-approve via environment variable.",
+      "tags": ["auto-approve", "ci-cd", "automation", "non-interactive", "pipeline"]
+    },
+    {
+      "id": "parallelism",
+      "title": "Parallelism control",
+      "body": "Terraform applies up to 10 resource operations concurrently by default. The -parallelism flag adjusts this. Lower values (2-5) help avoid API rate limiting with cloud providers. Higher values (20-50) speed up large deployments when rate limits are not a concern. Parallelism applies to independent resources only — dependencies are always applied in order.",
+      "tags": ["parallelism", "concurrency", "rate-limiting", "performance", "dependencies"]
+    },
+    {
+      "id": "error-handling",
+      "title": "Error handling and partial applies",
+      "body": "Terraform updates state after each individual resource operation. When apply fails partway, the state accurately reflects which resources were successfully created or modified. Re-running apply retries only the remaining changes. In CI/CD, capture the exit code (0=success, 1=error) and inspect state on failure. Never manually edit the state file — use terraform state commands.",
+      "tags": ["errors", "partial-apply", "failure", "recovery", "exit-code", "state"]
+    },
+    {
+      "id": "post-apply-outputs",
+      "title": "Post-apply outputs",
+      "body": "After apply, terraform output reads the output values defined in output blocks from the state. Use -raw for single values in scripts, -json for structured data. Outputs are commonly used to pass values between Terraform configurations (via remote state data source) or to downstream tools and services in CI/CD pipelines.",
+      "tags": ["outputs", "post-apply", "scripts", "remote-state", "pipeline"]
+    },
+    {
+      "id": "replace",
+      "title": "Force resource replacement",
+      "body": "The -replace flag forces Terraform to destroy and recreate a specific resource even if the configuration has not changed. This replaces the deprecated terraform taint command. Combine with plan for a preview: terraform plan -replace=ADDR. Useful for cycling instances, rotating certificates, or recovering from corrupted resource state.",
+      "tags": ["replace", "taint", "recreate", "force", "rotation"]
+    }
+  ],
+  "links": [
+    { "uri": "terraform/cli", "context": "Parent CLI node with global flags and environment variables" },
+    { "uri": "terraform/cli/init", "context": "Init must be run before apply" },
+    { "uri": "terraform/cli/plan", "context": "Plan previews the changes that apply executes" },
+    { "uri": "terraform/cli/destroy", "context": "Destroy is a specialized apply that removes all resources" }
+  ],
+  "related": [
+    { "uri": "terraform/cli/plan", "relation": "prerequisite", "note": "Plan should be reviewed before apply" },
+    { "uri": "terraform/cli/init", "relation": "prerequisite", "note": "Init must be run before apply" },
+    { "uri": "terraform/cli/destroy", "relation": "see-also", "note": "Destroy is apply with all resources targeted for deletion" }
+  ],
+  "scripts": [
+    {
+      "id": "terraform-ci-apply",
+      "name": "CI/CD Apply Workflow",
+      "description": "Full CI/CD apply workflow: init, plan with saved file, apply the saved plan, and display outputs",
+      "lang": "bash",
+      "runtime": "terraform>=1.0",
+      "inline": "set -euo pipefail\nDIR=\"${TF_WORKING_DIR:-.}\"\nPLAN_FILE=\"${PLAN_OUT:-tfplan}\"\n\nexport TF_IN_AUTOMATION=true\nexport TF_INPUT=0\n\n# Init\necho '=== Step 1: Init ==='\nterraform -chdir=\"$DIR\" init -input=false ${BACKEND_CONFIG:+-backend-config=\"$BACKEND_CONFIG\"}\n\n# Plan\necho '' && echo '=== Step 2: Plan ==='\nPLAN_ARGS=\"-input=false -out=$PLAN_FILE -no-color\"\nif [ -n \"${VAR_FILE:-}\" ]; then\n  for vf in $(echo \"$VAR_FILE\" | tr ',' '\\n'); do\n    PLAN_ARGS=\"$PLAN_ARGS -var-file=$vf\"\n  done\nfi\nif [ -n \"${PARALLELISM:-}\" ]; then\n  PLAN_ARGS=\"$PLAN_ARGS -parallelism=$PARALLELISM\"\nfi\nterraform -chdir=\"$DIR\" plan $PLAN_ARGS\n\n# Apply\necho '' && echo '=== Step 3: Apply ==='\nAPPLY_ARGS=\"-no-color\"\nif [ -n \"${PARALLELISM:-}\" ]; then\n  APPLY_ARGS=\"$APPLY_ARGS -parallelism=$PARALLELISM\"\nfi\nterraform -chdir=\"$DIR\" apply $APPLY_ARGS \"$PLAN_FILE\"\nAPPLY_EXIT=$?\n\n# Outputs\nif [ $APPLY_EXIT -eq 0 ]; then\n  echo '' && echo '=== Step 4: Outputs ==='\n  terraform -chdir=\"$DIR\" output -json 2>/dev/null || echo '(no outputs defined)'\nfi\n\nexit $APPLY_EXIT",
+      "env": {
+        "TF_WORKING_DIR": { "required": false, "secret": false, "description": "Working directory with .tf files (default: current directory)" },
+        "PLAN_OUT": { "required": false, "secret": false, "description": "Plan file name (default: tfplan)" },
+        "VAR_FILE": { "required": false, "secret": false, "description": "Comma-separated .tfvars file paths" },
+        "BACKEND_CONFIG": { "required": false, "secret": true, "description": "Backend config file path for init" },
+        "PARALLELISM": { "required": false, "secret": false, "description": "Number of concurrent resource operations (default: 10)" }
+      }
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "directory": { "type": "string", "description": "Path to the Terraform working directory" },
+        "planFile": { "type": "string", "description": "Path to a saved plan file to apply" },
+        "autoApprove": { "type": "boolean", "description": "Skip interactive confirmation" },
+        "variables": {
+          "type": "object",
+          "additionalProperties": { "type": "string" },
+          "description": "Key-value variable assignments"
+        },
+        "varFiles": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Paths to .tfvars variable files"
+        },
+        "targets": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Resource addresses to target"
+        },
+        "parallelism": { "type": "integer", "description": "Number of concurrent operations (default 10)" },
+        "replace": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Resource addresses to force-replace"
+        }
+      }
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "success": { "type": "boolean", "description": "Whether apply completed successfully" },
+        "added": { "type": "integer", "description": "Number of resources created" },
+        "changed": { "type": "integer", "description": "Number of resources updated" },
+        "destroyed": { "type": "integer", "description": "Number of resources destroyed" },
+        "outputs": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "value": {},
+              "type": { "type": "string" },
+              "sensitive": { "type": "boolean" }
+            }
+          },
+          "description": "Terraform output values after apply"
+        }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "terraform/cli", "reason": "Terraform CLI must be installed" },
+    { "uri": "terraform/cli/init", "reason": "Init must be run before apply" },
+    { "uri": "terraform/cli/plan", "reason": "Plan should be reviewed before apply", "optional": true }
+  ],
+  "more": {
+    "docs": "https://developer.hashicorp.com/terraform/cli/commands/apply",
+    "outputs": "https://developer.hashicorp.com/terraform/cli/commands/output",
+    "variables": "https://developer.hashicorp.com/terraform/language/values/variables"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents, DevOps engineers, SREs",
+    "estimated_reading_time": "7 min",
+    "prerequisites": [],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://github.com/hashicorp/terraform",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

@@ -1,0 +1,97 @@
+{
+  "name": "troubleshooting",
+  "version": "1.0.0",
+  "uri": "eslint/troubleshooting",
+  "type": "context",
+  "content_type": "faq",
+  "context": "Debug common ESLint errors — config not found, plugin resolution, parser mismatches, flat config migration issues",
+  "info": "This node covers the most common ESLint errors agents encounter and how to fix them: config file not found, plugin/parser resolution failures, flat config migration issues, conflicting rules, performance problems, and editor integration issues. Each problem includes the error message, root cause, and fix. Agents use this context when ESLint produces unexpected errors, when --fix doesn't work as expected, or when migrating from eslintrc to flat config breaks the configuration.",
+  "parent": "eslint",
+  "tags": ["troubleshooting", "debug", "errors", "fix-issues", "eslint-errors"],
+  "aliases": [
+    "eslint troubleshooting",
+    "eslint errors",
+    "eslint not working",
+    "eslint debug",
+    "fix eslint error",
+    "eslint broken",
+    "eslint issues",
+    "eslint problems",
+    "eslint help"
+  ],
+  "triggers": [
+    "eslint not working",
+    "eslint config not found",
+    "eslint plugin not found",
+    "eslint parser error",
+    "eslint flat config not working",
+    "eslint errors after upgrade",
+    "eslint too slow",
+    "eslint conflicting rules",
+    "eslint-disable not working",
+    "eslint ignoring my files"
+  ],
+  "body": "# ESLint Troubleshooting\n\nCommon ESLint problems, their error messages, and how to fix them.\n\n## Config Not Found\n\n**Error:** `ESLint couldn't find a configuration file`\n\n**Cause:** No `eslint.config.js`, `.mjs`, or `.cjs` in the working directory or any parent.\n\n**Fix:**\n```bash\n# Create a minimal config\nnpm init @eslint/config@latest\n\n# Or create manually\necho 'import js from \"@eslint/js\";\nexport default [js.configs.recommended];' > eslint.config.mjs\nnpm install --save-dev eslint @eslint/js\n```\n\n## Legacy Config Detected\n\n**Error:** `ESLint found a deprecated configuration file (.eslintrc.json). Please use eslint.config.js instead.`\n\n**Fix:**\n```bash\n# Migrate automatically\nnpx @eslint/migrate-config .eslintrc.json\n\n# Then remove old files\nrm .eslintrc.json .eslintignore\n```\n\nSee [[eslint/flat-config]] for migration details.\n\n## Plugin Not Found / Failed to Load\n\n**Error:** `Failed to load plugin 'react' declared in ...`\n\n**Cause:** Plugin package not installed, or wrong import in flat config.\n\n**Fix:**\n```bash\n# Install the missing plugin\nnpm install --save-dev eslint-plugin-react\n\n# Verify it's imported correctly in eslint.config.mjs\n# WRONG: plugins: [\"react\"]\n# RIGHT: import react from \"eslint-plugin-react\";\n#        plugins: { react },\n```\n\n## Parser Not Found\n\n**Error:** `Configured parser '@typescript-eslint/parser' was not found`\n\n**Cause:** In flat config, parsers must be imported as objects, not referenced as strings.\n\n**Fix:**\n```javascript\n// WRONG (eslintrc style)\n{ parser: \"@typescript-eslint/parser\" }\n\n// RIGHT (flat config)\nimport tseslint from \"typescript-eslint\";\nexport default tseslint.config(\n  ...tseslint.configs.recommended,\n);\n```\n\n## No Files Matched\n\n**Error:** `No files matching the pattern \"src\" were found.`\n\n**Cause:** Glob patterns may need quoting, or the directory doesn't exist.\n\n**Fix:**\n```bash\n# Quote glob patterns to prevent shell expansion\nnpx eslint \"src/**/*.{js,ts}\"\n\n# Or suppress the error\nnpx eslint --no-error-on-unmatched-pattern \"src/**/*.ts\"\n```\n\n## Rules from Plugin Not Working\n\n**Error:** `Definition for rule 'react/prop-types' was not found`\n\n**Cause:** Plugin not registered in the `plugins` object, or wrong namespace.\n\n**Fix:**\n```javascript\n// Ensure plugin is registered\nimport react from \"eslint-plugin-react\";\n\nexport default [\n  {\n    plugins: { react },  // <-- Must register before using rules\n    rules: {\n      \"react/prop-types\": \"off\",\n    },\n  },\n];\n```\n\n## Type-Aware Rules Errors\n\n**Error:** `You have used a rule which requires type information, but don't have parserOptions set to generate type information.`\n\n**Cause:** Type-aware typescript-eslint rules need a tsconfig.\n\n**Fix:**\n```javascript\nimport tseslint from \"typescript-eslint\";\n\nexport default tseslint.config(\n  ...tseslint.configs.recommendedTypeChecked,\n  {\n    languageOptions: {\n      parserOptions: {\n        projectService: true,\n        tsconfigRootDir: import.meta.dirname,\n      },\n    },\n  },\n);\n```\n\nMake sure `tsconfig.json` includes the files being linted.\n\n## ESLint Too Slow\n\n**Symptoms:** Linting takes >30 seconds for a normal project.\n\n**Common causes and fixes:**\n\n```bash\n# 1. Enable caching\nnpx eslint --cache .\n\n# 2. Check if node_modules is being linted\n# Add to config:\n{ ignores: [\"node_modules/\", \"dist/\", \".git/\"] }\n\n# 3. Disable type-aware rules if not needed\n# Use tseslint.configs.recommended instead of recommendedTypeChecked\n\n# 4. Debug what's slow\nnpx eslint --debug . 2>&1 | grep -i \"timing\"\nESLINT_DEBUG=eslint:* npx eslint .\n\n# 5. Use concurrency (ESLint 9.x)\nnpx eslint --concurrency auto .\n```\n\n## Files Being Ignored Unexpectedly\n\n**Symptoms:** ESLint skips files you expect it to lint.\n\n**Debug:**\n```bash\n# Check resolved config for a specific file\nnpx eslint --print-config path/to/file.js\n\n# If empty or error, the file is being ignored\n# Check your ignores patterns:\n```\n\n**Common causes:**\n- Global `ignores` pattern matches the file\n- `files` patterns don't include the file extension\n- File is in `node_modules/` (always ignored)\n- Dotfiles: flat config does NOT ignore dotfiles by default (unlike eslintrc)\n\n## Conflicting Rules (ESLint + Prettier)\n\n**Symptoms:** ESLint and Prettier fight over formatting (semicolons, quotes, etc.).\n\n**Fix:** Install `eslint-config-prettier` and add it LAST:\n\n```javascript\nimport prettier from \"eslint-config-prettier\";\n\nexport default [\n  js.configs.recommended,\n  prettier,  // Must be last\n];\n```\n\nSee [[eslint/plugins]] for Prettier integration.\n\n## Debug Commands\n\n```bash\n# Print resolved config for a file\nnpx eslint --print-config src/index.js\n\n# Interactive config inspector\nnpx eslint --inspect-config\n\n# Full debug output\nnpx eslint --debug src/\n\n# Environment info\nnpx eslint --env-info\n\n# Check ESLint version\nnpx eslint --version\n```\n\n## Exit Code 2 (Fatal Error)\n\n**Cause:** Configuration error, not a lint error. Common causes:\n- Syntax error in `eslint.config.mjs`\n- Missing required dependency\n- Invalid rule configuration\n\n**Debug:**\n```bash\n# Run with debug flag\nnpx eslint --debug . 2>&1 | head -50\n\n# Validate config syntax\nnode -e \"import('./eslint.config.mjs').then(c => console.log('OK', Object.keys(c.default)))\"\n```\n",
+  "sections": [
+    {
+      "id": "config-errors",
+      "title": "Configuration errors",
+      "body": "Config not found: create `eslint.config.mjs` or run `npm init @eslint/config`. Legacy config detected: run `npx @eslint/migrate-config .eslintrc.json`. Exit code 2 means fatal config error — check syntax with `--debug`. Use `--print-config <file>` to see resolved config.",
+      "tags": ["config-not-found", "legacy-config", "exit-code-2", "print-config"]
+    },
+    {
+      "id": "plugin-errors",
+      "title": "Plugin and parser errors",
+      "body": "Plugin not found: install the npm package and import as an object (not string). Parser not found: in flat config, parsers are imported objects in `languageOptions.parser`. Rule not found: ensure the plugin is registered in the `plugins` object. Type-aware rules need `parserOptions.projectService: true` and a valid tsconfig.",
+      "tags": ["plugin-not-found", "parser-error", "rule-not-found", "type-aware"]
+    },
+    {
+      "id": "performance",
+      "title": "Performance issues",
+      "body": "Enable `--cache` to skip unchanged files. Add `node_modules/`, `dist/`, `.git/` to ignores. Type-aware typescript-eslint rules are the biggest perf hit — use `recommended` instead of `recommendedTypeChecked` if speed matters. Use `--concurrency auto` in ESLint 9.x for multi-threaded linting. Debug with `ESLINT_DEBUG=eslint:* npx eslint .`.",
+      "tags": ["slow", "performance", "cache", "concurrency", "debug"]
+    },
+    {
+      "id": "file-matching",
+      "title": "File matching issues",
+      "body": "Files ignored unexpectedly: check global `ignores` patterns, `files` globs, and whether the extension is included. Use `--print-config <file>` to check if a file is being linted. Quote glob patterns in shell to prevent expansion: `\"src/**/*.ts\"`. Use `--no-error-on-unmatched-pattern` when glob may match zero files.",
+      "tags": ["ignored-files", "glob", "file-matching", "unmatched-pattern"]
+    },
+    {
+      "id": "debug-commands",
+      "title": "Debug commands",
+      "body": "`--print-config <file>` shows resolved config. `--inspect-config` opens interactive inspector. `--debug` shows full debug output. `--env-info` shows environment and version. `ESLINT_DEBUG=eslint:*` enables debug logging via environment variable.",
+      "tags": ["debug", "inspect-config", "print-config", "env-info"]
+    }
+  ],
+  "links": [
+    { "uri": "eslint/config", "context": "Fix config by creating proper eslint.config.mjs" },
+    { "uri": "eslint/flat-config", "context": "Understand flat config for migration issues" },
+    { "uri": "eslint/plugins", "context": "Fix plugin and parser errors" },
+    { "uri": "eslint/rules", "context": "Fix rule configuration issues" },
+    { "uri": "eslint/fix", "context": "When --fix doesn't work as expected" }
+  ],
+  "related": [
+    { "uri": "eslint/flat-config", "relation": "see-also", "note": "Many issues stem from eslintrc-to-flat-config migration" },
+    { "uri": "eslint/plugins", "relation": "see-also", "note": "Plugin errors are the most common class of ESLint issue" },
+    { "uri": "eslint/config", "relation": "prerequisite", "note": "Most troubleshooting starts with verifying the config file" }
+  ],
+  "more": {
+    "docs": "https://eslint.org/docs/latest/use/troubleshooting/",
+    "migration": "https://eslint.org/docs/latest/use/configure/migration-guide"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "5 min",
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

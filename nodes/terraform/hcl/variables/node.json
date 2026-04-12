@@ -1,0 +1,101 @@
+{
+  "name": "variables",
+  "version": "1.0.0",
+  "uri": "terraform/hcl/variables",
+  "type": "skill",
+  "context": "Terraform input variables, local values, and outputs — the data flow layer in HCL configurations",
+  "info": "This skill covers the three mechanisms for data flow in Terraform: input variables (parameterize configs), local values (compute intermediate results), and output values (export results). Input variables support type constraints (string, number, bool, list, map, object), default values, descriptions, validation blocks with custom conditions, and the sensitive flag. Local values reduce repetition and compute derived values. Outputs export resource attributes for use by other modules, the CLI, or remote state consumers. Variable precedence follows a defined order: environment variables (TF_VAR_*), terraform.tfvars, *.auto.tfvars, -var-file flags, -var flags, then defaults. See [[terraform/hcl/expressions]] for how to reference variables in expressions.",
+  "parent": "terraform/hcl",
+  "tags": ["variables", "locals", "outputs", "terraform", "hcl", "tfvars", "input", "type-constraints", "validation", "sensitive", "data-flow"],
+  "aliases": [
+    "terraform variables",
+    "terraform vars",
+    "terraform locals",
+    "terraform outputs",
+    "terraform input variables",
+    "terraform output values",
+    "terraform local values",
+    "tf vars",
+    "tfvars",
+    "terraform.tfvars",
+    "TF_VAR",
+    "variable block",
+    "output block"
+  ],
+  "triggers": [
+    "how to define terraform variables",
+    "terraform variable types",
+    "terraform variable validation",
+    "how to use locals in terraform",
+    "terraform output values",
+    "terraform variable precedence",
+    "pass variables to terraform",
+    "set terraform variables from environment",
+    "terraform sensitive variables",
+    "terraform tfvars file",
+    "terraform variable defaults"
+  ],
+  "body": "# Variables, Locals, and Outputs\n\nTerraform's data flow relies on three constructs: **input variables** accept values from outside the module, **local values** compute intermediate results, and **output values** export data for external consumption.\n\n## Input Variables\n\nDeclare input variables with the `variable` block:\n\n```hcl\nvariable \"instance_type\" {\n  type        = string\n  default     = \"t3.micro\"\n  description = \"EC2 instance type for the web servers\"\n}\n\nvariable \"environment\" {\n  type        = string\n  description = \"Deployment environment\"\n\n  validation {\n    condition     = contains([\"dev\", \"staging\", \"prod\"], var.environment)\n    error_message = \"Environment must be dev, staging, or prod.\"\n  }\n}\n\nvariable \"vpc_cidr\" {\n  type    = string\n  default = \"10.0.0.0/16\"\n}\n```\n\nReference variables in expressions with `var.<name>`: `var.instance_type`, `var.environment`.\n\n## Variable Types\n\nTerraform supports primitive and complex types:\n\n```hcl\n# Primitive types\nvariable \"name\" {\n  type = string\n}\n\nvariable \"instance_count\" {\n  type    = number\n  default = 2\n}\n\nvariable \"enable_monitoring\" {\n  type    = bool\n  default = true\n}\n\n# Collection types\nvariable \"availability_zones\" {\n  type    = list(string)\n  default = [\"us-east-1a\", \"us-east-1b\", \"us-east-1c\"]\n}\n\nvariable \"instance_tags\" {\n  type = map(string)\n  default = {\n    Environment = \"dev\"\n    ManagedBy   = \"terraform\"\n  }\n}\n\nvariable \"allowed_cidrs\" {\n  type    = set(string)\n  default = [\"10.0.0.0/8\", \"172.16.0.0/12\"]\n}\n\n# Structural types\nvariable \"database_config\" {\n  type = object({\n    engine         = string\n    engine_version = string\n    instance_class = string\n    storage_gb     = number\n    multi_az       = bool\n  })\n  default = {\n    engine         = \"postgres\"\n    engine_version = \"15.4\"\n    instance_class = \"db.t3.medium\"\n    storage_gb     = 100\n    multi_az       = false\n  }\n}\n\nvariable \"subnet_config\" {\n  type = list(object({\n    cidr_block        = string\n    availability_zone = string\n    public            = bool\n  }))\n}\n```\n\n## Sensitive Variables\n\nMark variables as sensitive to prevent their values from appearing in CLI output and logs:\n\n```hcl\nvariable \"db_password\" {\n  type        = string\n  sensitive   = true\n  description = \"Database master password\"\n}\n\nvariable \"api_key\" {\n  type      = string\n  sensitive = true\n}\n```\n\nSensitive values are redacted in `terraform plan` and `terraform apply` output but are still stored in state. Protect your state file accordingly.\n\n## Local Values\n\nLocals compute intermediate values, reduce repetition, and give meaningful names to complex expressions:\n\n```hcl\nlocals {\n  # Computed name prefix\n  name_prefix = \"${var.project}-${var.environment}\"\n\n  # Common tags applied to all resources\n  common_tags = {\n    Project     = var.project\n    Environment = var.environment\n    ManagedBy   = \"terraform\"\n    Team        = var.team\n  }\n\n  # Derived values\n  is_production = var.environment == \"prod\"\n  instance_type = local.is_production ? \"t3.large\" : \"t3.micro\"\n  az_count      = length(var.availability_zones)\n\n  # Flatten nested structures\n  subnet_pairs = flatten([\n    for az in var.availability_zones : [\n      {\n        name   = \"${local.name_prefix}-public-${az}\"\n        az     = az\n        public = true\n      },\n      {\n        name   = \"${local.name_prefix}-private-${az}\"\n        az     = az\n        public = false\n      }\n    ]\n  ])\n}\n\nresource \"aws_instance\" \"web\" {\n  ami           = data.aws_ami.ubuntu.id\n  instance_type = local.instance_type\n  tags          = merge(local.common_tags, { Name = \"${local.name_prefix}-web\" })\n}\n```\n\nReference locals with `local.<name>`: `local.common_tags`, `local.is_production`.\n\n## Output Values\n\nOutputs export values from a module:\n\n```hcl\noutput \"instance_id\" {\n  value       = aws_instance.web.id\n  description = \"EC2 instance ID of the web server\"\n}\n\noutput \"instance_public_ip\" {\n  value       = aws_instance.web.public_ip\n  description = \"Public IP address of the web server\"\n}\n\noutput \"db_connection_string\" {\n  value       = \"postgresql://${var.db_username}:${var.db_password}@${aws_db_instance.main.endpoint}/${var.db_name}\"\n  description = \"PostgreSQL connection string\"\n  sensitive   = true\n}\n\noutput \"load_balancer_dns\" {\n  value       = aws_lb.main.dns_name\n  description = \"DNS name of the application load balancer\"\n  depends_on  = [aws_lb_listener.https]\n}\n```\n\nOutputs appear after `terraform apply`, are queryable with `terraform output`, and are accessible to calling modules via `module.<name>.<output_name>`.\n\n## Variable Precedence\n\nWhen the same variable is set in multiple places, Terraform uses this precedence (last wins):\n\n1. **Default value** in the variable block (lowest priority)\n2. **Environment variables** — `TF_VAR_instance_type=t3.large`\n3. **terraform.tfvars** file (auto-loaded)\n4. **\\*.auto.tfvars** files (auto-loaded, alphabetical order)\n5. **-var-file** flag — `terraform apply -var-file=\"prod.tfvars\"`\n6. **-var** flag — `terraform apply -var=\"instance_type=t3.xlarge\"` (highest priority)\n\n```bash\n# Environment variable\nexport TF_VAR_instance_type=\"t3.medium\"\nexport TF_VAR_environment=\"prod\"\n\n# terraform.tfvars (auto-loaded)\n# instance_type = \"t3.large\"\n# environment   = \"staging\"\n\n# CLI flag (highest priority)\nterraform apply -var=\"environment=prod\"\n```\n\n## tfvars Files\n\n```hcl\n# terraform.tfvars — auto-loaded\nproject      = \"my-app\"\nenvironment  = \"prod\"\ninstance_type = \"t3.large\"\n\navailability_zones = [\n  \"us-east-1a\",\n  \"us-east-1b\",\n]\n\ndatabase_config = {\n  engine         = \"postgres\"\n  engine_version = \"15.4\"\n  instance_class = \"db.r6g.large\"\n  storage_gb     = 500\n  multi_az       = true\n}\n```\n\nUse `terraform.tfvars` for defaults and `prod.tfvars` / `staging.tfvars` for environment-specific overrides loaded with `-var-file`.\n",
+  "sections": [
+    {
+      "id": "input-variables",
+      "title": "Input variables",
+      "body": "Declared with `variable` blocks. Attributes: `type` (type constraint), `default` (fallback value), `description` (documentation), `sensitive` (redact from output), `nullable` (allow null), `validation` (custom rules). Reference with `var.<name>`. Variables without defaults are required — Terraform prompts for them interactively or they must be supplied via tfvars, CLI flags, or environment variables. Types include `string`, `number`, `bool`, `list(type)`, `set(type)`, `map(type)`, `object({...})`, `tuple([...])`, and `any`.",
+      "tags": ["variable", "input", "type", "default", "description", "required"]
+    },
+    {
+      "id": "locals",
+      "title": "Local values",
+      "body": "Defined in `locals` blocks. Locals give names to expressions for reuse and readability. Common patterns: name prefixes (`\"${var.project}-${var.env}\"`), shared tag maps, boolean flags (`var.environment == \"prod\"`), conditional values, and flattened nested structures. Reference with `local.<name>`. Multiple `locals` blocks are allowed and merged. Locals cannot reference themselves (no recursion).",
+      "tags": ["locals", "local-values", "computed", "intermediate", "reuse", "tags"]
+    },
+    {
+      "id": "outputs",
+      "title": "Output values",
+      "body": "Declared with `output` blocks. Attributes: `value` (required expression), `description`, `sensitive` (redact from CLI), `depends_on` (explicit dependencies). Outputs are shown after `terraform apply`, queryable via `terraform output [-json]`, and accessible to parent modules as `module.<name>.<output>`. Root module outputs are stored in state and can be read by other configurations via `terraform_remote_state` data source.",
+      "tags": ["output", "export", "module", "remote-state", "depends-on"]
+    },
+    {
+      "id": "precedence",
+      "title": "Variable precedence",
+      "body": "Terraform evaluates variable values in order (last wins): (1) default value in variable block, (2) environment variables with TF_VAR_ prefix, (3) terraform.tfvars auto-loaded file, (4) *.auto.tfvars files in alphabetical order, (5) -var-file flags in command order, (6) -var flags in command order. This lets you layer defaults, environment config, and CLI overrides predictably.",
+      "tags": ["precedence", "tfvars", "auto-tfvars", "tf-var", "environment", "override", "cli"]
+    },
+    {
+      "id": "validation",
+      "title": "Variable validation blocks",
+      "body": "Add `validation` blocks inside `variable` to enforce custom constraints at plan time:\n\n```hcl\nvariable \"environment\" {\n  type = string\n  validation {\n    condition     = contains([\"dev\", \"staging\", \"prod\"], var.environment)\n    error_message = \"Environment must be dev, staging, or prod.\"\n  }\n}\n\nvariable \"instance_type\" {\n  type = string\n  validation {\n    condition     = can(regex(\"^t[23]\\\\.\", var.instance_type))\n    error_message = \"Only t2 or t3 instance types are allowed.\"\n  }\n}\n```\n\nMultiple validation blocks are supported — all must pass. The `condition` expression must return `true` for valid input. Use `can()` and `regex()` from [[terraform/hcl/functions]] for pattern matching.",
+      "tags": ["validation", "condition", "error-message", "constraint", "regex", "can"]
+    }
+  ],
+  "links": [
+    { "uri": "terraform/hcl", "context": "Parent HCL syntax and block structure" },
+    { "uri": "terraform/hcl/expressions", "context": "Expressions used to reference and compute variable values" },
+    { "uri": "terraform/hcl/functions", "context": "Functions like contains, can, regex used in validation" }
+  ],
+  "related": [
+    { "uri": "terraform/hcl", "relation": "extends", "note": "Variables extend HCL with parameterization and data flow" },
+    { "uri": "terraform/hcl/expressions", "relation": "see-also", "note": "Expressions reference variables with var.* and local.* syntax" },
+    { "uri": "terraform/hcl/functions", "relation": "see-also", "note": "Functions like contains and can are used in validation blocks" }
+  ],
+  "more": {
+    "docs": "https://developer.hashicorp.com/terraform/language/values",
+    "spec": "https://developer.hashicorp.com/terraform/language/values/variables",
+    "examples": "https://developer.hashicorp.com/terraform/tutorials/configuration-language"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents, DevOps engineers, SREs",
+    "estimated_reading_time": "7 min",
+    "prerequisites": ["terraform/hcl"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

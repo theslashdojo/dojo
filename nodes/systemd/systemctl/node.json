@@ -1,0 +1,156 @@
+{
+  "name": "systemctl",
+  "version": "1.0.0",
+  "uri": "systemd/systemctl",
+  "type": "skill",
+  "context": "Inspect, start, stop, restart, enable, disable, and reload systemd units with systemctl",
+  "info": "This skill covers the primary control surface for systemd units: `systemctl`. It handles human-oriented status views, machine-readable property inspection with `show`, unit lifecycle actions such as `start`, `stop`, `restart`, and `reload`, enablement actions such as `enable`, `disable`, `mask`, and `unmask`, and manager refresh with `daemon-reload` after unit files change on disk. Agents use this skill immediately after installing or editing unit files, when restarting services after deploys, when checking whether a unit is active or enabled, and when switching between the system manager and per-user managers via `--user`.",
+  "parent": "systemd",
+  "tags": ["systemctl", "services", "restart", "enable", "disable", "mask", "daemon-reload", "user-services", "unit-state"],
+  "aliases": [
+    "systemctl",
+    "manage systemd units",
+    "restart service",
+    "enable service at boot",
+    "disable unit",
+    "mask unit",
+    "systemctl show",
+    "systemctl status"
+  ],
+  "triggers": [
+    "restart a systemd service",
+    "enable a service on boot",
+    "reload the systemd manager",
+    "check if a unit is active",
+    "mask a broken unit",
+    "manage a user service with systemctl",
+    "inspect unit properties"
+  ],
+  "body": "# systemctl\n\n`systemctl` is the control plane for systemd units. It can list loaded units, show parsed properties, start or stop services, enable or disable install symlinks, mask units, and reload manager state after files change.\n\n## Introspection vs State Changes\n\nUse `status` when a human is reading and `show` when another tool needs stable fields.\n\n```bash\nsystemctl status my-app.service\nsystemctl show my-app.service -p ActiveState -p SubState -p FragmentPath --value\nsystemctl list-unit-files --type=service\nsystemctl list-units --failed\n```\n\n## Lifecycle and Enablement\n\n```bash\nsystemctl daemon-reload\nsystemctl restart my-app.service\nsystemctl reload-or-restart my-app.service\nsystemctl enable --now my-app.service\nsystemctl disable my-app.service\nsystemctl mask my-app.service\nsystemctl unmask my-app.service\n```\n\n## User Manager\n\nUse `systemctl --user` for units under `~/.config/systemd/user`. This is separate from PID 1 and is the right surface for per-user agents, background sync jobs, and development helpers.\n\nAfter a failed change, pair `systemctl` with [[systemd/journalctl]] and [[systemd/analyze]].",
+  "sections": [
+    {
+      "id": "introspection",
+      "title": "Introspection",
+      "body": "`systemctl status UNIT` is optimized for humans and includes a short journal tail. `systemctl show UNIT -p Key --value` is the stable, parsable surface for automation. Use `list-units` for loaded units and `list-unit-files` when you need installed files and enablement state, including inactive units.",
+      "tags": ["status", "show", "list-units", "list-unit-files", "introspection"]
+    },
+    {
+      "id": "lifecycle",
+      "title": "Lifecycle actions",
+      "body": "Use `start`, `stop`, `restart`, `try-restart`, `reload`, or `reload-or-restart` depending on whether the process should already be running and whether it supports reloading. `reload` asks the service to reload its own configuration; it does not reread unit files from disk. After editing a unit file, run `daemon-reload` first.",
+      "tags": ["start", "stop", "restart", "reload", "reload-or-restart", "daemon-reload"]
+    },
+    {
+      "id": "enablement",
+      "title": "Enablement and masking",
+      "body": "`enable` and `disable` create or remove install symlinks declared in `[Install]`. `enable --now` is the common deploy shortcut. `mask` is stronger than disable because it prevents manual starts by linking the unit to `/dev/null`. Use `unmask` before re-enabling a previously blocked unit.",
+      "tags": ["enable", "disable", "mask", "unmask", "install", "boot"]
+    },
+    {
+      "id": "user-manager",
+      "title": "User manager",
+      "body": "Per-user services are controlled with `systemctl --user` and load from user unit paths. They are ideal for developer tools, desktop agents, and user-scoped automation that should not run as root. See [[systemd/unit-files#load-path]] for the exact user paths and [[systemd/services]] for authoring the service file itself.",
+      "tags": ["user", "systemctl-user", "per-user", "default-target"]
+    }
+  ],
+  "links": [
+    { "uri": "systemd/services", "context": "Author and install a service before managing it" },
+    { "uri": "systemd/journalctl", "context": "Inspect logs after a lifecycle action or failure" },
+    { "uri": "systemd/analyze#verify", "context": "Validate unit files before daemon-reload" },
+    { "uri": "systemd/unit-files#load-path", "context": "Confirm which unit file or override is being loaded" },
+    { "uri": "systemd/troubleshooting#failed-service", "context": "Diagnose units that fail, flap, or stay inactive" },
+    { "uri": "shell/processes", "context": "Compare host-level process inspection with manager-reported state" }
+  ],
+  "related": [
+    { "uri": "systemd/services", "relation": "see-also", "note": "Service authoring usually precedes systemctl management" },
+    { "uri": "systemd/journalctl", "relation": "see-also", "note": "Logs explain why a start, restart, or reload failed" },
+    { "uri": "shell/processes", "relation": "extends", "note": "systemctl manages supervised processes rather than raw PIDs" }
+  ],
+  "scripts": [
+    {
+      "id": "inspect-unit",
+      "name": "Inspect Unit",
+      "description": "Read stable unit properties from `systemctl show` and emit JSON",
+      "lang": "bash",
+      "runtime": "bash>=4.0",
+      "entry": "./scripts/inspect-unit.sh",
+      "env": {
+        "SYSTEMD_SCOPE": { "required": false, "default": "system", "description": "Manager scope: system or user" },
+        "SYSTEMD_UNIT": { "required": true, "description": "Unit to inspect, such as my-app.service" },
+        "SYSTEMD_PROPERTIES": { "required": false, "description": "Comma-separated property list for `systemctl show`" },
+        "SYSTEMD_HOST": { "required": false, "description": "Optional remote host for `systemctl -H`" }
+      }
+    },
+    {
+      "id": "manage-unit",
+      "name": "Manage Unit",
+      "description": "Run common lifecycle and enablement actions, then report resulting unit state",
+      "lang": "bash",
+      "runtime": "bash>=4.0",
+      "entry": "./scripts/manage-unit.sh",
+      "env": {
+        "SYSTEMD_SCOPE": { "required": false, "default": "system", "description": "Manager scope: system or user" },
+        "SYSTEMD_ACTION": { "required": true, "description": "Action such as start, restart, enable, mask, or daemon-reload" },
+        "SYSTEMD_UNIT": { "required": false, "description": "Target unit for the action" },
+        "SYSTEMD_NOW": { "required": false, "default": "false", "description": "Use `--now` for enablement-related actions" },
+        "SYSTEMD_RUNTIME": { "required": false, "default": "false", "description": "Use runtime-only enablement or masking" },
+        "SYSTEMD_NO_BLOCK": { "required": false, "default": "false", "description": "Do not wait for the job to finish" },
+        "SYSTEMD_FORCE": { "required": false, "default": "false", "description": "Pass `--force` to systemctl" },
+        "SYSTEMD_HOST": { "required": false, "description": "Optional remote host for `systemctl -H`" }
+      }
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "operation": {
+          "type": "string",
+          "enum": ["inspect", "start", "stop", "restart", "try-restart", "reload", "reload-or-restart", "enable", "disable", "reenable", "mask", "unmask", "reset-failed", "daemon-reload"],
+          "description": "systemctl operation to execute"
+        },
+        "unit": { "type": "string", "description": "Unit name such as my-app.service" },
+        "scope": { "type": "string", "enum": ["system", "user"], "default": "system", "description": "Manager scope" },
+        "properties": { "type": "array", "items": { "type": "string" }, "description": "Properties to read for inspect" },
+        "now": { "type": "boolean", "default": false, "description": "Use `--now` for enablement actions" },
+        "runtime": { "type": "boolean", "default": false, "description": "Use runtime-only enablement or masking" }
+      },
+      "required": ["operation"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "action": { "type": "string" },
+        "unit": { "type": "string" },
+        "scope": { "type": "string" },
+        "enabledState": { "type": "string" },
+        "activeCheck": { "type": "string" },
+        "failed": { "type": "boolean" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "shell/bash", "reason": "The wrappers are bash scripts that invoke systemctl" },
+    { "uri": "systemd/unit-files", "reason": "Knowing the loaded unit file path matters after edits", "optional": true }
+  ],
+  "more": {
+    "docs": "https://www.freedesktop.org/software/systemd/man/latest/systemctl.html",
+    "overview": "https://systemd.io/"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "AI agents, linux operators",
+    "estimated_reading_time": "5 min",
+    "prerequisites": ["shell/bash"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://github.com/systemd/systemd",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

@@ -1,0 +1,90 @@
+{
+  "name": "shell",
+  "version": "1.0.0",
+  "uri": "shell",
+  "type": "ecosystem",
+  "context": "POSIX shell commands, file ops, process management, pipes, environment, and scripting for agent execution",
+  "info": "The shell ecosystem covers everything an agent needs to interact with a UNIX-like operating system through command-line interfaces. Agents execute shell commands for file manipulation, process control, environment configuration, and data transformation. This tree provides structured knowledge and executable skills for Bash syntax and builtins ([[shell/bash]]), file and directory operations ([[shell/files]]), process lifecycle management ([[shell/processes]]), environment variable handling ([[shell/environment]]), pipe and redirection patterns ([[shell/pipes]]), and shell scripting fundamentals ([[shell/scripting]]). Shell is the execution substrate — virtually every other ecosystem (git, node, python, docker) is invoked through it.",
+  "parent": null,
+  "tags": ["shell", "bash", "posix", "cli", "terminal", "command-line", "unix", "linux"],
+  "aliases": [
+    "shell",
+    "command line",
+    "terminal",
+    "bash",
+    "cli",
+    "unix shell",
+    "linux shell",
+    "posix shell",
+    "sh",
+    "zsh",
+    "command prompt"
+  ],
+  "triggers": [
+    "run a shell command",
+    "execute a command in the terminal",
+    "how do I use bash",
+    "work with files from the command line",
+    "manage processes",
+    "set environment variables",
+    "pipe output between commands",
+    "write a shell script"
+  ],
+  "body": "# Shell Ecosystem\n\nThe shell is the primary interface between an agent and the operating system. Every file operation, process launch, environment query, and data pipeline flows through shell commands. Mastery of shell fundamentals is prerequisite to effective agent operation.\n\n## Tree Structure\n\n| Node | Type | Purpose |\n|------|------|---------|\n| [[shell/bash]] | skill | Bash command execution, syntax, builtins, expansion |\n| [[shell/files]] | skill | File and directory operations — create, read, move, find, permissions |\n| [[shell/processes]] | skill | Process lifecycle — launch, monitor, signal, background |\n| [[shell/environment]] | context | Environment variables, PATH, shell configuration files |\n| [[shell/pipes]] | context | Pipes, redirection, tee, xargs, process substitution |\n| [[shell/scripting]] | context | Shell scripts — variables, conditionals, loops, functions, error handling |\n\n## Shell Variants\n\nThe POSIX shell specification defines a portable baseline. In practice:\n\n- **Bash** (`/bin/bash`) — the default on most Linux systems. Adds arrays, `[[ ]]` tests, process substitution, brace expansion.\n- **Zsh** (`/bin/zsh`) — default on macOS since Catalina. Superset of Bash with better completion and globbing.\n- **Dash** (`/bin/dash`) — minimal POSIX shell, used as `/bin/sh` on Debian/Ubuntu for speed.\n- **sh** (`/bin/sh`) — symlink to the system's POSIX-compatible shell.\n\nAgents should target Bash syntax unless portability to minimal POSIX sh is required.\n\n## Quick Reference\n\n```bash\n# Run a command and capture output\noutput=$(command arg1 arg2)\n\n# Chain commands — stop on first failure\ncommand1 && command2 && command3\n\n# Chain commands — run all regardless of failure\ncommand1; command2; command3\n\n# Run in background\nlong_running_command &\n\n# Redirect stdout and stderr to file\ncommand > output.log 2>&1\n\n# Pipe between commands\ncat data.csv | grep \"error\" | wc -l\n```\n\n## Environment Variables\n\n| Variable | Purpose |\n|----------|----------|\n| `SHELL` | Current user's login shell (e.g., `/bin/bash`) |\n| `PATH` | Colon-separated list of directories to search for executables |\n| `HOME` | Current user's home directory |\n| `USER` | Current username |\n| `PWD` | Current working directory |\n| `TERM` | Terminal type for capability detection |\n",
+  "sections": [
+    {
+      "id": "variants",
+      "title": "Shell variants and compatibility",
+      "body": "Bash is the default target for agents. Key differences from POSIX sh: arrays (`arr=(a b c)`), `[[ ]]` extended tests, `<()` process substitution, `{1..10}` brace expansion, `$(( ))` arithmetic. Zsh adds recursive globbing (`**/*.js`), associative arrays, and richer prompt expansion. Dash is strictly POSIX — no arrays, no `[[ ]]`, no process substitution. When writing portable scripts, use `#!/bin/sh` and stick to POSIX; for agent execution, use `#!/bin/bash` and leverage Bash features.",
+      "tags": ["bash", "zsh", "dash", "posix", "compatibility", "portability"]
+    },
+    {
+      "id": "exit-codes",
+      "title": "Exit codes and error detection",
+      "body": "Every command returns an exit code: 0 for success, non-zero for failure. `$?` holds the last exit code. Common conventions: 1 = general error, 2 = misuse of shell builtin, 126 = command not executable, 127 = command not found, 128+N = killed by signal N (e.g., 130 = SIGINT/Ctrl-C, 137 = SIGKILL, 143 = SIGTERM). Use `set -e` in scripts to exit on first failure. Use `set -o pipefail` to catch failures in pipe chains. See [[shell/scripting]] for comprehensive error handling.",
+      "tags": ["exit-code", "error", "status", "pipefail", "set-e"]
+    },
+    {
+      "id": "quoting",
+      "title": "Quoting rules",
+      "body": "Quoting prevents word splitting and globbing. **Double quotes** (`\"$var\"`) expand variables but prevent word splitting — almost always what you want. **Single quotes** (`'literal'`) prevent all expansion — use for regex patterns and literal strings. **No quotes** causes word splitting on whitespace and glob expansion — rarely desirable. **Rule of thumb**: always double-quote variable expansions (`\"$var\"`, `\"$@\"`, `\"$(command)\"`). Backticks `` `command` `` are legacy — prefer `$(command)` for command substitution.",
+      "tags": ["quoting", "double-quotes", "single-quotes", "word-splitting", "globbing"]
+    }
+  ],
+  "sub": ["shell/bash", "shell/files", "shell/processes", "shell/environment", "shell/pipes", "shell/scripting"],
+  "links": [
+    { "uri": "shell/bash", "context": "Bash command execution and syntax" },
+    { "uri": "shell/files", "context": "File and directory operations" },
+    { "uri": "shell/processes", "context": "Process management and signals" },
+    { "uri": "shell/environment", "context": "Environment variables and shell configuration" },
+    { "uri": "shell/pipes", "context": "Pipes, redirection, and data flow" },
+    { "uri": "shell/scripting", "context": "Shell scripting fundamentals" },
+    { "uri": "git", "context": "Git commands are executed through the shell" },
+    { "uri": "node", "context": "Node.js runtime invoked via shell" },
+    { "uri": "python", "context": "Python interpreter invoked via shell" }
+  ],
+  "related": [
+    { "uri": "git", "relation": "see-also", "note": "Git is the most common shell-invoked tool for agents" },
+    { "uri": "node", "relation": "see-also", "note": "Node.js scripts and npm are invoked through shell commands" },
+    { "uri": "python", "relation": "see-also", "note": "Python scripts and pip are invoked through shell commands" }
+  ],
+  "more": {
+    "docs": "https://www.gnu.org/software/bash/manual/bash.html",
+    "spec": "https://pubs.opengroup.org/onlinepubs/9699919799/utilities/V3_chap02.html",
+    "wiki": "https://wiki.bash-hackers.org/"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "AI agents, developers",
+    "estimated_reading_time": "3 min",
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

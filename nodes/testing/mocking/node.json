@@ -1,0 +1,112 @@
+{
+  "name": "mocking",
+  "version": "1.0.0",
+  "uri": "testing/mocking",
+  "type": "context",
+  "content_type": "guide",
+  "context": "Mocking strategies — stubs, spies, fakes, dependency injection, and when to mock vs use real implementations",
+  "info": "Mocking isolates the unit under test by replacing dependencies with controlled substitutes. This node covers the spectrum of test doubles (stubs, spies, mocks, fakes), framework-specific mocking APIs ([[testing/jest]] jest.mock, [[testing/vitest]] vi.mock, [[testing/pytest]] pytest-mock/monkeypatch), dependency injection for testability, and the critical decision of when to mock versus when to use real implementations. Over-mocking leads to tests that pass but don't catch bugs. Under-mocking leads to slow, flaky tests. Agents use this node to learn the right mocking strategy for each situation.",
+  "parent": "testing",
+  "tags": ["mocking", "stubs", "spies", "fakes", "test-doubles", "dependency-injection", "monkeypatch"],
+  "aliases": [
+    "mocking",
+    "mock",
+    "mocks",
+    "test doubles",
+    "stubs",
+    "spies",
+    "fakes",
+    "jest.mock",
+    "vi.mock",
+    "pytest-mock",
+    "monkeypatch",
+    "dependency injection testing",
+    "mock api",
+    "mock database",
+    "mock http"
+  ],
+  "triggers": [
+    "how to mock a function",
+    "mock an api call in tests",
+    "when should I mock",
+    "mock a database in tests",
+    "jest.mock usage",
+    "vi.mock how to",
+    "monkeypatch pytest",
+    "stub a dependency",
+    "spy on a function call",
+    "mock http requests in tests",
+    "should I mock this"
+  ],
+  "body": "# Mocking Strategies\n\nMocking replaces real dependencies with controlled substitutes so tests can run fast, deterministically, and in isolation. But mocking is a trade-off: too much mocking and tests verify implementation details instead of behavior.\n\n## Types of Test Doubles\n\n| Type | What It Does | When to Use |\n|------|-------------|-------------|\n| **Stub** | Returns canned responses | Replace a dependency whose output you need to control |\n| **Spy** | Records calls, delegates to real implementation | Verify a function was called without changing behavior |\n| **Mock** | Stub + spy — returns canned data AND verifies calls | When you need both controlled output and call verification |\n| **Fake** | Simplified working implementation | Replace slow/complex dependencies (in-memory DB, fake HTTP server) |\n\n## JavaScript/TypeScript Mocking\n\n### Jest Mocking\n\n```typescript\nimport { jest } from '@jest/globals';\nimport { fetchUser } from './api';\nimport { renderProfile } from './profile';\n\n// Mock an entire module\njest.mock('./api');\nconst mockedFetchUser = fetchUser as jest.MockedFunction<typeof fetchUser>;\n\ntest('renders user profile', async () => {\n  // Stub the return value\n  mockedFetchUser.mockResolvedValue({ id: '1', name: 'Alice' });\n\n  const html = await renderProfile('1');\n\n  // Verify the mock was called correctly\n  expect(mockedFetchUser).toHaveBeenCalledWith('1');\n  expect(html).toContain('Alice');\n});\n```\n\n```typescript\n// Spy on an object method\nconst spy = jest.spyOn(console, 'log');\ndoSomething();\nexpect(spy).toHaveBeenCalledWith('expected message');\nspy.mockRestore();\n```\n\n```typescript\n// Manual mock in __mocks__/api.ts\nexport const fetchUser = jest.fn().mockResolvedValue({ id: '1', name: 'Mock User' });\n```\n\n### Vitest Mocking\n\n```typescript\nimport { vi, describe, it, expect } from 'vitest';\nimport { fetchUser } from './api';\n\n// Mock a module\nvi.mock('./api', () => ({\n  fetchUser: vi.fn(),\n}));\n\nit('fetches and displays user', async () => {\n  vi.mocked(fetchUser).mockResolvedValue({ id: '1', name: 'Alice' });\n  const result = await getProfile('1');\n  expect(fetchUser).toHaveBeenCalledWith('1');\n  expect(result.name).toBe('Alice');\n});\n```\n\n```typescript\n// Spy\nconst spy = vi.spyOn(Math, 'random').mockReturnValue(0.5);\nexpect(rollDice()).toBe(4);\nspy.mockRestore();\n```\n\n```typescript\n// Stub timers\nvi.useFakeTimers();\nsetTimeout(callback, 1000);\nvi.advanceTimersByTime(1000);\nexpect(callback).toHaveBeenCalled();\nvi.useRealTimers();\n```\n\n## Python Mocking\n\n### pytest-mock (mocker fixture)\n\n```python\ndef test_send_email(mocker):\n    # Patch where the function is used, not where it's defined\n    mock_send = mocker.patch('myapp.notifications.send_email')\n    mock_send.return_value = True\n\n    result = notify_user(user_id='123', message='Hello')\n\n    mock_send.assert_called_once_with(\n        to='user@example.com',\n        subject='Notification',\n        body='Hello'\n    )\n    assert result is True\n```\n\n### monkeypatch (built-in fixture)\n\n```python\ndef test_api_call(monkeypatch):\n    # Replace an attribute\n    monkeypatch.setattr('myapp.client.API_URL', 'http://test-server')\n\n    # Replace a function\n    monkeypatch.setattr('myapp.client.requests.get', lambda url: MockResponse(200, '{\"ok\": true}'))\n\n    result = myapp.client.fetch_data()\n    assert result == {\"ok\": True}\n```\n\n```python\n# Environment variables\ndef test_config(monkeypatch):\n    monkeypatch.setenv('DATABASE_URL', 'sqlite:///:memory:')\n    config = load_config()\n    assert config.database_url == 'sqlite:///:memory:'\n```\n\n### unittest.mock directly\n\n```python\nfrom unittest.mock import patch, MagicMock, AsyncMock\n\n@patch('myapp.service.database')\ndef test_create_user(mock_db):\n    mock_db.insert.return_value = {'id': 1}\n    user = create_user('alice')\n    mock_db.insert.assert_called_once()\n    assert user['id'] == 1\n\n# Async mock\n@patch('myapp.service.fetch', new_callable=AsyncMock)\nasync def test_async_fetch(mock_fetch):\n    mock_fetch.return_value = {'data': [1, 2, 3]}\n    result = await get_data()\n    assert len(result['data']) == 3\n```\n\n## HTTP Mocking\n\n```typescript\n// msw (Mock Service Worker) for JS/TS\nimport { http, HttpResponse } from 'msw';\nimport { setupServer } from 'msw/node';\n\nconst server = setupServer(\n  http.get('/api/users/:id', ({ params }) => {\n    return HttpResponse.json({ id: params.id, name: 'Alice' });\n  }),\n  http.post('/api/users', async ({ request }) => {\n    const body = await request.json();\n    return HttpResponse.json({ id: '2', ...body }, { status: 201 });\n  })\n);\n\nbeforeAll(() => server.listen());\nafterEach(() => server.resetHandlers());\nafterAll(() => server.close());\n```\n\n```python\n# responses library for Python requests\nimport responses\n\n@responses.activate\ndef test_api_call():\n    responses.add(\n        responses.GET,\n        'https://api.example.com/users/1',\n        json={'id': 1, 'name': 'Alice'},\n        status=200\n    )\n    user = fetch_user(1)\n    assert user['name'] == 'Alice'\n```\n\n## When to Mock vs. When Not to Mock\n\n### Mock These\n- **External HTTP APIs** — network calls are slow and non-deterministic\n- **Databases** in unit tests — use fakes or in-memory DBs\n- **File system** when testing logic, not I/O\n- **Time/dates** — `Date.now()`, `datetime.now()` for deterministic tests\n- **Random number generators** — for reproducible tests\n- **Third-party services** — payment APIs, email senders, cloud SDKs\n\n### Don't Mock These\n- **The thing you're testing** — mock dependencies, never the subject\n- **Simple value objects** — just construct them\n- **Standard library functions** — `Array.map`, `str.split` work fine\n- **Your own code between layers** in integration tests — that's the point of integration tests\n- **Database** in integration tests — use a real test database\n\n### The Rule\n> Mock at the boundary. Test real code. If you're mocking three layers deep, your architecture needs work, not more mocks.\n",
+  "sections": [
+    {
+      "id": "test-doubles",
+      "title": "Types of test doubles",
+      "body": "Four types of test doubles: **Stubs** return canned data (mockResolvedValue, return_value). **Spies** record calls while delegating to real code (jest.spyOn, vi.spyOn). **Mocks** combine stubs and spies — controlled output plus call verification. **Fakes** are simplified working implementations (in-memory database, fake SMTP server). Choose based on what you need: if you need controlled output, stub. If you need to verify interaction, spy. If you need both, mock. If you need realistic behavior without the real dependency, fake.",
+      "tags": ["stub", "spy", "mock", "fake", "test-double"]
+    },
+    {
+      "id": "jest-mocking",
+      "title": "Jest mocking API",
+      "body": "[[testing/jest]] provides: `jest.fn()` creates a mock function. `jest.mock('./module')` replaces an entire module. `jest.spyOn(obj, 'method')` spies on a method. `mockReturnValue()`, `mockResolvedValue()` control return values. `mockImplementation()` replaces the full implementation. Manual mocks in `__mocks__/` provide module-level defaults. Always call `mockRestore()` or use `restoreAllMocks` in config to prevent mock leakage between tests.",
+      "tags": ["jest", "jest-fn", "jest-mock", "jest-spyon", "manual-mocks"]
+    },
+    {
+      "id": "vitest-mocking",
+      "title": "Vitest mocking API",
+      "body": "[[testing/vitest]] provides: `vi.fn()` creates a mock function. `vi.mock('./module', () => ({ ... }))` replaces a module with a factory. `vi.spyOn(obj, 'method')` spies. `vi.mocked(fn)` provides type-safe access to mock methods. `vi.useFakeTimers()` / `vi.advanceTimersByTime()` for timer mocking. `vi.stubGlobal('fetch', fn)` for global stubs. The API is intentionally Jest-compatible — migration is mostly replacing `jest.` with `vi.`.",
+      "tags": ["vitest", "vi-fn", "vi-mock", "vi-spyon", "fake-timers"]
+    },
+    {
+      "id": "pytest-mocking",
+      "title": "Python mocking with pytest",
+      "body": "[[testing/pytest]] offers three mocking approaches: **pytest-mock** provides the `mocker` fixture wrapping unittest.mock — use `mocker.patch('module.path.function')`. **monkeypatch** (built-in) sets attributes, env vars, and dict items — use for simple replacements. **unittest.mock** directly with `@patch` decorator or `patch()` context manager. Key rule: patch where a name is *used*, not where it's *defined*. For async code, use `AsyncMock`. `mocker.patch.object(instance, 'method')` for instance methods.",
+      "tags": ["pytest", "pytest-mock", "monkeypatch", "unittest-mock", "patch"]
+    },
+    {
+      "id": "http-mocking",
+      "title": "HTTP and API mocking",
+      "body": "For JavaScript/TypeScript: **msw** (Mock Service Worker) intercepts HTTP at the network level — works with fetch, axios, and any HTTP client. Define handlers with `http.get()`, `http.post()`, etc. Use `setupServer()` for Node tests, `setupWorker()` for browser tests. For Python: **responses** mocks the `requests` library. **httpx-mock** mocks `httpx`. **aioresponses** mocks `aiohttp`. For [[testing/playwright]]: `page.route()` intercepts browser network requests directly.",
+      "tags": ["http", "api", "msw", "responses", "network", "fetch"]
+    },
+    {
+      "id": "when-to-mock",
+      "title": "When to mock vs. use real implementations",
+      "body": "Mock at system boundaries: external APIs, databases (in unit tests), file systems, time, randomness, third-party services. Don't mock: the subject under test, simple value objects, standard library functions, your own code in integration tests. The heuristic: if mocking a dependency makes the test faster and more deterministic without hiding real bugs, mock it. If mocking hides integration issues or makes the test verify implementation details instead of behavior, don't mock. Over-mocked tests pass when code is broken. Under-mocked tests are slow and flaky.",
+      "tags": ["when-to-mock", "boundaries", "integration", "deterministic"]
+    }
+  ],
+  "links": [
+    { "uri": "testing/jest", "context": "Jest mocking: jest.fn, jest.mock, jest.spyOn" },
+    { "uri": "testing/vitest", "context": "Vitest mocking: vi.fn, vi.mock, vi.spyOn" },
+    { "uri": "testing/pytest", "context": "pytest mocking: mocker fixture, monkeypatch" },
+    { "uri": "testing/playwright", "context": "Playwright network mocking: page.route()" },
+    { "uri": "testing/patterns", "context": "Structural patterns that complement mocking strategies" },
+    { "uri": "testing/ci", "context": "Mocked tests run fast in CI — critical for pipeline speed" }
+  ],
+  "related": [
+    { "uri": "testing/patterns", "relation": "see-also", "note": "Mocking is a cross-cutting concern that applies within any structural pattern" },
+    { "uri": "testing/jest", "relation": "see-also", "note": "Jest has the most mature built-in mocking system in the JS ecosystem" },
+    { "uri": "testing/pytest", "relation": "see-also", "note": "pytest-mock wraps unittest.mock with a cleaner fixture-based API" }
+  ],
+  "more": {
+    "docs": "https://jestjs.io/docs/mock-functions",
+    "wiki": "https://en.wikipedia.org/wiki/Mock_object",
+    "examples": "https://mswjs.io/docs/getting-started"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "7 min",
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

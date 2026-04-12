@@ -1,0 +1,181 @@
+{
+  "name": "jest",
+  "version": "1.0.0",
+  "uri": "testing/jest",
+  "type": "skill",
+  "context": "Write and run JavaScript/TypeScript tests with Jest — mocking, snapshots, coverage, watch mode, and CI integration",
+  "info": "Jest is the standard JavaScript and TypeScript test runner, created by Meta. It provides a zero-config experience for most projects with built-in mocking (jest.fn, jest.mock, jest.spyOn), snapshot testing, code coverage via Istanbul/V8, interactive --watch mode, and parallel test execution across worker processes. Configuration lives in jest.config.js/ts or the \"jest\" key in package.json. Jest discovers test files matching *.test.js/ts or *.spec.js/ts and provides globals (describe, it/test, expect, beforeEach, afterEach, beforeAll, afterAll) without imports. TypeScript support comes via ts-jest or @swc/jest transforms. The current stable release is Jest 29.x. For ESM-first Vite projects, consider [[testing/vitest]] as a faster alternative with a Jest-compatible API. Jest integrates with [[testing/mocking]] patterns for isolating units and [[testing/ci]] for running suites in automated pipelines. See [[typescript/compiler]] for TypeScript compilation settings that affect test transforms.",
+  "parent": "testing",
+  "tags": ["jest", "testing", "javascript", "typescript", "mocking", "snapshots", "coverage", "watch-mode", "test-runner", "unit-tests", "tdd"],
+  "aliases": [
+    "jest",
+    "jestjs",
+    "jest tests",
+    "jest test runner",
+    "jest testing",
+    "js tests",
+    "javascript tests",
+    "ts tests",
+    "typescript tests",
+    "jest config",
+    "jest mock",
+    "jest snapshot",
+    "jest coverage",
+    "jset",
+    "jstest"
+  ],
+  "triggers": [
+    "write jest tests",
+    "run jest",
+    "add unit tests with jest",
+    "set up jest",
+    "configure jest",
+    "mock a module in jest",
+    "jest snapshot testing",
+    "add code coverage with jest",
+    "jest watch mode",
+    "test typescript with jest",
+    "debug failing jest tests",
+    "jest.fn jest.mock jest.spyOn",
+    "write describe it expect tests",
+    "run tests in CI with jest"
+  ],
+  "body": "# Jest Testing\n\nJest is the standard test runner for JavaScript and TypeScript projects. It ships with built-in assertions, mocking, snapshot testing, and code coverage.\n\n## Quick Start\n\n```bash\n# Install\nnpm install --save-dev jest\n\n# For TypeScript projects, also install types and a transform\nnpm install --save-dev @types/jest ts-jest\n# or with SWC (faster compilation)\nnpm install --save-dev @types/jest @swc/jest @swc/core\n\n# Run tests\nnpx jest\nnpx jest --watch\nnpx jest --coverage\n```\n\nCreate your first test:\n\n```javascript\n// sum.js\nfunction sum(a, b) {\n  return a + b;\n}\nmodule.exports = sum;\n\n// sum.test.js\nconst sum = require('./sum');\n\ndescribe('sum', () => {\n  it('adds two positive numbers', () => {\n    expect(sum(1, 2)).toBe(3);\n  });\n\n  it('handles negative numbers', () => {\n    expect(sum(-1, 1)).toBe(0);\n  });\n\n  it('handles zero', () => {\n    expect(sum(0, 0)).toBe(0);\n  });\n});\n```\n\nAdd a test script to `package.json`:\n\n```json\n{\n  \"scripts\": {\n    \"test\": \"jest\",\n    \"test:watch\": \"jest --watch\",\n    \"test:coverage\": \"jest --coverage\"\n  }\n}\n```\n\n## Configuration\n\nJest works zero-config for simple projects. For customization, create `jest.config.js` (or `.ts`, `.mjs`, `.cjs`, or a `\"jest\"` key in `package.json`):\n\n```javascript\n// jest.config.js\nmodule.exports = {\n  // Test file patterns\n  testMatch: ['**/__tests__/**/*.[jt]s?(x)', '**/?(*.)+(spec|test).[jt]s?(x)'],\n\n  // Module resolution\n  moduleNameMapper: {\n    '^@/(.*)$': '<rootDir>/src/$1',\n    '\\\\.(css|less|scss)$': 'identity-obj-proxy',\n  },\n\n  // Transform configuration\n  transform: {\n    '^.+\\\\.tsx?$': 'ts-jest',  // or ['@swc/jest', {}]\n  },\n\n  // Test environment: 'node' (default) or 'jsdom' (browser APIs)\n  testEnvironment: 'node',\n\n  // Setup files run before each test suite\n  setupFilesAfterSetup: ['./jest.setup.js'],\n\n  // Coverage configuration\n  collectCoverageFrom: [\n    'src/**/*.{js,ts}',\n    '!src/**/*.d.ts',\n    '!src/**/index.{js,ts}',\n  ],\n  coverageThreshold: {\n    global: {\n      branches: 80,\n      functions: 80,\n      lines: 80,\n      statements: 80,\n    },\n  },\n\n  // Clear mocks between tests\n  clearMocks: true,\n  restoreMocks: true,\n};\n```\n\n### TypeScript Configuration with ts-jest\n\n```javascript\n// jest.config.ts\nimport type { Config } from 'jest';\n\nconst config: Config = {\n  preset: 'ts-jest',\n  testEnvironment: 'node',\n  moduleNameMapper: {\n    '^@/(.*)$': '<rootDir>/src/$1',\n  },\n};\n\nexport default config;\n```\n\n### TypeScript Configuration with SWC (faster)\n\n```javascript\n// jest.config.js\nmodule.exports = {\n  transform: {\n    '^.+\\\\.(t|j)sx?$': ['@swc/jest', {\n      jsc: {\n        parser: {\n          syntax: 'typescript',\n          tsx: true,\n          decorators: true,\n        },\n        transform: {\n          react: {\n            runtime: 'automatic',\n          },\n        },\n      },\n    }],\n  },\n  testEnvironment: 'node',\n};\n```\n\n## Writing Tests\n\n### describe / it / expect\n\n```typescript\nimport { UserService } from './user-service';\n\ndescribe('UserService', () => {\n  let service: UserService;\n\n  beforeEach(() => {\n    service = new UserService();\n  });\n\n  afterEach(() => {\n    service.cleanup();\n  });\n\n  describe('getUser', () => {\n    it('returns user by id', () => {\n      const user = service.getUser(1);\n      expect(user).toEqual({ id: 1, name: 'Alice' });\n    });\n\n    it('throws for missing user', () => {\n      expect(() => service.getUser(999)).toThrow('User not found');\n    });\n  });\n\n  describe('createUser', () => {\n    it('creates a new user with an id', () => {\n      const user = service.createUser({ name: 'Bob' });\n      expect(user).toMatchObject({ name: 'Bob' });\n      expect(user.id).toBeDefined();\n    });\n  });\n});\n```\n\n### Common Matchers\n\n| Matcher | Purpose |\n|---------|--------|\n| `toBe(value)` | Strict equality (===) for primitives |\n| `toEqual(value)` | Deep equality for objects and arrays |\n| `toStrictEqual(value)` | Deep equality + checks undefined properties and array sparseness |\n| `toBeTruthy()` / `toBeFalsy()` | Truthy/falsy checks |\n| `toBeNull()` / `toBeUndefined()` / `toBeDefined()` | Nullish checks |\n| `toBeGreaterThan(n)` / `toBeLessThan(n)` | Numeric comparisons |\n| `toBeCloseTo(n, digits)` | Floating point equality |\n| `toContain(item)` | Array contains item or string contains substring |\n| `toHaveLength(n)` | Array/string length |\n| `toMatchObject(obj)` | Object contains expected properties (subset match) |\n| `toHaveProperty(path, value?)` | Object has property at path |\n| `toThrow(message?)` | Function throws (wrap call in `() => ...`) |\n| `toMatch(regexp)` | String matches regex |\n| `toMatchSnapshot()` | Matches stored snapshot |\n| `toMatchInlineSnapshot()` | Snapshot stored inline in test file |\n| `toHaveBeenCalled()` | Mock function was called |\n| `toHaveBeenCalledWith(args)` | Mock called with specific arguments |\n| `toHaveBeenCalledTimes(n)` | Mock called exactly n times |\n| `resolves` / `rejects` | Unwrap promise: `await expect(p).resolves.toBe(v)` |\n\nAll matchers support `.not`: `expect(value).not.toBe(other)`.\n\n### Async Tests\n\n```typescript\n// async/await\nit('fetches data', async () => {\n  const data = await fetchData();\n  expect(data).toEqual({ id: 1 });\n});\n\n// Promise matchers\nit('resolves with data', async () => {\n  await expect(fetchData()).resolves.toEqual({ id: 1 });\n});\n\nit('rejects with error', async () => {\n  await expect(failingFetch()).rejects.toThrow('Network error');\n});\n```\n\n### Parameterized Tests with test.each\n\n```typescript\ntest.each([\n  [1, 2, 3],\n  [-1, 1, 0],\n  [0, 0, 0],\n  [100, 200, 300],\n])('sum(%i, %i) = %i', (a, b, expected) => {\n  expect(sum(a, b)).toBe(expected);\n});\n\n// With named parameters (tagged template literal)\ntest.each`\n  a     | b     | expected\n  ${1}  | ${2}  | ${3}\n  ${-1} | ${1}  | ${0}\n  ${0}  | ${0}  | ${0}\n`('sum($a, $b) = $expected', ({ a, b, expected }) => {\n  expect(sum(a, b)).toBe(expected);\n});\n\n// describe.each for parameterized suites\ndescribe.each(['postgres', 'mysql', 'sqlite'])('Database: %s', (driver) => {\n  it('connects successfully', async () => {\n    const db = await connect(driver);\n    expect(db.isConnected).toBe(true);\n  });\n});\n```\n\n## Mocking\n\nJest has a comprehensive built-in mocking system.\n\n### jest.fn() -- Mock Functions\n\n```typescript\nconst mockCallback = jest.fn();\nmockCallback.mockReturnValue(42);\nmockCallback.mockReturnValueOnce(1).mockReturnValueOnce(2);\nmockCallback.mockImplementation((x: number) => x * 2);\n\n// After calling\nexpect(mockCallback).toHaveBeenCalledTimes(3);\nexpect(mockCallback).toHaveBeenCalledWith(expect.any(Number));\nexpect(mockCallback).toHaveBeenLastCalledWith(21);\nmockCallback.mockClear();   // reset call history\nmockCallback.mockReset();   // clear + remove implementation\nmockCallback.mockRestore(); // restore original (if spyOn)\n```\n\n### jest.mock() -- Module Mocking\n\n```typescript\n// Auto-mock entire module (all exports become jest.fn())\njest.mock('./database');\nimport { query } from './database';\nconst mockedQuery = query as jest.MockedFunction<typeof query>;\nmockedQuery.mockResolvedValue([{ id: 1 }]);\n\n// Manual mock with factory function\njest.mock('./api-client', () => ({\n  ApiClient: jest.fn().mockImplementation(() => ({\n    get: jest.fn().mockResolvedValue({ data: 'test' }),\n    post: jest.fn().mockResolvedValue({ status: 201 }),\n  })),\n}));\n\n// Mock only specific exports, keep the rest real\njest.mock('./utils', () => ({\n  ...jest.requireActual('./utils'),\n  fetchData: jest.fn(),\n}));\n```\n\n### jest.spyOn() -- Spy on Existing Methods\n\n```typescript\nconst spy = jest.spyOn(console, 'log').mockImplementation();\nrunMyFunction();\nexpect(spy).toHaveBeenCalledWith('expected output');\nspy.mockRestore();\n\n// Spy on a prototype method\nconst dateSpy = jest.spyOn(Date.prototype, 'toISOString');\ndateSpy.mockReturnValue('2026-01-01T00:00:00.000Z');\n```\n\n### Manual Mocks (__mocks__/)\n\nCreate a `__mocks__/` directory adjacent to the module:\n\n```\nsrc/\n  __mocks__/\n    database.ts     # manual mock for ./database\n  database.ts       # real module\n  service.ts        # imports ./database\n  service.test.ts   # jest.mock('./database') uses __mocks__/database.ts\n```\n\nFor node_modules, place `__mocks__/` in the project root:\n\n```\n__mocks__/\n  axios.ts          # manual mock for 'axios'\nnode_modules/\n```\n\n### Timer Mocking\n\n```typescript\nbeforeEach(() => {\n  jest.useFakeTimers();\n});\n\nafterEach(() => {\n  jest.useRealTimers();\n});\n\nit('executes callback after delay', () => {\n  const callback = jest.fn();\n  setTimeout(callback, 1000);\n\n  expect(callback).not.toHaveBeenCalled();\n  jest.advanceTimersByTime(1000);\n  expect(callback).toHaveBeenCalledTimes(1);\n});\n\nit('runs all pending timers', () => {\n  const callback = jest.fn();\n  setTimeout(callback, 5000);\n  jest.runAllTimers();\n  expect(callback).toHaveBeenCalled();\n});\n```\n\n## Snapshot Testing\n\nSnapshots capture output and detect unintended changes.\n\n```typescript\nimport { renderGreeting } from './greeting';\n\nit('renders greeting correctly', () => {\n  const output = renderGreeting('Alice');\n  expect(output).toMatchSnapshot();\n});\n\n// Inline snapshots (stored in the test file itself)\nit('formats user data', () => {\n  const formatted = formatUser({ id: 1, name: 'Alice' });\n  expect(formatted).toMatchInlineSnapshot(`\n    \"User #1: Alice\"\n  `);\n});\n\n// Property matchers for dynamic values\nit('creates user with generated id', () => {\n  const user = createUser('Alice');\n  expect(user).toMatchSnapshot({\n    id: expect.any(String),\n    createdAt: expect.any(Date),\n  });\n});\n```\n\nSnapshot management:\n\n```bash\n# Update outdated snapshots\nnpx jest --updateSnapshot\nnpx jest -u\n\n# Snapshots are stored in __snapshots__/ directories\n# Always commit .snap files to version control\n```\n\n## Coverage\n\nJest uses Istanbul or V8 for code coverage.\n\n```bash\n# Generate coverage report\nnpx jest --coverage\n\n# Only collect coverage from specific files\nnpx jest --coverage --collectCoverageFrom='src/**/*.{ts,js}'\n\n# Specify reporters\nnpx jest --coverage --coverageReporters='text' --coverageReporters='lcov'\n```\n\nConfigure thresholds to enforce minimum coverage:\n\n```javascript\n// jest.config.js\nmodule.exports = {\n  coverageThreshold: {\n    global: {\n      branches: 80,\n      functions: 80,\n      lines: 80,\n      statements: 80,\n    },\n    './src/critical/': {\n      branches: 95,\n      lines: 95,\n    },\n  },\n};\n```\n\nThe coverage report shows:\n- **Stmts**: Percentage of statements executed\n- **Branch**: Percentage of branches (if/else, ternary, ??) taken\n- **Funcs**: Percentage of functions called\n- **Lines**: Percentage of lines executed\n- **Uncovered Line #s**: Specific lines not covered\n\n## Watch Mode\n\nInteractive watch mode re-runs tests on file changes:\n\n```bash\nnpx jest --watch          # re-run tests related to changed files\nnpx jest --watchAll       # re-run all tests on any change\n```\n\nWatch mode keybindings:\n- `a` -- run all tests\n- `f` -- run only failed tests\n- `p` -- filter by filename pattern\n- `t` -- filter by test name pattern\n- `q` -- quit\n- `Enter` -- re-run tests\n\n## Environment Variables\n\n| Variable | Purpose |\n|----------|--------|\n| `CI=true` | Disables watch mode, enables verbose output, treats warnings as errors |\n| `JEST_WORKER_ID` | Numeric ID of the worker process (1-based), useful for parallelism isolation |\n| `NODE_ENV=test` | Set automatically by Jest; used to load test-specific configuration |\n| `FORCE_COLOR=0` | Disable color output (useful for CI log parsing) |\n| `JEST_JUNIT_OUTPUT_DIR` | Output directory for jest-junit reporter |\n\n## Test File Patterns\n\nJest discovers test files matching these patterns by default:\n- `**/__tests__/**/*.[jt]s?(x)` -- files inside `__tests__/` directories\n- `**/?(*.)+(spec|test).[jt]s?(x)` -- files with `.test.` or `.spec.` in the name\n\nCommon project layouts:\n\n```\n# Co-located tests (recommended)\nsrc/\n  user-service.ts\n  user-service.test.ts\n  utils.ts\n  utils.test.ts\n\n# Separate test directory\nsrc/\n  user-service.ts\n  utils.ts\n__tests__/\n  user-service.test.ts\n  utils.test.ts\n```\n",
+  "sections": [
+    {
+      "id": "quick-start",
+      "title": "Quick start",
+      "body": "Install Jest with `npm install --save-dev jest` (add `@types/jest` for TypeScript). Create a `*.test.js` or `*.test.ts` file. Write a test using `describe`, `it`/`test`, and `expect`. Run with `npx jest`. Add `\"test\": \"jest\"` to package.json scripts. For TypeScript, install `ts-jest` and set `preset: 'ts-jest'` in jest.config.js, or use `@swc/jest` for faster transforms. First test: `test('adds numbers', () => { expect(1 + 2).toBe(3); });`",
+      "tags": ["install", "setup", "first-test", "quick-start", "npx-jest"]
+    },
+    {
+      "id": "configuration",
+      "title": "Configuration",
+      "body": "Jest config lives in `jest.config.js` (or `.ts`, `.mjs`, `.cjs`) or the `\"jest\"` key in `package.json`. Key options: `testMatch` (glob patterns for test files), `testEnvironment` ('node' or 'jsdom'), `transform` (file transforms like ts-jest or @swc/jest), `moduleNameMapper` (path aliases and asset mocks), `setupFilesAfterSetup` (run before each suite), `clearMocks`/`restoreMocks` (auto-cleanup between tests), `collectCoverageFrom` (files to include in coverage), `coverageThreshold` (minimum coverage gates). For monorepos, use `projects` array to run multiple configs. Use `--config` flag to specify a non-default config file.",
+      "tags": ["jest-config", "testMatch", "testEnvironment", "transform", "moduleNameMapper", "setupFiles"]
+    },
+    {
+      "id": "matchers",
+      "title": "Matchers",
+      "body": "Jest's `expect()` API provides matchers for assertions. Primitives: `toBe()` (===), `toBeTruthy()`, `toBeFalsy()`, `toBeNull()`, `toBeUndefined()`, `toBeDefined()`. Numbers: `toBeGreaterThan()`, `toBeLessThan()`, `toBeCloseTo()`. Strings: `toMatch(/regex/)`, `toContain('substring')`. Objects: `toEqual()` (deep), `toStrictEqual()` (deep + undefined props), `toMatchObject()` (subset), `toHaveProperty('path')`. Arrays: `toContain()`, `toHaveLength()`, `toContainEqual()`. Errors: `toThrow()`, `toThrow('message')`, `toThrow(ErrorType)`. All matchers support `.not` for negation. Async: `await expect(promise).resolves.toBe(v)` and `await expect(promise).rejects.toThrow(e)`. Mock matchers: `toHaveBeenCalled()`, `toHaveBeenCalledWith()`, `toHaveBeenCalledTimes()`, `toHaveBeenLastCalledWith()`, `toHaveBeenNthCalledWith()`.",
+      "tags": ["expect", "toBe", "toEqual", "matchers", "assertions", "not", "resolves", "rejects"]
+    },
+    {
+      "id": "mocking",
+      "title": "Mocking",
+      "body": "Jest provides three mocking mechanisms. `jest.fn()` creates standalone mock functions with configurable return values (`mockReturnValue`, `mockResolvedValue`, `mockImplementation`) and call tracking (`toHaveBeenCalled`, `toHaveBeenCalledWith`). `jest.mock('module')` replaces an entire module's exports with auto-mocked versions or a manual factory function. Use `jest.requireActual()` inside a factory to keep some exports real. `jest.spyOn(object, 'method')` wraps an existing method with a spy, preserving the original implementation unless overridden. Always call `mockRestore()` or set `restoreMocks: true` in config to prevent leaks. For manual mocks, create `__mocks__/module.ts` adjacent to the real module. Timer mocking: `jest.useFakeTimers()`, `jest.advanceTimersByTime(ms)`, `jest.runAllTimers()`. Module mocking hoists to the top of the file — `jest.mock()` calls are moved above imports by Jest's transform.",
+      "tags": ["jest-fn", "jest-mock", "jest-spyOn", "mock-functions", "module-mocking", "timer-mocking", "manual-mocks"]
+    },
+    {
+      "id": "snapshots",
+      "title": "Snapshot testing",
+      "body": "Snapshot testing captures output and compares against stored snapshots to detect regressions. Use `expect(value).toMatchSnapshot()` to write to a `.snap` file in `__snapshots__/`, or `toMatchInlineSnapshot()` to store the snapshot inline in the test file. On first run, Jest creates the snapshot. On subsequent runs, it compares and fails if the output changed. Update snapshots with `npx jest -u` or `npx jest --updateSnapshot`. Use property matchers for dynamic values: `expect(obj).toMatchSnapshot({ id: expect.any(String), createdAt: expect.any(Date) })`. Always commit `.snap` files to version control. Review snapshot diffs in PRs carefully — large snapshots can hide regressions. Prefer inline snapshots for small values and `.snap` files for large structures like rendered component trees.",
+      "tags": ["snapshot", "toMatchSnapshot", "toMatchInlineSnapshot", "snap-files", "updateSnapshot"]
+    },
+    {
+      "id": "coverage",
+      "title": "Coverage",
+      "body": "Run `npx jest --coverage` to generate code coverage reports. Jest uses Istanbul by default (or V8 with `coverageProvider: 'v8'` in config). Configure `collectCoverageFrom` to specify which files to measure and `coveragePathIgnorePatterns` to exclude files. Set `coverageThreshold` in config to enforce minimums per metric (branches, functions, lines, statements) globally or per directory. Coverage reporters: `text` (terminal), `lcov` (HTML + LCOV for CI), `json`, `clover`. The `text` reporter shows a table with Stmts, Branch, Funcs, Lines, and Uncovered Line #s. For CI, use `lcov` and upload to Codecov or Coveralls. Enforce thresholds in CI to prevent coverage regression.",
+      "tags": ["coverage", "istanbul", "v8", "coverageThreshold", "collectCoverageFrom", "lcov", "codecov"]
+    },
+    {
+      "id": "typescript",
+      "title": "TypeScript setup",
+      "body": "Two main approaches for TypeScript with Jest. **ts-jest**: Install `ts-jest @types/jest`, set `preset: 'ts-jest'` in jest.config. Respects tsconfig.json, supports type checking during tests (slow but catches type errors). Configure `tsconfig` option in ts-jest to use a test-specific tsconfig. **@swc/jest**: Install `@swc/jest @swc/core @types/jest`, set `transform: { '^.+\\\\.tsx?$': '@swc/jest' }`. Much faster than ts-jest but does not type-check (pair with `tsc --noEmit` in CI). Both approaches support path aliases via `moduleNameMapper` matching tsconfig `paths`. For projects using ES modules and TypeScript, SWC is the recommended path for speed.",
+      "tags": ["typescript", "ts-jest", "swc", "swc-jest", "types-jest", "tsconfig", "transform"]
+    },
+    {
+      "id": "watch-mode",
+      "title": "Watch mode",
+      "body": "Run `npx jest --watch` to enter interactive watch mode. Jest detects changed files via git and re-runs only related tests. Use `--watchAll` to re-run all tests on any change. Watch mode keybindings: `a` run all tests, `f` run only failed tests, `p` filter by filename regex, `t` filter by test name regex, `q` quit, `Enter` trigger a re-run. Watch mode requires a git or hg repository to detect changes. In CI environments (`CI=true`), watch mode is automatically disabled. Combine with `--verbose` for detailed output during development. Watch mode respects `--testPathPattern` and `--testNamePattern` for focused development.",
+      "tags": ["watch", "watchAll", "interactive", "development", "hot-reload", "file-watching"]
+    }
+  ],
+  "links": [
+    { "uri": "testing/vitest", "context": "Modern ESM-first alternative to Jest with compatible API" },
+    { "uri": "testing/mocking", "context": "Cross-framework mocking strategies and patterns" },
+    { "uri": "testing/ci", "context": "Running Jest in CI/CD pipelines" },
+    { "uri": "testing/patterns", "context": "Structural testing patterns — AAA, factories, parameterized tests" },
+    { "uri": "typescript/compiler", "context": "TypeScript compilation settings that affect ts-jest transforms" }
+  ],
+  "related": [
+    { "uri": "testing/vitest", "relation": "alternative", "note": "Vitest is faster for ESM/Vite projects; Jest-compatible API makes migration straightforward" },
+    { "uri": "testing/pytest", "relation": "equivalent", "note": "pytest is the Python equivalent — same role, different ecosystem" },
+    { "uri": "testing/playwright", "relation": "see-also", "note": "Playwright handles browser E2E tests that complement Jest unit tests" },
+    { "uri": "testing/mocking", "relation": "extends", "note": "Jest's built-in mocking implements the mocking patterns described here" },
+    { "uri": "typescript/compiler", "relation": "prerequisite", "note": "TypeScript projects need tsconfig.json for ts-jest or @swc/jest to work" }
+  ],
+  "scripts": [
+    {
+      "id": "run-tests",
+      "name": "Run Jest tests",
+      "description": "Detect Jest installation, run tests with optional pattern filtering, coverage, watch mode, and verbose output. Handles CI mode automatically.",
+      "lang": "bash",
+      "runtime": "bash",
+      "entry": "./scripts/run-tests.sh",
+      "env": {
+        "CI": "auto-detected",
+        "NODE_ENV": "test"
+      },
+      "packages": ["jest", "@types/jest", "ts-jest", "@swc/jest"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "test_pattern": { "type": "string", "description": "Test file path or name pattern to run (e.g. 'user-service' or 'src/utils')" },
+        "coverage": { "type": "boolean", "description": "Enable code coverage reporting", "default": false },
+        "watch": { "type": "boolean", "description": "Enable interactive watch mode", "default": false },
+        "verbose": { "type": "boolean", "description": "Enable verbose test output", "default": false },
+        "update_snapshots": { "type": "boolean", "description": "Update outdated snapshots", "default": false },
+        "bail": { "type": "boolean", "description": "Stop after first test failure", "default": false },
+        "config": { "type": "string", "description": "Path to jest config file" }
+      }
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "total": { "type": "integer", "description": "Total number of test suites" },
+        "passed": { "type": "integer", "description": "Number of test suites that passed" },
+        "failed": { "type": "integer", "description": "Number of test suites that failed" },
+        "tests_total": { "type": "integer", "description": "Total number of individual tests" },
+        "tests_passed": { "type": "integer", "description": "Number of individual tests that passed" },
+        "tests_failed": { "type": "integer", "description": "Number of individual tests that failed" },
+        "coverage_pct": { "type": "number", "description": "Overall line coverage percentage (if --coverage)" },
+        "duration_seconds": { "type": "number", "description": "Total test run duration in seconds" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "typescript/compiler", "reason": "TypeScript projects need tsconfig.json and a transform (ts-jest or @swc/jest)", "optional": true },
+    { "uri": "shell/bash", "reason": "The run-tests script requires bash to execute" }
+  ],
+  "more": {
+    "docs": "https://jestjs.io/docs/getting-started",
+    "api": "https://jestjs.io/docs/api",
+    "expect_api": "https://jestjs.io/docs/expect",
+    "mock_functions": "https://jestjs.io/docs/mock-functions",
+    "snapshot_testing": "https://jestjs.io/docs/snapshot-testing",
+    "configuration": "https://jestjs.io/docs/configuration",
+    "cli": "https://jestjs.io/docs/cli",
+    "ts_jest": "https://kulshekhar.github.io/ts-jest/",
+    "swc_jest": "https://swc.rs/docs/usage/jest",
+    "github": "https://github.com/jestjs/jest"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "12 min",
+    "prerequisites": ["typescript/compiler"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

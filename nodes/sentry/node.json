@@ -1,0 +1,91 @@
+{
+  "name": "sentry",
+  "version": "1.0.0",
+  "uri": "sentry",
+  "type": "ecosystem",
+  "context": "Error tracking, performance monitoring, and session replay for production applications using Sentry",
+  "info": "Sentry is the leading open-source error tracking and application monitoring platform. It captures unhandled exceptions, logs, performance traces, and session replays across JavaScript (browser and Node.js), Python, Go, Java, Ruby, and 40+ other platforms. Agents use this ecosystem to instrument applications with error reporting, upload source maps for readable stack traces, configure alert rules for incident response, and tune SDK options for production workloads. The JavaScript SDK (@sentry/browser for client, @sentry/node for server) is the most common entry point. All operations require a DSN (Data Source Name) from a Sentry project and optionally an auth token for source map uploads and API access. See [[sentry/setup]] to initialize the SDK, [[sentry/capture]] to report errors and enrich events, [[sentry/source-maps]] to upload source maps, [[sentry/alerts]] for alert rule configuration, and [[sentry/config]] for advanced SDK tuning.",
+  "parent": null,
+  "tags": ["sentry", "error-tracking", "monitoring", "observability", "apm", "crash-reporting", "source-maps", "alerts"],
+  "aliases": [
+    "sentry",
+    "sentry.io",
+    "sentry sdk",
+    "sentry error tracking",
+    "sentry monitoring",
+    "sentry javascript",
+    "sentry node",
+    "sentry react",
+    "sentry nextjs",
+    "error monitoring",
+    "crash reporting",
+    "application monitoring",
+    "sentry apm"
+  ],
+  "triggers": [
+    "set up sentry",
+    "add error tracking",
+    "configure sentry for my project",
+    "monitor errors in production",
+    "add crash reporting",
+    "set up error monitoring",
+    "integrate sentry",
+    "track exceptions in production",
+    "add sentry to my app"
+  ],
+  "body": "# Sentry Error Tracking & Monitoring\n\nSentry provides real-time error tracking, performance monitoring, and session replay for production applications. It captures unhandled exceptions, rejected promises, console errors, and performance bottlenecks — then groups them into actionable issues with full stack traces, breadcrumbs, and user context.\n\n## Ecosystem Overview\n\n| Node | Purpose |\n|------|----------|\n| [[sentry/setup]] | Initialize the SDK in browser or Node.js projects |\n| [[sentry/capture]] | Capture errors, messages, breadcrumbs, and enrich events with context |\n| [[sentry/source-maps]] | Upload source maps for readable production stack traces |\n| [[sentry/alerts]] | Configure alert rules for issue and metric thresholds |\n| [[sentry/config]] | Advanced SDK configuration options reference |\n\n## SDK Packages\n\n| Package | Platform |\n|---------|----------|\n| `@sentry/browser` | Browser JavaScript |\n| `@sentry/node` | Node.js (Express, Koa, Fastify, NestJS) |\n| `@sentry/react` | React with Error Boundary support |\n| `@sentry/nextjs` | Next.js (App Router + Pages Router) |\n| `@sentry/vue` | Vue 2/3 |\n| `@sentry/angular` | Angular |\n| `@sentry/svelte` | SvelteKit |\n| `@sentry/remix` | Remix |\n| `@sentry/astro` | Astro |\n| `@sentry/bun` | Bun runtime |\n| `@sentry/deno` | Deno runtime |\n| `@sentry/cloudflare` | Cloudflare Workers |\n\n## Quick Start\n\n```bash\n# Browser\nnpm install @sentry/browser\n\n# Node.js\nnpm install @sentry/node\n\n# React\nnpm install @sentry/react\n\n# Next.js (uses wizard)\nnpx @sentry/wizard@latest -i nextjs\n```\n\n```javascript\nimport * as Sentry from \"@sentry/browser\";\n\nSentry.init({\n  dsn: \"https://examplePublicKey@o0.ingest.sentry.io/0\",\n  release: \"my-app@1.0.0\",\n  environment: \"production\",\n  tracesSampleRate: 0.2,\n  replaysSessionSampleRate: 0.1,\n  replaysOnErrorSampleRate: 1.0,\n  integrations: [\n    Sentry.browserTracingIntegration(),\n    Sentry.replayIntegration(),\n  ],\n});\n```\n\n## Environment Variables\n\n| Variable | Purpose | Required |\n|----------|---------|----------|\n| `SENTRY_DSN` | Data Source Name — identifies your Sentry project | Yes |\n| `SENTRY_AUTH_TOKEN` | API auth token for source map uploads and API access | For uploads |\n| `SENTRY_ORG` | Organization slug | For CLI/plugins |\n| `SENTRY_PROJECT` | Project slug | For CLI/plugins |\n| `SENTRY_RELEASE` | Release version identifier | Recommended |\n| `SENTRY_ENVIRONMENT` | Deployment environment name | Recommended |\n\n## Core Concepts\n\n- **DSN** — Data Source Name, a URL that tells the SDK where to send events\n- **Release** — Version identifier that links errors to source code and source maps\n- **Environment** — Deployment target (production, staging, development)\n- **Event** — A single error, message, or transaction sent to Sentry\n- **Issue** — A group of similar events, deduplicated by stack trace fingerprint\n- **Breadcrumb** — Timestamped log of actions leading up to an error (clicks, navigations, API calls)\n- **Scope** — Container for contextual data (tags, user, extras) attached to events\n- **Transaction** — A performance trace spanning one or more operations\n",
+  "sections": [
+    {
+      "id": "packages",
+      "title": "SDK packages by platform",
+      "body": "The JavaScript ecosystem has platform-specific SDK packages that wrap the core `@sentry/core` library. Use `@sentry/browser` for vanilla JS, `@sentry/node` for Node.js servers (requires Node 18+), `@sentry/react` for React apps (includes `ErrorBoundary` component), and `@sentry/nextjs` for Next.js (instruments both client and server). Framework SDKs like `@sentry/vue`, `@sentry/angular`, `@sentry/svelte`, and `@sentry/remix` provide framework-specific integrations. For edge runtimes, use `@sentry/cloudflare`, `@sentry/bun`, or `@sentry/deno`.",
+      "tags": ["packages", "sdk", "browser", "node", "react", "nextjs", "vue", "angular"]
+    },
+    {
+      "id": "dsn",
+      "title": "Data Source Name (DSN)",
+      "body": "The DSN is a URL that tells the SDK where to send events. Find it in your Sentry project under Settings → Client Keys (DSN). Format: `https://<public-key>@o<org-id>.ingest.sentry.io/<project-id>`. The DSN is safe to expose in client-side code — it only allows sending events, not reading them. Pass it via the `SENTRY_DSN` environment variable or directly in `Sentry.init({ dsn: '...' })`. Never confuse the DSN with the auth token — the auth token is secret and used for API operations like source map uploads.",
+      "tags": ["dsn", "configuration", "client-keys", "project-setup"]
+    },
+    {
+      "id": "releases",
+      "title": "Releases and environments",
+      "body": "Set `release` in `Sentry.init()` to a version string (e.g., `my-app@1.2.3` or a git SHA). Releases enable source map association, commit tracking, deploy tracking, and regression detection. Set `environment` to distinguish production from staging. Sentry auto-detects the environment as `production` if not set. Use `sentry-cli releases new VERSION` and `sentry-cli releases set-commits VERSION --auto` to associate commits with releases for suspect commit detection. See [[sentry/source-maps]] for linking source maps to releases.",
+      "tags": ["releases", "versioning", "environment", "deploy-tracking"]
+    }
+  ],
+  "sub": ["sentry/setup", "sentry/capture", "sentry/source-maps", "sentry/alerts", "sentry/config"],
+  "links": [
+    { "uri": "sentry/setup", "context": "Initialize Sentry SDK in browser or Node.js" },
+    { "uri": "sentry/capture", "context": "Capture errors, messages, and enrich events" },
+    { "uri": "sentry/source-maps", "context": "Upload source maps for readable stack traces" },
+    { "uri": "sentry/alerts", "context": "Configure alert rules and notification channels" },
+    { "uri": "sentry/config", "context": "Advanced SDK configuration options" }
+  ],
+  "related": [
+    { "uri": "testing/jest", "relation": "see-also", "note": "Test error handling before shipping to production" },
+    { "uri": "nextjs", "relation": "see-also", "note": "Sentry has a dedicated Next.js SDK with App Router support" },
+    { "uri": "vite", "relation": "see-also", "note": "Sentry provides a Vite plugin for source map uploads" }
+  ],
+  "more": {
+    "docs": "https://docs.sentry.io/",
+    "repo": "https://github.com/getsentry/sentry-javascript",
+    "api": "https://docs.sentry.io/api/",
+    "cli": "https://docs.sentry.io/cli/",
+    "status": "https://status.sentry.io/"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents, DevOps engineers",
+    "estimated_reading_time": "5 min",
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

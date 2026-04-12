@@ -1,0 +1,276 @@
+{
+  "name": "resource-groups",
+  "uri": "azure/resource-groups",
+  "type": "skill",
+  "context": "Create, inspect, tag, and delete Azure resource groups safely with the Azure CLI",
+  "info": "Resource groups are the default lifecycle and blast-radius boundary for most Azure workloads. Agents use this skill to create environment boundaries, apply ownership tags, list and filter groups across subscriptions, inspect a group before provisioning dependencies, and delete whole stacks when teardown is intended. The underlying execution surface is `az group`, especially `create`, `show`, `list`, `update`, and `delete`.",
+  "parent": "azure",
+  "tags": [
+    "azure",
+    "resource-groups",
+    "az-group",
+    "provisioning",
+    "tags",
+    "deletion",
+    "arm"
+  ],
+  "aliases": [
+    "azure resource group",
+    "az group",
+    "create resource group",
+    "delete resource group",
+    "tag a resource group",
+    "rg in azure",
+    "manage resource groups",
+    "show resource group"
+  ],
+  "triggers": [
+    "create an azure resource group",
+    "delete an azure resource group",
+    "list resource groups in azure",
+    "tag a resource group in azure",
+    "show an azure resource group",
+    "tear down an azure environment",
+    "create a new rg in azure",
+    "update azure resource group tags"
+  ],
+  "body": "# Azure Resource Groups\n\nResource groups are the fastest safe boundary for most Azure automation. If an agent needs a place to create a web app, storage account, Key Vault, or AKS cluster, it usually starts here.\n\n~~~bash\naz group create --name rg-dojo --location eastus --tags owner=agent env=dev\naz group show --name rg-dojo\naz group list --query \"[?location=='eastus']\"\naz group update --resource-group rg-dojo --set tags.Owner=platform tags.CostCenter=eng\naz group delete --name rg-dojo --yes --no-wait\n~~~\n\nThe most important judgment call is not how to create a group, but when deletion is acceptable. `az group delete` is recursive for most resources in the group. Agents should confirm subscription, group name, and ownership tags before running it.\n\nUse resource-group tags to encode ownership, environment, cost center, and retention policy. Those tags make later discovery and cleanup easier across subscriptions.\n\nOnce the group exists, continue with [[azure/storage]], [[azure/key-vault]], [[azure/app-service]], [[azure/functions]], or [[azure/aks]].\n",
+  "sections": [
+    {
+      "id": "create",
+      "title": "Create groups idempotently",
+      "body": "`az group create` is effectively idempotent for the same name and location. Use it early in a runbook to establish the environment boundary, and include tags on first creation so later discovery and cleanup can rely on them.",
+      "tags": [
+        "create",
+        "idempotent",
+        "location",
+        "tags"
+      ]
+    },
+    {
+      "id": "list-and-show",
+      "title": "List and inspect",
+      "body": "`az group list` supports JMESPath filtering through `--query`, while `az group show --name ...` returns the full group document. Use list when the agent is exploring unknown state, and show when it already has the exact group name and wants to inspect tags, provisioning state, or ID.",
+      "tags": [
+        "list",
+        "show",
+        "query",
+        "inspection"
+      ]
+    },
+    {
+      "id": "tagging",
+      "title": "Tagging and metadata",
+      "body": "`az group update --set tags.Key=value` lets you merge or update tags without recreating the group. Ownership and environment tags are the most important for autonomous agents because they turn cleanup, reporting, and safety checks into deterministic filters.",
+      "tags": [
+        "tags",
+        "metadata",
+        "ownership",
+        "environment"
+      ]
+    },
+    {
+      "id": "delete",
+      "title": "Delete safely",
+      "body": "`az group delete --yes` recursively removes the group and most contained resources. Add `--no-wait` when the runbook can return immediately, but keep the delete synchronous when the next step depends on confirmed teardown. Double-check subscription and spelling before delete, especially in tenants with similarly named environments.",
+      "tags": [
+        "delete",
+        "teardown",
+        "destructive",
+        "no-wait"
+      ]
+    }
+  ],
+  "links": [
+    {
+      "uri": "azure/auth",
+      "context": "Confirm the correct subscription before creating or deleting groups"
+    },
+    {
+      "uri": "azure/storage",
+      "context": "Provision storage resources inside the group"
+    },
+    {
+      "uri": "azure/key-vault",
+      "context": "Create shared secret storage inside the same group"
+    },
+    {
+      "uri": "azure/app-service",
+      "context": "Deploy web apps into a prepared group"
+    },
+    {
+      "uri": "azure/functions",
+      "context": "Create Function Apps after the group boundary exists"
+    },
+    {
+      "uri": "azure/aks",
+      "context": "Create AKS clusters in a dedicated or workload-specific group"
+    },
+    {
+      "uri": "azure/monitor",
+      "context": "Inspect activity-log events tied to group creation or deletion"
+    }
+  ],
+  "related": [
+    {
+      "uri": "azure/auth",
+      "relation": "prerequisite",
+      "note": "The active subscription must be correct before create or delete operations"
+    },
+    {
+      "uri": "azure/storage",
+      "relation": "see-also",
+      "note": "Storage accounts are commonly the first dependency created after the group"
+    },
+    {
+      "uri": "terraform",
+      "relation": "see-also",
+      "note": "Terraform often manages the same lifecycle declaratively once naming and boundaries are settled"
+    }
+  ],
+  "scripts": [
+    {
+      "id": "manage-resource-group",
+      "name": "Manage Resource Group",
+      "description": "Create, list, inspect, retag, or delete an Azure resource group with `az group`",
+      "lang": "bash",
+      "runtime": "bash>=4.0, azure-cli>=2.0",
+      "entry": "./scripts/manage-resource-group.sh",
+      "env": {
+        "AZURE_RESOURCE_GROUP_ACTION": {
+          "required": true,
+          "description": "One of list, show, create, update-tags, or delete"
+        },
+        "AZURE_RESOURCE_GROUP_NAME": {
+          "required": false,
+          "description": "Resource group name for show, create, update-tags, or delete"
+        },
+        "AZURE_LOCATION": {
+          "required": false,
+          "description": "Azure region for create"
+        },
+        "AZURE_RESOURCE_GROUP_TAGS": {
+          "required": false,
+          "description": "Space-separated tag pairs such as \"owner=agent env=dev\""
+        },
+        "AZURE_RESOURCE_GROUP_TAG_FILTER": {
+          "required": false,
+          "description": "Filter value for list, for example owner=agent"
+        },
+        "AZURE_RESOURCE_GROUP_TAG_MODE": {
+          "required": false,
+          "default": "merge",
+          "description": "merge uses --set tags.KEY=value, replace uses --tags"
+        },
+        "AZURE_DELETE_WAIT": {
+          "required": false,
+          "default": "false",
+          "description": "Set to true to wait for `az group delete` completion"
+        },
+        "AZURE_SUBSCRIPTION_ID": {
+          "required": false,
+          "description": "Subscription ID or name to set before running the command"
+        }
+      }
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "action": {
+          "type": "string",
+          "enum": [
+            "list",
+            "show",
+            "create",
+            "update-tags",
+            "delete"
+          ],
+          "description": "Resource group action to execute"
+        },
+        "name": {
+          "type": "string",
+          "description": "Resource group name"
+        },
+        "location": {
+          "type": "string",
+          "description": "Azure region for create"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Tag pairs in key=value form"
+        },
+        "subscription": {
+          "type": "string",
+          "description": "Subscription ID or name to activate first"
+        },
+        "wait": {
+          "type": "boolean",
+          "description": "Wait for delete completion",
+          "default": false
+        }
+      },
+      "required": [
+        "action"
+      ]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "ARM resource ID of the group"
+        },
+        "name": {
+          "type": "string",
+          "description": "Resource group name"
+        },
+        "location": {
+          "type": "string",
+          "description": "Group region"
+        },
+        "provisioningState": {
+          "type": "string",
+          "description": "Provisioning state returned by ARM"
+        }
+      }
+    }
+  },
+  "depends": [
+    {
+      "uri": "azure/auth",
+      "reason": "The wrapper can switch subscription context but still requires a valid Azure login"
+    },
+    {
+      "uri": "shell/bash",
+      "reason": "The execution wrapper is a Bash script"
+    }
+  ],
+  "more": {
+    "docs": "https://learn.microsoft.com/en-us/cli/azure/group?view=azure-cli-latest",
+    "arm": "https://learn.microsoft.com/en-us/azure/azure-resource-manager/management/manage-resource-groups-cli"
+  },
+  "frontmatter": {
+    "created": "2026-04-12",
+    "updated": "2026-04-12",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "5 min",
+    "prerequisites": [
+      "azure/auth"
+    ],
+    "status": "living",
+    "confidence": "high"
+  },
+  "repository": "https://github.com/Azure/azure-cli",
+  "version": "1.0.0",
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-12T00:00:00Z",
+  "updated": "2026-04-12T00:00:00Z",
+  "status": "published"
+}

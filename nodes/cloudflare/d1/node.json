@@ -1,0 +1,135 @@
+{
+  "name": "d1",
+  "version": "1.0.0",
+  "uri": "cloudflare/d1",
+  "type": "skill",
+  "context": "Create databases, run SQL queries, and manage migrations on Cloudflare D1 — serverless SQLite at the edge",
+  "info": "Cloudflare D1 is a serverless SQLite database that runs at the edge alongside Workers. D1 supports standard SQL syntax, automatic read replication, point-in-time recovery, and migrations via Wrangler. Databases are created per-account and bound to Workers via `wrangler.toml`. D1 uses SQLite semantics: ACID transactions, WAL mode, JSON functions, full-text search, and all standard SQL. Queries execute with low latency because the database is co-located with the Worker. Free tier: 500MB storage, 5 million rows read/day, 100K rows written/day. Common uses: user data, application state, metadata storage, content management, and analytics.",
+  "parent": "cloudflare",
+  "tags": ["d1", "sqlite", "database", "sql", "serverless", "edge-database", "migrations"],
+  "aliases": [
+    "cloudflare d1",
+    "d1 database",
+    "cf d1",
+    "cloudflare sqlite",
+    "d1 sql",
+    "serverless sqlite",
+    "edge database",
+    "cloudflare database",
+    "workers database"
+  ],
+  "triggers": [
+    "create a d1 database",
+    "query d1",
+    "run sql on cloudflare",
+    "set up a database on cloudflare",
+    "create d1 migration",
+    "use cloudflare d1",
+    "sqlite on cloudflare workers"
+  ],
+  "body": "# Cloudflare D1\n\nD1 is serverless SQLite at the edge. Full SQL support, automatic replication, and direct integration with Workers.\n\n## Setup\n\n### Create a Database\n\n```bash\n# Create a D1 database\nwrangler d1 create my-database\n# Output:\n# Created database 'my-database'\n# database_id = \"xxxx-yyyy-zzzz\"\n\n# List databases\nwrangler d1 list\n```\n\n### wrangler.toml\n\n```toml\n[[d1_databases]]\nbinding = \"DB\"\ndatabase_name = \"my-database\"\ndatabase_id = \"xxxx-yyyy-zzzz\"\n```\n\n## Migrations\n\nD1 uses file-based migrations in the `migrations/` directory.\n\n```bash\n# Create a migration\nwrangler d1 migrations create my-database create_users_table\n# Creates: migrations/0001_create_users_table.sql\n```\n\n```sql\n-- migrations/0001_create_users_table.sql\nCREATE TABLE IF NOT EXISTS users (\n  id INTEGER PRIMARY KEY AUTOINCREMENT,\n  email TEXT NOT NULL UNIQUE,\n  name TEXT NOT NULL,\n  role TEXT DEFAULT 'user',\n  created_at TEXT DEFAULT (datetime('now')),\n  updated_at TEXT DEFAULT (datetime('now'))\n);\n\nCREATE INDEX idx_users_email ON users(email);\nCREATE INDEX idx_users_role ON users(role);\n```\n\n```bash\n# Apply migrations (local)\nwrangler d1 migrations apply my-database --local\n\n# Apply migrations (remote/production)\nwrangler d1 migrations apply my-database --remote\n\n# List migration status\nwrangler d1 migrations list my-database --remote\n```\n\n## Worker API\n\n```typescript\nexport interface Env {\n  DB: D1Database;\n}\n\nexport default {\n  async fetch(request: Request, env: Env): Promise<Response> {\n    const url = new URL(request.url);\n\n    // SELECT — query rows\n    if (url.pathname === '/users') {\n      const { results } = await env.DB.prepare(\n        'SELECT id, email, name, role FROM users WHERE role = ? ORDER BY created_at DESC LIMIT ?'\n      ).bind('admin', 50).all();\n      return Response.json(results);\n    }\n\n    // SELECT — single row\n    if (url.pathname.startsWith('/users/')) {\n      const id = url.pathname.split('/')[2];\n      const user = await env.DB.prepare(\n        'SELECT * FROM users WHERE id = ?'\n      ).bind(id).first();\n      if (!user) return new Response('Not Found', { status: 404 });\n      return Response.json(user);\n    }\n\n    // INSERT\n    if (request.method === 'POST' && url.pathname === '/users') {\n      const { email, name, role } = await request.json() as any;\n      const result = await env.DB.prepare(\n        'INSERT INTO users (email, name, role) VALUES (?, ?, ?) RETURNING id'\n      ).bind(email, name, role || 'user').first();\n      return Response.json(result, { status: 201 });\n    }\n\n    // UPDATE\n    if (request.method === 'PUT' && url.pathname.startsWith('/users/')) {\n      const id = url.pathname.split('/')[2];\n      const { name, role } = await request.json() as any;\n      await env.DB.prepare(\n        'UPDATE users SET name = ?, role = ?, updated_at = datetime(\"now\") WHERE id = ?'\n      ).bind(name, role, id).run();\n      return new Response('Updated', { status: 200 });\n    }\n\n    // DELETE\n    if (request.method === 'DELETE' && url.pathname.startsWith('/users/')) {\n      const id = url.pathname.split('/')[2];\n      await env.DB.prepare('DELETE FROM users WHERE id = ?').bind(id).run();\n      return new Response('Deleted', { status: 200 });\n    }\n\n    // BATCH — multiple statements in a transaction\n    if (request.method === 'POST' && url.pathname === '/batch') {\n      const results = await env.DB.batch([\n        env.DB.prepare('INSERT INTO users (email, name) VALUES (?, ?)').bind('a@b.com', 'Alice'),\n        env.DB.prepare('INSERT INTO users (email, name) VALUES (?, ?)').bind('c@d.com', 'Bob'),\n      ]);\n      return Response.json({ inserted: results.length });\n    }\n\n    return new Response('Not Found', { status: 404 });\n  },\n};\n```\n\n## CLI Queries\n\n```bash\n# Execute SQL directly\nwrangler d1 execute my-database --remote --command \"SELECT * FROM users LIMIT 10\"\n\n# Execute SQL from file\nwrangler d1 execute my-database --remote --file ./seed.sql\n\n# Local execution (uses local SQLite)\nwrangler d1 execute my-database --local --command \"SELECT count(*) FROM users\"\n```\n\n## D1 API Methods\n\n```typescript\n// prepare(sql) — create a prepared statement\nconst stmt = env.DB.prepare('SELECT * FROM users WHERE id = ?');\n\n// bind(...values) — bind parameters (positional)\nconst bound = stmt.bind(42);\n\n// all() — return all rows\nconst { results, meta } = await bound.all();\n// results: array of row objects\n// meta: { duration, rows_read, rows_written, last_row_id, changes }\n\n// first(column?) — return first row or column value\nconst row = await stmt.bind(42).first();        // { id, email, name, ... }\nconst email = await stmt.bind(42).first('email'); // string\n\n// run() — execute statement without returning rows (INSERT, UPDATE, DELETE)\nconst { meta } = await env.DB.prepare('DELETE FROM users WHERE id = ?').bind(42).run();\n\n// raw() — return rows as arrays instead of objects\nconst rows = await stmt.bind(42).raw();  // [[1, 'alice@...', 'Alice']]\n\n// batch() — execute multiple statements in a transaction\nconst results = await env.DB.batch([stmt1, stmt2, stmt3]);\n```\n\n## SQLite Features Supported\n\n- ACID transactions via `batch()`\n- JSON functions: `json_extract()`, `json_array()`, `json_object()`\n- Full-text search: `fts5`\n- Window functions: `ROW_NUMBER()`, `RANK()`, `LAG()`, `LEAD()`\n- CTEs (WITH clauses)\n- RETURNING clause for INSERT/UPDATE/DELETE\n- Generated columns\n- Partial indexes\n",
+  "sections": [
+    {
+      "id": "setup",
+      "title": "Creating databases and bindings",
+      "body": "Create a database with `wrangler d1 create <name>`. Add the `[[d1_databases]]` binding to `wrangler.toml` with `binding`, `database_name`, and `database_id`. The binding exposes a `D1Database` object on the Worker's `env`. Use `wrangler d1 list` to see all databases.",
+      "tags": ["create", "setup", "binding", "database"]
+    },
+    {
+      "id": "migrations",
+      "title": "Migrations",
+      "body": "Create migrations with `wrangler d1 migrations create <db> <name>`. Migrations are SQL files in the `migrations/` directory, numbered sequentially (0001_, 0002_). Apply with `wrangler d1 migrations apply <db> --remote` for production or `--local` for development. List status with `wrangler d1 migrations list <db> --remote`.",
+      "tags": ["migrations", "schema", "create-table", "alter"]
+    },
+    {
+      "id": "query-api",
+      "title": "Query API",
+      "body": "`env.DB.prepare(sql)` creates a prepared statement. `.bind(...values)` binds positional parameters. `.all()` returns `{ results, meta }`. `.first()` returns the first row. `.first('column')` returns a single column value. `.run()` executes without returning rows. `.raw()` returns rows as arrays. `.batch([stmts])` executes multiple statements in a single transaction.",
+      "tags": ["prepare", "bind", "all", "first", "run", "batch", "query"]
+    },
+    {
+      "id": "batch-transactions",
+      "title": "Batch transactions",
+      "body": "`env.DB.batch([stmt1, stmt2, ...])` executes multiple prepared statements in a single transaction. If any statement fails, all are rolled back. Use batch for multi-table inserts, data migrations, and any operation requiring atomicity. Each statement in the batch can be independently prepared and bound.",
+      "tags": ["batch", "transaction", "atomic", "rollback"]
+    }
+  ],
+  "links": [
+    { "uri": "cloudflare/workers", "context": "Workers access D1 through bindings" },
+    { "uri": "cloudflare/workers/bindings", "context": "Configure D1 database bindings" },
+    { "uri": "cloudflare/wrangler", "context": "CLI for database and migration management" },
+    { "uri": "cloudflare/auth", "context": "Authentication for D1 API access" },
+    { "uri": "cloudflare/kv", "context": "Use KV for simple key-value data instead of SQL" },
+    { "uri": "cloudflare/troubleshooting#limits", "context": "D1 size and query limits" },
+    { "uri": "database/sql", "context": "SQL fundamentals for D1 queries" },
+    { "uri": "database/migrations", "context": "Migration patterns and best practices" }
+  ],
+  "related": [
+    { "uri": "cloudflare/workers", "relation": "prerequisite", "note": "Workers access D1 through bindings" },
+    { "uri": "cloudflare/auth", "relation": "prerequisite", "note": "API token required for D1 operations" },
+    { "uri": "cloudflare/kv", "relation": "see-also", "note": "KV for key-value; D1 for relational data with SQL" },
+    { "uri": "postgres", "relation": "alternative", "note": "Postgres for full-featured relational; D1 for edge-native SQLite" },
+    { "uri": "supabase/database", "relation": "alternative", "note": "Supabase provides managed Postgres; D1 is serverless SQLite" },
+    { "uri": "database/migrations", "relation": "see-also", "note": "D1 uses file-based SQL migrations" }
+  ],
+  "scripts": [
+    {
+      "id": "d1-ops",
+      "name": "D1 Operations",
+      "description": "Create databases, run migrations, and execute SQL queries via Wrangler CLI",
+      "lang": "bash",
+      "runtime": "node>=18",
+      "entry": "./scripts/d1-ops.sh",
+      "env": {
+        "CLOUDFLARE_API_TOKEN": { "required": true, "secret": true, "description": "API token with D1 Edit permission" },
+        "CLOUDFLARE_ACCOUNT_ID": { "required": true, "secret": false, "description": "Cloudflare account identifier" }
+      },
+      "packages": ["wrangler"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "action": { "type": "string", "enum": ["create", "execute", "migrate", "list"], "description": "D1 operation to perform" },
+        "databaseName": { "type": "string", "description": "Database name" },
+        "sql": { "type": "string", "description": "SQL query to execute" },
+        "file": { "type": "string", "description": "SQL file path to execute" },
+        "remote": { "type": "boolean", "default": false, "description": "Execute against remote (production) database" }
+      },
+      "required": ["action", "databaseName"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "databaseId": { "type": "string", "description": "Created database ID" },
+        "results": { "type": "array", "description": "Query results" },
+        "meta": { "type": "object", "description": "Query metadata (duration, rows_read, rows_written)" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "cloudflare/auth", "reason": "API token required for D1 operations" },
+    { "uri": "cloudflare/wrangler", "reason": "Wrangler CLI for database and migration management" }
+  ],
+  "more": {
+    "docs": "https://developers.cloudflare.com/d1/",
+    "api": "https://developers.cloudflare.com/d1/platform/client-api/",
+    "examples": "https://developers.cloudflare.com/d1/examples/"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "6 min",
+    "prerequisites": ["cloudflare/auth", "cloudflare/workers"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

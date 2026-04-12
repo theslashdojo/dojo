@@ -1,0 +1,148 @@
+{
+  "name": "app-router",
+  "version": "1.0.0",
+  "uri": "nextjs/app-router",
+  "type": "skill",
+  "context": "Build Next.js apps with the App Router — file-based routing, layouts, Server Components, streaming, and loading states",
+  "info": "The App Router is Next.js's recommended routing system, built on React Server Components. It uses the `app/` directory with file conventions: page.tsx defines routes, layout.tsx provides shared UI that persists across navigations, loading.tsx creates Suspense boundaries for streaming, error.tsx handles errors with React error boundaries, not-found.tsx renders 404 UI, and template.tsx provides per-navigation re-rendering. Route organization features include route groups `(folder)` for logical grouping without URL impact, dynamic segments `[slug]`, catch-all segments `[...slug]`, optional catch-all `[[...slug]]`, parallel routes `@slot`, and intercepting routes `(.)folder`. Components are Server Components by default — add `'use client'` for interactivity. The App Router supports streaming, partial prerendering, and nested layouts that make complex UIs composable.",
+  "parent": "nextjs",
+  "tags": ["app-router", "routing", "layouts", "server-components", "streaming", "nextjs", "react"],
+  "aliases": [
+    "app router",
+    "app directory",
+    "app dir",
+    "next app router",
+    "nextjs app router",
+    "next.js app router",
+    "file-based routing",
+    "app folder",
+    "next 13 routing",
+    "next 14 routing",
+    "next 15 routing"
+  ],
+  "triggers": [
+    "create a page in next.js",
+    "add a route to my next app",
+    "set up nested layouts",
+    "create a dynamic route",
+    "add a loading state",
+    "handle errors in next.js",
+    "create a 404 page",
+    "organize routes with groups",
+    "create parallel routes",
+    "set up intercepting routes",
+    "add a layout in next.js"
+  ],
+  "body": "# App Router\n\nThe App Router uses the `app/` directory and React Server Components to build Next.js applications. Every file convention maps to a specific UI concern.\n\n## File Conventions\n\n| File | Purpose |\n|------|----------|\n| `page.tsx` | Route UI — makes a path publicly accessible |\n| `layout.tsx` | Shared UI wrapping children — persists across navigations |\n| `loading.tsx` | Streaming fallback — wraps page in Suspense |\n| `error.tsx` | Error boundary — catches runtime errors |\n| `not-found.tsx` | 404 UI — shown when `notFound()` is called |\n| `template.tsx` | Like layout but re-renders on every navigation |\n| `route.tsx` | API endpoint — see [[nextjs/api-routes]] |\n| `default.tsx` | Fallback for parallel routes |\n\n## Basic Page\n\n```tsx\n// app/page.tsx → /\nexport default function HomePage() {\n  return <h1>Welcome</h1>\n}\n\n// app/blog/page.tsx → /blog\nexport default async function BlogPage() {\n  const posts = await getPosts()\n  return (\n    <ul>\n      {posts.map(post => (\n        <li key={post.id}>{post.title}</li>\n      ))}\n    </ul>\n  )\n}\n```\n\n## Root Layout (Required)\n\n```tsx\n// app/layout.tsx\nexport default function RootLayout({\n  children,\n}: {\n  children: React.ReactNode\n}) {\n  return (\n    <html lang=\"en\">\n      <body>\n        <nav>{/* Navigation */}</nav>\n        <main>{children}</main>\n      </body>\n    </html>\n  )\n}\n```\n\n## Nested Layouts\n\n```tsx\n// app/blog/layout.tsx — wraps all /blog/* routes\nexport default function BlogLayout({\n  children,\n}: {\n  children: React.ReactNode\n}) {\n  return (\n    <div className=\"blog-container\">\n      <aside>Sidebar</aside>\n      <section>{children}</section>\n    </div>\n  )\n}\n```\n\n## Dynamic Routes\n\n```tsx\n// app/blog/[slug]/page.tsx → /blog/my-post\nexport default async function Post({\n  params,\n}: {\n  params: Promise<{ slug: string }>\n}) {\n  const { slug } = await params\n  const post = await getPost(slug)\n  return <article><h1>{post.title}</h1><p>{post.content}</p></article>\n}\n\n// app/shop/[...categories]/page.tsx → /shop/clothing/shirts\n// Catch-all: params.categories = ['clothing', 'shirts']\n\n// app/docs/[[...slug]]/page.tsx → /docs OR /docs/api/auth\n// Optional catch-all: matches /docs with no params too\n```\n\n## Route Groups\n\n```\napp/\n  (marketing)/\n    page.tsx          → /\n    about/page.tsx    → /about\n    layout.tsx        → Shared marketing layout\n  (dashboard)/\n    settings/page.tsx → /settings\n    layout.tsx        → Shared dashboard layout\n```\n\nRoute groups `(name)` organize code without affecting the URL. Each group can have its own layout.\n\n## Loading States\n\n```tsx\n// app/blog/loading.tsx\nexport default function Loading() {\n  return <div className=\"skeleton\">Loading posts...</div>\n}\n```\n\nNext.js wraps the page in a `<Suspense>` boundary automatically. For granular control:\n\n```tsx\nimport { Suspense } from 'react'\n\nexport default function Page() {\n  return (\n    <div>\n      <h1>Blog</h1>\n      <Suspense fallback={<Skeleton />}>\n        <PostList />\n      </Suspense>\n      <Suspense fallback={<Skeleton />}>\n        <RecommendedPosts />\n      </Suspense>\n    </div>\n  )\n}\n```\n\n## Error Handling\n\n```tsx\n// app/blog/error.tsx\n'use client'\n\nexport default function Error({\n  error,\n  reset,\n}: {\n  error: Error & { digest?: string }\n  reset: () => void\n}) {\n  return (\n    <div>\n      <h2>Something went wrong!</h2>\n      <button onClick={() => reset()}>Try again</button>\n    </div>\n  )\n}\n```\n\n## Parallel Routes\n\n```tsx\n// app/layout.tsx\nexport default function Layout({\n  children,\n  analytics,\n  team,\n}: {\n  children: React.ReactNode\n  analytics: React.ReactNode\n  team: React.ReactNode\n}) {\n  return (\n    <div>\n      {children}\n      {analytics}\n      {team}\n    </div>\n  )\n}\n```\n\nSlots are defined with `@folder` convention: `app/@analytics/page.tsx`, `app/@team/page.tsx`.\n\n## Intercepting Routes\n\n```\napp/\n  feed/\n    page.tsx\n    @modal/\n      (.)photo/[id]/page.tsx   → Intercepts /photo/[id] from /feed\n  photo/\n    [id]/\n      page.tsx                 → Full page on direct navigation\n```\n\nConventions: `(.)` same level, `(..)` one level up, `(..)(..)` two levels up, `(...)` root.\n\n## Navigation\n\n```tsx\nimport Link from 'next/link'\n\n// Declarative\n<Link href=\"/blog\">Blog</Link>\n<Link href={`/blog/${post.slug}`}>Read more</Link>\n\n// Programmatic (client components only)\n'use client'\nimport { useRouter } from 'next/navigation'\n\nconst router = useRouter()\nrouter.push('/blog')\nrouter.replace('/login')\nrouter.back()\nrouter.refresh() // Re-fetch server components\n```\n\n## Server vs Client Components\n\n```tsx\n// Server Component (default) — can fetch data, access backend\nexport default async function Page() {\n  const data = await db.query('SELECT * FROM posts')\n  return <PostList posts={data} />\n}\n\n// Client Component — for interactivity\n'use client'\nimport { useState } from 'react'\n\nexport default function Counter() {\n  const [count, setCount] = useState(0)\n  return <button onClick={() => setCount(c => c + 1)}>{count}</button>\n}\n```\n\nServer Components can import Client Components, but not vice versa. Pass Server Components as `children` to Client Components for composition.\n\n## Private Folders\n\nPrefix with `_` to exclude from routing: `app/_components/`, `app/_lib/`.\n\n## Metadata\n\n```tsx\n// app/layout.tsx or app/page.tsx\nimport type { Metadata } from 'next'\n\nexport const metadata: Metadata = {\n  title: 'My App',\n  description: 'Built with Next.js',\n}\n\n// Dynamic metadata\nexport async function generateMetadata({ params }): Promise<Metadata> {\n  const { slug } = await params\n  const post = await getPost(slug)\n  return { title: post.title, description: post.excerpt }\n}\n```\n",
+  "sections": [
+    {
+      "id": "file-conventions",
+      "title": "File conventions",
+      "body": "The App Router maps files to UI concerns: `page.tsx` defines the unique UI of a route, `layout.tsx` provides shared UI that wraps children and persists across navigations, `loading.tsx` creates a Suspense fallback, `error.tsx` creates an error boundary, `not-found.tsx` renders 404 UI, `template.tsx` re-renders on every navigation unlike layout, `route.ts` defines API endpoints (see [[nextjs/api-routes]]), and `default.tsx` provides fallback content for parallel routes.",
+      "tags": ["page", "layout", "loading", "error", "not-found", "template", "file-conventions"]
+    },
+    {
+      "id": "dynamic-routes",
+      "title": "Dynamic routes",
+      "body": "Dynamic segments use brackets in folder names: `[slug]` matches one segment, `[...slug]` catches all remaining segments, `[[...slug]]` optionally catches all segments (also matches the route without the parameter). In Next.js 15+, `params` is a Promise that must be awaited: `const { slug } = await params`.",
+      "tags": ["dynamic-routes", "slug", "catch-all", "params"]
+    },
+    {
+      "id": "route-groups",
+      "title": "Route groups",
+      "body": "Wrap folder names in parentheses `(name)` to create route groups. Route groups organize files without adding path segments to the URL. Each group can have its own layout. Multiple root layouts are possible by placing `layout.tsx` files in different route groups (remove the top-level `app/layout.tsx` in this case).",
+      "tags": ["route-groups", "organization", "multiple-layouts"]
+    },
+    {
+      "id": "parallel-routes",
+      "title": "Parallel routes",
+      "body": "Define named slots with `@folder` convention. The parent layout receives each slot as a prop. Parallel routes enable rendering multiple pages in the same layout simultaneously — useful for dashboards, modals, and split views. Each slot can have independent loading and error states. Use `default.tsx` to provide fallback content when a slot doesn't match the current URL.",
+      "tags": ["parallel-routes", "slots", "dashboard", "modal"]
+    },
+    {
+      "id": "server-client-boundary",
+      "title": "Server and client component boundary",
+      "body": "Components in the App Router are Server Components by default. Add `'use client'` directive at the top of a file to make it a Client Component. Server Components can import Client Components, but Client Components cannot import Server Components. The pattern for composing them is to pass Server Components as `children` or other props to Client Components. Use the `server-only` package to prevent server code from being bundled into client code.",
+      "tags": ["server-components", "client-components", "use-client", "boundary", "composition"]
+    },
+    {
+      "id": "navigation",
+      "title": "Navigation",
+      "body": "Use the `<Link>` component from `next/link` for declarative navigation with automatic prefetching. For programmatic navigation in Client Components, use `useRouter()` from `next/navigation` with `push()`, `replace()`, `back()`, and `refresh()`. The `redirect()` function from `next/navigation` works in Server Components and Server Actions. Links are automatically prefetched when they enter the viewport.",
+      "tags": ["link", "navigation", "prefetch", "router", "redirect"]
+    }
+  ],
+  "links": [
+    { "uri": "nextjs/api-routes", "context": "route.ts files define API endpoints within the app directory" },
+    { "uri": "nextjs/server-actions", "context": "Mutate data from server actions in App Router pages" },
+    { "uri": "nextjs/middleware", "context": "Intercept requests before they reach routes" },
+    { "uri": "nextjs/data-fetching", "context": "Fetch data in server components and pages" },
+    { "uri": "nextjs/pages-router", "context": "Legacy routing model — migrate to App Router" },
+    { "uri": "nextjs/config", "context": "Configure App Router behavior in next.config" },
+    { "uri": "nextjs/deployment", "context": "Deploy App Router applications" }
+  ],
+  "related": [
+    { "uri": "nextjs/pages-router", "relation": "alternative", "note": "Pages Router is the legacy routing model; App Router is recommended for new projects" },
+    { "uri": "nextjs/data-fetching", "relation": "see-also", "note": "Server Components in App Router fetch data directly with async/await" },
+    { "uri": "nextjs/server-actions", "relation": "see-also", "note": "Server Actions handle mutations in App Router forms" },
+    { "uri": "nextjs/middleware", "relation": "see-also", "note": "Middleware runs before App Router route resolution" }
+  ],
+  "scripts": [
+    {
+      "id": "create-app-route",
+      "name": "Create App Router Route",
+      "description": "Scaffold a new App Router page with layout, loading, and error files",
+      "lang": "bash",
+      "runtime": "bash",
+      "entry": "./scripts/create-route.sh",
+      "env": {
+        "ROUTE_PATH": { "required": true, "description": "Route path relative to app/ (e.g., 'blog/[slug]')" },
+        "PROJECT_DIR": { "required": false, "default": ".", "description": "Next.js project root directory" }
+      },
+      "packages": []
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "routePath": { "type": "string", "description": "Route path relative to app/ directory (e.g., 'blog/[slug]')" },
+        "withLayout": { "type": "boolean", "default": false, "description": "Generate a layout.tsx file" },
+        "withLoading": { "type": "boolean", "default": false, "description": "Generate a loading.tsx file" },
+        "withError": { "type": "boolean", "default": false, "description": "Generate an error.tsx file" }
+      },
+      "required": ["routePath"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "createdFiles": { "type": "array", "items": { "type": "string" }, "description": "List of created file paths" },
+        "routeUrl": { "type": "string", "description": "URL path this route maps to" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "nextjs", "reason": "App Router is a core part of the Next.js framework" },
+    { "uri": "typescript", "reason": "App Router projects are typically TypeScript", "optional": true }
+  ],
+  "more": {
+    "docs": "https://nextjs.org/docs/app/building-your-application/routing",
+    "examples": "https://github.com/vercel/next.js/tree/canary/examples",
+    "spec": "https://nextjs.org/docs/app/api-reference/file-conventions"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "8 min",
+    "prerequisites": ["nextjs"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

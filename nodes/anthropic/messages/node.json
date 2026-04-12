@@ -3,84 +3,85 @@
   "version": "1.0.0",
   "uri": "anthropic/messages",
   "type": "skill",
-  "context": "Send prompts to Claude via the Messages API — multi-turn conversation, vision, tool use, and structured output",
-  "info": "The Messages API (`POST /v1/messages`) is the primary interface for interacting with Claude. You send an array of messages with alternating user/assistant roles and receive a response with content blocks (text, tool_use, thinking). The API supports system prompts, temperature/top_p/top_k sampling, stop sequences, tool definitions, structured output via JSON Schema, vision (images and PDFs), and extended thinking with configurable budget tokens. All requests require `model`, `max_tokens`, and `messages` parameters. Responses include `id`, `content`, `stop_reason`, and `usage` with token counts. Sub-skills [[anthropic/messages/create]] and [[anthropic/messages/stream]] cover synchronous and streaming variants.",
+  "context": "Send conversational messages to Claude and receive structured responses via the Messages API",
+  "info": "The Messages API is the core endpoint for interacting with Claude. You send an array of conversational turns (user and assistant messages) and receive the next assistant response. Each message can contain text, images, documents, tool use blocks, and tool results. The API supports system prompts, temperature control, stop sequences, structured output via JSON schema, and extended thinking. The response includes content blocks (text, tool_use, thinking), a stop_reason indicating why generation ended, and token usage metrics. This is the foundation that all other Anthropic capabilities build on — [[anthropic/tool-use]], [[anthropic/prompt-caching]], [[anthropic/messages/stream]], and [[anthropic/batch]] are all extensions of the Messages API.",
   "parent": "anthropic",
-  "tags": ["messages", "completions", "chat", "conversation", "vision", "multimodal"],
+  "tags": ["messages", "api", "completions", "chat", "conversation"],
   "aliases": [
     "messages api",
     "claude messages",
     "create message",
+    "chat completion",
+    "anthropic messages",
     "send message to claude",
     "claude chat api",
-    "anthropic messages",
-    "claude completions",
-    "chat completions"
+    "messages endpoint"
   ],
   "triggers": [
     "send a message to claude",
-    "call the messages api",
-    "create a claude message",
-    "have a conversation with claude",
-    "get a completion from claude",
-    "send a prompt to the anthropic api",
-    "use claude for text generation"
+    "create a message with the anthropic api",
+    "call claude api",
+    "get a response from claude",
+    "use the messages endpoint",
+    "chat with claude programmatically",
+    "make an api call to claude"
   ],
-  "body": "# Messages API\n\nThe Messages API is Claude's primary interface. Every interaction — from a simple question to a complex multi-turn agentic workflow — goes through `POST /v1/messages`.\n\n## Endpoint\n\n```\nPOST https://api.anthropic.com/v1/messages\n```\n\n## Required Headers\n\n```\nx-api-key: YOUR_API_KEY\nanthropic-version: 2023-06-01\ncontent-type: application/json\n```\n\n## Required Parameters\n\n| Parameter | Type | Description |\n|-----------|------|-------------|\n| `model` | string | Model ID (e.g., `claude-opus-4-6`, `claude-sonnet-4-6`, `claude-haiku-4-5`) |\n| `max_tokens` | integer | Maximum tokens to generate |\n| `messages` | array | Alternating user/assistant message objects |\n\n## Optional Parameters\n\n| Parameter | Type | Default | Description |\n|-----------|------|---------|-------------|\n| `system` | string/array | — | System prompt (text or content block array) |\n| `temperature` | float | 1.0 | Randomness (0.0 = deterministic, 1.0 = creative) |\n| `top_p` | float | — | Nucleus sampling (use OR temperature) |\n| `top_k` | integer | — | Sample from top K options |\n| `stop_sequences` | array | — | Custom stop strings |\n| `stream` | boolean | false | Enable SSE streaming |\n| `tools` | array | — | Tool definitions for [[anthropic/tool-use]] |\n| `tool_choice` | object | — | Control tool usage: auto, any, tool, none |\n| `metadata` | object | — | Request metadata (user_id for abuse detection) |\n| `thinking` | object | — | Extended thinking config with budget_tokens |\n\n## Message Structure\n\n```json\n{\n  \"role\": \"user\",\n  \"content\": [\n    { \"type\": \"text\", \"text\": \"Describe this image\" },\n    { \"type\": \"image\", \"source\": { \"type\": \"base64\", \"media_type\": \"image/png\", \"data\": \"...\" } }\n  ]\n}\n```\n\nContent can be a plain string or an array of typed blocks: `text`, `image`, `document`, `tool_use`, `tool_result`.\n\n## Response Structure\n\n```json\n{\n  \"id\": \"msg_01XFDUDYJgAACzvnptvVoYEL\",\n  \"type\": \"message\",\n  \"role\": \"assistant\",\n  \"content\": [\n    { \"type\": \"text\", \"text\": \"Hello! How can I help you?\" }\n  ],\n  \"model\": \"claude-sonnet-4-6\",\n  \"stop_reason\": \"end_turn\",\n  \"usage\": {\n    \"input_tokens\": 12,\n    \"output_tokens\": 8\n  }\n}\n```\n\n## Stop Reasons\n\n| Value | Meaning |\n|-------|----------|\n| `end_turn` | Claude finished naturally |\n| `stop_sequence` | Hit a custom stop sequence |\n| `max_tokens` | Reached max_tokens limit |\n| `tool_use` | Claude wants to call a tool |\n\n## Python Example\n\n```python\nimport anthropic\n\nclient = anthropic.Anthropic()\nmessage = client.messages.create(\n    model=\"claude-sonnet-4-6\",\n    max_tokens=1024,\n    system=\"You are a helpful coding assistant.\",\n    messages=[\n        {\"role\": \"user\", \"content\": \"Write a Python function to check if a number is prime\"}\n    ]\n)\nprint(message.content[0].text)\n```\n\n## TypeScript Example\n\n```typescript\nimport Anthropic from \"@anthropic-ai/sdk\";\n\nconst client = new Anthropic();\nconst message = await client.messages.create({\n  model: \"claude-sonnet-4-6\",\n  max_tokens: 1024,\n  system: \"You are a helpful coding assistant.\",\n  messages: [\n    { role: \"user\", content: \"Write a TypeScript function to check if a number is prime\" }\n  ]\n});\nconsole.log(message.content[0].text);\n```\n\n## Multi-Turn Conversation\n\n```python\nmessages = [\n    {\"role\": \"user\", \"content\": \"What is the capital of France?\"},\n    {\"role\": \"assistant\", \"content\": \"The capital of France is Paris.\"},\n    {\"role\": \"user\", \"content\": \"What is its population?\"}\n]\n\nresponse = client.messages.create(\n    model=\"claude-sonnet-4-6\",\n    max_tokens=1024,\n    messages=messages\n)\n```\n\nThe API is stateless — you send the full conversation history each time. Use [[anthropic/prompt-caching]] to avoid re-processing repeated prefixes.\n\n## Vision (Images & Documents)\n\n```python\nimport base64\n\nwith open(\"image.png\", \"rb\") as f:\n    image_data = base64.standard_b64encode(f.read()).decode(\"utf-8\")\n\nmessage = client.messages.create(\n    model=\"claude-sonnet-4-6\",\n    max_tokens=1024,\n    messages=[{\n        \"role\": \"user\",\n        \"content\": [\n            {\"type\": \"image\", \"source\": {\"type\": \"base64\", \"media_type\": \"image/png\", \"data\": image_data}},\n            {\"type\": \"text\", \"text\": \"What is in this image?\"}\n        ]\n    }]\n)\n```\n\nSupported image formats: JPEG, PNG, GIF, WebP. PDF documents via `type: \"document\"`.\n\n## Environment Variables\n\n| Variable | Purpose |\n|----------|----------|\n| `ANTHROPIC_API_KEY` | API key (SDKs read this automatically) |\n",
+  "body": "# Messages API\n\nThe Messages API (`POST /v1/messages`) is the single endpoint for all Claude interactions. You provide a model, a max token budget, and an array of message turns. Claude returns the next assistant message.\n\n## Request Structure\n\n```json\n{\n  \"model\": \"claude-sonnet-4-6\",\n  \"max_tokens\": 1024,\n  \"system\": \"You are a helpful coding assistant.\",\n  \"messages\": [\n    {\"role\": \"user\", \"content\": \"Explain async/await in Python\"}\n  ]\n}\n```\n\n## Required Parameters\n\n| Parameter | Type | Description |\n|-----------|------|-------------|\n| `model` | string | Model ID: `claude-opus-4-6`, `claude-sonnet-4-6`, `claude-haiku-4-5` |\n| `max_tokens` | integer | Maximum tokens to generate (model-specific caps) |\n| `messages` | array | Array of `{role, content}` message turns |\n\n## Optional Parameters\n\n| Parameter | Type | Default | Description |\n|-----------|------|---------|-------------|\n| `system` | string/array | — | System prompt with instructions and context |\n| `temperature` | float | 1.0 | Randomness 0.0-1.0. Lower for analytical, higher for creative |\n| `top_p` | float | — | Nucleus sampling threshold |\n| `top_k` | integer | — | Sample from top K tokens |\n| `stop_sequences` | array | — | Custom strings that halt generation |\n| `stream` | boolean | false | Enable SSE streaming. See [[anthropic/messages/stream]] |\n| `tools` | array | — | Tool definitions. See [[anthropic/tool-use]] |\n| `tool_choice` | object | — | How to use tools: `auto`, `any`, `tool`, `none` |\n| `metadata` | object | — | `user_id` for abuse detection |\n| `thinking` | object | — | Extended thinking config (`type`, `budget_tokens`) |\n| `output_config` | object | — | Structured output via JSON schema |\n\n## Response Format\n\n```json\n{\n  \"id\": \"msg_01XFDUDYJgAACzvnptvVoYEL\",\n  \"type\": \"message\",\n  \"role\": \"assistant\",\n  \"model\": \"claude-sonnet-4-6\",\n  \"content\": [\n    {\"type\": \"text\", \"text\": \"Here's how async/await works...\"}\n  ],\n  \"stop_reason\": \"end_turn\",\n  \"stop_sequence\": null,\n  \"usage\": {\n    \"input_tokens\": 25,\n    \"output_tokens\": 150,\n    \"cache_creation_input_tokens\": 0,\n    \"cache_read_input_tokens\": 0\n  }\n}\n```\n\n## Content Block Types\n\n**Input content blocks** (in messages):\n- `text` — `{\"type\": \"text\", \"text\": \"...\"}`\n- `image` — `{\"type\": \"image\", \"source\": {\"type\": \"base64\", \"media_type\": \"image/png\", \"data\": \"...\"}}`\n- `document` — `{\"type\": \"document\", \"source\": {\"type\": \"base64\", \"media_type\": \"application/pdf\", \"data\": \"...\"}}`\n- `tool_result` — `{\"type\": \"tool_result\", \"tool_use_id\": \"...\", \"content\": \"...\"}`\n\n**Output content blocks** (in response):\n- `text` — Generated text\n- `tool_use` — `{\"type\": \"tool_use\", \"id\": \"toolu_...\", \"name\": \"...\", \"input\": {...}}`\n- `thinking` — Extended reasoning (when enabled)\n\n## Stop Reasons\n\n| Reason | Meaning |\n|--------|----------|\n| `end_turn` | Claude finished its response naturally |\n| `max_tokens` | Hit the max_tokens limit |\n| `stop_sequence` | Matched a custom stop sequence |\n| `tool_use` | Claude wants to call a tool |\n\n## Multi-Turn Conversations\n\n```python\nimport anthropic\n\nclient = anthropic.Anthropic()\n\nmessages = []\nmessages.append({\"role\": \"user\", \"content\": \"What is the capital of France?\"})\n\nresponse = client.messages.create(\n    model=\"claude-sonnet-4-6\",\n    max_tokens=1024,\n    messages=messages\n)\n\n# Add assistant response to conversation\nmessages.append({\"role\": \"assistant\", \"content\": response.content[0].text})\nmessages.append({\"role\": \"user\", \"content\": \"What about Germany?\"})\n\n# Continue the conversation\nresponse2 = client.messages.create(\n    model=\"claude-sonnet-4-6\",\n    max_tokens=1024,\n    messages=messages\n)\nprint(response2.content[0].text)\n```\n\n## System Prompts\n\n```python\nresponse = client.messages.create(\n    model=\"claude-sonnet-4-6\",\n    max_tokens=1024,\n    system=\"You are a senior Python developer. Respond with concise code examples.\",\n    messages=[{\"role\": \"user\", \"content\": \"Write a retry decorator\"}]\n)\n```\n\n## Extended Thinking\n\n```python\nresponse = client.messages.create(\n    model=\"claude-opus-4-6\",\n    max_tokens=16000,\n    thinking={\"type\": \"enabled\", \"budget_tokens\": 10000},\n    messages=[{\"role\": \"user\", \"content\": \"Solve this step by step: ...\"}]\n)\n```\n\n## Structured Output\n\n```python\nresponse = client.messages.create(\n    model=\"claude-sonnet-4-6\",\n    max_tokens=1024,\n    output_config={\n        \"type\": \"json_schema\",\n        \"schema\": {\n            \"type\": \"object\",\n            \"properties\": {\n                \"name\": {\"type\": \"string\"},\n                \"age\": {\"type\": \"integer\"}\n            },\n            \"required\": [\"name\", \"age\"]\n        }\n    },\n    messages=[{\"role\": \"user\", \"content\": \"Extract: John is 30 years old\"}]\n)\n```\n\n## Environment Variables\n\n| Variable | Purpose |\n|----------|----------|\n| `ANTHROPIC_API_KEY` | API key (required) |\n| `ANTHROPIC_BASE_URL` | Override base URL (optional) |\n",
   "sections": [
     {
-      "id": "request-format",
-      "title": "Request format",
-      "body": "Send `POST /v1/messages` with JSON body containing `model`, `max_tokens`, and `messages`. Messages alternate between `user` and `assistant` roles. Content is either a plain string or an array of typed content blocks (`text`, `image`, `document`, `tool_use`, `tool_result`). The API supports up to 100,000 messages per request. See [[anthropic/auth]] for required headers.",
-      "tags": ["request", "format", "parameters", "content-blocks"]
+      "id": "request-params",
+      "title": "Request parameters",
+      "body": "Required: `model` (string), `max_tokens` (integer), `messages` (array of {role, content}). Optional: `system`, `temperature` (0-1), `top_p`, `top_k`, `stop_sequences`, `stream`, `tools`, `tool_choice`, `metadata`, `thinking`, `output_config`. Messages alternate between user and assistant roles. Content can be a string or array of content blocks.",
+      "tags": ["parameters", "request", "model", "max-tokens", "temperature"]
     },
     {
       "id": "response-format",
       "title": "Response format",
-      "body": "Responses include `id` (unique message ID prefixed `msg_`), `role` (always `assistant`), `content` (array of content blocks), `model`, `stop_reason` (end_turn, stop_sequence, max_tokens, tool_use), and `usage` with `input_tokens` and `output_tokens`. When [[anthropic/prompt-caching]] is active, usage also includes `cache_creation_input_tokens` and `cache_read_input_tokens`.",
+      "body": "Response includes `id` (message ID), `type` (always 'message'), `role` (always 'assistant'), `model`, `content` (array of text/tool_use/thinking blocks), `stop_reason` (end_turn, max_tokens, stop_sequence, tool_use), and `usage` (input_tokens, output_tokens, cache_creation_input_tokens, cache_read_input_tokens).",
       "tags": ["response", "content-blocks", "stop-reason", "usage", "tokens"]
     },
     {
-      "id": "vision",
-      "title": "Vision and document processing",
-      "body": "Send images as base64-encoded content blocks with `type: \"image\"` or as URLs. Supported formats: JPEG, PNG, GIF, WebP. Send PDFs with `type: \"document\"` and `source.media_type: \"application/pdf\"`. All current Claude models support vision. Images are resized automatically to fit within token limits.",
-      "tags": ["vision", "images", "pdf", "multimodal", "base64"]
+      "id": "content-types",
+      "title": "Content block types",
+      "body": "Input blocks: text, image (base64 or URL), document (PDF), tool_result. Output blocks: text, tool_use (with id, name, input), thinking (extended reasoning). Each block has a `type` field. Tool use blocks include a unique `id` that must be referenced in the corresponding tool_result.",
+      "tags": ["content-blocks", "text", "image", "tool-use", "thinking"]
     },
     {
-      "id": "extended-thinking",
-      "title": "Extended thinking",
-      "body": "Enable extended thinking by setting `thinking: { type: \"enabled\", budget_tokens: 10000 }`. Claude will include `thinking` content blocks in the response showing its reasoning process. Budget tokens set the maximum thinking length. Extended thinking improves performance on complex reasoning, math, and coding tasks. Supported on Opus 4.6, Sonnet 4.6, and Haiku 4.5.",
-      "tags": ["thinking", "reasoning", "chain-of-thought", "budget-tokens"]
+      "id": "multi-turn",
+      "title": "Multi-turn conversations",
+      "body": "Build conversations by appending each response to the messages array. Messages must alternate between user and assistant roles. Consecutive same-role messages are merged. The full conversation history is sent with each request — there is no server-side session state. Use [[anthropic/prompt-caching]] to avoid reprocessing long conversation histories.",
+      "tags": ["conversation", "multi-turn", "chat", "history", "stateless"]
     }
   ],
   "sub": ["anthropic/messages/create", "anthropic/messages/stream"],
   "links": [
-    { "uri": "anthropic/messages/create", "context": "Synchronous message creation" },
-    { "uri": "anthropic/messages/stream", "context": "Stream responses via server-sent events" },
-    { "uri": "anthropic/tool-use", "context": "Define tools Claude can call" },
-    { "uri": "anthropic/prompt-caching", "context": "Cache prompt prefixes for cost savings" },
-    { "uri": "anthropic/models", "context": "Choose the right model for your task" },
-    { "uri": "anthropic/auth", "context": "API key and header setup" },
+    { "uri": "anthropic/messages/create", "context": "Create a single message completion" },
+    { "uri": "anthropic/messages/stream", "context": "Stream responses via SSE" },
+    { "uri": "anthropic/tool-use", "context": "Define tools for Claude to call" },
+    { "uri": "anthropic/prompt-caching", "context": "Cache repeated prompt content" },
+    { "uri": "anthropic/batch", "context": "Process many messages asynchronously" },
+    { "uri": "anthropic/models", "context": "Available models and their capabilities" },
+    { "uri": "anthropic/auth", "context": "API key authentication" },
     { "uri": "anthropic/rate-limits", "context": "Request and token rate limits" },
-    { "uri": "anthropic/pricing", "context": "Per-token pricing by model" },
-    { "uri": "anthropic/batch", "context": "Process messages in bulk at 50% discount" }
+    { "uri": "anthropic/pricing", "context": "Per-token pricing by model" }
   ],
   "related": [
-    { "uri": "anthropic/auth", "relation": "prerequisite", "note": "API key required for all Messages API calls" },
-    { "uri": "anthropic/models", "relation": "prerequisite", "note": "Must specify a valid model ID in every request" },
-    { "uri": "anthropic/tool-use", "relation": "extends", "note": "Tool use adds function-calling capabilities to messages" },
-    { "uri": "anthropic/prompt-caching", "relation": "see-also", "note": "Caching reduces cost and latency for repeated prompts" }
+    { "uri": "anthropic/auth", "relation": "prerequisite", "note": "A valid API key is required for all message requests" },
+    { "uri": "anthropic/tool-use", "relation": "extends", "note": "Tool use extends messages with function calling capabilities" },
+    { "uri": "anthropic/messages/stream", "relation": "see-also", "note": "Streaming is the same endpoint with stream: true" }
   ],
   "scripts": [
     {
-      "id": "create-message",
-      "name": "Create Message",
-      "description": "Send a message to Claude via the Messages API and print the response",
+      "id": "send-message",
+      "name": "Send Message",
+      "description": "Send a message to Claude and print the response",
       "lang": "python",
-      "runtime": "python>=3.10",
-      "entry": "./scripts/create-message.py",
+      "runtime": "python>=3.9",
+      "entry": "./scripts/send-message.py",
+      "inline": "import anthropic\nimport json\nimport os\nimport sys\n\nclient = anthropic.Anthropic()\n\nuser_message = sys.argv[1] if len(sys.argv) > 1 else \"Hello, Claude\"\nmodel = os.environ.get(\"ANTHROPIC_MODEL\", \"claude-sonnet-4-6\")\n\nresponse = client.messages.create(\n    model=model,\n    max_tokens=1024,\n    messages=[{\"role\": \"user\", \"content\": user_message}]\n)\n\nprint(response.content[0].text)\nprint(f\"\\n---\\nTokens: {response.usage.input_tokens} in / {response.usage.output_tokens} out\")\n",
       "env": {
-        "ANTHROPIC_API_KEY": { "required": true, "secret": true, "description": "Anthropic API key" }
+        "ANTHROPIC_API_KEY": { "required": true, "secret": true, "description": "Anthropic API key" },
+        "ANTHROPIC_MODEL": { "required": false, "default": "claude-sonnet-4-6", "description": "Model to use" }
       },
       "packages": ["anthropic"]
     }
@@ -89,7 +90,7 @@
     "input": {
       "type": "object",
       "properties": {
-        "model": { "type": "string", "description": "Model ID (e.g., claude-sonnet-4-6)" },
+        "model": { "type": "string", "description": "Model ID (e.g. claude-sonnet-4-6)" },
         "max_tokens": { "type": "integer", "description": "Maximum tokens to generate" },
         "messages": {
           "type": "array",
@@ -101,20 +102,19 @@
             },
             "required": ["role", "content"]
           },
-          "description": "Conversation messages"
+          "description": "Conversation turns"
         },
         "system": { "type": ["string", "array"], "description": "System prompt" },
-        "temperature": { "type": "number", "minimum": 0, "maximum": 1, "description": "Sampling temperature" },
-        "stream": { "type": "boolean", "description": "Enable streaming" }
+        "temperature": { "type": "number", "minimum": 0, "maximum": 1, "description": "Sampling temperature" }
       },
       "required": ["model", "max_tokens", "messages"]
     },
     "output": {
       "type": "object",
       "properties": {
-        "id": { "type": "string", "description": "Message ID (msg_...)" },
-        "content": { "type": "array", "description": "Response content blocks" },
-        "stop_reason": { "type": "string", "enum": ["end_turn", "stop_sequence", "max_tokens", "tool_use"] },
+        "id": { "type": "string", "description": "Message ID" },
+        "content": { "type": "array", "description": "Array of content blocks" },
+        "stop_reason": { "type": "string", "enum": ["end_turn", "max_tokens", "stop_sequence", "tool_use"] },
         "usage": {
           "type": "object",
           "properties": {
@@ -126,8 +126,7 @@
     }
   },
   "depends": [
-    { "uri": "anthropic/auth", "reason": "API key required for authentication" },
-    { "uri": "anthropic/models", "reason": "Valid model ID required in every request" }
+    { "uri": "anthropic/auth", "reason": "API key required for all message requests" }
   ],
   "more": {
     "docs": "https://docs.anthropic.com/en/api/messages",
@@ -135,18 +134,18 @@
     "sdk-typescript": "https://github.com/anthropics/anthropic-sdk-typescript"
   },
   "frontmatter": {
-    "created": "2026-04-10",
-    "updated": "2026-04-10",
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
     "author": "dojo-community",
     "audience": "developers, AI agents",
-    "estimated_reading_time": "5 min",
-    "prerequisites": ["anthropic/auth", "anthropic/models"],
+    "estimated_reading_time": "6 min",
+    "prerequisites": ["anthropic/auth"],
     "status": "living",
     "confidence": "high"
   },
   "author": "dojo-community",
   "license": "MIT",
-  "created": "2026-04-10T00:00:00Z",
-  "updated": "2026-04-10T00:00:00Z",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
   "status": "published"
 }

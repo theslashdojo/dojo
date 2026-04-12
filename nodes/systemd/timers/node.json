@@ -1,0 +1,148 @@
+{
+  "name": "timers",
+  "version": "1.0.0",
+  "uri": "systemd/timers",
+  "type": "skill",
+  "context": "Create and enable systemd timer units for calendar-based or monotonic scheduled work",
+  "info": "This skill covers `.timer` unit authoring and activation. It explains how timers pair with services, the difference between wall-clock schedules such as `OnCalendar=` and monotonic schedules such as `OnBootSec=` or `OnUnitActiveSec=`, and the operational switches agents actually need: `Persistent=` for catching up missed runs, `RandomizedDelaySec=` for spreading load, `AccuracySec=` for coalescing wakeups, and `WakeSystem=` for suspend-aware scheduling. Agents use this skill to replace cron with a first-class systemd workflow that shares activation state, logs, and dependency handling with the rest of the manager.",
+  "parent": "systemd",
+  "tags": ["timers", "scheduling", "cron-replacement", "oncalendar", "onbootsec", "persistent", "randomizeddelaysec", "accuracysec", "list-timers"],
+  "aliases": [
+    "systemd timer",
+    "create timer unit",
+    "systemd scheduler",
+    "cron replacement",
+    "scheduled service",
+    "oncalendar",
+    "list timers",
+    "recurring systemd job"
+  ],
+  "triggers": [
+    "schedule a task with systemd",
+    "create a timer unit",
+    "run a service every day",
+    "replace cron with systemd timer",
+    "run something after boot",
+    "enable a recurring linux job"
+  ],
+  "body": "# Timer Units\n\nA `.timer` unit schedules activation of another unit, usually a `.service` with the same base name. Timers are better than ad hoc cron jobs when you want scheduling, activation state, dependency management, and logs to stay in the same toolchain.\n\n```ini\n[Unit]\nDescription=Nightly backup timer\n\n[Timer]\nUnit=backup.service\nOnCalendar=*-*-* 03:00:00\nPersistent=true\nRandomizedDelaySec=15m\n\n[Install]\nWantedBy=timers.target\n```\n\nValidate calendar expressions before installation:\n\n```bash\nsystemd-analyze calendar '*-*-* 03:00:00'\nsystemctl daemon-reload\nsystemctl enable --now backup.timer\nsystemctl list-timers --all\n```\n\nRemember that the timer activates the service. If the service is already active when the timer elapses, systemd does not spawn a second instance. For repeated scheduled work, design the paired service so it can run, finish, and become inactive again. See [[systemd/troubleshooting#timer-not-firing]] when the schedule appears correct but the service never runs.",
+  "sections": [
+    {
+      "id": "pairing",
+      "title": "Pairing timers with services",
+      "body": "A timer normally activates a service with the same base name, such as `backup.timer` -> `backup.service`. You can override that with `Unit=`. Timers do not execute shell commands directly; the activated unit defines the work. This is why [[systemd/services]] is the natural prerequisite for timer authoring.",
+      "tags": ["pairing", "unit", "service", "activation"]
+    },
+    {
+      "id": "triggers",
+      "title": "Calendar and monotonic triggers",
+      "body": "Use `OnCalendar=` for wall-clock schedules and use monotonic settings such as `OnBootSec=`, `OnStartupSec=`, `OnUnitActiveSec=`, or `OnUnitInactiveSec=` for delays relative to boot or previous activity. Mix them only when the semantics are truly intentional. Use [[systemd/analyze#calendar]] to normalize and preview calendar expressions.",
+      "tags": ["oncalendar", "onbootsec", "onstartupsec", "onunitactivesec", "monotonic", "calendar"]
+    },
+    {
+      "id": "persistence-and-jitter",
+      "title": "Persistence and jitter",
+      "body": "`Persistent=true` records the last elapsed wall-clock run and catches up when the machine was powered off during the scheduled time. `RandomizedDelaySec=` spreads otherwise synchronized runs across an interval. `AccuracySec=` controls how tightly systemd should try to fire relative to the requested time and defaults toward power-saving coalescing.",
+      "tags": ["persistent", "randomizeddelaysec", "accuracysec", "catch-up", "jitter"]
+    },
+    {
+      "id": "inspection",
+      "title": "Inspection and state",
+      "body": "Use `systemctl list-timers --all` to see next and last elapse times, and `systemctl show TIMER -p NextElapseUSecRealtime --value` for parsable state. When a timer seems healthy but the job did not complete, inspect the paired service with [[systemd/systemctl]] and its logs with [[systemd/journalctl]].",
+      "tags": ["list-timers", "next-elapse", "inspection", "show", "paired-service"]
+    }
+  ],
+  "links": [
+    { "uri": "systemd/services", "context": "Create the paired service unit that the timer activates" },
+    { "uri": "systemd/analyze#calendar", "context": "Validate and normalize calendar expressions before installing the timer" },
+    { "uri": "systemd/systemctl#enablement", "context": "Enable and start the timer after installation" },
+    { "uri": "systemd/journalctl", "context": "Inspect the activated service logs after the timer fires" },
+    { "uri": "systemd/troubleshooting#timer-not-firing", "context": "Debug timers that never elapse or never trigger useful work" }
+  ],
+  "related": [
+    { "uri": "systemd/services", "relation": "prerequisite", "note": "Timers almost always activate services rather than raw commands" },
+    { "uri": "systemd/analyze", "relation": "see-also", "note": "Use systemd-analyze calendar to validate OnCalendar expressions" },
+    { "uri": "systemd/systemctl", "relation": "implements", "note": "systemctl is used to enable, start, and inspect timers" }
+  ],
+  "scripts": [
+    {
+      "id": "install-timer",
+      "name": "Install Timer",
+      "description": "Render a `.timer` unit, verify it, install it into the correct scope, reload the manager, and optionally enable or start it",
+      "lang": "bash",
+      "runtime": "bash>=4.0",
+      "entry": "./scripts/install-timer.sh",
+      "env": {
+        "SYSTEMD_SCOPE": { "required": false, "default": "system", "description": "Manager scope: system or user" },
+        "SYSTEMD_USE_SUDO": { "required": false, "default": "false", "description": "Use sudo for system-level writes and manager calls" },
+        "SYSTEMD_TIMER_NAME": { "required": true, "description": "Timer unit name, with or without the .timer suffix" },
+        "SYSTEMD_TIMER_UNIT": { "required": false, "description": "Unit that should be activated when the timer elapses" },
+        "SYSTEMD_TIMER_ON_CALENDAR": { "required": false, "description": "Wall-clock schedule expression" },
+        "SYSTEMD_TIMER_ON_ACTIVE_SEC": { "required": false, "description": "Delay relative to timer activation" },
+        "SYSTEMD_TIMER_ON_BOOT_SEC": { "required": false, "description": "Delay relative to boot" },
+        "SYSTEMD_TIMER_ON_STARTUP_SEC": { "required": false, "description": "Delay relative to manager startup" },
+        "SYSTEMD_TIMER_ON_UNIT_ACTIVE_SEC": { "required": false, "description": "Delay relative to last activation of the target unit" },
+        "SYSTEMD_TIMER_ON_UNIT_INACTIVE_SEC": { "required": false, "description": "Delay relative to last deactivation of the target unit" },
+        "SYSTEMD_TIMER_PERSISTENT": { "required": false, "description": "Persistent= value" },
+        "SYSTEMD_TIMER_RANDOMIZED_DELAY_SEC": { "required": false, "description": "RandomizedDelaySec= value" },
+        "SYSTEMD_TIMER_ENABLE": { "required": false, "default": "false", "description": "Enable the timer after install" },
+        "SYSTEMD_TIMER_START": { "required": false, "default": "false", "description": "Start the timer after install" }
+      }
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "description": "Timer name, with or without .timer suffix" },
+        "scope": { "type": "string", "enum": ["system", "user"], "default": "system", "description": "Manager scope" },
+        "unit": { "type": "string", "description": "Unit to activate when the timer elapses" },
+        "on_calendar": { "type": "string", "description": "OnCalendar= expression" },
+        "on_boot_sec": { "type": "string", "description": "OnBootSec= value" },
+        "on_unit_active_sec": { "type": "string", "description": "OnUnitActiveSec= value" },
+        "persistent": { "type": "boolean", "description": "Persistent= value" },
+        "randomized_delay_sec": { "type": "string", "description": "RandomizedDelaySec= value" },
+        "enable": { "type": "boolean", "default": false, "description": "Enable after installation" },
+        "start": { "type": "boolean", "default": false, "description": "Start after installation" }
+      },
+      "required": ["name"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "unit": { "type": "string" },
+        "scope": { "type": "string" },
+        "path": { "type": "string" },
+        "activates": { "type": "string" },
+        "enabledState": { "type": "string" },
+        "activeState": { "type": "string" },
+        "nextElapse": { "type": "string" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "systemd/services", "reason": "Timers usually activate a service unit" },
+    { "uri": "systemd/systemctl", "reason": "Reloading, enabling, starting, and inspecting the timer happens through systemctl" },
+    { "uri": "systemd/analyze", "reason": "Calendar expressions and timer files should be validated before activation", "optional": true }
+  ],
+  "more": {
+    "docs": "https://www.freedesktop.org/software/systemd/man/latest/systemd.timer.html",
+    "time-docs": "https://www.freedesktop.org/software/systemd/man/latest/systemd.time.html"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "AI agents, linux operators",
+    "estimated_reading_time": "5 min",
+    "prerequisites": ["systemd/services", "systemd/systemctl"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://github.com/systemd/systemd",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

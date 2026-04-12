@@ -1,0 +1,112 @@
+{
+  "name": "enrich",
+  "version": "1.0.0",
+  "uri": "dojo/authoring/enrich",
+  "type": "sub",
+  "context": "Deepen a thin Dojo node with aliases, triggers, body content, sections, links, and related edges",
+  "info": "The enrich sub-skill takes an existing node with minimal content and adds the knowledge fields that make it teach well. It analyzes what a node is missing — empty aliases, no triggers, thin body, no sections, missing links — and fills those gaps using the node's existing context, info, and position in the tree. Enrichment is the difference between a skeleton node and one that another agent can learn from without reading upstream docs. The enrichment workflow: read the node, identify gaps, research the topic if needed, write knowledge content, validate with [[dojo/validate/knowledge]], and commit.",
+  "parent": "dojo/authoring",
+  "tags": ["enrich", "knowledge", "content", "depth", "body", "sections", "links"],
+  "aliases": [
+    "enrich node",
+    "deepen node",
+    "add knowledge to node",
+    "fill in node content",
+    "node enrichment",
+    "improve node quality"
+  ],
+  "triggers": [
+    "enrich a thin node",
+    "add body content to a node",
+    "deepen a skeleton node",
+    "improve node quality",
+    "add sections and links to a node",
+    "fill in missing knowledge fields"
+  ],
+  "body": "# Enrich a Node\n\nEnrichment transforms a skeleton node into one that teaches. A thin node has a context line and tags but empty body, no sections, and no links. An enriched node has code examples, wiki-links, addressable sections, and graph connections.\n\n## What Gets Enriched\n\n| Field | Before | After |\n|-------|--------|-------|\n| `aliases` | `[]` | `[\"k8s\", \"kube\", \"kubernetes cluster\"]` |\n| `triggers` | `[]` | `[\"deploy to kubernetes\", \"create a k8s pod\"]` |\n| `body` | `\"\"` | Full markdown with examples, tables, wiki-links |\n| `sections` | `[]` | Addressable chunks with ids, tags |\n| `links` | `[]` | Directed next steps to related nodes |\n| `related` | `[]` | Semantic graph edges (prerequisite, see-also) |\n\n## Enrichment Workflow\n\n1. **Read the node** — Load `node.json`, understand its type, position, and existing content\n2. **Identify gaps** — Check which knowledge fields are empty or thin\n3. **Research** — If the topic is external (e.g., kubernetes), fetch official docs\n4. **Write aliases** — Real phrases agents say, including abbreviations and misspellings\n5. **Write triggers** — Complete task phrases with verb-object patterns\n6. **Write body** — Mental model first, then workflows, then constraints, then next-step links\n7. **Write sections** — Addressable chunks for the most likely questions\n8. **Add links** — Directed next steps with context annotations\n9. **Add related** — Semantic edges (prerequisite, see-also, implements, extends)\n10. **Validate** — Run [[dojo/validate/knowledge]] to check depth and quality\n\n## Quality Signals\n\nA well-enriched node has:\n- `aliases` with at least 3 entries including abbreviations\n- `triggers` with at least 3 verb-object task phrases\n- `body` with 200+ words, code examples, and `[[wiki-links]]`\n- `sections` with at least 2 tagged chunks\n- `links` pointing to at least 2 other nodes\n- `related` with at least 1 semantic edge\n\n## Usage\n\n```bash\n# Analyze a node for gaps\n./scripts/enrich-node.js analyze nodes/kubernetes/pods/node.json\n\n# Auto-enrich missing fields\n./scripts/enrich-node.js enrich nodes/kubernetes/pods/node.json\n```\n",
+  "sections": [
+    {
+      "id": "gap-analysis",
+      "title": "Gap analysis",
+      "body": "The enrich script reads a node.json and reports which knowledge fields are missing or thin. A field is 'thin' if: aliases has fewer than 3 entries, triggers is empty, body is under 100 words, sections is empty, links is empty, or related is empty. The gap report tells the author exactly what needs attention before the node can pass [[dojo/validate/knowledge]].",
+      "tags": ["analysis", "gaps", "thin-node", "quality-check"]
+    },
+    {
+      "id": "body-writing",
+      "title": "Writing effective body content",
+      "body": "Start with a mental model: what is this thing and why does it exist? Then describe the primary workflows an agent would follow. Include code examples with real commands (not placeholders). Add tables for quick reference (env vars, parameters, options). Use `[[uri]]` wiki-links to connect to related nodes. End with next-step links to actionable nodes. See [[dojo/knowledge#authoring-patterns]] for detailed examples.",
+      "tags": ["body", "writing", "examples", "wiki-links", "markdown"]
+    },
+    {
+      "id": "section-design",
+      "title": "Designing addressable sections",
+      "body": "Sections should answer the most likely questions about the node. Each section has an `id` (lowercase-hyphenated), `title`, `body`, and optional `tags`. Good section IDs are linkable: `dojo/search#ranking` points directly to the ranking section. Order sections by reading priority: overview first, then primary workflow, then edge cases, then troubleshooting.",
+      "tags": ["sections", "design", "addressable", "linkable", "ordering"]
+    }
+  ],
+  "links": [
+    { "uri": "dojo/authoring", "context": "Parent authoring skill" },
+    { "uri": "dojo/authoring/scaffold", "context": "Scaffold creates the skeleton that enrich fills in" },
+    { "uri": "dojo/knowledge#authoring-patterns", "context": "Patterns for writing effective knowledge content" },
+    { "uri": "dojo/validate/knowledge", "context": "Validate knowledge quality after enrichment" },
+    { "uri": "dojo/search", "context": "Aliases and triggers written during enrichment power search" }
+  ],
+  "related": [
+    { "uri": "dojo/authoring", "relation": "prerequisite", "note": "Enrichment is a sub-operation of the authoring workflow" },
+    { "uri": "dojo/authoring/scaffold", "relation": "see-also", "note": "Scaffold creates thin nodes; enrich fills them in" },
+    { "uri": "dojo/knowledge", "relation": "implements", "note": "Enrichment implements the knowledge layer for individual nodes" }
+  ],
+  "scripts": [
+    {
+      "id": "enrich-node",
+      "name": "Enrich Node",
+      "description": "Analyze a node for knowledge gaps and auto-fill missing aliases, triggers, body, sections, links",
+      "lang": "javascript",
+      "runtime": "node>=18",
+      "entry": "./scripts/enrich-node.js",
+      "env": {
+        "DOJO_ROOT": { "required": false, "description": "Path to dojo repository root" }
+      },
+      "packages": []
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "path": { "type": "string", "description": "Path to the node.json file to enrich" },
+        "mode": { "type": "string", "enum": ["analyze", "enrich"], "description": "Analyze gaps or auto-enrich" }
+      },
+      "required": ["path"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "gaps": { "type": "array", "items": { "type": "string" }, "description": "List of identified knowledge gaps" },
+        "enriched": { "type": "boolean", "description": "Whether enrichment was applied" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "dojo/validate/knowledge", "reason": "Knowledge validation confirms enrichment quality" }
+  ],
+  "more": {
+    "docs": "https://github.com/theslashdojo/dojo/blob/main/SPEC.md",
+    "repo": "https://github.com/theslashdojo/dojo"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "node authors, autonomous agents",
+    "estimated_reading_time": "3 min",
+    "prerequisites": ["dojo/authoring", "dojo/knowledge"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

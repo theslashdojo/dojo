@@ -1,0 +1,90 @@
+{
+  "name": "ssh",
+  "version": "1.0.0",
+  "uri": "ssh",
+  "type": "ecosystem",
+  "context": "OpenSSH ecosystem for remote login, command execution, file transfer, key auth, and secure tunnels",
+  "info": "The SSH ecosystem centers on the OpenSSH client toolchain: `ssh` for remote shells and one-shot commands, `scp` and `sftp` for file transfer, `ssh-keygen` for identity and host-key work, and `ssh-agent` plus `ssh-add` for key reuse. For autonomous agents, SSH is the operational bridge into real infrastructure: bastions, production hosts, ephemeral build machines, remote databases, and private services. The critical workflow is not just opening a shell, but doing it non-interactively, verifying host identity safely, reusing connections efficiently, and transferring artifacts without weakening trust boundaries.",
+  "parent": null,
+  "tags": ["ssh", "openssh", "remote-access", "scp", "sftp", "bastion", "port-forwarding", "ssh-agent", "terminal"],
+  "aliases": [
+    "ssh",
+    "openssh",
+    "secure shell",
+    "remote shell",
+    "ssh client",
+    "remote login",
+    "ssh automation",
+    "bastion host access"
+  ],
+  "triggers": [
+    "connect to a server over ssh",
+    "run a remote command",
+    "copy files with scp",
+    "transfer files with sftp",
+    "open an ssh tunnel",
+    "set up ssh keys",
+    "use a bastion host",
+    "reuse ssh connections"
+  ],
+  "body": "# SSH Ecosystem\n\nOpenSSH is the standard Unix toolchain for secure remote access. Agents use it to log into hosts, execute remote commands, ship build artifacts, pull logs, reach private services through tunnels, and hop through bastions without exposing credentials on the wire.\n\n## Core Tools\n\n- `ssh` for shells, one-shot commands, bastions, and forwarding. See [[ssh/connect]].\n- `scp` and `sftp` for file transfer. See [[ssh/copy]].\n- `ssh-keygen` for user keys, host-key lookup, hashing `known_hosts`, and fingerprints. See [[ssh/keys]] and [[ssh/known-hosts]].\n- `ssh-agent` and `ssh-add` for cached identities and constrained forwarding. See [[ssh/agent]].\n- `~/.ssh/config` for repeatable host definitions, jump hosts, and multiplexing. See [[ssh/config]].\n\n## Mental Model\n\nSSH has two trust problems to solve every time it connects:\n\n1. prove who the client is, usually with public-key authentication\n2. prove who the server is, usually by checking host keys in `known_hosts`\n\nAgents fail in production when they shortcut either side. Password prompts break automation; disabling host-key checks weakens integrity. The durable path is: generate stable keys, install public keys deliberately, pin or verify host keys, then run with batch-safe options.\n\n## Common Agent Jobs\n\n```bash\nssh ops@host.example.com\nssh -o BatchMode=yes -o StrictHostKeyChecking=accept-new ops@host.example.com 'uname -a'\nscp -r dist/ ops@host.example.com:/srv/app/\nssh -J bastion.example.com ops@db.internal.example.com 'sudo systemctl status api'\nssh -L 5433:127.0.0.1:5432 ops@db-gateway.example.com -N\n```\n\n## Automation Rules\n\n- Prefer key-based auth over passwords for repeatable execution.\n- Keep host verification enabled; use `accept-new` only when first-contact risk is acceptable.\n- Put bastions, identities, keepalives, and multiplexing in [[ssh/config]] instead of repeating flags.\n- Use [[ssh/agent]] to avoid passphrase spam, but forward agents only to trusted hops.\n- Use [[ssh/copy]] for artifacts and backups instead of reinventing ad hoc transfer scripts.\n",
+  "sections": [
+    {
+      "id": "core-tools",
+      "title": "Core OpenSSH tools",
+      "body": "`ssh` handles interactive sessions, remote commands, jump hosts, and forwarding. `scp` and `sftp` move files over the same transport. `ssh-keygen` manages identities, fingerprints, and `known_hosts`. `ssh-agent` and `ssh-add` cache keys for repeated auth. Load [[ssh/connect]] first for execution, then [[ssh/copy]], [[ssh/tunnel]], or [[ssh/agent]] as needed.",
+      "tags": ["tools", "openssh", "ssh", "scp", "sftp", "ssh-keygen", "ssh-agent"]
+    },
+    {
+      "id": "trust-model",
+      "title": "Identity and host trust",
+      "body": "SSH authenticates both sides: the client offers a key or other credential, and the server presents a host key that the client checks against `known_hosts`. New hosts are usually trust-on-first-use unless `StrictHostKeyChecking` is stricter. Changed host keys are treated as dangerous by default. See [[ssh/keys]] and [[ssh/known-hosts]].",
+      "tags": ["trust", "host-keys", "public-key", "known-hosts", "security"]
+    },
+    {
+      "id": "automation-jobs",
+      "title": "Jobs agents perform over SSH",
+      "body": "The recurring jobs are: run a one-shot command with `ssh host command`, enter an interactive shell for diagnosis, transfer files with `scp` or `sftp`, reach private services using `ssh -L`, `-R`, or `-D`, and traverse bastions with `-J` or `ProxyJump`. These jobs map directly to [[ssh/connect]], [[ssh/copy]], and [[ssh/tunnel]].",
+      "tags": ["automation", "remote-command", "bastion", "file-transfer", "forwarding"]
+    }
+  ],
+  "links": [
+    { "uri": "ssh/connect", "context": "Open sessions and execute remote commands with ssh" },
+    { "uri": "ssh/copy", "context": "Transfer files with scp and sftp" },
+    { "uri": "ssh/tunnel", "context": "Use local, remote, and dynamic forwarding" },
+    { "uri": "ssh/agent", "context": "Cache keys and manage agent-backed auth" },
+    { "uri": "ssh/keys", "context": "Generate and rotate SSH key pairs" },
+    { "uri": "ssh/config", "context": "Persist host-specific SSH options in config files" },
+    { "uri": "ssh/known-hosts", "context": "Verify and manage host keys safely" },
+    { "uri": "ssh/troubleshooting", "context": "Debug auth, host-key, and connectivity failures" },
+    { "uri": "shell/bash", "context": "Wrap SSH commands in Bash automation" },
+    { "uri": "shell/environment", "context": "Manage environment variables like SSH_AUTH_SOCK" },
+    { "uri": "git/remote", "context": "Git remotes often use SSH transport and keys" }
+  ],
+  "related": [
+    { "uri": "shell/bash", "relation": "see-also", "note": "Most SSH automation is wrapped in shell scripts" },
+    { "uri": "shell/environment", "relation": "see-also", "note": "SSH agent and config workflows depend on environment variables" },
+    { "uri": "git/remote", "relation": "see-also", "note": "Git clone, fetch, and push commonly reuse SSH keys and config" }
+  ],
+  "more": {
+    "docs": "https://www.openssh.com/manual.html",
+    "repo": "https://github.com/openssh/openssh-portable",
+    "project": "https://www.openssh.com/"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, SREs, AI agents",
+    "estimated_reading_time": "5 min",
+    "prerequisites": [],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://github.com/openssh/openssh-portable",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

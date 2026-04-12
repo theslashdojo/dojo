@@ -3,63 +3,72 @@
   "version": "1.0.0",
   "uri": "anthropic/messages/stream",
   "type": "sub",
-  "context": "Stream Claude responses token-by-token via server-sent events for real-time UIs and chatbots",
-  "info": "Streaming delivers Claude's response incrementally via server-sent events (SSE). Set `stream: true` in the request or use the SDK's `.stream()` helper to get tokens as they're generated. This dramatically reduces perceived latency — users see the first token in hundreds of milliseconds instead of waiting for the full response. The SSE protocol emits typed events: `message_start`, `content_block_start`, `content_block_delta` (with `text_delta` or `input_json_delta`), `content_block_stop`, `message_delta` (with final usage and stop_reason), and `message_stop`. The Python SDK provides `stream.text_stream` for simple text iteration and event-based callbacks. The TypeScript SDK provides `.stream()` with `.on('text', cb)` event handlers.",
+  "context": "Stream Claude responses token-by-token via server-sent events for real-time output",
+  "info": "Streaming uses the same POST /v1/messages endpoint with `stream: true`. The response is delivered as a sequence of server-sent events (SSE) rather than a single JSON payload. This enables real-time display of Claude's output as it generates. The event stream includes message_start, content_block_start, content_block_delta (with text_delta or input_json_delta), content_block_stop, message_delta (with stop_reason and usage), and message_stop events. The Python SDK provides `client.messages.stream()` as a context manager with a `.text_stream` iterator. The TypeScript SDK provides `.stream()` with event callbacks. Streaming is essential for chat UIs and any application where perceived latency matters.",
   "parent": "anthropic/messages",
-  "tags": ["streaming", "sse", "server-sent-events", "real-time", "incremental"],
+  "tags": ["streaming", "sse", "server-sent-events", "real-time", "stream"],
   "aliases": [
-    "stream message",
+    "stream messages",
     "streaming api",
-    "sse streaming",
-    "stream response",
-    "messages.stream",
+    "sse stream",
     "real-time response",
-    "token streaming",
-    "incremental response"
+    "stream claude",
+    "messages stream",
+    "server-sent events",
+    "text_stream",
+    "stream response"
   ],
   "triggers": [
     "stream a response from claude",
-    "get streaming output from claude",
-    "show claude's response in real time",
-    "use server-sent events with claude",
-    "stream tokens from the messages api",
-    "build a streaming chatbot with claude"
+    "use streaming with the messages api",
+    "get real-time output from claude",
+    "stream tokens as they generate",
+    "use server-sent events with claude"
   ],
-  "body": "# Streaming Messages\n\nStream Claude's response token-by-token for real-time display.\n\n## Python (SDK Helper)\n\n```python\nimport anthropic\n\nclient = anthropic.Anthropic()\n\nwith client.messages.stream(\n    model=\"claude-sonnet-4-6\",\n    max_tokens=1024,\n    messages=[{\"role\": \"user\", \"content\": \"Write a haiku about programming\"}]\n) as stream:\n    for text in stream.text_stream:\n        print(text, end=\"\", flush=True)\n```\n\n## TypeScript (SDK Helper)\n\n```typescript\nimport Anthropic from \"@anthropic-ai/sdk\";\n\nconst client = new Anthropic();\n\nawait client.messages\n  .stream({\n    model: \"claude-sonnet-4-6\",\n    max_tokens: 1024,\n    messages: [{ role: \"user\", content: \"Write a haiku about programming\" }]\n  })\n  .on(\"text\", (text) => {\n    process.stdout.write(text);\n  });\n```\n\n## Python (Raw SSE Events)\n\n```python\nwith client.messages.stream(\n    model=\"claude-sonnet-4-6\",\n    max_tokens=1024,\n    messages=[{\"role\": \"user\", \"content\": \"Hello\"}]\n) as stream:\n    for event in stream:\n        if event.type == \"content_block_delta\":\n            if event.delta.type == \"text_delta\":\n                print(event.delta.text, end=\"\", flush=True)\n        elif event.type == \"message_delta\":\n            print(f\"\\nStop reason: {event.delta.stop_reason}\")\n            print(f\"Output tokens: {event.usage.output_tokens}\")\n```\n\n## curl (Raw SSE)\n\n```bash\ncurl https://api.anthropic.com/v1/messages \\\n  -H \"x-api-key: $ANTHROPIC_API_KEY\" \\\n  -H \"anthropic-version: 2023-06-01\" \\\n  -H \"content-type: application/json\" \\\n  -d '{\n    \"model\": \"claude-sonnet-4-6\",\n    \"max_tokens\": 1024,\n    \"stream\": true,\n    \"messages\": [{\"role\": \"user\", \"content\": \"Hello\"}]\n  }'\n```\n\n## SSE Event Types\n\n| Event | Description | Payload |\n|-------|-------------|----------|\n| `message_start` | Stream begins | Full message object (no content yet) |\n| `content_block_start` | New content block | Block type and index |\n| `content_block_delta` | Incremental content | `text_delta` or `input_json_delta` |\n| `content_block_stop` | Block complete | Block index |\n| `message_delta` | Message metadata update | `stop_reason`, `usage.output_tokens` |\n| `message_stop` | Stream complete | — |\n| `ping` | Keep-alive | — |\n| `error` | Error occurred | Error type and message |\n\n## Delta Types\n\n| Delta Type | When | Content |\n|------------|------|----------|\n| `text_delta` | Text response | `{ \"text\": \"...\" }` |\n| `input_json_delta` | Tool use arguments | `{ \"partial_json\": \"...\" }` |\n| `thinking_delta` | Extended thinking | `{ \"thinking\": \"...\" }` |\n\n## Async Streaming (Python)\n\n```python\nimport anthropic\nimport asyncio\n\nasync def main():\n    client = anthropic.AsyncAnthropic()\n    async with client.messages.stream(\n        model=\"claude-sonnet-4-6\",\n        max_tokens=1024,\n        messages=[{\"role\": \"user\", \"content\": \"Hello\"}]\n    ) as stream:\n        async for text in stream.text_stream:\n            print(text, end=\"\", flush=True)\n\nasyncio.run(main())\n```\n\n## Getting the Final Message\n\n```python\nwith client.messages.stream(\n    model=\"claude-sonnet-4-6\",\n    max_tokens=1024,\n    messages=[{\"role\": \"user\", \"content\": \"Hello\"}]\n) as stream:\n    for text in stream.text_stream:\n        print(text, end=\"\", flush=True)\n\n# After the stream completes, get the accumulated message\nmessage = stream.get_final_message()\nprint(f\"\\nTotal tokens: {message.usage.input_tokens + message.usage.output_tokens}\")\n```\n\n## Streaming with Tool Use\n\nWhen Claude calls a tool during streaming, you'll receive `input_json_delta` events with partial JSON for the tool arguments:\n\n```python\nwith client.messages.stream(\n    model=\"claude-sonnet-4-6\",\n    max_tokens=1024,\n    tools=[{\"name\": \"get_weather\", \"description\": \"Get weather\", \"input_schema\": {\"type\": \"object\", \"properties\": {\"city\": {\"type\": \"string\"}}, \"required\": [\"city\"]}}],\n    messages=[{\"role\": \"user\", \"content\": \"What's the weather in London?\"}]\n) as stream:\n    for event in stream:\n        if event.type == \"content_block_start\" and event.content_block.type == \"tool_use\":\n            print(f\"Tool call: {event.content_block.name}\")\n        elif event.type == \"content_block_delta\" and event.delta.type == \"input_json_delta\":\n            print(f\"Partial args: {event.delta.partial_json}\")\n```\n",
+  "body": "# Streaming Messages\n\nSet `stream: true` on the Messages API to receive the response as server-sent events (SSE). Each event delivers a chunk of the response — enabling real-time display.\n\n## Python SDK\n\n```python\nimport anthropic\n\nclient = anthropic.Anthropic()\n\n# Context manager approach (recommended)\nwith client.messages.stream(\n    model=\"claude-sonnet-4-6\",\n    max_tokens=1024,\n    messages=[{\"role\": \"user\", \"content\": \"Write a haiku about coding\"}]\n) as stream:\n    for text in stream.text_stream:\n        print(text, end=\"\", flush=True)\n\n# Get the final message after streaming\nfinal_message = stream.get_final_message()\nprint(f\"\\nTokens: {final_message.usage.input_tokens} in / {final_message.usage.output_tokens} out\")\n```\n\n### Async Python\n\n```python\nimport anthropic\n\nclient = anthropic.AsyncAnthropic()\n\nasync with client.messages.stream(\n    model=\"claude-sonnet-4-6\",\n    max_tokens=1024,\n    messages=[{\"role\": \"user\", \"content\": \"Write a haiku about coding\"}]\n) as stream:\n    async for text in stream.text_stream:\n        print(text, end=\"\", flush=True)\n```\n\n## TypeScript SDK\n\n```typescript\nimport Anthropic from \"@anthropic-ai/sdk\";\n\nconst client = new Anthropic();\n\nconst stream = await client.messages.stream({\n  model: \"claude-sonnet-4-6\",\n  max_tokens: 1024,\n  messages: [{ role: \"user\", content: \"Write a haiku about coding\" }]\n});\n\nstream.on(\"text\", (text) => {\n  process.stdout.write(text);\n});\n\nconst finalMessage = await stream.finalMessage();\nconsole.log(`\\nTokens: ${finalMessage.usage.input_tokens} in / ${finalMessage.usage.output_tokens} out`);\n```\n\n## Raw SSE (cURL)\n\n```bash\ncurl https://api.anthropic.com/v1/messages \\\n  -H \"x-api-key: $ANTHROPIC_API_KEY\" \\\n  -H \"anthropic-version: 2023-06-01\" \\\n  -H \"content-type: application/json\" \\\n  -d '{\n    \"model\": \"claude-sonnet-4-6\",\n    \"max_tokens\": 1024,\n    \"stream\": true,\n    \"messages\": [{\"role\": \"user\", \"content\": \"Hello\"}]\n  }'\n```\n\n## SSE Event Types\n\n| Event | Purpose | Payload |\n|-------|---------|----------|\n| `message_start` | Response begins | `{\"type\": \"message_start\", \"message\": {...}}` |\n| `content_block_start` | New content block | `{\"type\": \"content_block_start\", \"index\": 0, \"content_block\": {\"type\": \"text\", \"text\": \"\"}}` |\n| `content_block_delta` | Incremental content | `{\"type\": \"content_block_delta\", \"index\": 0, \"delta\": {\"type\": \"text_delta\", \"text\": \"Hello\"}}` |\n| `content_block_stop` | Block complete | `{\"type\": \"content_block_stop\", \"index\": 0}` |\n| `message_delta` | Response metadata | `{\"type\": \"message_delta\", \"delta\": {\"stop_reason\": \"end_turn\"}, \"usage\": {\"output_tokens\": 50}}` |\n| `message_stop` | Stream complete | `{\"type\": \"message_stop\"}` |\n| `ping` | Keep-alive | `{\"type\": \"ping\"}` |\n| `error` | Error occurred | `{\"type\": \"error\", \"error\": {\"type\": \"...\", \"message\": \"...\"}}` |\n\n## Delta Types\n\n- `text_delta` — `{\"type\": \"text_delta\", \"text\": \"chunk\"}` — Incremental text in a text block\n- `input_json_delta` — `{\"type\": \"input_json_delta\", \"partial_json\": \"{\\\"key\"}` — Incremental JSON in a tool_use block\n- `thinking_delta` — `{\"type\": \"thinking_delta\", \"thinking\": \"reasoning chunk\"}` — Extended thinking content\n\n## Streaming with Tool Use\n\nWhen Claude calls a tool during streaming, you receive `content_block_start` with `type: \"tool_use\"`, followed by `input_json_delta` events with partial JSON. Parse the complete tool input after `content_block_stop`, execute the tool, then continue the conversation.\n\n```python\nwith client.messages.stream(\n    model=\"claude-sonnet-4-6\",\n    max_tokens=1024,\n    tools=[{\"name\": \"get_weather\", \"description\": \"Get weather\", \"input_schema\": {\"type\": \"object\", \"properties\": {\"city\": {\"type\": \"string\"}}, \"required\": [\"city\"]}}],\n    messages=[{\"role\": \"user\", \"content\": \"What's the weather in Paris?\"}]\n) as stream:\n    for event in stream:\n        if event.type == \"content_block_start\" and event.content_block.type == \"tool_use\":\n            print(f\"Tool call: {event.content_block.name}\")\n        elif event.type == \"text\":\n            print(event.text, end=\"\")\n```\n\n## Raw SSE Event Format\n\nEach SSE event has this wire format:\n\n```\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\"Hello\"}}\n\n```\n\nEvents are separated by blank lines. The `event` line names the event type. The `data` line contains the JSON payload.\n",
   "sections": [
     {
-      "id": "sdk-helpers",
-      "title": "SDK streaming helpers",
-      "body": "Python: Use `client.messages.stream()` as a context manager. Iterate `stream.text_stream` for text or `stream` itself for raw events. Call `stream.get_final_message()` after completion. Async variant: `AsyncAnthropic` with `async with` and `async for`. TypeScript: Use `client.messages.stream()` with `.on('text', cb)`, `.on('message', cb)`, or `.on('contentBlock', cb)` event handlers.",
-      "tags": ["sdk", "python", "typescript", "helpers", "context-manager"]
+      "id": "sdk-usage",
+      "title": "SDK streaming patterns",
+      "body": "Python: Use `client.messages.stream()` as a context manager, iterate `.text_stream` for text-only output. Call `.get_final_message()` after iteration for the complete Message object. TypeScript: Use `client.messages.stream()`, attach `.on('text', callback)` for text events, await `.finalMessage()` for the complete response. Both SDKs handle SSE parsing automatically.",
+      "tags": ["sdk", "python", "typescript", "text-stream", "context-manager"]
     },
     {
-      "id": "sse-protocol",
-      "title": "SSE event protocol",
-      "body": "The raw SSE stream emits events with `event:` and `data:` fields. Event types: `message_start` (opening message), `content_block_start/delta/stop` (content chunks), `message_delta` (final stop_reason and usage), `message_stop` (stream end), `ping` (keep-alive), `error`. Deltas carry typed payloads: `text_delta` for text, `input_json_delta` for tool arguments, `thinking_delta` for extended thinking.",
-      "tags": ["sse", "protocol", "events", "delta", "raw"]
+      "id": "sse-events",
+      "title": "SSE event lifecycle",
+      "body": "Events flow in order: message_start → (content_block_start → content_block_delta* → content_block_stop)+ → message_delta → message_stop. Ping events can appear anywhere as keep-alives. Error events terminate the stream. The message_delta event carries the final stop_reason and output token count.",
+      "tags": ["sse", "events", "lifecycle", "message-start", "content-block-delta"]
+    },
+    {
+      "id": "tool-streaming",
+      "title": "Streaming with tools",
+      "body": "Tool use blocks stream via input_json_delta events with partial JSON fragments. The complete tool input is available only after content_block_stop. Tool results cannot be streamed back — they are sent as a normal user message. The stream ends with stop_reason 'tool_use' when Claude requests tool execution.",
+      "tags": ["tool-use", "input-json-delta", "tool-streaming"]
     }
   ],
   "links": [
-    { "uri": "anthropic/messages", "context": "Parent skill with full parameter reference" },
-    { "uri": "anthropic/messages/create", "context": "Synchronous alternative (non-streaming)" },
-    { "uri": "anthropic/tool-use", "context": "Streaming tool use with input_json_delta events" },
-    { "uri": "anthropic/auth", "context": "API key setup" }
+    { "uri": "anthropic/messages", "context": "Parent messages skill with full parameter reference" },
+    { "uri": "anthropic/messages/create", "context": "Synchronous alternative" },
+    { "uri": "anthropic/tool-use", "context": "Tool definitions for streaming tool use" },
+    { "uri": "anthropic/prompt-caching", "context": "Cache prefixes work with streaming" }
   ],
   "related": [
-    { "uri": "anthropic/messages", "relation": "prerequisite", "note": "Parent skill with full API reference" },
-    { "uri": "anthropic/messages/create", "relation": "alternative", "note": "Use sync create when streaming is not needed" }
+    { "uri": "anthropic/messages/create", "relation": "alternative", "note": "Use create for simple synchronous completions" },
+    { "uri": "anthropic/messages", "relation": "implements", "note": "Implements the streaming path of the Messages API" },
+    { "uri": "anthropic/tool-use", "relation": "see-also", "note": "Tool calls stream with input_json_delta events" }
   ],
   "scripts": [
     {
       "id": "stream-message",
       "name": "Stream Message",
-      "description": "Stream a Claude response token-by-token to stdout",
+      "description": "Stream a Claude response to stdout in real time",
       "lang": "python",
-      "runtime": "python>=3.10",
+      "runtime": "python>=3.9",
       "entry": "./scripts/stream-message.py",
+      "inline": "import anthropic\nimport os\nimport sys\n\nclient = anthropic.Anthropic()\n\nmodel = os.environ.get(\"ANTHROPIC_MODEL\", \"claude-sonnet-4-6\")\nuser_input = sys.argv[1] if len(sys.argv) > 1 else \"Write a short poem about the ocean\"\n\nwith client.messages.stream(\n    model=model,\n    max_tokens=1024,\n    messages=[{\"role\": \"user\", \"content\": user_input}]\n) as stream:\n    for text in stream.text_stream:\n        print(text, end=\"\", flush=True)\n\nfinal = stream.get_final_message()\nprint(f\"\\n---\\nTokens: {final.usage.input_tokens} in / {final.usage.output_tokens} out\")\n",
       "env": {
-        "ANTHROPIC_API_KEY": { "required": true, "secret": true, "description": "Anthropic API key" }
+        "ANTHROPIC_API_KEY": { "required": true, "secret": true, "description": "Anthropic API key" },
+        "ANTHROPIC_MODEL": { "required": false, "default": "claude-sonnet-4-6", "description": "Model to use" }
       },
       "packages": ["anthropic"]
     }
@@ -68,42 +77,41 @@
     "input": {
       "type": "object",
       "properties": {
-        "model": { "type": "string", "description": "Model ID" },
-        "max_tokens": { "type": "integer", "description": "Maximum output tokens" },
-        "messages": { "type": "array", "description": "Conversation messages" },
-        "system": { "type": "string", "description": "System prompt" }
+        "model": { "type": "string" },
+        "max_tokens": { "type": "integer" },
+        "messages": { "type": "array" },
+        "stream": { "type": "boolean", "const": true }
       },
       "required": ["model", "max_tokens", "messages"]
     },
     "output": {
       "type": "object",
+      "description": "Stream of SSE events ending with a complete Message object",
       "properties": {
-        "text": { "type": "string", "description": "Accumulated response text" },
-        "stop_reason": { "type": "string" },
-        "usage": { "type": "object" }
+        "events": { "type": "array", "description": "Sequence of SSE events" },
+        "final_message": { "type": "object", "description": "Complete Message object after stream ends" }
       }
     }
   },
   "depends": [
-    { "uri": "anthropic/auth", "reason": "API key required" },
-    { "uri": "anthropic/messages", "reason": "Sub-skill of the Messages API" }
+    { "uri": "anthropic/auth", "reason": "API key required" }
   ],
   "more": {
     "docs": "https://docs.anthropic.com/en/api/messages-streaming"
   },
   "frontmatter": {
-    "created": "2026-04-10",
-    "updated": "2026-04-10",
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
     "author": "dojo-community",
     "audience": "developers, AI agents",
-    "estimated_reading_time": "4 min",
-    "prerequisites": ["anthropic/auth"],
+    "estimated_reading_time": "5 min",
+    "prerequisites": ["anthropic/auth", "anthropic/messages"],
     "status": "living",
     "confidence": "high"
   },
   "author": "dojo-community",
   "license": "MIT",
-  "created": "2026-04-10T00:00:00Z",
-  "updated": "2026-04-10T00:00:00Z",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
   "status": "published"
 }

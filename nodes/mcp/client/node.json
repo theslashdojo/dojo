@@ -3,128 +3,125 @@
   "version": "1.0.0",
   "uri": "mcp/client",
   "type": "skill",
-  "context": "Build MCP clients that connect to servers, discover tools/resources/prompts, and route LLM tool calls",
-  "info": "An MCP client is a component within a host application (like Claude Desktop, VS Code, or a custom chatbot) that maintains a connection to an MCP server. The client handles the initialization handshake, capability negotiation, and all protocol communication. It discovers available tools via `tools/list`, invokes them via `tools/call`, reads resources via `resources/read`, and retrieves prompts via `prompts/get`. The client also handles notifications for dynamic updates and manages transport connections (stdio subprocesses or HTTP). The Python SDK provides `ClientSession` with `stdio_client()` or `streamablehttp_client()` transports; the TypeScript SDK provides `Client` with `StdioClientTransport` or `StreamableHTTPClientTransport`.",
+  "context": "Build MCP clients that connect to servers, discover tools/resources/prompts, and invoke them on behalf of AI applications",
+  "info": "This skill covers building MCP clients — the components inside AI applications that connect to MCP servers. Clients handle the initialization handshake, discover available primitives (tools, resources, prompts), invoke tools, read resources, and get prompts. The Python SDK provides ClientSession with stdio_client and streamablehttp_client transports. The TypeScript SDK provides Client with equivalent transports. Clients maintain a dedicated 1:1 session with each server. Most developers use existing host applications (Claude Desktop, VS Code) as clients, but building custom clients is needed for custom AI applications and agent frameworks.",
   "parent": "mcp",
-  "tags": ["mcp-client", "client", "connection", "tool-routing", "session", "host"],
+  "tags": ["client", "mcp-client", "connect", "discover", "invoke", "session"],
   "aliases": [
     "mcp client",
-    "MCP client",
     "build mcp client",
     "create mcp client",
-    "mcp host",
-    "ClientSession",
-    "client session",
+    "mcp client sdk",
     "connect to mcp server",
+    "mcp host",
     "mcp client python",
     "mcp client typescript"
   ],
   "triggers": [
-    "build an MCP client",
-    "connect to an MCP server",
-    "create an MCP client application",
-    "discover tools from an MCP server",
-    "route tool calls to MCP servers",
-    "how to build an MCP client",
-    "integrate MCP into my application",
-    "connect my app to MCP servers"
+    "build an mcp client",
+    "connect to an mcp server",
+    "create mcp client application",
+    "discover mcp tools from client",
+    "invoke mcp tools programmatically",
+    "integrate mcp into my app",
+    "build ai app with mcp",
+    "list tools from mcp server"
   ],
-  "body": "# Building MCP Clients\n\nAn MCP client connects a host application (like a chatbot or IDE) to one or more MCP servers. The client handles protocol communication: initialization, capability negotiation, tool discovery, tool execution, resource reading, and prompt retrieval.\n\n## Python Client\n\n```python\nimport asyncio\nfrom mcp import ClientSession, StdioServerParameters\nfrom mcp.client.stdio import stdio_client\n\nasync def main():\n    # Define the server to connect to\n    server_params = StdioServerParameters(\n        command=\"python\",\n        args=[\"path/to/server.py\"],\n        env=None\n    )\n    \n    # Connect via stdio transport\n    async with stdio_client(server_params) as (read, write):\n        async with ClientSession(read, write) as session:\n            # Initialize the connection\n            await session.initialize()\n            \n            # Discover available tools\n            tools = await session.list_tools()\n            print(f\"Available tools: {[t.name for t in tools.tools]}\")\n            \n            # Call a tool\n            result = await session.call_tool(\n                \"get_weather\",\n                arguments={\"city\": \"San Francisco\"}\n            )\n            print(result.content[0].text)\n            \n            # List resources\n            resources = await session.list_resources()\n            \n            # Read a resource\n            content = await session.read_resource(\"schema://database\")\n            \n            # List prompts\n            prompts = await session.list_prompts()\n            \n            # Get a prompt\n            prompt = await session.get_prompt(\n                \"code_review\",\n                arguments={\"code\": \"def hello(): pass\"}\n            )\n\nasyncio.run(main())\n```\n\n## TypeScript Client\n\n```typescript\nimport { Client } from \"@modelcontextprotocol/sdk/client/index.js\";\nimport { StdioClientTransport } from \"@modelcontextprotocol/sdk/client/stdio.js\";\n\nconst transport = new StdioClientTransport({\n  command: \"python\",\n  args: [\"path/to/server.py\"]\n});\n\nconst client = new Client(\n  { name: \"my-client\", version: \"1.0.0\" },\n  { capabilities: {} }\n);\n\nawait client.connect(transport);\n\n// Discover tools\nconst tools = await client.listTools();\nconsole.log(tools.tools.map(t => t.name));\n\n// Call a tool\nconst result = await client.callTool({\n  name: \"get_weather\",\n  arguments: { city: \"San Francisco\" }\n});\n\n// Read a resource\nconst resource = await client.readResource({\n  uri: \"schema://database\"\n});\n\n// Get a prompt\nconst prompt = await client.getPrompt({\n  name: \"code_review\",\n  arguments: { code: \"def hello(): pass\" }\n});\n```\n\n## Remote Server Connection (Streamable HTTP)\n\n```python\nfrom mcp.client.streamable_http import streamablehttp_client\n\nasync with streamablehttp_client(\"https://mcp.example.com/mcp\") as (read, write, session_id):\n    async with ClientSession(read, write) as session:\n        await session.initialize()\n        tools = await session.list_tools()\n```\n\n```typescript\nimport { StreamableHTTPClientTransport } from \"@modelcontextprotocol/sdk/client/streamableHttp.js\";\n\nconst transport = new StreamableHTTPClientTransport(\n  new URL(\"https://mcp.example.com/mcp\")\n);\nawait client.connect(transport);\n```\n\n## LLM Integration Pattern\n\nThe standard pattern for integrating MCP tools with an LLM:\n\n```python\nimport anthropic\n\n# 1. Discover tools from all MCP servers\nall_tools = []\nfor session in mcp_sessions:\n    response = await session.list_tools()\n    for tool in response.tools:\n        all_tools.append({\n            \"name\": tool.name,\n            \"description\": tool.description,\n            \"input_schema\": tool.inputSchema\n        })\n\n# 2. Send to LLM with tools\nclient = anthropic.Anthropic()\nresponse = client.messages.create(\n    model=\"claude-sonnet-4-6\",\n    max_tokens=1024,\n    messages=messages,\n    tools=all_tools\n)\n\n# 3. Handle tool calls\nfor block in response.content:\n    if block.type == \"tool_use\":\n        # Route to the right MCP session\n        session = find_session_for_tool(block.name)\n        result = await session.call_tool(block.name, block.input)\n        # Feed result back to LLM\n        messages.append({\"role\": \"assistant\", \"content\": response.content})\n        messages.append({\n            \"role\": \"user\",\n            \"content\": [{\"type\": \"tool_result\", \"tool_use_id\": block.id, \"content\": result.content[0].text}]\n        })\n```\n\n## Managing Multiple Servers\n\nA host typically connects to multiple MCP servers simultaneously:\n\n```python\nservers = [\n    StdioServerParameters(command=\"python\", args=[\"filesystem_server.py\"]),\n    StdioServerParameters(command=\"python\", args=[\"database_server.py\"]),\n    StdioServerParameters(command=\"node\", args=[\"github_server.js\"]),\n]\n\nsessions = []\nfor server in servers:\n    transport = await stdio_client(server)\n    session = ClientSession(*transport)\n    await session.initialize()\n    sessions.append(session)\n\n# Aggregate tools from all servers\nall_tools = []\nfor session in sessions:\n    tools = await session.list_tools()\n    all_tools.extend(tools.tools)\n```\n\n## Handling Notifications\n\n```python\n# React to tool list changes\nasync def on_tools_changed():\n    tools = await session.list_tools()\n    update_available_tools(tools)\n\nsession.on_notification(\"notifications/tools/list_changed\", on_tools_changed)\n```\n\n## Environment Variables\n\n| Variable | Purpose |\n|----------|----------|\n| `MCP_SERVER_URL` | URL for remote Streamable HTTP servers |\n| `MCP_AUTH_TOKEN` | Bearer token for authenticated servers |\n| `ANTHROPIC_API_KEY` | API key for LLM integration with Claude |\n",
+  "body": "# Building MCP Clients\n\nAn MCP client is a component inside an AI application (the host) that connects to MCP servers. It manages the JSON-RPC session, discovers primitives, and invokes them.\n\nMost developers use existing hosts (Claude Desktop, VS Code). Build a custom client when creating your own AI application or agent framework.\n\n## Python Client\n\n```python\nimport asyncio\nfrom mcp import ClientSession, StdioServerParameters\nfrom mcp.client.stdio import stdio_client\n\nasync def main():\n    server_params = StdioServerParameters(\n        command=\"python\",\n        args=[\"server.py\"]\n    )\n\n    async with stdio_client(server_params) as (read, write):\n        async with ClientSession(read, write) as session:\n            # Initialize the connection\n            await session.initialize()\n\n            # Discover tools\n            tools = await session.list_tools()\n            print(\"Available tools:\", [t.name for t in tools.tools])\n\n            # Call a tool\n            result = await session.call_tool(\"search\", {\"query\": \"hello\"})\n            print(\"Result:\", result.content[0].text)\n\n            # List resources\n            resources = await session.list_resources()\n            print(\"Resources:\", [r.uri for r in resources.resources])\n\n            # Read a resource\n            content = await session.read_resource(\"schema://database\")\n            print(\"Schema:\", content.contents[0].text)\n\n            # List prompts\n            prompts = await session.list_prompts()\n            print(\"Prompts:\", [p.name for p in prompts.prompts])\n\n            # Get a prompt\n            prompt = await session.get_prompt(\"review\", {\"code\": \"def foo(): pass\"})\n            print(\"Prompt:\", prompt.messages[0].content.text)\n\nasyncio.run(main())\n```\n\n## TypeScript Client\n\n```typescript\nimport { Client } from \"@modelcontextprotocol/sdk/client/index.js\";\nimport { StdioClientTransport } from \"@modelcontextprotocol/sdk/client/stdio.js\";\n\nconst transport = new StdioClientTransport({\n  command: \"python\",\n  args: [\"server.py\"]\n});\n\nconst client = new Client({ name: \"my-client\", version: \"1.0.0\" });\nawait client.connect(transport);\n\n// Discover tools\nconst tools = await client.listTools();\nconsole.log(\"Tools:\", tools.tools.map(t => t.name));\n\n// Call a tool\nconst result = await client.callTool(\"search\", { query: \"hello\" });\nconsole.log(\"Result:\", result.content[0].text);\n\n// List and read resources\nconst resources = await client.listResources();\nconst content = await client.readResource(\"schema://database\");\n\n// List and get prompts\nconst prompts = await client.listPrompts();\nconst prompt = await client.getPrompt(\"review\", { code: \"function foo() {}\" });\n```\n\n## Connecting to Remote Servers (Streamable HTTP)\n\n```python\nfrom mcp.client.streamable_http import streamablehttp_client\n\nasync with streamablehttp_client(\"https://api.example.com/mcp\") as (read, write, session_id):\n    async with ClientSession(read, write) as session:\n        await session.initialize()\n        # Use session as normal...\n```\n\n## Multi-Server Client\n\nA host typically connects to multiple servers:\n\n```python\nclass MCPHost:\n    def __init__(self):\n        self.sessions: dict[str, ClientSession] = {}\n\n    async def connect(self, name: str, command: str, args: list[str]):\n        params = StdioServerParameters(command=command, args=args)\n        transport = await stdio_client(params).__aenter__()\n        session = await ClientSession(*transport).__aenter__()\n        await session.initialize()\n        self.sessions[name] = session\n\n    async def all_tools(self) -> list:\n        tools = []\n        for name, session in self.sessions.items():\n            response = await session.list_tools()\n            tools.extend(response.tools)\n        return tools\n```\n\n## Handling Tool Calls with an LLM\n\nThe typical agentic loop: LLM selects tools, client executes them:\n\n```python\n# Get available tools and format for the LLM\ntools_response = await session.list_tools()\nllm_tools = [{\n    \"name\": t.name,\n    \"description\": t.description,\n    \"input_schema\": t.inputSchema\n} for t in tools_response.tools]\n\n# LLM decides to use a tool\nllm_response = anthropic.messages.create(\n    model=\"claude-sonnet-4-6\",\n    tools=llm_tools,\n    messages=messages\n)\n\n# Execute tool calls\nfor block in llm_response.content:\n    if block.type == \"tool_use\":\n        result = await session.call_tool(block.name, block.input)\n        # Feed result back to LLM\n```\n\n## Notification Handling\n\n```python\n# React to tool list changes\n@session.on_notification(\"notifications/tools/list_changed\")\nasync def on_tools_changed():\n    tools = await session.list_tools()\n    update_available_tools(tools)\n```\n\n## Environment Variables\n\n| Variable | Purpose |\n|----------|----------|\n| `MCP_SERVER_URL` | Remote server endpoint for HTTP transport |\n| `ANTHROPIC_API_KEY` | For LLM integration in the client app |\n",
   "sections": [
     {
-      "id": "connection",
-      "title": "Connecting to servers",
-      "body": "Use `stdio_client()` in Python or `StdioClientTransport` in TypeScript for local servers (launched as subprocesses). Use `streamablehttp_client()` or `StreamableHTTPClientTransport` for remote servers. Both return read/write streams wrapped in a `ClientSession` (Python) or `Client` (TypeScript). Always call `initialize()` after connecting to perform the capability negotiation handshake.",
-      "tags": ["connection", "stdio", "http", "transport", "initialize"]
+      "id": "python-client",
+      "title": "Python MCP client",
+      "body": "Install `mcp` package. Use `stdio_client(StdioServerParameters(...))` for local or `streamablehttp_client(url)` for remote. Create `ClientSession(read, write)` and call `await session.initialize()`. Then use `list_tools()`, `call_tool()`, `list_resources()`, `read_resource()`, `list_prompts()`, `get_prompt()`.",
+      "tags": ["python", "client-session", "stdio-client", "http-client"]
     },
     {
-      "id": "discovery",
-      "title": "Discovering capabilities",
-      "body": "After initialization, discover server capabilities: `list_tools()` returns available tools with names, descriptions, and input schemas. `list_resources()` returns available data sources. `list_prompts()` returns available prompt templates. All list operations support pagination via cursor. Register notification handlers for `list_changed` events to stay up-to-date when capabilities change dynamically.",
-      "tags": ["discovery", "list-tools", "list-resources", "list-prompts", "pagination"]
+      "id": "typescript-client",
+      "title": "TypeScript MCP client",
+      "body": "Install `@modelcontextprotocol/sdk`. Create `Client({name, version})` and connect with `StdioClientTransport` or HTTP transport. Use `client.listTools()`, `client.callTool()`, `client.listResources()`, `client.readResource()`, `client.listPrompts()`, `client.getPrompt()`.",
+      "tags": ["typescript", "client", "sdk", "node"]
     },
     {
-      "id": "tool-routing",
-      "title": "LLM tool routing",
-      "body": "The core integration pattern: 1) Aggregate tools from all connected MCP servers into a unified registry. 2) Pass tool definitions to the LLM alongside user messages. 3) When the LLM returns a tool_use block, route it to the correct MCP session based on tool name. 4) Call the tool via `call_tool()` and feed the result back to the LLM as a tool_result. This loop continues until the LLM produces a final text response.",
-      "tags": ["tool-routing", "llm-integration", "tool-use", "anthropic", "agentic-loop"]
+      "id": "llm-integration",
+      "title": "LLM tool integration loop",
+      "body": "The agentic pattern: 1) List tools from MCP server, 2) Format as LLM tool definitions, 3) Send to LLM with user message, 4) LLM returns tool_use blocks, 5) Execute via `call_tool()`, 6) Feed results back to LLM. This loop continues until the LLM stops requesting tools.",
+      "tags": ["llm", "agentic", "tool-use", "loop", "anthropic"]
     },
     {
       "id": "multi-server",
-      "title": "Managing multiple servers",
-      "body": "A host typically connects to multiple MCP servers simultaneously — each with its own ClientSession/Client instance. Aggregate tools across all sessions into a single list for the LLM. Maintain a mapping from tool name to session for routing. Handle server disconnections gracefully and re-aggregate tools when a server reconnects or sends a tools/list_changed notification.",
-      "tags": ["multi-server", "aggregation", "host", "session-management"]
+      "title": "Connecting to multiple servers",
+      "body": "A host creates one client per server. Each client maintains its own session. Aggregate tools/resources/prompts across all sessions to present a unified capability set to the LLM. Route tool calls to the correct session based on tool name.",
+      "tags": ["multi-server", "host", "aggregation", "routing"]
     }
   ],
   "links": [
-    { "uri": "mcp/server", "context": "Build servers that clients connect to" },
-    { "uri": "mcp/server/tools", "context": "Tools discovered and invoked by clients" },
-    { "uri": "mcp/server/resources", "context": "Resources read by clients" },
-    { "uri": "mcp/server/prompts", "context": "Prompts retrieved by clients" },
-    { "uri": "mcp/transport", "context": "Transport mechanisms for client-server communication" },
+    { "uri": "mcp/server", "context": "Build the servers your client connects to" },
+    { "uri": "mcp/server/tools", "context": "Tools that clients discover and invoke" },
+    { "uri": "mcp/server/resources", "context": "Resources that clients read for context" },
+    { "uri": "mcp/server/prompts", "context": "Prompts that clients retrieve" },
+    { "uri": "mcp/transport", "context": "Transport configuration for client connections" },
     { "uri": "mcp/auth", "context": "OAuth authorization for remote server connections" },
-    { "uri": "mcp/architecture", "context": "Client role in MCP architecture" },
-    { "uri": "anthropic/tool-use", "context": "Claude tool use for LLM integration" }
+    { "uri": "mcp/architecture", "context": "Protocol architecture: client role in the host/client/server model" }
   ],
   "related": [
-    { "uri": "mcp/server", "relation": "see-also", "note": "Clients connect to and consume MCP servers" },
-    { "uri": "mcp/transport", "relation": "prerequisite", "note": "Clients must use a transport to connect" },
-    { "uri": "mcp/auth", "relation": "see-also", "note": "Remote connections may require OAuth" },
-    { "uri": "anthropic/tool-use", "relation": "see-also", "note": "MCP tool discovery maps to Claude tool use" }
+    { "uri": "mcp/server", "relation": "see-also", "note": "Build servers that your client connects to" },
+    { "uri": "mcp/architecture", "relation": "prerequisite", "note": "Understand the protocol before building a client" },
+    { "uri": "mcp/transport", "relation": "prerequisite", "note": "Clients must choose a transport to connect" },
+    { "uri": "mcp/auth", "relation": "see-also", "note": "Remote connections may require OAuth authorization" }
   ],
   "scripts": [
     {
-      "id": "mcp-client",
-      "name": "MCP Client Example",
-      "description": "Connect to an MCP server, discover tools, and execute them in an interactive loop",
+      "id": "connect-and-list",
+      "name": "Connect and List Tools",
+      "description": "Connect to an MCP server via stdio and list all available tools",
       "lang": "python",
       "runtime": "python>=3.10",
-      "entry": "./scripts/mcp-client.py",
-      "env": {
-        "ANTHROPIC_API_KEY": { "required": false, "secret": true, "description": "Anthropic API key for LLM integration" }
-      },
-      "packages": ["mcp", "anthropic"]
+      "entry": "./scripts/connect-and-list.py",
+      "inline": "import asyncio\nfrom mcp import ClientSession, StdioServerParameters\nfrom mcp.client.stdio import stdio_client\nimport sys\nimport json\n\nasync def main():\n    if len(sys.argv) < 2:\n        print(\"Usage: python connect-and-list.py <server-command> [args...]\")\n        sys.exit(1)\n    command = sys.argv[1]\n    args = sys.argv[2:]\n    params = StdioServerParameters(command=command, args=args)\n    async with stdio_client(params) as (read, write):\n        async with ClientSession(read, write) as session:\n            await session.initialize()\n            tools = await session.list_tools()\n            print(\"Tools:\")\n            for t in tools.tools:\n                print(f\"  {t.name}: {t.description}\")\n            resources = await session.list_resources()\n            print(\"\\nResources:\")\n            for r in resources.resources:\n                print(f\"  {r.uri}: {r.name}\")\n            prompts = await session.list_prompts()\n            print(\"\\nPrompts:\")\n            for p in prompts.prompts:\n                print(f\"  {p.name}: {p.description}\")\n\nasyncio.run(main())",
+      "env": {},
+      "packages": ["mcp"]
     }
   ],
   "schema": {
     "input": {
       "type": "object",
       "properties": {
-        "server_command": { "type": "string", "description": "Command to launch the MCP server" },
-        "server_args": { "type": "array", "items": { "type": "string" }, "description": "Arguments for the server command" },
-        "server_url": { "type": "string", "description": "URL for remote Streamable HTTP server" }
+        "serverCommand": { "type": "string", "description": "Command to launch the MCP server" },
+        "serverArgs": { "type": "array", "items": { "type": "string" }, "description": "Arguments for the server command" },
+        "serverUrl": { "type": "string", "description": "URL for remote Streamable HTTP server" },
+        "transport": { "type": "string", "enum": ["stdio", "http"], "default": "stdio" }
       }
     },
     "output": {
       "type": "object",
       "properties": {
         "tools": { "type": "array", "description": "Available tools from the server" },
-        "resources": { "type": "array", "description": "Available resources from the server" },
-        "prompts": { "type": "array", "description": "Available prompts from the server" }
+        "resources": { "type": "array", "description": "Available resources" },
+        "prompts": { "type": "array", "description": "Available prompts" }
       }
     }
   },
   "depends": [
-    { "uri": "mcp/transport", "reason": "Clients use transports to connect to servers" }
+    { "uri": "mcp/architecture", "reason": "Understanding the client role in MCP architecture" },
+    { "uri": "mcp/transport", "reason": "Clients must configure transport to connect to servers" }
   ],
   "more": {
     "docs": "https://modelcontextprotocol.io/docs/develop/build-client",
-    "repo": "https://github.com/modelcontextprotocol/python-sdk",
-    "examples": "https://github.com/modelcontextprotocol/quickstart-resources"
+    "spec": "https://modelcontextprotocol.io/specification/2025-06-18"
   },
   "frontmatter": {
-    "created": "2026-04-10",
-    "updated": "2026-04-10",
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
     "author": "dojo-community",
     "audience": "developers, AI agents",
-    "estimated_reading_time": "5 min",
-    "prerequisites": ["mcp/transport"],
+    "estimated_reading_time": "7 min",
+    "prerequisites": ["mcp/architecture", "mcp/transport"],
     "status": "living",
     "confidence": "high"
   },
   "author": "dojo-community",
   "license": "MIT",
-  "created": "2026-04-10T00:00:00Z",
-  "updated": "2026-04-10T00:00:00Z",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
   "status": "published"
 }

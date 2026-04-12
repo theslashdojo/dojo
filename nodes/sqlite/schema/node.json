@@ -1,0 +1,150 @@
+{
+  "name": "schema",
+  "version": "1.0.0",
+  "uri": "sqlite/schema",
+  "type": "skill",
+  "context": "Design SQLite schemas — CREATE TABLE, column types, constraints, indexes, views, triggers, and ALTER TABLE",
+  "info": "This skill covers SQLite schema design: creating tables with appropriate type affinities (TEXT, INTEGER, REAL, BLOB, NUMERIC), defining constraints (PRIMARY KEY, NOT NULL, UNIQUE, CHECK, FOREIGN KEY, DEFAULT), creating indexes for query performance, building views for reusable queries, writing triggers for automated actions, and using ALTER TABLE for schema evolution. SQLite uses a flexible type system based on type affinity rather than strict types — any column can store any value unless STRICT mode is enabled. Understanding type affinity, rowid behavior, and indexing strategy is essential for building correct and fast schemas. Agents use this skill when creating new databases, adding tables, designing data models, and evolving schemas. See [[sqlite/queries]] for reading and writing data, [[sqlite/performance]] for index optimization, and [[sqlite/extensions]] for virtual tables like FTS5.",
+  "parent": "sqlite",
+  "tags": ["schema", "create-table", "indexes", "views", "triggers", "constraints", "types", "ddl", "alter-table", "foreign-keys"],
+  "aliases": [
+    "sqlite schema",
+    "sqlite create table",
+    "sqlite table",
+    "sqlite ddl",
+    "sqlite types",
+    "sqlite columns",
+    "sqlite index",
+    "sqlite view",
+    "sqlite trigger",
+    "sqlite constraints",
+    "sqlite foreign key",
+    "sqlite alter table",
+    "sqlite strict mode",
+    "define sqlite tables"
+  ],
+  "triggers": [
+    "create a sqlite table",
+    "design a sqlite schema",
+    "add an index in sqlite",
+    "create a view in sqlite",
+    "add a foreign key in sqlite",
+    "what types does sqlite support",
+    "sqlite column types",
+    "alter a sqlite table",
+    "add a column to sqlite table",
+    "create a trigger in sqlite",
+    "sqlite schema design",
+    "sqlite data model"
+  ],
+  "body": "# SQLite Schema Design\n\nSQLite schema design differs from other databases in important ways: flexible type affinity, implicit rowid, and limited ALTER TABLE. This skill covers everything agents need to create correct, performant schemas.\n\n## CREATE TABLE\n\n```sql\n-- Basic table\nCREATE TABLE users (\n  id INTEGER PRIMARY KEY,           -- alias for rowid (auto-increment)\n  name TEXT NOT NULL,\n  email TEXT NOT NULL UNIQUE,\n  age INTEGER CHECK(age >= 0),\n  bio TEXT DEFAULT '',\n  created_at TEXT DEFAULT (datetime('now')),\n  updated_at TEXT DEFAULT (datetime('now'))\n);\n\n-- With foreign key\nCREATE TABLE posts (\n  id INTEGER PRIMARY KEY,\n  title TEXT NOT NULL,\n  body TEXT NOT NULL,\n  author_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,\n  published INTEGER DEFAULT 0,       -- boolean (0/1)\n  created_at TEXT DEFAULT (datetime('now'))\n);\n\n-- STRICT mode (enforce type checking)\nCREATE TABLE measurements (\n  id INTEGER PRIMARY KEY,\n  sensor_id INTEGER NOT NULL,\n  value REAL NOT NULL,\n  recorded_at TEXT NOT NULL\n) STRICT;\n\n-- IF NOT EXISTS (safe for idempotent scripts)\nCREATE TABLE IF NOT EXISTS migrations (\n  id INTEGER PRIMARY KEY,\n  name TEXT NOT NULL UNIQUE,\n  applied_at TEXT DEFAULT (datetime('now'))\n);\n\n-- WITHOUT ROWID (for composite primary keys or small tables with text keys)\nCREATE TABLE settings (\n  key TEXT PRIMARY KEY,\n  value TEXT NOT NULL\n) WITHOUT ROWID;\n```\n\n## Type Affinity\n\nSQLite uses **type affinity** rather than strict types. Any column can store any value (unless STRICT).\n\n| Affinity | Preferred Types | Use For |\n|----------|----------------|---------|\n| `INTEGER` | integers | IDs, counts, booleans (0/1), Unix timestamps |\n| `TEXT` | strings | names, emails, ISO-8601 dates, JSON, UUIDs |\n| `REAL` | floats | prices, measurements, coordinates |\n| `BLOB` | raw bytes | files, images, binary data |\n| `NUMERIC` | any numeric | flexible numeric storage |\n\n### Boolean Convention\n\nSQLite has no BOOLEAN type. Use `INTEGER` with values `0` (false) and `1` (true):\n\n```sql\nCREATE TABLE features (name TEXT, enabled INTEGER DEFAULT 0 CHECK(enabled IN (0, 1)));\n```\n\n### Date Convention\n\nSQLite has no DATE type. Store as:\n- **TEXT** `'2026-04-11 12:00:00'` — human-readable, sortable, use datetime() functions\n- **INTEGER** `1744358400` — Unix epoch, compact, use strftime()\n- **REAL** `2460775.0` — Julian day number, for astronomical calculations\n\nRecommendation: Use TEXT with ISO-8601 format and `DEFAULT (datetime('now'))`.\n\n## PRIMARY KEY and ROWID\n\n```sql\n-- INTEGER PRIMARY KEY is an alias for the implicit rowid\nCREATE TABLE items (id INTEGER PRIMARY KEY, name TEXT);\n-- id and rowid are the same column\n\n-- AUTOINCREMENT prevents rowid reuse (rarely needed)\nCREATE TABLE logs (id INTEGER PRIMARY KEY AUTOINCREMENT, message TEXT);\n\n-- Composite primary key\nCREATE TABLE post_tags (\n  post_id INTEGER REFERENCES posts(id),\n  tag_id INTEGER REFERENCES tags(id),\n  PRIMARY KEY (post_id, tag_id)\n);\n\n-- UUID primary key (use WITHOUT ROWID for efficiency)\nCREATE TABLE events (\n  id TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),\n  type TEXT NOT NULL\n) WITHOUT ROWID;\n```\n\n## Constraints\n\n```sql\nCREATE TABLE products (\n  id INTEGER PRIMARY KEY,\n  sku TEXT NOT NULL UNIQUE,\n  name TEXT NOT NULL,\n  price REAL NOT NULL CHECK(price > 0),\n  stock INTEGER NOT NULL DEFAULT 0 CHECK(stock >= 0),\n  category TEXT NOT NULL DEFAULT 'general',\n  -- Table-level constraints\n  UNIQUE(category, name)\n);\n```\n\n## Foreign Keys\n\n```sql\n-- IMPORTANT: Foreign keys are OFF by default!\nPRAGMA foreign_keys = ON;\n\nCREATE TABLE orders (\n  id INTEGER PRIMARY KEY,\n  user_id INTEGER NOT NULL,\n  total REAL NOT NULL,\n  FOREIGN KEY (user_id) REFERENCES users(id)\n    ON DELETE CASCADE\n    ON UPDATE CASCADE\n);\n\n-- ON DELETE actions: CASCADE, SET NULL, SET DEFAULT, RESTRICT, NO ACTION\n```\n\n## Indexes\n\n```sql\n-- Single column index\nCREATE INDEX idx_users_email ON users(email);\n\n-- Composite index (column order matters for queries)\nCREATE INDEX idx_posts_author_date ON posts(author_id, created_at DESC);\n\n-- Unique index (alternative to UNIQUE constraint)\nCREATE UNIQUE INDEX idx_users_email_unique ON users(email);\n\n-- Partial index (index only matching rows)\nCREATE INDEX idx_active_users ON users(email) WHERE active = 1;\n\n-- Expression index\nCREATE INDEX idx_users_lower_email ON users(lower(email));\n\n-- Covering index (includes all columns the query needs)\nCREATE INDEX idx_posts_covering ON posts(author_id, created_at, title);\n```\n\n## Views\n\n```sql\n-- Reusable query\nCREATE VIEW active_users AS\nSELECT id, name, email, last_login\nFROM users\nWHERE active = 1;\n\n-- Use like a table\nSELECT * FROM active_users WHERE last_login > datetime('now', '-7 days');\n\n-- Drop and recreate (no ALTER VIEW)\nDROP VIEW IF EXISTS active_users;\n```\n\n## Triggers\n\n```sql\n-- Auto-update updated_at timestamp\nCREATE TRIGGER users_updated_at\nAFTER UPDATE ON users\nFOR EACH ROW\nBEGIN\n  UPDATE users SET updated_at = datetime('now') WHERE id = NEW.id;\nEND;\n\n-- Audit log trigger\nCREATE TRIGGER orders_audit\nAFTER INSERT ON orders\nFOR EACH ROW\nBEGIN\n  INSERT INTO audit_log (table_name, row_id, action, timestamp)\n  VALUES ('orders', NEW.id, 'INSERT', datetime('now'));\nEND;\n\n-- Prevent deletion trigger\nCREATE TRIGGER prevent_admin_delete\nBEFORE DELETE ON users\nFOR EACH ROW WHEN OLD.role = 'admin'\nBEGIN\n  SELECT RAISE(ABORT, 'Cannot delete admin users');\nEND;\n```\n\n## ALTER TABLE\n\nSQLite has limited ALTER TABLE support:\n\n```sql\n-- Add a column (always allowed)\nALTER TABLE users ADD COLUMN phone TEXT;\n\n-- Rename a table\nALTER TABLE old_name RENAME TO new_name;\n\n-- Rename a column (SQLite 3.25.0+)\nALTER TABLE users RENAME COLUMN phone TO phone_number;\n\n-- Drop a column (SQLite 3.35.0+)\nALTER TABLE users DROP COLUMN legacy_field;\n```\n\nFor other schema changes (change types, modify constraints), use the **12-step ALTER TABLE procedure**:\n\n```sql\n-- 1. Create new table with desired schema\nCREATE TABLE users_new (\n  id INTEGER PRIMARY KEY,\n  name TEXT NOT NULL,\n  email TEXT NOT NULL UNIQUE\n  -- removed: old_column\n  -- changed: email is now UNIQUE\n);\n-- 2. Copy data\nINSERT INTO users_new (id, name, email) SELECT id, name, email FROM users;\n-- 3. Drop old table\nDROP TABLE users;\n-- 4. Rename new table\nALTER TABLE users_new RENAME TO users;\n-- 5. Recreate indexes, triggers, views\n```\n\n## Schema Inspection\n\n```sql\n-- List all tables\nSELECT name FROM sqlite_master WHERE type='table' ORDER BY name;\n\n-- Show CREATE statement for a table\nSELECT sql FROM sqlite_master WHERE name='users';\n\n-- List columns\nPRAGMA table_info('users');\n\n-- List indexes\nPRAGMA index_list('users');\n\n-- Show index columns\nPRAGMA index_info('idx_users_email');\n\n-- List foreign keys\nPRAGMA foreign_key_list('orders');\n\n-- Check foreign key violations\nPRAGMA foreign_key_check;\n```\n",
+  "sections": [
+    {
+      "id": "create-table",
+      "title": "CREATE TABLE",
+      "body": "Define tables with columns, type affinities, and constraints. Use INTEGER PRIMARY KEY for auto-incrementing rowid alias. Use IF NOT EXISTS for idempotent creation. Use STRICT mode for type enforcement. WITHOUT ROWID is optimal for tables with TEXT primary keys or composite primary keys with no need for rowid access.",
+      "tags": ["create-table", "strict", "without-rowid", "primary-key"]
+    },
+    {
+      "id": "type-affinity",
+      "title": "Type affinity system",
+      "body": "SQLite has five type affinities: INTEGER, TEXT, REAL, BLOB, NUMERIC. Unlike other databases, SQLite allows any value in any column unless STRICT mode is used. The declared type maps to an affinity via rules: 'INT' → INTEGER, 'CHAR/TEXT/CLOB' → TEXT, 'REAL/FLOAT/DOUBLE' → REAL, 'BLOB' → BLOB, everything else → NUMERIC. Store booleans as INTEGER (0/1), dates as TEXT (ISO-8601), and JSON as TEXT.",
+      "tags": ["types", "affinity", "integer", "text", "real", "blob", "boolean", "date"]
+    },
+    {
+      "id": "indexes",
+      "title": "Index design",
+      "body": "Create indexes on columns used in WHERE, JOIN, ORDER BY, and GROUP BY. Composite indexes must match the leftmost prefix of query conditions. Partial indexes (WHERE clause) reduce index size. Expression indexes enable indexed lookups on computed values. Covering indexes include all columns a query needs, avoiding table lookups. Use [[sqlite/performance]] and EXPLAIN QUERY PLAN to verify index usage.",
+      "tags": ["index", "composite-index", "partial-index", "covering-index", "expression-index"]
+    },
+    {
+      "id": "foreign-keys",
+      "title": "Foreign keys",
+      "body": "Foreign keys are OFF by default — always run `PRAGMA foreign_keys = ON` when opening a connection. Define with REFERENCES and specify ON DELETE/ON UPDATE actions: CASCADE (propagate), SET NULL, SET DEFAULT, RESTRICT (prevent), NO ACTION (defer check). Use PRAGMA foreign_key_check to find violations in existing data.",
+      "tags": ["foreign-keys", "references", "cascade", "referential-integrity"]
+    },
+    {
+      "id": "views-triggers",
+      "title": "Views and triggers",
+      "body": "Views are named SELECT statements. Use for reusable queries, security (expose subset of columns), and simplification. Triggers fire on INSERT, UPDATE, DELETE — BEFORE or AFTER. Access NEW.column and OLD.column in trigger bodies. Use RAISE(ABORT, message) to reject operations. Common patterns: auto-updating timestamps, audit logs, cascading denormalized fields.",
+      "tags": ["views", "triggers", "audit", "auto-update", "raise-abort"]
+    },
+    {
+      "id": "alter-table",
+      "title": "ALTER TABLE and migrations",
+      "body": "SQLite ALTER TABLE supports: ADD COLUMN (always), RENAME TABLE, RENAME COLUMN (3.25+), DROP COLUMN (3.35+). For other changes, use the 12-step procedure: create new table, copy data, drop old, rename new, recreate indexes/triggers/views. Wrap migrations in transactions. Track applied migrations in a migrations table.",
+      "tags": ["alter-table", "migrations", "schema-evolution", "add-column", "rename"]
+    }
+  ],
+  "links": [
+    { "uri": "sqlite/queries", "context": "Query data after designing the schema" },
+    { "uri": "sqlite/performance", "context": "Index strategies and EXPLAIN QUERY PLAN" },
+    { "uri": "sqlite/extensions", "context": "Virtual tables (FTS5, R-Tree) extend the schema" },
+    { "uri": "sqlite/wal", "context": "WAL mode affects schema operations and concurrency" },
+    { "uri": "sqlite", "context": "SQLite ecosystem overview and connection setup" }
+  ],
+  "related": [
+    { "uri": "sqlite/queries", "relation": "see-also", "note": "Schema defines structure; queries read and write data within that structure" },
+    { "uri": "sqlite/performance", "relation": "see-also", "note": "Index design in schema directly determines query performance" },
+    { "uri": "sqlite/extensions", "relation": "extends", "note": "FTS5 and R-Tree virtual tables extend the schema with specialized table types" },
+    { "uri": "prisma/schema", "relation": "see-also", "note": "Prisma schema can target SQLite and generates CREATE TABLE statements" },
+    { "uri": "drizzle/schema", "relation": "see-also", "note": "Drizzle sqliteTable() defines SQLite schemas in TypeScript" }
+  ],
+  "scripts": [
+    {
+      "id": "schema-ops",
+      "name": "SQLite Schema Operations",
+      "description": "Create tables, indexes, views, triggers, inspect schema, and run migrations on a SQLite database",
+      "lang": "bash",
+      "runtime": "bash>=4",
+      "entry": "./scripts/schema-ops.sh",
+      "env": {
+        "SQLITE_DB": { "required": false, "default": "app.db", "description": "Path to SQLite database file" }
+      },
+      "packages": ["sqlite3"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "database": { "type": "string", "description": "Path to SQLite database file" },
+        "operation": { "type": "string", "enum": ["create-table", "add-column", "create-index", "inspect", "migrate"], "description": "Schema operation to perform" },
+        "table_name": { "type": "string", "description": "Target table name" },
+        "sql": { "type": "string", "description": "Raw DDL SQL to execute" }
+      },
+      "required": ["database"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "tables": { "type": "array", "items": { "type": "string" }, "description": "List of tables in database" },
+        "schema_sql": { "type": "string", "description": "CREATE statement for the table" },
+        "columns": { "type": "array", "description": "Column definitions from PRAGMA table_info" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "sqlite", "reason": "SQLite must be available (sqlite3 CLI or language driver)" }
+  ],
+  "more": {
+    "docs": "https://www.sqlite.org/lang_createtable.html",
+    "spec": "https://www.sqlite.org/datatype3.html",
+    "examples": "https://www.sqlite.org/lang_altertable.html"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "6 min",
+    "prerequisites": ["sqlite"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

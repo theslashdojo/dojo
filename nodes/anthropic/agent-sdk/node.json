@@ -3,123 +3,136 @@
   "version": "1.0.0",
   "uri": "anthropic/agent-sdk",
   "type": "skill",
-  "context": "Build autonomous Claude agents with the Claude Agent SDK — tools, hooks, MCP servers, and multi-agent orchestration",
-  "info": "The Claude Agent SDK (`pip install claude-agent-sdk`) provides a Python framework for building autonomous agents powered by Claude Code. The core primitives are `query()` for simple one-shot prompts, `ClaudeSDKClient` for interactive stateful sessions with custom tools and hooks, and the `@tool` decorator for defining in-process MCP server tools. Agents can read, write, and edit files, run bash commands, and use any MCP server. Configuration via `ClaudeAgentOptions` controls: system prompt, allowed/disallowed tools, permission mode (askUser, acceptEdits, denyEdits), max turns, working directory, and MCP server connections. Hooks enable deterministic interception at PreToolUse and PostToolUse points for guardrails. The SDK supports both in-process MCP tools (no subprocess, better performance) and external MCP servers via stdio.",
+  "context": "Build autonomous Claude agents that understand codebases, edit files, and run commands via the Agent SDK",
+  "info": "The Claude Agent SDK (@anthropic-ai/claude-agent-sdk) is a TypeScript library for building autonomous agents powered by Claude. Agents can understand codebases, edit files, execute shell commands, and complete complex multi-step workflows. The SDK provides a programmatic interface to Claude's agentic capabilities — the same capabilities that power Claude Code. Key concepts: creating agent sessions, streaming responses, providing tools and permissions, and handling the agent lifecycle. The SDK requires Node.js 18+ and an Anthropic API key. It builds on the [[anthropic/messages]] API and [[anthropic/tool-use]] but abstracts away the agentic loop, tool execution, and conversation management. For lower-level control, use the Messages API directly with tool definitions.",
   "parent": "anthropic",
-  "tags": ["agent-sdk", "agents", "autonomous", "mcp", "tools", "hooks", "orchestration"],
+  "tags": ["agent-sdk", "agents", "autonomous", "claude-code", "sdk"],
   "aliases": [
-    "claude agent sdk",
     "agent sdk",
-    "claude agents",
+    "claude agent sdk",
     "claude code sdk",
-    "autonomous agents",
-    "agent framework",
-    "claude-agent-sdk",
-    "claude sdk agents",
-    "agent orchestration"
+    "autonomous agent",
+    "build agent",
+    "anthropic agent sdk",
+    "@anthropic-ai/claude-agent-sdk",
+    "agent toolkit",
+    "agentic sdk"
   ],
   "triggers": [
-    "build a claude agent",
+    "build an autonomous agent with claude",
     "use the agent sdk",
-    "create an autonomous agent with claude",
-    "define tools for a claude agent",
-    "add hooks to a claude agent",
-    "connect mcp servers to claude",
-    "build a multi-agent system with claude"
+    "create a claude agent programmatically",
+    "automate coding tasks with claude",
+    "embed claude code in my app",
+    "use claude-agent-sdk",
+    "programmatic claude agent"
   ],
-  "body": "# Claude Agent SDK\n\nBuild autonomous agents that use Claude Code's full toolset: file I/O, bash, code editing, and custom MCP tools.\n\n## Installation\n\n```bash\npip install claude-agent-sdk\n```\n\nRequires Python 3.10+. Claude Code CLI is bundled automatically.\n\n## Quick Start — Simple Query\n\n```python\nimport anyio\nfrom claude_agent_sdk import query, AssistantMessage, TextBlock\n\nasync def main():\n    async for message in query(prompt=\"What is 2 + 2?\"):\n        if isinstance(message, AssistantMessage):\n            for block in message.content:\n                if isinstance(block, TextBlock):\n                    print(block.text)\n\nanyio.run(main)\n```\n\n## Interactive Client with Options\n\n```python\nfrom claude_agent_sdk import ClaudeSDKClient, ClaudeAgentOptions, AssistantMessage, TextBlock\n\noptions = ClaudeAgentOptions(\n    system_prompt=\"You are a senior Python developer. Write clean, tested code.\",\n    allowed_tools=[\"Read\", \"Write\", \"Edit\", \"Bash\"],\n    permission_mode=\"acceptEdits\",\n    max_turns=5,\n    cwd=\"/path/to/project\",\n)\n\nasync with ClaudeSDKClient(options=options) as client:\n    await client.query(\"Create a hello.py file that prints 'Hello, World!'\")\n    async for msg in client.receive_response():\n        if isinstance(msg, AssistantMessage):\n            for block in msg.content:\n                if isinstance(block, TextBlock):\n                    print(block.text)\n```\n\n## ClaudeAgentOptions\n\n| Option | Type | Description |\n|--------|------|-------------|\n| `system_prompt` | str | Custom system prompt |\n| `max_turns` | int | Max conversation turns |\n| `cwd` | str/Path | Working directory |\n| `allowed_tools` | list[str] | Auto-approve these tools |\n| `disallowed_tools` | list[str] | Block these tools |\n| `permission_mode` | str | `askUser`, `acceptEdits`, `denyEdits` |\n| `mcp_servers` | dict | MCP server configurations |\n| `hooks` | dict | Hook matchers for interception |\n\n## Custom Tools via @tool Decorator\n\nDefine in-process MCP tools that run without subprocess overhead:\n\n```python\nfrom claude_agent_sdk import tool, create_sdk_mcp_server, ClaudeSDKClient, ClaudeAgentOptions\n\n@tool(\"lookup_user\", \"Look up a user by email address\", {\"email\": str})\nasync def lookup_user(args):\n    email = args[\"email\"]\n    # Your actual user lookup logic\n    return {\n        \"content\": [{\"type\": \"text\", \"text\": f\"User: {email}, Status: active, Plan: pro\"}]\n    }\n\n@tool(\"send_email\", \"Send an email to a user\", {\"to\": str, \"subject\": str, \"body\": str})\nasync def send_email(args):\n    # Your actual email sending logic\n    return {\n        \"content\": [{\"type\": \"text\", \"text\": f\"Email sent to {args['to']}\"}]\n    }\n\n# Create MCP server with tools\nserver = create_sdk_mcp_server(\n    name=\"user-tools\",\n    version=\"1.0.0\",\n    tools=[lookup_user, send_email]\n)\n\n# Use with client\noptions = ClaudeAgentOptions(\n    system_prompt=\"You are a customer support agent.\",\n    mcp_servers={\"users\": server},\n    allowed_tools=[\"mcp__users__lookup_user\", \"mcp__users__send_email\"],\n)\n\nasync with ClaudeSDKClient(options=options) as client:\n    await client.query(\"Look up user alice@example.com and send them a welcome email\")\n    async for msg in client.receive_response():\n        if isinstance(msg, AssistantMessage):\n            for block in msg.content:\n                if isinstance(block, TextBlock):\n                    print(block.text)\n```\n\n## Hooks (Guardrails)\n\nIntercept tool calls for safety and deterministic processing:\n\n```python\nfrom claude_agent_sdk import ClaudeSDKClient, ClaudeAgentOptions, HookMatcher\n\nasync def block_dangerous_commands(input_data, tool_use_id, context):\n    \"\"\"Deny bash commands that contain dangerous patterns.\"\"\"\n    if input_data[\"tool_name\"] != \"Bash\":\n        return {}\n\n    command = input_data[\"tool_input\"].get(\"command\", \"\")\n    dangerous = [\"rm -rf\", \"sudo\", \"chmod 777\", \"dd if=\"]\n\n    for pattern in dangerous:\n        if pattern in command:\n            return {\n                \"hookSpecificOutput\": {\n                    \"hookEventName\": \"PreToolUse\",\n                    \"permissionDecision\": \"deny\",\n                    \"permissionDecisionReason\": f\"Blocked: contains '{pattern}'\"\n                }\n            }\n    return {}\n\noptions = ClaudeAgentOptions(\n    allowed_tools=[\"Bash\", \"Read\", \"Write\"],\n    hooks={\n        \"PreToolUse\": [\n            HookMatcher(matcher=\"Bash\", hooks=[block_dangerous_commands])\n        ]\n    }\n)\n```\n\n## External MCP Servers\n\n```python\noptions = ClaudeAgentOptions(\n    mcp_servers={\n        \"internal\": server,  # In-process (from create_sdk_mcp_server)\n        \"database\": {\n            \"type\": \"stdio\",\n            \"command\": \"npx\",\n            \"args\": [\"-y\", \"@modelcontextprotocol/server-postgres\", \"postgresql://localhost/mydb\"]\n        }\n    }\n)\n```\n\n## Available Built-in Tools\n\n| Tool | Purpose |\n|------|----------|\n| `Read` | Read files |\n| `Write` | Create files |\n| `Edit` | Modify files |\n| `Bash` | Run shell commands |\n| `Glob` | Find files by pattern |\n| `Grep` | Search file contents |\n\n## Message Types\n\n```python\nfrom claude_agent_sdk import (\n    AssistantMessage,\n    UserMessage,\n    SystemMessage,\n    ResultMessage,\n    TextBlock,\n    ToolUseBlock,\n    ToolResultBlock,\n)\n\nasync for message in query(prompt=\"Hello\"):\n    if isinstance(message, AssistantMessage):\n        for block in message.content:\n            if isinstance(block, TextBlock):\n                print(\"Text:\", block.text)\n            elif isinstance(block, ToolUseBlock):\n                print(\"Tool:\", block.name, block.input)\n```\n\n## Error Handling\n\n```python\nfrom claude_agent_sdk import (\n    ClaudeSDKError,\n    CLINotFoundError,\n    CLIConnectionError,\n    ProcessError,\n)\n\ntry:\n    async for msg in query(prompt=\"Hello\"):\n        pass\nexcept CLINotFoundError:\n    print(\"Install Claude Code: curl -fsSL https://claude.ai/install.sh | bash\")\nexcept ProcessError as e:\n    print(f\"Process error (exit {e.exit_code})\")\n```\n",
+  "body": "# Claude Agent SDK\n\nBuild autonomous agents that can understand code, edit files, run commands, and complete complex tasks.\n\n## Installation\n\n```bash\nnpm install @anthropic-ai/claude-agent-sdk\n```\n\nRequires Node.js 18+ and an `ANTHROPIC_API_KEY` environment variable.\n\n## Quick Start\n\n```typescript\nimport { ClaudeAgent } from \"@anthropic-ai/claude-agent-sdk\";\n\nconst agent = new ClaudeAgent({\n  model: \"claude-sonnet-4-6\",\n  apiKey: process.env.ANTHROPIC_API_KEY,\n});\n\n// Send a task and stream the response\nconst stream = agent.message({\n  message: \"Read the package.json and explain what this project does\",\n  workingDirectory: \"/path/to/project\",\n});\n\nfor await (const event of stream) {\n  if (event.type === \"text\") {\n    process.stdout.write(event.text);\n  } else if (event.type === \"tool_use\") {\n    console.log(`Using tool: ${event.tool}`);\n  }\n}\n```\n\n## Core Concepts\n\n### Agent Sessions\n\nAn agent session maintains conversation context across multiple interactions:\n\n```typescript\nconst agent = new ClaudeAgent({\n  model: \"claude-sonnet-4-6\",\n  systemPrompt: \"You are a senior developer. Write clean, well-tested code.\",\n  tools: [\"bash\", \"text_editor\", \"file_reader\"],\n});\n\n// First message\nawait agent.message({ message: \"Create a new Express API with health endpoint\" });\n\n// Follow-up (conversation context is preserved)\nawait agent.message({ message: \"Add rate limiting middleware\" });\n```\n\n### Tool Permissions\n\nControl which tools the agent can use and which operations require approval:\n\n```typescript\nconst agent = new ClaudeAgent({\n  model: \"claude-sonnet-4-6\",\n  permissions: {\n    bash: { autoApprove: [\"ls\", \"cat\", \"grep\", \"find\"] },\n    fileWrite: { autoApprove: [\"src/**/*.ts\", \"tests/**/*.ts\"] },\n    fileRead: { autoApprove: true },\n  },\n});\n```\n\n### Streaming Events\n\nThe SDK streams events as the agent works:\n\n```typescript\nconst stream = agent.message({ message: \"Fix the failing test\" });\n\nfor await (const event of stream) {\n  switch (event.type) {\n    case \"text\":\n      // Claude's text output\n      process.stdout.write(event.text);\n      break;\n    case \"tool_use\":\n      // Tool being called (bash, file edit, etc.)\n      console.log(`Tool: ${event.tool} - ${event.description}`);\n      break;\n    case \"tool_result\":\n      // Result from tool execution\n      console.log(`Result: ${event.output}`);\n      break;\n    case \"error\":\n      console.error(`Error: ${event.message}`);\n      break;\n  }\n}\n```\n\n### Custom Tools\n\nExtend the agent with custom tools using the [[anthropic/tool-use]] format:\n\n```typescript\nconst agent = new ClaudeAgent({\n  model: \"claude-sonnet-4-6\",\n  customTools: [\n    {\n      name: \"run_tests\",\n      description: \"Run the project test suite and return results\",\n      input_schema: {\n        type: \"object\",\n        properties: {\n          pattern: { type: \"string\", description: \"Test file pattern\" }\n        }\n      },\n      handler: async (input) => {\n        // Your test runner logic\n        const result = await runTests(input.pattern);\n        return { output: result };\n      }\n    }\n  ]\n});\n```\n\n## Built-in Tools\n\n| Tool | Description |\n|------|-------------|\n| `bash` | Execute shell commands |\n| `text_editor` | View and edit files |\n| `file_reader` | Read file contents |\n| `web_search` | Search the web |\n| `web_fetch` | Fetch web page content |\n\n## Configuration Options\n\n```typescript\nnew ClaudeAgent({\n  model: string,              // Model ID (required)\n  apiKey: string,             // API key (default: ANTHROPIC_API_KEY env)\n  systemPrompt: string,       // Custom system instructions\n  workingDirectory: string,   // Default working directory\n  tools: string[],            // Built-in tools to enable\n  customTools: Tool[],        // Custom tool definitions\n  permissions: Permissions,   // Tool permission configuration\n  maxTokens: number,          // Max output tokens per turn\n  maxTurns: number,           // Max agentic loop iterations\n});\n```\n\n## Use Cases\n\n- **Code generation** — Generate features from natural language descriptions\n- **Bug fixing** — Analyze errors, locate bugs, and apply fixes\n- **Code review** — Review PRs and suggest improvements\n- **Refactoring** — Restructure code while maintaining behavior\n- **Testing** — Write and run tests for existing code\n- **Documentation** — Generate docs from code\n- **DevOps** — Manage deployments, debug infrastructure\n\n## Comparison with Messages API\n\n| Feature | Messages API | Agent SDK |\n|---------|-------------|----------|\n| Conversation management | Manual | Automatic |\n| Tool execution | Your code | SDK handles it |\n| File system access | Not built-in | Built-in |\n| Shell execution | Not built-in | Built-in |\n| Streaming | SSE events | Typed event stream |\n| Multi-turn loops | Manual | Automatic |\n\nUse the Messages API ([[anthropic/messages]]) when you need full control. Use the Agent SDK when you want batteries-included agent behavior.\n\n## Environment Variables\n\n| Variable | Purpose |\n|----------|----------|\n| `ANTHROPIC_API_KEY` | API key (required) |\n| `ANTHROPIC_BASE_URL` | Override API endpoint |\n",
   "sections": [
     {
-      "id": "quick-start",
-      "title": "Quick start",
-      "body": "Install with `pip install claude-agent-sdk` (Python 3.10+). Use `query()` for simple one-shot prompts. Use `ClaudeSDKClient` for interactive sessions with custom tools. Configure via `ClaudeAgentOptions` with system prompt, allowed tools, permission mode, and MCP servers.",
-      "tags": ["install", "quick-start", "query", "client"]
+      "id": "installation",
+      "title": "Installation and setup",
+      "body": "Install via `npm install @anthropic-ai/claude-agent-sdk`. Requires Node.js 18+. Set `ANTHROPIC_API_KEY` environment variable. Create an agent with `new ClaudeAgent({ model: 'claude-sonnet-4-6' })`. The SDK was previously called `claude-code-sdk` — migration guide available in the docs.",
+      "tags": ["install", "npm", "setup", "node"]
     },
     {
-      "id": "custom-tools",
-      "title": "Custom tools via MCP",
-      "body": "Define tools with the `@tool(name, description, schema)` decorator. Create an in-process MCP server with `create_sdk_mcp_server(name, version, tools)`. Pass to `ClaudeAgentOptions(mcp_servers={...})`. Auto-approve with `allowed_tools=[\"mcp__servername__toolname\"]`. In-process tools avoid subprocess overhead and are easier to debug than external MCP servers.",
-      "tags": ["tools", "mcp", "decorator", "in-process", "custom"]
-    },
-    {
-      "id": "hooks",
-      "title": "Hooks for guardrails",
-      "body": "Hooks intercept agent actions at PreToolUse and PostToolUse. Define async functions that receive `input_data`, `tool_use_id`, and `context`. Return `permissionDecision: 'deny'` to block dangerous operations. Use `HookMatcher(matcher, hooks)` to target specific tools. Hooks enable deterministic safety checks in an otherwise autonomous agent loop.",
-      "tags": ["hooks", "guardrails", "safety", "pre-tool-use", "deny"]
+      "id": "agent-lifecycle",
+      "title": "Agent lifecycle",
+      "body": "Create an agent with configuration (model, tools, permissions). Send messages with `.message()` which returns an async iterable stream. The agent maintains conversation context across messages. Each message triggers an agentic loop: Claude reasons, calls tools, processes results, and continues until the task is complete or max turns are reached.",
+      "tags": ["lifecycle", "session", "conversation", "turns"]
     },
     {
       "id": "permissions",
-      "title": "Permission modes",
-      "body": "Three permission modes: `askUser` (prompt for every tool use), `acceptEdits` (auto-approve file edits), `denyEdits` (deny file modifications). Use `allowed_tools` to auto-approve specific tools regardless of mode. Use `disallowed_tools` to block specific tools. Combine with hooks for fine-grained control.",
-      "tags": ["permissions", "allowed-tools", "denied-tools", "accept-edits"]
+      "title": "Tool permissions",
+      "body": "Configure which operations auto-approve and which require human approval. Bash commands can be whitelisted by command prefix. File writes can be scoped by glob pattern. File reads can be auto-approved globally. This provides security guardrails while allowing autonomous operation for safe operations.",
+      "tags": ["permissions", "security", "auto-approve", "guardrails"]
+    },
+    {
+      "id": "custom-tools",
+      "title": "Custom tools",
+      "body": "Extend the agent with custom tools using the same format as [[anthropic/tool-use]]: name, description, input_schema, and an async handler function. The handler receives the parsed input and returns an output object. Custom tools participate in the same agentic loop as built-in tools.",
+      "tags": ["custom-tools", "extend", "handler", "integration"]
     }
   ],
   "links": [
-    { "uri": "anthropic/messages", "context": "Agent SDK uses the Messages API under the hood" },
-    { "uri": "anthropic/tool-use", "context": "Tool use concepts apply to agent tools" },
-    { "uri": "anthropic/auth", "context": "API key needed for agent operations" },
-    { "uri": "anthropic/models", "context": "Agents use Claude models for reasoning" }
+    { "uri": "anthropic/messages", "context": "Agent SDK builds on the Messages API" },
+    { "uri": "anthropic/tool-use", "context": "Custom tools use the same format" },
+    { "uri": "anthropic/messages/stream", "context": "Agent SDK streams events like the streaming API" },
+    { "uri": "anthropic/models", "context": "Choose model for agent intelligence vs speed" },
+    { "uri": "anthropic/auth", "context": "API key setup for the Agent SDK" },
+    { "uri": "anthropic/pricing", "context": "Agent sessions consume standard API tokens" }
   ],
   "related": [
-    { "uri": "anthropic/tool-use", "relation": "see-also", "note": "Agent SDK builds on tool use primitives" },
-    { "uri": "anthropic/messages", "relation": "prerequisite", "note": "Agent SDK uses the Messages API" },
-    { "uri": "anthropic/auth", "relation": "prerequisite", "note": "API key required for agent operations" }
+    { "uri": "anthropic/messages", "relation": "prerequisite", "note": "Agent SDK is built on the Messages API" },
+    { "uri": "anthropic/tool-use", "relation": "prerequisite", "note": "Understanding tool use helps with custom tools" },
+    { "uri": "anthropic/messages/stream", "relation": "see-also", "note": "Agent SDK uses streaming under the hood" }
   ],
   "scripts": [
     {
-      "id": "agent-example",
-      "name": "Agent Example",
-      "description": "Build a simple autonomous agent with custom tools and hooks",
-      "lang": "python",
-      "runtime": "python>=3.10",
-      "entry": "./scripts/agent-example.py",
+      "id": "create-agent",
+      "name": "Create Agent",
+      "description": "Create a basic Claude agent that can read and edit files",
+      "lang": "typescript",
+      "runtime": "node>=18",
+      "entry": "./scripts/create-agent.ts",
+      "inline": "import { ClaudeAgent } from \"@anthropic-ai/claude-agent-sdk\";\n\nconst agent = new ClaudeAgent({\n  model: process.env.ANTHROPIC_MODEL || \"claude-sonnet-4-6\",\n  systemPrompt: \"You are a helpful coding assistant. Be concise and write clean code.\",\n  tools: [\"bash\", \"text_editor\", \"file_reader\"],\n  permissions: {\n    fileRead: { autoApprove: true },\n    bash: { autoApprove: [\"ls\", \"cat\", \"grep\", \"find\", \"echo\", \"pwd\"] },\n  },\n});\n\nconst task = process.argv[2] || \"List the files in the current directory and describe the project structure\";\n\nconsole.log(`Task: ${task}\\n---`);\n\nconst stream = agent.message({\n  message: task,\n  workingDirectory: process.cwd(),\n});\n\nfor await (const event of stream) {\n  if (event.type === \"text\") {\n    process.stdout.write(event.text);\n  } else if (event.type === \"tool_use\") {\n    console.log(`\\n[Tool: ${event.tool}]`);\n  }\n}\n\nconsole.log(\"\\n--- Done\");\n",
       "env": {
-        "ANTHROPIC_API_KEY": { "required": true, "secret": true, "description": "Anthropic API key" }
+        "ANTHROPIC_API_KEY": { "required": true, "secret": true, "description": "Anthropic API key" },
+        "ANTHROPIC_MODEL": { "required": false, "default": "claude-sonnet-4-6", "description": "Model to use" }
       },
-      "packages": ["claude-agent-sdk"]
+      "packages": ["@anthropic-ai/claude-agent-sdk"]
     }
   ],
   "schema": {
     "input": {
       "type": "object",
       "properties": {
-        "prompt": { "type": "string", "description": "Task prompt for the agent" },
-        "system_prompt": { "type": "string", "description": "System instructions" },
-        "allowed_tools": { "type": "array", "items": { "type": "string" }, "description": "Tools to auto-approve" },
-        "max_turns": { "type": "integer", "description": "Maximum conversation turns" }
+        "model": { "type": "string", "description": "Model ID" },
+        "message": { "type": "string", "description": "Task description for the agent" },
+        "workingDirectory": { "type": "string", "description": "Directory context for file operations" },
+        "tools": { "type": "array", "items": { "type": "string" }, "description": "Built-in tools to enable" }
       },
-      "required": ["prompt"]
+      "required": ["model", "message"]
     },
     "output": {
       "type": "object",
+      "description": "Stream of typed events from the agent",
       "properties": {
-        "messages": { "type": "array", "description": "Conversation messages from the agent" },
-        "tool_calls": { "type": "array", "description": "Tools invoked during execution" }
+        "events": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "type": { "type": "string", "enum": ["text", "tool_use", "tool_result", "error"] }
+            }
+          }
+        }
       }
     }
   },
   "depends": [
-    { "uri": "anthropic/auth", "reason": "API key required for agent operations" },
-    { "uri": "anthropic/messages", "reason": "Agent SDK uses the Messages API" }
+    { "uri": "anthropic/auth", "reason": "API key required" },
+    { "uri": "anthropic/messages", "reason": "Agent SDK builds on the Messages API" },
+    { "uri": "anthropic/tool-use", "reason": "Agent uses tool calling under the hood" }
   ],
   "more": {
-    "docs": "https://docs.anthropic.com/en/docs/agents-and-tools/claude-agent-sdk",
-    "repo": "https://github.com/anthropics/claude-agent-sdk-python",
-    "pypi": "https://pypi.org/project/claude-agent-sdk/"
+    "docs": "https://docs.anthropic.com/en/api/agent-sdk/overview",
+    "repo": "https://github.com/anthropics/claude-agent-sdk",
+    "npm": "https://www.npmjs.com/package/@anthropic-ai/claude-agent-sdk"
   },
   "frontmatter": {
-    "created": "2026-04-10",
-    "updated": "2026-04-10",
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
     "author": "dojo-community",
     "audience": "developers, AI agents",
     "estimated_reading_time": "6 min",
-    "prerequisites": ["anthropic/auth"],
+    "prerequisites": ["anthropic/auth", "anthropic/messages", "anthropic/tool-use"],
     "status": "living",
     "confidence": "high"
   },
   "author": "dojo-community",
   "license": "MIT",
-  "created": "2026-04-10T00:00:00Z",
-  "updated": "2026-04-10T00:00:00Z",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
   "status": "published"
 }

@@ -1,0 +1,146 @@
+{
+  "name": "send",
+  "version": "1.0.0",
+  "uri": "resend/send",
+  "type": "skill",
+  "context": "Send transactional emails via the Resend API using HTML, plain text, or React Email templates",
+  "info": "This skill covers sending emails through Resend's REST API and SDKs. It supports three content modes: raw HTML strings, plain text, and React Email components rendered server-side. Agents use this skill to send welcome emails, password resets, order confirmations, invoices, notifications, and any programmatic email. The API accepts recipients (to, cc, bcc), reply-to addresses, custom headers, file attachments, tracking tags, scheduled delivery times, and idempotency keys for deduplication. Both the Node.js SDK (`resend` npm package) and Python SDK (`resend` pip package) wrap the `POST /emails` endpoint with typed interfaces. Batch sending supports up to 100 emails per request via `POST /emails/batch`. See [[resend/auth]] for API key setup, [[resend/domains]] for verified sender domains, and [[resend/react-email]] for building React-based templates.",
+  "parent": "resend",
+  "tags": ["send-email", "transactional", "email-api", "resend", "smtp", "batch-email", "scheduled-email"],
+  "aliases": [
+    "resend send",
+    "send email resend",
+    "resend emails send",
+    "resend transactional email",
+    "resend send email",
+    "send mail resend",
+    "resend batch send",
+    "resend scheduled email",
+    "email send api"
+  ],
+  "triggers": [
+    "send an email with resend",
+    "send a transactional email",
+    "send welcome email",
+    "send password reset email",
+    "send notification email",
+    "send email from node.js",
+    "send email from python",
+    "batch send emails",
+    "schedule an email",
+    "send email with attachment"
+  ],
+  "body": "# Sending Emails with Resend\n\nThe core Resend operation is sending email via `POST https://api.resend.com/emails`. The SDKs wrap this with typed interfaces.\n\n## Node.js SDK\n\n```typescript\nimport { Resend } from 'resend';\nconst resend = new Resend(process.env.RESEND_API_KEY);\n\nconst { data, error } = await resend.emails.send({\n  from: 'Acme <hello@yourdomain.com>',\n  to: ['user@example.com'],\n  subject: 'Welcome to Acme',\n  html: '<h1>Welcome!</h1><p>Thanks for signing up.</p>',\n});\n\nif (error) {\n  console.error({ error });\n  return;\n}\nconsole.log({ id: data.id }); // { id: '49a3999c-0ce1-4ea6-a0a6-2c4234c96f47' }\n```\n\n## Python SDK\n\n```python\nimport os\nimport resend\n\nresend.api_key = os.environ[\"RESEND_API_KEY\"]\n\nparams: resend.Emails.SendParams = {\n    \"from\": \"Acme <hello@yourdomain.com>\",\n    \"to\": [\"user@example.com\"],\n    \"subject\": \"Welcome to Acme\",\n    \"html\": \"<h1>Welcome!</h1><p>Thanks for signing up.</p>\",\n}\n\nemail = resend.Emails.send(params)\nprint(email)  # {'id': '49a3999c-...'}\n```\n\n## cURL\n\n```bash\ncurl -X POST 'https://api.resend.com/emails' \\\n  -H 'Authorization: Bearer re_xxxxxxxxxxxx' \\\n  -H 'Content-Type: application/json' \\\n  -d '{\n    \"from\": \"Acme <hello@yourdomain.com>\",\n    \"to\": [\"user@example.com\"],\n    \"subject\": \"Welcome to Acme\",\n    \"html\": \"<h1>Welcome!</h1>\"\n  }'\n```\n\n## Full Parameter Reference\n\n| Parameter | Type | Required | Description |\n|-----------|------|----------|-------------|\n| `from` | string | Yes | Sender address. Format: `Name <email@domain.com>` |\n| `to` | string or string[] | Yes | Recipient(s) |\n| `subject` | string | Yes | Email subject line |\n| `html` | string | One of html/text/react | HTML content body |\n| `text` | string | One of html/text/react | Plain text content body |\n| `react` | ReactNode | One of html/text/react | React Email component (Node.js SDK only) |\n| `cc` | string or string[] | No | Carbon copy recipients |\n| `bcc` | string or string[] | No | Blind carbon copy recipients |\n| `replyTo` | string or string[] | No | Reply-to address(es) |\n| `headers` | object | No | Custom email headers |\n| `attachments` | array | No | File attachments (`{ filename, content }` or `{ filename, path }`) |\n| `tags` | array | No | Tracking tags (`{ name, value }` pairs) |\n| `scheduledAt` | string (ISO 8601) | No | Schedule future delivery |\n| `idempotencyKey` | string | No | Prevent duplicate sends |\n\n## Sending with React Email Templates\n\n```typescript\nimport { Resend } from 'resend';\nimport { WelcomeEmail } from './emails/welcome';\n\nconst resend = new Resend(process.env.RESEND_API_KEY);\n\nconst { data, error } = await resend.emails.send({\n  from: 'Acme <hello@yourdomain.com>',\n  to: ['user@example.com'],\n  subject: 'Welcome',\n  react: WelcomeEmail({ firstName: 'John' }),\n});\n```\n\nPass React components as **function calls**, not JSX: `WelcomeEmail({ name })` not `<WelcomeEmail name={name} />`.\n\n## Attachments\n\n```typescript\nimport { readFileSync } from 'fs';\n\nconst { data, error } = await resend.emails.send({\n  from: 'Acme <billing@yourdomain.com>',\n  to: ['user@example.com'],\n  subject: 'Your Invoice',\n  html: '<p>Please find your invoice attached.</p>',\n  attachments: [\n    {\n      filename: 'invoice.pdf',\n      content: readFileSync('./invoice.pdf'),\n    },\n  ],\n});\n```\n\n## Scheduled Delivery\n\n```typescript\nconst { data, error } = await resend.emails.send({\n  from: 'Acme <hello@yourdomain.com>',\n  to: ['user@example.com'],\n  subject: 'Scheduled Reminder',\n  html: '<p>This is your scheduled reminder.</p>',\n  scheduledAt: '2026-12-25T09:00:00Z',\n});\n```\n\n## Batch Sending (up to 100 emails)\n\n```typescript\nconst { data, error } = await resend.batch.send([\n  {\n    from: 'Acme <hello@yourdomain.com>',\n    to: ['user1@example.com'],\n    subject: 'Hello User 1',\n    html: '<p>Hi User 1</p>',\n  },\n  {\n    from: 'Acme <hello@yourdomain.com>',\n    to: ['user2@example.com'],\n    subject: 'Hello User 2',\n    html: '<p>Hi User 2</p>',\n  },\n]);\n// data = [{ id: '...' }, { id: '...' }]\n```\n\n## Tags for Tracking\n\n```typescript\nconst { data, error } = await resend.emails.send({\n  from: 'Acme <hello@yourdomain.com>',\n  to: ['user@example.com'],\n  subject: 'Welcome',\n  html: '<p>Welcome!</p>',\n  tags: [\n    { name: 'category', value: 'onboarding' },\n    { name: 'user_id', value: '12345' },\n  ],\n});\n```\n\n## Idempotency\n\nPrevent duplicate sends with an idempotency key:\n\n```typescript\nconst { data, error } = await resend.emails.send({\n  from: 'Acme <hello@yourdomain.com>',\n  to: ['user@example.com'],\n  subject: 'Order Confirmation',\n  html: '<p>Order #1234 confirmed</p>',\n  idempotencyKey: 'order-1234-confirmation',\n});\n```\n\n## Response Format\n\nSuccess:\n```json\n{ \"id\": \"49a3999c-0ce1-4ea6-a0a6-2c4234c96f47\" }\n```\n\nError:\n```json\n{\n  \"statusCode\": 422,\n  \"message\": \"The `from` address must be a verified domain.\",\n  \"name\": \"validation_error\"\n}\n```\n\n## Environment Variables\n\n| Variable | Required | Description |\n|----------|----------|-------------|\n| `RESEND_API_KEY` | Yes | API key starting with `re_` |\n",
+  "sections": [
+    {
+      "id": "basic-send",
+      "title": "Basic email sending",
+      "body": "The minimum send requires `from`, `to`, `subject`, and one content field (`html`, `text`, or `react`). The `from` address must be from a verified domain (see [[resend/domains]]). The SDK returns `{ data, error }` — always check `error` before using `data`. The `data.id` is the email ID for tracking.",
+      "tags": ["send", "basic", "html", "text", "minimum"]
+    },
+    {
+      "id": "react-templates",
+      "title": "Sending with React templates",
+      "body": "Pass a React Email component to the `react` parameter instead of `html`. Components must be called as functions: `WelcomeEmail({ name })` not `<WelcomeEmail />`. The SDK renders the component to HTML server-side before sending. This is Node.js SDK only — Python and other SDKs use `html` strings. See [[resend/react-email]] for building templates.",
+      "tags": ["react", "template", "component", "server-render"]
+    },
+    {
+      "id": "batch",
+      "title": "Batch sending",
+      "body": "Send up to 100 emails in one request via `resend.batch.send([...])`. Each item in the array is a full email payload. Returns an array of `{ id }` objects. Useful for sending personalized emails to a list without making individual API calls.",
+      "tags": ["batch", "bulk", "multiple", "mass-send"]
+    },
+    {
+      "id": "attachments",
+      "title": "File attachments",
+      "body": "Attach files via the `attachments` array. Each attachment needs `filename` and either `content` (Buffer/base64) or `path` (URL to fetch). Common use cases: invoices (PDF), receipts, reports, and images. Keep total attachment size under 40MB.",
+      "tags": ["attachments", "files", "pdf", "invoice"]
+    },
+    {
+      "id": "scheduling",
+      "title": "Scheduled delivery",
+      "body": "Pass `scheduledAt` as an ISO 8601 datetime string to schedule future delivery. Useful for reminders, drip campaigns, and time-zone-aware notifications. Cancel scheduled emails via `POST /emails/:id/cancel` before the scheduled time.",
+      "tags": ["schedule", "delay", "future", "cron"]
+    },
+    {
+      "id": "idempotency",
+      "title": "Idempotency and deduplication",
+      "body": "Pass `idempotencyKey` as a unique string to prevent duplicate sends. If the same key is used within 24 hours, Resend returns the original response without sending again. Use order IDs, event IDs, or UUIDs as keys. Critical for retry-safe integrations.",
+      "tags": ["idempotency", "dedup", "retry", "safe"]
+    }
+  ],
+  "links": [
+    { "uri": "resend/auth", "context": "API key required for authentication" },
+    { "uri": "resend/domains", "context": "Sender domain must be verified" },
+    { "uri": "resend/react-email", "context": "Build React-based email templates" },
+    { "uri": "resend", "context": "Resend ecosystem overview" }
+  ],
+  "related": [
+    { "uri": "resend/auth", "relation": "prerequisite", "note": "A valid API key is required to send emails" },
+    { "uri": "resend/domains", "relation": "prerequisite", "note": "The from address must use a verified domain" },
+    { "uri": "resend/react-email", "relation": "see-also", "note": "React Email templates can be passed to the react parameter" }
+  ],
+  "scripts": [
+    {
+      "id": "send-email",
+      "name": "Send Email",
+      "description": "Send a transactional email via the Resend API using the Node.js SDK",
+      "lang": "typescript",
+      "runtime": "node>=18",
+      "entry": "./scripts/send-email.ts",
+      "env": {
+        "RESEND_API_KEY": { "required": true, "secret": true, "description": "Resend API key starting with re_" }
+      },
+      "packages": ["resend"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "from": { "type": "string", "description": "Sender address in 'Name <email>' format" },
+        "to": { "oneOf": [{ "type": "string" }, { "type": "array", "items": { "type": "string" } }], "description": "Recipient email(s)" },
+        "subject": { "type": "string", "description": "Email subject line" },
+        "html": { "type": "string", "description": "HTML email body" },
+        "text": { "type": "string", "description": "Plain text email body" },
+        "cc": { "oneOf": [{ "type": "string" }, { "type": "array", "items": { "type": "string" } }], "description": "CC recipients" },
+        "bcc": { "oneOf": [{ "type": "string" }, { "type": "array", "items": { "type": "string" } }], "description": "BCC recipients" },
+        "replyTo": { "oneOf": [{ "type": "string" }, { "type": "array", "items": { "type": "string" } }], "description": "Reply-to address(es)" },
+        "tags": { "type": "array", "items": { "type": "object", "properties": { "name": { "type": "string" }, "value": { "type": "string" } } }, "description": "Tracking tags" },
+        "scheduledAt": { "type": "string", "format": "date-time", "description": "ISO 8601 scheduled delivery time" },
+        "idempotencyKey": { "type": "string", "description": "Unique key for deduplication" }
+      },
+      "required": ["from", "to", "subject"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Email ID returned by Resend" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "resend/auth", "reason": "A valid Resend API key is required to send emails" },
+    { "uri": "resend/domains", "reason": "The from address must use a verified domain for production sending", "optional": true }
+  ],
+  "more": {
+    "docs": "https://resend.com/docs/api-reference/emails/send-email",
+    "repo": "https://github.com/resend/resend-node",
+    "examples": "https://github.com/resend/resend-examples"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "5 min",
+    "prerequisites": ["resend/auth"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

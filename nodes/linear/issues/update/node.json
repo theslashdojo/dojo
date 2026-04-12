@@ -1,0 +1,123 @@
+{
+  "name": "update",
+  "version": "1.0.0",
+  "uri": "linear/issues/update",
+  "type": "sub",
+  "context": "Update Linear issue state, assignee, priority, labels, and other fields",
+  "info": "Updates existing Linear issues via the `issueUpdate` GraphQL mutation or the `client.updateIssue()` SDK method. Takes an issue ID (UUID or identifier like ENG-42) and an input object with the fields to change. Common operations: transitioning workflow state, reassigning, changing priority, adding/removing labels, moving to a project or cycle, updating description, and setting due dates. Agents use this to automate triage, move issues through workflow stages, and sync state from external systems. See [[linear/teams]] for valid workflow state IDs.",
+  "parent": "linear/issues",
+  "tags": ["update", "edit", "transition", "reassign", "state-change", "triage"],
+  "aliases": [
+    "update linear issue",
+    "edit linear issue",
+    "change linear issue",
+    "transition linear issue",
+    "move linear issue",
+    "reassign linear issue",
+    "close linear issue",
+    "issueUpdate"
+  ],
+  "triggers": [
+    "update a linear issue",
+    "change issue status in linear",
+    "reassign a linear issue",
+    "close an issue in linear",
+    "move issue to done in linear",
+    "change priority of linear issue",
+    "add label to linear issue"
+  ],
+  "body": "# Update Linear Issue\n\nModify existing issues via GraphQL or the SDK.\n\n## GraphQL Mutation\n\n```graphql\nmutation UpdateIssue($id: String!, $input: IssueUpdateInput!) {\n  issueUpdate(id: $id, input: $input) {\n    success\n    issue {\n      id\n      identifier\n      title\n      state {\n        name\n        type\n      }\n      priority\n      assignee {\n        name\n      }\n    }\n  }\n}\n```\n\nVariables:\n\n```json\n{\n  \"id\": \"uuid-or-ENG-42\",\n  \"input\": {\n    \"stateId\": \"uuid-of-done-state\",\n    \"priority\": 3,\n    \"assigneeId\": \"uuid-of-new-assignee\"\n  }\n}\n```\n\n## SDK Usage\n\n### Change workflow state\n\n```typescript\nimport { LinearClient } from \"@linear/sdk\";\n\nconst client = new LinearClient({ apiKey: process.env.LINEAR_API_KEY });\n\n// Find the \"Done\" state for the team\nconst issue = await client.issue(\"ENG-42\");\nconst team = await issue.team;\nif (!team) throw new Error(\"Issue has no team\");\nconst states = await team.states();\nconst doneState = states.nodes.find(s => s.type === \"completed\");\nif (!doneState) throw new Error(\"No completed state found\");\n\n// Transition to Done\nconst result = await client.updateIssue(issue.id, {\n  stateId: doneState.id,\n});\nconsole.log(`Updated: ${result.success}`);\n```\n\n### Reassign\n\n```typescript\nconst result = await client.updateIssue(\"ISSUE_UUID\", {\n  assigneeId: \"NEW_USER_UUID\",\n});\n```\n\n### Change priority\n\n```typescript\n// Set to Urgent (1)\nconst result = await client.updateIssue(\"ISSUE_UUID\", {\n  priority: 1,\n});\n```\n\n### Add to project and cycle\n\n```typescript\nconst result = await client.updateIssue(\"ISSUE_UUID\", {\n  projectId: \"PROJECT_UUID\",\n  cycleId: \"CYCLE_UUID\",\n});\n```\n\n### Update description\n\n```typescript\nconst result = await client.updateIssue(\"ISSUE_UUID\", {\n  description: \"## Updated description\\n\\nNew details here.\",\n});\n```\n\n### Set due date\n\n```typescript\nconst result = await client.updateIssue(\"ISSUE_UUID\", {\n  dueDate: \"2026-06-01\",\n});\n```\n\n### Add labels\n\n```typescript\n// Fetch current labels and append\nconst issue = await client.issue(\"ISSUE_UUID\");\nconst currentLabels = await issue.labels();\nconst currentLabelIds = currentLabels.nodes.map(l => l.id);\n\nconst result = await client.updateIssue(issue.id, {\n  labelIds: [...currentLabelIds, \"NEW_LABEL_UUID\"],\n});\n```\n\n## Bulk Update via cURL\n\n```bash\ncurl -X POST https://api.linear.app/graphql \\\n  -H \"Content-Type: application/json\" \\\n  -H \"Authorization: $LINEAR_API_KEY\" \\\n  -d '{\n    \"query\": \"mutation { issueUpdate(id: \\\"ENG-42\\\", input: { priority: 1, stateId: \\\"STATE_UUID\\\" }) { success issue { identifier } } }\"\n  }'\n```\n\n## Updatable Fields\n\n| Field | Type | Notes |\n|-------|------|-------|\n| `title` | string | Change the issue title |\n| `description` | string | Markdown body |\n| `stateId` | UUID | Transition workflow state |\n| `assigneeId` | UUID | Reassign (null to unassign) |\n| `priority` | int | 0=none, 1=urgent, 2=high, 3=medium, 4=low |\n| `labelIds` | UUID[] | Replace all labels (not additive) |\n| `projectId` | UUID | Move to a project (null to remove) |\n| `cycleId` | UUID | Move to a cycle (null to remove) |\n| `estimate` | number | Update estimate |\n| `dueDate` | string | YYYY-MM-DD or null to remove |\n| `parentId` | UUID | Reparent as sub-issue |\n| `subscriberIds` | UUID[] | Set subscribers |\n\n## Important Notes\n\n- `labelIds` **replaces** all labels — fetch current labels first if you want to append\n- Setting `assigneeId` to `null` unassigns the issue\n- Setting `projectId` to `null` removes the issue from its project\n- `stateId` must reference a valid workflow state for the issue's team\n- The `id` parameter accepts both UUID and human-readable identifiers like `ENG-42`",
+  "sections": [
+    {
+      "id": "state-transition",
+      "title": "State transitions",
+      "body": "Transition issues by setting `stateId` to a valid workflow state UUID from the issue's team. Query team states via `team.states()`. State types: `backlog`, `unstarted`, `started`, `completed`, `cancelled`. There are no enforced transitions — you can move directly from any state to any other state.",
+      "tags": ["state", "transition", "workflow", "done", "in-progress"]
+    },
+    {
+      "id": "reassign",
+      "title": "Reassigning issues",
+      "body": "Set `assigneeId` to a user UUID to reassign. Set to `null` to unassign. User UUIDs can be found via `client.users()` or `team.members()`. The assignee receives a notification in Linear.",
+      "tags": ["reassign", "assign", "unassign", "user"]
+    },
+    {
+      "id": "labels",
+      "title": "Updating labels",
+      "body": "The `labelIds` field is a **replacement** — it sets the complete list of labels. To add a label without removing existing ones, first fetch current labels with `issue.labels()`, collect their IDs, then include the new ID in the `labelIds` array. To remove a label, omit its ID from the array.",
+      "tags": ["labels", "add-label", "remove-label", "replace"]
+    }
+  ],
+  "links": [
+    { "uri": "linear/issues", "context": "Parent skill for issue management" },
+    { "uri": "linear/issues/create", "context": "Create issues before updating them" },
+    { "uri": "linear/teams", "context": "Find valid stateIds from team workflow states" },
+    { "uri": "linear/auth", "context": "Authentication is required" },
+    { "uri": "linear/webhooks", "context": "Webhook events fire on issue updates" }
+  ],
+  "related": [
+    { "uri": "linear/issues/create", "relation": "see-also", "note": "Create issues before updating them" },
+    { "uri": "linear/teams", "relation": "prerequisite", "note": "Need team workflow states for state transitions" },
+    { "uri": "linear/auth", "relation": "prerequisite", "note": "Must authenticate before updating issues" }
+  ],
+  "scripts": [
+    {
+      "id": "update-issue",
+      "name": "Update Linear Issue",
+      "description": "Update an existing Linear issue's state, assignee, priority, or other fields",
+      "lang": "typescript",
+      "runtime": "node>=18",
+      "entry": "./scripts/update-issue.ts",
+      "env": {
+        "LINEAR_API_KEY": { "required": true, "secret": true, "description": "Linear personal API key" }
+      },
+      "packages": ["@linear/sdk"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "issueId": { "type": "string", "description": "Issue UUID or identifier (e.g., ENG-42)" },
+        "stateId": { "type": "string", "description": "UUID of target workflow state" },
+        "assigneeId": { "type": ["string", "null"], "description": "UUID of user or null to unassign" },
+        "priority": { "type": "integer", "minimum": 0, "maximum": 4 },
+        "labelIds": { "type": "array", "items": { "type": "string" }, "description": "Replace all labels" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "projectId": { "type": ["string", "null"] },
+        "dueDate": { "type": ["string", "null"], "description": "YYYY-MM-DD or null" }
+      },
+      "required": ["issueId"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "success": { "type": "boolean" },
+        "identifier": { "type": "string" },
+        "state": { "type": "string" },
+        "priority": { "type": "integer" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "linear/auth", "reason": "Authentication required to update issues" }
+  ],
+  "more": {
+    "docs": "https://linear.app/developers"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "3 min",
+    "prerequisites": ["linear/auth"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

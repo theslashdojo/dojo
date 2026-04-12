@@ -1,0 +1,144 @@
+{
+  "name": "tunnel",
+  "version": "1.0.0",
+  "uri": "ssh/tunnel",
+  "type": "skill",
+  "context": "Open SSH port forwards for local access, reverse access, or SOCKS proxying",
+  "info": "This skill packages SSH forwarding for the three modes agents actually need: local forwarding with `-L` to reach remote services from the local machine, remote forwarding with `-R` to expose a local service through a remote host, and dynamic forwarding with `-D` to create a SOCKS proxy. It also covers `-N`, `-f`, `ExitOnForwardFailure`, keepalives, bastions, and the difference between TCP bind addresses and target destinations. Use it whenever a service is reachable over SSH but not directly exposed on the network.",
+  "parent": "ssh",
+  "tags": ["ssh", "tunnel", "port-forwarding", "local-forward", "remote-forward", "dynamic-forward", "socks"],
+  "aliases": [
+    "ssh tunnel",
+    "ssh port forward",
+    "ssh local forward",
+    "ssh reverse tunnel",
+    "ssh socks proxy",
+    "ssh -l tunnel"
+  ],
+  "triggers": [
+    "open an ssh tunnel",
+    "forward a remote port locally",
+    "create a reverse ssh tunnel",
+    "make a socks proxy with ssh",
+    "access a private database over ssh"
+  ],
+  "body": "# SSH Port Forwarding\n\nPort forwarding turns an SSH connection into a transport for other services. The shell is optional; the goal is usually to reach a database, admin UI, local dev server, or arbitrary TCP destination through a trusted SSH path.\n\n## Forwarding Modes\n\n- [[ssh/tunnel/local-forward]] with `-L` listens locally and forwards to a destination from the remote side.\n- [[ssh/tunnel/remote-forward]] with `-R` listens remotely and forwards back to a destination from the client side.\n- [[ssh/tunnel/dynamic-forward]] with `-D` creates a SOCKS proxy on the client side.\n\n## Core Patterns\n\n```bash\nssh -L 5433:127.0.0.1:5432 ops@db-gateway.example.com -N\nssh -R 8080:127.0.0.1:3000 ops@bastion.example.com -N\nssh -D 1080 ops@bastion.example.com -N\n```\n\n`-N` avoids running a shell and is the normal mode for tunnels.\n\n## Backgrounding Safely\n\n```bash\nssh -f -n -o ExitOnForwardFailure=yes -L 5433:127.0.0.1:5432 ops@db-gateway.example.com -N\n```\n\nUse `ExitOnForwardFailure=yes` so the process only backgrounds after the forward is actually established. Keepalive options from [[ssh/config]] help long-lived tunnels survive transient network changes.\n",
+  "sections": [
+    {
+      "id": "local-forward",
+      "title": "Local forwarding with -L",
+      "body": "`ssh -L local_port:dest_host:dest_port host -N` listens on the client and forwards through the SSH session to `dest_host:dest_port` as seen from the remote side. This is the standard pattern for databases, internal dashboards, and APIs hidden behind a bastion. See [[ssh/tunnel/local-forward]].",
+      "tags": ["-l", "local-forward", "database", "private-service"]
+    },
+    {
+      "id": "remote-forward",
+      "title": "Remote forwarding with -R",
+      "body": "`ssh -R remote_port:dest_host:dest_port host -N` makes the remote side listen and send traffic back through the SSH session toward the client side. Use it for reverse tunnels, webhooks into a local dev service, or publishing a private local process through a reachable remote host. See [[ssh/tunnel/remote-forward]].",
+      "tags": ["-r", "remote-forward", "reverse-tunnel", "callback"]
+    },
+    {
+      "id": "dynamic-forward",
+      "title": "Dynamic forwarding with -D",
+      "body": "`ssh -D local_port host -N` creates a SOCKS 4/5 proxy that lets client software choose arbitrary destinations through the SSH path. This is useful for browser testing, ad hoc network reach, and traffic inspection. See [[ssh/tunnel/dynamic-forward]].",
+      "tags": ["-d", "dynamic-forward", "socks", "proxy"]
+    }
+  ],
+  "sub": [
+    "ssh/tunnel/local-forward",
+    "ssh/tunnel/remote-forward",
+    "ssh/tunnel/dynamic-forward"
+  ],
+  "links": [
+    { "uri": "ssh/tunnel/local-forward", "context": "Forward a remote service to a local port" },
+    { "uri": "ssh/tunnel/remote-forward", "context": "Expose a local service through a remote host" },
+    { "uri": "ssh/tunnel/dynamic-forward", "context": "Create a SOCKS proxy over SSH" },
+    { "uri": "ssh/connect", "context": "Forwarding uses the same SSH client, identities, and bastions" },
+    { "uri": "ssh/config", "context": "Persist LocalForward, RemoteForward, and keepalive settings" },
+    { "uri": "ssh/troubleshooting", "context": "Debug forwarding setup and background failures" },
+    { "uri": "postgres", "context": "Databases are a common tunnel target for private admin access" }
+  ],
+  "related": [
+    { "uri": "ssh/connect", "relation": "prerequisite", "note": "Forwarding relies on a working SSH connection and auth flow" },
+    { "uri": "ssh/config", "relation": "extends", "note": "Forward definitions and keepalives are often stored in config" },
+    { "uri": "postgres", "relation": "see-also", "note": "SSH local forwarding is a common way to reach private Postgres instances" }
+  ],
+  "scripts": [
+    {
+      "id": "open-tunnel",
+      "name": "Open SSH tunnel",
+      "description": "Open a local, remote, or dynamic port forward with ssh",
+      "lang": "bash",
+      "runtime": "bash",
+      "entry": "./scripts/open-tunnel.sh",
+      "env": {
+        "SSH_TUNNEL_MODE": { "required": true, "description": "Tunnel mode: local, remote, or dynamic" },
+        "SSH_HOST": { "required": true, "description": "Remote SSH host that anchors the tunnel" },
+        "SSH_USER": { "required": false, "description": "Remote username" },
+        "SSH_PORT": { "required": false, "description": "Remote SSH port" },
+        "SSH_KEY_PATH": { "required": false, "description": "Private key path" },
+        "SSH_PROXY_JUMP": { "required": false, "description": "Jump host or chain passed to -J" },
+        "SSH_CONFIG_FILE": { "required": false, "description": "Alternate ssh config file" },
+        "SSH_BIND_ADDRESS": { "required": false, "description": "Optional listening bind address for the forward" },
+        "SSH_LOCAL_PORT": { "required": false, "description": "Local listening port for local or dynamic forwarding" },
+        "SSH_REMOTE_PORT": { "required": false, "description": "Remote listening port for remote forwarding" },
+        "SSH_DEST_HOST": { "required": false, "description": "Destination host reached from the opposite side of the tunnel" },
+        "SSH_DEST_PORT": { "required": false, "description": "Destination TCP port" },
+        "SSH_BACKGROUND": { "required": false, "default": "false", "description": "Set to true to background the tunnel with -f -n" },
+        "SSH_EXIT_ON_FORWARD_FAILURE": { "required": false, "default": "yes", "description": "ExitOnForwardFailure value" },
+        "SSH_SERVER_ALIVE_INTERVAL": { "required": false, "description": "Keepalive interval in seconds" },
+        "SSH_SERVER_ALIVE_COUNT_MAX": { "required": false, "description": "Number of missed keepalives before disconnect" },
+        "SSH_EXTRA_ARGS": { "required": false, "description": "Extra ssh arguments, one per line" }
+      },
+      "packages": ["openssh-client"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "mode": { "type": "string", "enum": ["local", "remote", "dynamic"], "description": "Forwarding mode" },
+        "host": { "type": "string", "description": "Remote SSH host" },
+        "user": { "type": "string", "description": "Remote username" },
+        "port": { "type": "integer", "description": "Remote SSH port" },
+        "bindAddress": { "type": "string", "description": "Optional listening bind address" },
+        "localPort": { "type": "integer", "description": "Local listening port for local or dynamic forwarding" },
+        "remotePort": { "type": "integer", "description": "Remote listening port for remote forwarding" },
+        "destinationHost": { "type": "string", "description": "Target host reached through the tunnel" },
+        "destinationPort": { "type": "integer", "description": "Target TCP port reached through the tunnel" },
+        "background": { "type": "boolean", "default": false, "description": "Background the tunnel after setup" },
+        "proxyJump": { "type": "string", "description": "Jump host or chain" }
+      },
+      "required": ["mode", "host"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "mode": { "type": "string", "enum": ["local", "remote", "dynamic"], "description": "Tunnel mode used" },
+        "forwardSpec": { "type": "string", "description": "Final forwarding specification passed to ssh" },
+        "exitCode": { "type": "integer", "description": "Exit code from ssh" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "ssh/connect", "reason": "Tunnels rely on the same client auth, bastion, and trust workflow as regular SSH sessions" }
+  ],
+  "more": {
+    "docs": "https://man.openbsd.org/ssh",
+    "config": "https://man.openbsd.org/ssh_config"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, SREs, AI agents",
+    "estimated_reading_time": "5 min",
+    "prerequisites": ["ssh/connect"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

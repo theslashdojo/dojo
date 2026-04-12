@@ -1,0 +1,152 @@
+{
+  "name": "schemas",
+  "version": "1.0.0",
+  "uri": "zod/schemas",
+  "type": "skill",
+  "context": "Define Zod schemas for any data shape — primitives, objects, arrays, enums, unions, tuples, records, and recursive types",
+  "info": "This skill covers creating Zod schemas for every data shape an agent encounters. Primitives: z.string(), z.number(), z.boolean(), z.date(), z.bigint(), z.symbol(), z.undefined(), z.null(), z.void(), z.any(), z.unknown(), z.never(), z.nan(). Collections: z.object() for structured data, z.array() for lists, z.tuple() for fixed-length typed arrays, z.record() for string-keyed maps, z.map() and z.set() for ES6 collections. Enums: z.enum() for string enums, z.nativeEnum() for TypeScript enums. Composition: z.union() for OR types, z.discriminatedUnion() for tagged unions, z.intersection() for AND types. Special: z.literal() for exact values, z.lazy() for recursive schemas, z.promise() for Promise validation, z.function() for function signatures. Object schemas support .extend(), .merge(), .pick(), .omit(), .partial(), .required(), .passthrough(), .strict(), .strip(), and .catchall(). See [[zod/validation]] for constraints and [[zod/transform]] for data transformation.",
+  "parent": "zod",
+  "tags": ["zod", "schema", "object", "array", "enum", "union", "tuple", "record", "primitives", "discriminated-union"],
+  "aliases": [
+    "zod schemas",
+    "zod object",
+    "zod array",
+    "zod enum",
+    "zod union",
+    "zod tuple",
+    "zod record",
+    "z.object",
+    "z.array",
+    "z.enum",
+    "z.union",
+    "z.string",
+    "z.number",
+    "z.boolean",
+    "zod discriminated union",
+    "zod literal",
+    "zod lazy",
+    "define zod schema",
+    "zod type definition"
+  ],
+  "triggers": [
+    "create a zod schema",
+    "define a zod object",
+    "make a zod enum",
+    "create a union type with zod",
+    "define an array schema",
+    "create a discriminated union",
+    "make a recursive zod schema",
+    "define a tuple schema",
+    "create a record schema",
+    "define zod schema for API response"
+  ],
+  "body": "# Zod Schema Definitions\n\nSchemas are the foundation of Zod. Every schema is a validator that checks input data and infers a TypeScript type.\n\n## Primitives\n\n```typescript\nimport { z } from \"zod\";\n\nz.string()     // string\nz.number()     // number\nz.boolean()    // boolean\nz.date()       // Date\nz.bigint()     // bigint\nz.symbol()     // symbol\nz.undefined()  // undefined\nz.null()       // null\nz.void()       // void (undefined)\nz.any()        // any — disables type checking\nz.unknown()    // unknown — type-safe any\nz.never()      // never — always fails\nz.nan()        // NaN\n```\n\n## Objects\n\n```typescript\nconst UserSchema = z.object({\n  id: z.string().uuid(),\n  name: z.string().min(1).max(100),\n  email: z.string().email(),\n  age: z.number().int().positive().optional(),\n  role: z.enum([\"admin\", \"user\", \"guest\"]),\n  metadata: z.record(z.string(), z.unknown()).optional(),\n});\n\n// Access the shape\nUserSchema.shape.name; // z.ZodString\nUserSchema.keyof(); // z.ZodEnum<[\"id\", \"name\", \"email\", \"age\", \"role\", \"metadata\"]>\n\n// Extend with additional fields\nconst AdminSchema = UserSchema.extend({\n  permissions: z.array(z.string()),\n  department: z.string(),\n});\n\n// Merge two schemas\nconst merged = SchemaA.merge(SchemaB);\n\n// Pick / Omit specific fields\nconst LoginSchema = UserSchema.pick({ email: true });\nconst PublicUser = UserSchema.omit({ email: true, metadata: true });\n\n// Make all fields optional / required\nconst PartialUser = UserSchema.partial(); // all optional\nconst RequiredUser = PartialUser.required(); // all required back\nconst PartialExcept = UserSchema.partial({ age: true, metadata: true }); // selective\n```\n\n## Object Parsing Modes\n\n```typescript\n// Strip unknown keys (default)\nUserSchema.parse({ name: \"Alice\", extra: true });\n// { name: \"Alice\" } — extra is stripped\n\n// Passthrough unknown keys\nconst Loose = UserSchema.passthrough();\nLoose.parse({ name: \"Alice\", extra: true });\n// { name: \"Alice\", extra: true }\n\n// Reject unknown keys\nconst Strict = UserSchema.strict();\nStrict.parse({ name: \"Alice\", extra: true });\n// throws ZodError — unrecognized key \"extra\"\n\n// Catchall for unknown keys\nconst WithCatchall = UserSchema.catchall(z.string());\n```\n\n## Arrays\n\n```typescript\nconst StringArray = z.array(z.string());\n// or equivalently:\nconst StringArray2 = z.string().array();\n\n// Constraints\nz.array(z.number()).nonempty();  // at least 1 element\nz.array(z.number()).min(2);      // at least 2 elements\nz.array(z.number()).max(10);     // at most 10 elements\nz.array(z.number()).length(5);   // exactly 5 elements\n\n// Access element schema\nStringArray.element; // z.ZodString\n```\n\n## Tuples\n\n```typescript\n// Fixed-length typed arrays\nconst Point = z.tuple([z.number(), z.number()]);\ntype Point = z.infer<typeof Point>; // [number, number]\n\nconst NameAge = z.tuple([z.string(), z.number()]);\nNameAge.parse([\"Alice\", 30]); // ✓\n\n// Variadic tuples with rest\nconst AtLeastOne = z.tuple([z.string()]).rest(z.string());\ntype AtLeastOne = z.infer<typeof AtLeastOne>; // [string, ...string[]]\n```\n\n## Enums\n\n```typescript\n// Zod enums — string literals\nconst RoleEnum = z.enum([\"admin\", \"user\", \"guest\"]);\ntype Role = z.infer<typeof RoleEnum>; // \"admin\" | \"user\" | \"guest\"\n\nRoleEnum.enum.admin; // \"admin\" — autocomplete-friendly access\nRoleEnum.options;     // [\"admin\", \"user\", \"guest\"]\n\n// Native TypeScript enums\nenum Direction { North, South, East, West }\nconst DirectionSchema = z.nativeEnum(Direction);\n\n// Const objects as enums\nconst STATUS = { Active: \"active\", Inactive: \"inactive\" } as const;\nconst StatusSchema = z.nativeEnum(STATUS);\n```\n\n## Unions and Intersections\n\n```typescript\n// Union — value matches any one schema\nconst StringOrNumber = z.union([z.string(), z.number()]);\n// or: z.string().or(z.number())\n\n// Discriminated union — tagged union with a shared discriminant key\nconst EventSchema = z.discriminatedUnion(\"type\", [\n  z.object({ type: z.literal(\"click\"), x: z.number(), y: z.number() }),\n  z.object({ type: z.literal(\"keypress\"), key: z.string() }),\n  z.object({ type: z.literal(\"scroll\"), delta: z.number() }),\n]);\n// Much better error messages than plain union — Zod checks the discriminant first\n\n// Intersection — value must match both schemas\nconst NameAndAge = z.intersection(\n  z.object({ name: z.string() }),\n  z.object({ age: z.number() }),\n);\n// or: z.object({ name: z.string() }).and(z.object({ age: z.number() }))\n```\n\n## Records and Maps\n\n```typescript\n// Record — string-keyed dictionary\nconst StringRecord = z.record(z.string()); // Record<string, string>\nconst TypedRecord = z.record(z.string(), z.number()); // Record<string, number>\n\n// Map\nconst UserMap = z.map(z.string(), UserSchema); // Map<string, User>\n\n// Set\nconst UniqueIds = z.set(z.string()); // Set<string>\nz.set(z.number()).nonempty(); // non-empty set\nz.set(z.number()).min(2).max(10); // size constraints\n```\n\n## Literals and Special Types\n\n```typescript\n// Literal — exact value\nconst Tuna = z.literal(\"tuna\");\nconst FortyTwo = z.literal(42);\nconst True = z.literal(true);\n\n// Lazy — recursive schemas\ninterface Category {\n  name: string;\n  subcategories: Category[];\n}\nconst CategorySchema: z.ZodType<Category> = z.object({\n  name: z.string(),\n  subcategories: z.lazy(() => CategorySchema.array()),\n});\n\n// Promise\nconst PromisedString = z.promise(z.string());\n// validates that input is a Promise, and .then() result matches z.string()\n\n// Function\nconst FnSchema = z.function()\n  .args(z.string(), z.number())\n  .returns(z.boolean());\n// (arg0: string, arg1: number) => boolean\n```\n\n## Environment Variables\n\nNo environment variables required. Zod is a pure runtime library.\n",
+  "sections": [
+    {
+      "id": "primitives",
+      "title": "Primitive schemas",
+      "body": "Zod provides schema constructors for every JavaScript primitive: `z.string()`, `z.number()`, `z.boolean()`, `z.date()`, `z.bigint()`, `z.symbol()`, `z.undefined()`, `z.null()`, `z.void()`, `z.any()`, `z.unknown()`, `z.never()`, `z.nan()`. Each returns an immutable schema instance with `.parse()`, `.safeParse()`, and all standard schema methods. Use `z.unknown()` over `z.any()` when you want type safety — `z.any()` disables type checking entirely.",
+      "tags": ["primitives", "string", "number", "boolean", "date", "bigint", "unknown", "any"]
+    },
+    {
+      "id": "objects",
+      "title": "Object schemas and manipulation",
+      "body": "Create object schemas with `z.object({ key: schema })`. Access `.shape` for the schema map, `.keyof()` for a ZodEnum of keys. Manipulate with `.extend()` to add fields, `.merge()` to combine schemas, `.pick()` / `.omit()` to select fields, `.partial()` / `.required()` to toggle optionality. Control unknown key handling: `.strip()` (default — removes unknown), `.passthrough()` (keeps unknown), `.strict()` (rejects unknown), `.catchall(schema)` (validates unknown keys against a schema).",
+      "tags": ["object", "extend", "merge", "pick", "omit", "partial", "required", "strict", "passthrough"]
+    },
+    {
+      "id": "collections",
+      "title": "Arrays, tuples, records, maps, and sets",
+      "body": "Arrays: `z.array(schema)` or `schema.array()`. Constrain with `.nonempty()`, `.min(n)`, `.max(n)`, `.length(n)`. Access `.element` for the inner schema. Tuples: `z.tuple([s1, s2, ...])` for fixed-length typed arrays; add `.rest(schema)` for variadic tail. Records: `z.record(keySchema, valueSchema)` for dictionaries. Maps: `z.map(keySchema, valueSchema)`. Sets: `z.set(schema)` with `.nonempty()`, `.min()`, `.max()`, `.size()` constraints.",
+      "tags": ["array", "tuple", "record", "map", "set", "nonempty", "collections"]
+    },
+    {
+      "id": "enums-unions",
+      "title": "Enums, unions, and discriminated unions",
+      "body": "Enums: `z.enum([\"a\", \"b\"])` creates a string literal union with `.enum` access and `.options` array. `z.nativeEnum(TsEnum)` wraps TypeScript enums. Unions: `z.union([s1, s2])` or `s1.or(s2)` — Zod tries each schema in order. Discriminated unions: `z.discriminatedUnion(\"key\", [schemas])` — uses a shared literal field to pick the right branch, giving much better error messages and performance than plain unions. Intersections: `z.intersection(s1, s2)` or `s1.and(s2)`.",
+      "tags": ["enum", "nativeEnum", "union", "discriminated-union", "intersection", "literal"]
+    },
+    {
+      "id": "recursive",
+      "title": "Recursive and lazy schemas",
+      "body": "Use `z.lazy(() => schema)` for recursive types like trees and linked lists. You must provide an explicit TypeScript type annotation: `const Schema: z.ZodType<MyType> = z.object({ children: z.lazy(() => Schema.array()) })`. Without the annotation, TypeScript cannot infer recursive types. This pattern works for self-referential structures, mutually recursive schemas, and JSON-like types.",
+      "tags": ["recursive", "lazy", "tree", "self-referential"]
+    }
+  ],
+  "links": [
+    { "uri": "zod/validation", "context": "Add constraints and refinements to schemas" },
+    { "uri": "zod/transform", "context": "Transform validated data into new shapes" },
+    { "uri": "zod/inference", "context": "Extract TypeScript types from defined schemas" },
+    { "uri": "zod/patterns", "context": "Common real-world schema patterns" },
+    { "uri": "zod", "context": "Zod ecosystem overview and installation" },
+    { "uri": "typescript/types", "context": "TypeScript types that Zod schemas infer" },
+    { "uri": "typescript/generics", "context": "Generics power Zod's type inference" }
+  ],
+  "related": [
+    { "uri": "zod", "relation": "prerequisite", "note": "Install and configure Zod before defining schemas" },
+    { "uri": "zod/validation", "relation": "see-also", "note": "Schemas define shape, validation adds constraints" },
+    { "uri": "zod/inference", "relation": "see-also", "note": "Schemas are the input to type inference" },
+    { "uri": "typescript/types", "relation": "prerequisite", "note": "Understanding TypeScript types helps when defining schemas" }
+  ],
+  "scripts": [
+    {
+      "id": "create-schema",
+      "name": "Create Zod Schema",
+      "description": "Generate a Zod schema from a TypeScript interface description or JSON example, with full type inference and validation",
+      "lang": "typescript",
+      "runtime": "node>=18",
+      "entry": "./scripts/create-schema.ts",
+      "packages": ["zod", "tsx"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "shape": {
+          "type": "object",
+          "description": "Object describing the data shape — keys are field names, values are Zod type strings (e.g. 'string', 'number', 'string[]', 'enum:a,b,c')"
+        },
+        "name": {
+          "type": "string",
+          "description": "Name for the schema variable (PascalCase)"
+        },
+        "strict": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether to use .strict() mode to reject unknown keys"
+        }
+      },
+      "required": ["shape", "name"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "code": { "type": "string", "description": "Generated TypeScript code defining the Zod schema" },
+        "type": { "type": "string", "description": "The inferred TypeScript type definition" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "zod", "reason": "Zod must be installed in the project" }
+  ],
+  "more": {
+    "docs": "https://zod.dev",
+    "repo": "https://github.com/colinhacks/zod"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "TypeScript developers, AI agents",
+    "estimated_reading_time": "6 min",
+    "prerequisites": ["zod"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

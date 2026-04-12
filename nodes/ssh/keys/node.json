@@ -1,0 +1,80 @@
+{
+  "name": "keys",
+  "version": "1.0.0",
+  "uri": "ssh/keys",
+  "type": "context",
+  "content_type": "guide",
+  "context": "Generate, install, fingerprint, and rotate SSH keys for reliable public-key authentication",
+  "info": "This guide covers the client identity side of SSH: creating modern key pairs with `ssh-keygen`, choosing Ed25519 or hardware-backed variants, installing public keys into `authorized_keys`, verifying fingerprints, and maintaining strict file permissions so OpenSSH will actually use the keys. Agents load this node when they need non-interactive authentication that survives automation, CI, bastions, and repeated remote access without password prompts.",
+  "parent": "ssh",
+  "tags": ["ssh", "keys", "ssh-keygen", "authorized-keys", "ed25519", "public-key", "fingerprint"],
+  "aliases": [
+    "ssh keys",
+    "ssh key pair",
+    "ssh-keygen",
+    "public key authentication",
+    "authorized_keys",
+    "ed25519 ssh key",
+    "install ssh public key"
+  ],
+  "triggers": [
+    "generate an ssh key",
+    "set up key-based ssh auth",
+    "install a public key on a server",
+    "rotate ssh keys",
+    "show an ssh fingerprint",
+    "create an ed25519 key"
+  ],
+  "body": "# SSH Keys\n\nPublic-key authentication is the default automation path for SSH. A private key stays on the client, the matching public key is appended to `~/.ssh/authorized_keys` on the remote account, and the server challenges the client to prove possession of the private half.\n\n## Generate a Modern Key\n\nOpenSSH supports several key types, but Ed25519 is the usual default for software keys.\n\n```bash\nssh-keygen -t ed25519 -a 64 -f ~/.ssh/id_ed25519 -C agent@workstation\n```\n\nUseful variants:\n\n- `-a 64` increases KDF rounds for encrypted private keys.\n- `-f` chooses the output path.\n- `-C` adds a comment that helps identify the key later.\n- `-t ed25519-sk` creates a hardware-backed FIDO key when supported.\n\n## Install the Public Key\n\nCopy only the `.pub` file contents to the remote account:\n\n```bash\nmkdir -p ~/.ssh\nchmod 700 ~/.ssh\ncat ~/.ssh/id_ed25519.pub >> ~/.ssh/authorized_keys\nchmod 600 ~/.ssh/authorized_keys\n```\n\nOn the client, private keys should stay locked down:\n\n```bash\nchmod 700 ~/.ssh\nchmod 600 ~/.ssh/id_ed25519\nchmod 644 ~/.ssh/id_ed25519.pub\n```\n\n## Fingerprints and Rotation\n\n```bash\nssh-keygen -l -f ~/.ssh/id_ed25519.pub\nssh-keygen -E md5 -l -f ~/.ssh/id_ed25519.pub\n```\n\nUse fingerprints when comparing keys out-of-band, documenting key rotation, or checking which key a server expects. If a workflow needs cached keys instead of repeated passphrase entry, continue to [[ssh/agent]].\n",
+  "sections": [
+    {
+      "id": "generate-ed25519",
+      "title": "Generate Ed25519 keys",
+      "body": "Use `ssh-keygen -t ed25519 -a 64 -f ~/.ssh/id_ed25519 -C comment` for a modern software key. OpenSSH also supports authenticator-hosted keys like `ed25519-sk` and `ecdsa-sk` when a FIDO token is available. The private key stays local; the public key is the `.pub` file.",
+      "tags": ["ssh-keygen", "ed25519", "fido", "private-key", "public-key"]
+    },
+    {
+      "id": "install-public-key",
+      "title": "Install public keys on the server",
+      "body": "Append the public key to `~/.ssh/authorized_keys` in the target account and keep directory permissions strict: `700` on `~/.ssh`, `600` on `authorized_keys`. The server reads one authorized key per line. After this, [[ssh/connect]] can authenticate without a password if the server allows public-key auth.",
+      "tags": ["authorized-keys", "permissions", "server", "public-key-auth"]
+    },
+    {
+      "id": "fingerprints-rotation",
+      "title": "Fingerprints and rotation",
+      "body": "Run `ssh-keygen -l -f key.pub` to print the default SHA256 fingerprint, or add `-E md5` if legacy MD5 fingerprints must be compared. Use fingerprints during key rotation, audits, and incident response. Host fingerprints belong in [[ssh/known-hosts]]; user identity fingerprints belong here.",
+      "tags": ["fingerprint", "rotation", "sha256", "audit"]
+    }
+  ],
+  "links": [
+    { "uri": "ssh/connect", "context": "Use generated keys for remote login and commands" },
+    { "uri": "ssh/agent", "context": "Load private keys into ssh-agent for repeated use" },
+    { "uri": "ssh/config", "context": "Pin specific identities with IdentityFile and AddKeysToAgent" },
+    { "uri": "ssh/known-hosts", "context": "Separate client identity keys from server host keys" },
+    { "uri": "ssh/troubleshooting", "context": "Debug Permission denied and ignored key files" }
+  ],
+  "related": [
+    { "uri": "ssh/connect", "relation": "prerequisite", "note": "Non-interactive SSH sessions usually depend on a usable client key" },
+    { "uri": "ssh/agent", "relation": "see-also", "note": "Agent-backed auth avoids repeated passphrase prompts" },
+    { "uri": "ssh/known-hosts", "relation": "see-also", "note": "Host keys verify servers while user keys authenticate clients" }
+  ],
+  "more": {
+    "docs": "https://man.openbsd.org/ssh-keygen",
+    "manual": "https://www.openssh.com/manual.html"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, SREs, AI agents",
+    "estimated_reading_time": "4 min",
+    "prerequisites": [],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

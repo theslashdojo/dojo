@@ -1,0 +1,120 @@
+{
+  "name": "debugging",
+  "version": "1.0.0",
+  "uri": "curl/debugging",
+  "type": "context",
+  "content_type": "guide",
+  "context": "Debug HTTP requests with curl — verbose output, response timing, protocol traces, and diagnosing common failures",
+  "info": "This context node covers how agents diagnose HTTP issues using curl's built-in debugging capabilities: verbose mode (-v) for seeing the full request/response exchange, the write-out format (-w) for extracting timing and metadata, trace modes (--trace, --trace-ascii) for protocol-level inspection, and systematic approaches to common failure categories (DNS resolution, TLS handshake, authentication, timeouts, redirect loops, and server errors). Agents consult this node when a curl request returns an unexpected result, a non-zero exit code, or an HTTP error status. The debugging workflow starts with -v to see what's happening, narrows with -w for specific metrics, and escalates to --trace for byte-level protocol inspection. See [[curl/request]] for request construction and [[curl/auth]] for authentication-specific debugging.",
+  "parent": "curl",
+  "tags": ["debug", "verbose", "trace", "timing", "troubleshoot", "diagnose", "http-error", "ssl-error", "timeout", "write-out"],
+  "aliases": [
+    "curl debugging",
+    "curl debug",
+    "curl verbose",
+    "curl -v",
+    "curl trace",
+    "curl timing",
+    "curl troubleshoot",
+    "curl write-out",
+    "curl diagnose",
+    "debug http request",
+    "debug api call",
+    "curl error",
+    "curl ssl error",
+    "curl timeout",
+    "curl connection refused"
+  ],
+  "triggers": [
+    "debug a curl request",
+    "curl request is failing",
+    "see what curl is sending",
+    "check curl response headers",
+    "measure curl response time",
+    "curl verbose output",
+    "curl ssl certificate error",
+    "curl connection timeout",
+    "curl returns empty response",
+    "curl 401 error",
+    "curl 403 error",
+    "curl 404 error",
+    "curl 500 error",
+    "curl exit code 6",
+    "curl exit code 7",
+    "curl exit code 28",
+    "curl exit code 35",
+    "diagnose slow api call",
+    "why is my curl request failing"
+  ],
+  "body": "# Debugging with curl\n\nWhen an HTTP request fails or returns unexpected results, curl provides layered debugging tools — from a quick verbose flag to full protocol traces. This guide covers the debugging workflow agents should follow.\n\n## Debugging Workflow\n\n1. **Add `-v`** to see the full request/response exchange\n2. **Check the exit code** (`$?`) against the exit code table in [[curl]]\n3. **Use `-w`** to extract specific timing and metadata\n4. **Escalate to `--trace`** for byte-level protocol inspection\n5. **Isolate the layer** — DNS, TCP, TLS, HTTP, or application\n\n## Verbose Mode (-v)\n\nThe single most useful debugging flag. Shows DNS resolution, TCP connection, TLS handshake, request headers, and response headers.\n\n```bash\ncurl -v https://api.example.com/users\n```\n\nOutput lines prefixed with:\n- `*` — curl internal info (connection, TLS, timing)\n- `>` — data sent to server (request headers)\n- `<` — data received from server (response headers)\n\n```\n* Trying 93.184.216.34:443...\n* Connected to api.example.com (93.184.216.34) port 443\n* SSL connection using TLSv1.3 / TLS_AES_256_GCM_SHA384\n> GET /users HTTP/2\n> Host: api.example.com\n> Authorization: Bearer eyJhbG...\n> Accept: */*\n>\n< HTTP/2 200\n< content-type: application/json\n< x-request-id: abc-123\n<\n{\"users\": [...]}\n```\n\nSend verbose output to a file (keep stdout clean for the response body):\n```bash\ncurl -v https://api.example.com/users 2>debug.log\n```\n\n## Write-Out Format (-w)\n\nExtract specific response metadata without parsing verbose output.\n\n```bash\n# Status code\ncurl -s -o /dev/null -w '%{http_code}\\n' https://api.example.com/health\n\n# Full timing breakdown\ncurl -s -o /dev/null -w '\nDNS lookup:    %{time_namelookup}s\nTCP connect:   %{time_connect}s\nTLS handshake: %{time_appconnect}s\nFirst byte:    %{time_starttransfer}s\nTotal time:    %{time_total}s\nDownload size: %{size_download} bytes\nHTTP status:   %{http_code}\n' https://api.example.com/data\n\n# JSON output for programmatic use\ncurl -s -o /dev/null -w '{\"status\":%{http_code},\"time\":%{time_total},\"size\":%{size_download}}\\n' \\\n     https://api.example.com/data\n\n# Read format from a file\necho -n '%{http_code} %{time_total}s %{size_download}B' > curl-format.txt\ncurl -s -o /dev/null -w '@curl-format.txt' https://api.example.com/data\n```\n\n### Key Write-Out Variables\n\n| Variable | Description |\n|----------|-------------|\n| `%{http_code}` | HTTP response status code |\n| `%{time_namelookup}` | Time from start to DNS resolution complete |\n| `%{time_connect}` | Time from start to TCP connection established |\n| `%{time_appconnect}` | Time from start to TLS handshake complete |\n| `%{time_pretransfer}` | Time from start to just before transfer begins |\n| `%{time_starttransfer}` | Time from start to first response byte (TTFB) |\n| `%{time_total}` | Total time for the operation |\n| `%{time_redirect}` | Total time spent in redirects |\n| `%{size_download}` | Total bytes received |\n| `%{size_upload}` | Total bytes sent |\n| `%{speed_download}` | Average download speed (bytes/sec) |\n| `%{speed_upload}` | Average upload speed (bytes/sec) |\n| `%{content_type}` | Content-Type of the response |\n| `%{num_redirects}` | Number of redirects followed |\n| `%{redirect_url}` | URL of the redirect target (when not following) |\n| `%{ssl_verify_result}` | SSL verification result (0 = OK) |\n| `%{remote_ip}` | IP address of the remote server |\n| `%{remote_port}` | Port of the remote server |\n| `%{local_ip}` | Local IP address used |\n| `%{local_port}` | Local port used |\n\n## Protocol Trace\n\nFor byte-level inspection when -v isn't enough.\n\n```bash\n# Full hex+ascii trace\ncurl --trace trace.log https://api.example.com/data\n\n# ASCII-only trace (more readable)\ncurl --trace-ascii trace.log https://api.example.com/data\n\n# Trace with timestamps\ncurl --trace trace.log --trace-time https://api.example.com/data\n```\n\n## Diagnosing Common Failures\n\n### DNS Resolution (exit code 6)\n```bash\n# Check if the hostname resolves\ncurl -v https://api.example.com 2>&1 | grep 'Trying'\n\n# Compare with direct DNS lookup\nnslookup api.example.com\ndig api.example.com\n\n# Try with a specific DNS server\ncurl --dns-servers 8.8.8.8 https://api.example.com\n```\n\n### Connection Refused (exit code 7)\n```bash\n# Check if the port is open\ncurl -v --connect-timeout 5 https://api.example.com 2>&1 | grep -E 'Trying|Connected|refused'\n\n# Try a different port\ncurl https://api.example.com:8443/resource\n\n# Check if the service is listening (from the server)\nss -tlnp | grep ':443'\n```\n\n### TLS/SSL Errors (exit code 35, 51, 60)\n```bash\n# See the full TLS handshake\ncurl -v https://api.example.com 2>&1 | grep -E 'SSL|TLS|certificate'\n\n# Check the server certificate\ncurl -vI https://api.example.com 2>&1 | grep -A5 'Server certificate'\n\n# Skip verification (development only!)\ncurl -k https://self-signed.example.com\n\n# Use a custom CA bundle\ncurl --cacert /path/to/ca-bundle.pem https://internal.example.com\n\n# Check certificate expiration\necho | openssl s_client -connect api.example.com:443 2>/dev/null | openssl x509 -noout -dates\n```\n\n### Timeout (exit code 28)\n```bash\n# Identify where the time is spent\ncurl -s -o /dev/null -w 'DNS: %{time_namelookup}s\\nConnect: %{time_connect}s\\nTLS: %{time_appconnect}s\\nTTFB: %{time_starttransfer}s\\nTotal: %{time_total}s\\n' \\\n     -m 10 https://api.example.com/slow\n\n# Separate connection timeout from transfer timeout\ncurl --connect-timeout 5 -m 30 https://api.example.com/slow\n```\n\n### HTTP Errors (4xx, 5xx)\n```bash\n# See response body with error details\ncurl -s -w '\\nHTTP %{http_code}\\n' https://api.example.com/resource\n\n# 401 Unauthorized — check auth headers sent\ncurl -v -H \"Authorization: Bearer $TOKEN\" https://api.example.com/resource 2>&1 | grep -E '^> Authorization|^< HTTP|^< www-authenticate'\n\n# 403 Forbidden — check permissions, IP restrictions\ncurl -v https://api.example.com/admin 2>&1 | grep -E '^< HTTP|^< x-|^< www-authenticate'\n\n# 404 Not Found — verify the URL path\ncurl -s -o /dev/null -w '%{http_code} %{url_effective}\\n' -L https://api.example.com/resouce\n\n# 429 Too Many Requests — check rate limit headers\ncurl -v https://api.example.com/resource 2>&1 | grep -iE 'rate|limit|retry|x-ratelimit'\n\n# 500+ Server Error — log full response for support\ncurl -D - -s https://api.example.com/resource > error-response.txt\n```\n\n### Redirect Loops\n```bash\n# See redirect chain\ncurl -v -L --max-redirs 10 https://example.com 2>&1 | grep -E '^< HTTP|^< location'\n\n# Don't follow redirects — just show where it goes\ncurl -s -o /dev/null -w '%{http_code} %{redirect_url}\\n' https://short.url/abc\n```\n\n### Empty Response (exit code 52)\n```bash\n# Check if the server closes the connection immediately\ncurl -v https://api.example.com/resource 2>&1 | tail -20\n\n# Try HTTP/1.1 instead of HTTP/2\ncurl --http1.1 -v https://api.example.com/resource\n```\n\n## Benchmarking\n\n```bash\n# Time a single request\ncurl -s -o /dev/null -w '%{time_total}s\\n' https://api.example.com/data\n\n# Multiple runs with average (using a loop)\nfor i in {1..10}; do\n  curl -s -o /dev/null -w '%{time_total}\\n' https://api.example.com/data\ndone | awk '{sum+=$1; n++} END {printf \"avg: %.3fs over %d requests\\n\", sum/n, n}'\n\n# Timing breakdown for latency analysis\ncurl -s -o /dev/null -w '\n  namelookup:  %{time_namelookup}s\n  connect:     %{time_connect}s\n  appconnect:  %{time_appconnect}s\n  pretransfer: %{time_pretransfer}s\n  starttransfer: %{time_starttransfer}s\n  total:       %{time_total}s\n  size:        %{size_download} bytes\n' https://api.example.com/data\n```\n",
+  "sections": [
+    {
+      "id": "verbose",
+      "title": "Verbose mode (-v)",
+      "body": "Add `-v` to any curl command to see the full request/response cycle. Output goes to stderr, so the response body still goes to stdout. Lines starting with `*` are curl internal messages (connection info, TLS details). Lines starting with `>` are request headers sent to the server. Lines starting with `<` are response headers received. Redirect verbose to a file with `2>debug.log` to keep stdout clean for piping. This is always the first step when debugging.",
+      "tags": ["verbose", "stderr", "request-headers", "response-headers", "debug"]
+    },
+    {
+      "id": "write-out",
+      "title": "Write-out format strings (-w)",
+      "body": "The `-w` flag outputs formatted metadata after the transfer. Combine with `-s -o /dev/null` to suppress the body and progress meter. Key variables: `%{http_code}`, `%{time_total}`, `%{time_namelookup}`, `%{time_connect}`, `%{time_appconnect}`, `%{time_starttransfer}`, `%{size_download}`, `%{content_type}`, `%{remote_ip}`, `%{ssl_verify_result}`. Format strings can be loaded from a file with `-w @format.txt`. Output JSON with `-w '{\"status\":%{http_code},\"time\":%{time_total}}'` for programmatic consumption.",
+      "tags": ["write-out", "format", "timing", "status-code", "metadata", "ttfb"]
+    },
+    {
+      "id": "trace",
+      "title": "Protocol tracing",
+      "body": "When `-v` isn't detailed enough, use `--trace file` for full hex+ASCII dumps of everything sent and received, or `--trace-ascii file` for ASCII-only output (more readable for HTTP). Add `--trace-time` to include timestamps on each trace line. This shows the exact bytes on the wire, including TLS negotiation, HTTP framing, and chunked transfer encoding. Trace files can be large — use only for targeted debugging.",
+      "tags": ["trace", "hex-dump", "protocol", "wire", "bytes"]
+    },
+    {
+      "id": "dns-tls",
+      "title": "Diagnosing DNS and TLS failures",
+      "body": "**DNS (exit code 6)**: curl cannot resolve the hostname. Verify with `nslookup` or `dig`. Check `/etc/resolv.conf` for DNS server config. Try `--dns-servers 8.8.8.8` to bypass local DNS. **TLS (exit codes 35, 51, 60)**: SSL handshake or certificate verification failed. Use `-v` to see the TLS version, cipher, and certificate chain. Common fixes: `--cacert` for custom CA bundles (corporate environments), `-k` for self-signed certs (dev only!), check certificate expiration with `openssl s_client`. Exit code 35 is handshake failure (protocol mismatch), 51 is certificate name mismatch, 60 is untrusted CA.",
+      "tags": ["dns", "tls", "ssl", "certificate", "handshake", "ca-bundle", "exit-code"]
+    },
+    {
+      "id": "http-errors",
+      "title": "Diagnosing HTTP error responses",
+      "body": "**401 Unauthorized**: check that the `Authorization` header is being sent correctly (`-v | grep Authorization`). Verify the token hasn't expired. Check the `WWW-Authenticate` response header for the expected auth scheme. **403 Forbidden**: correct auth but insufficient permissions, IP restrictions, or CORS preflight failures. **404 Not Found**: verify the URL path — typos are common. Check if the API requires a trailing slash or specific path version. **429 Too Many Requests**: check `Retry-After`, `X-RateLimit-*` headers. Back off and retry. **5xx Server Error**: save the full response (`-D - -s URL > error.txt`) to send to the API provider. Try again after a delay.",
+      "tags": ["401", "403", "404", "429", "500", "http-error", "status-code", "rate-limit"]
+    },
+    {
+      "id": "benchmarking",
+      "title": "Timing and benchmarking",
+      "body": "Use `-w` with timing variables to measure request performance. The timing phases are: `time_namelookup` (DNS), `time_connect` (TCP), `time_appconnect` (TLS), `time_pretransfer` (protocol negotiation), `time_starttransfer` (TTFB — time to first byte), `time_total` (complete transfer). To identify bottlenecks: high `time_namelookup` = slow DNS, high `time_connect - time_namelookup` = network latency, high `time_appconnect - time_connect` = slow TLS, high `time_starttransfer - time_appconnect` = slow server processing. Run multiple iterations in a Bash loop and average with `awk` for reliable measurements.",
+      "tags": ["timing", "benchmark", "ttfb", "latency", "performance", "dns-time"]
+    }
+  ],
+  "links": [
+    { "uri": "curl/request", "context": "Construct the request before debugging it" },
+    { "uri": "curl/auth", "context": "Authentication patterns — common source of 401/403 errors" },
+    { "uri": "curl", "context": "Exit code reference for curl failures" },
+    { "uri": "shell/bash", "context": "Bash loops and awk for benchmarking scripts" },
+    { "uri": "shell/pipes", "context": "Pipe verbose output through grep for targeted inspection" }
+  ],
+  "related": [
+    { "uri": "curl/request", "relation": "prerequisite", "note": "Understand request construction before debugging failures" },
+    { "uri": "curl/auth", "relation": "see-also", "note": "Auth errors (401/403) are the most common debugging target" },
+    { "uri": "shell/bash", "relation": "see-also", "note": "Bash scripting for benchmarking loops and output processing" }
+  ],
+  "more": {
+    "docs": "https://curl.se/docs/manpage.html#-v",
+    "wiki": "https://everything.curl.dev/usingcurl/verbose",
+    "spec": "https://curl.se/docs/manpage.html#-w"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "AI agents, developers",
+    "estimated_reading_time": "6 min",
+    "prerequisites": ["curl/request"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

@@ -1,0 +1,150 @@
+{
+  "name": "uv",
+  "version": "1.0.0",
+  "uri": "python/uv",
+  "type": "skill",
+  "context": "Ultra-fast Python package and project manager written in Rust — replaces pip, pip-tools, virtualenv, poetry, and pyenv in a single tool",
+  "info": "uv is Astral's Rust-based Python package and project manager that is 10-100x faster than pip. It provides a unified CLI for creating projects (uv init), managing dependencies (uv add/remove), resolving and locking (uv lock), syncing environments (uv sync), running commands (uv run), managing Python versions (uv python install), installing CLI tools globally (uv tool install / uvx), building packages (uv build), publishing to PyPI (uv publish), and a full pip-compatible interface (uv pip install/compile/sync). It uses a global cache to avoid redundant downloads, generates a cross-platform uv.lock lockfile, and integrates with pyproject.toml for all configuration. uv replaces the need for pip, pip-tools, virtualenv, venv, poetry, pyenv, pipx, and conda in most workflows.",
+  "parent": "python",
+  "tags": ["uv", "astral", "package-manager", "rust", "fast", "pip-replacement", "virtualenv", "pyproject-toml", "lockfile", "python-version-manager", "uvx", "build", "publish"],
+  "aliases": [
+    "uv",
+    "astral uv",
+    "uv pip",
+    "uv sync",
+    "uv add",
+    "uv run",
+    "uvx",
+    "uv tool",
+    "uv init",
+    "uv lock",
+    "uv venv",
+    "uv python",
+    "uv build",
+    "uv publish"
+  ],
+  "triggers": [
+    "install python packages fast",
+    "use uv instead of pip",
+    "manage python project with uv",
+    "create python virtual environment quickly",
+    "create a new python project with uv",
+    "add a dependency with uv",
+    "run a script in uv project",
+    "install a specific python version",
+    "run a tool without installing it globally",
+    "compile and lock python requirements",
+    "build and publish python package"
+  ],
+  "body": "# uv — Fast Python Package Manager\n\nuv is Astral's ultra-fast Python package and project manager, written in Rust. It replaces pip, pip-tools, virtualenv, poetry, and pyenv with a single, unified tool that is 10-100x faster.\n\n## Installation\n\n```bash\n# Standalone installer (recommended)\ncurl -LsSf https://astral.sh/uv/install.sh | sh\n\n# Or via pip\npip install uv\n\n# Or via Homebrew\nbrew install uv\n```\n\n## Quick Start — Project Workflow\n\n```bash\n# Create a new project with pyproject.toml\nuv init my-project\ncd my-project\n\n# Add dependencies\nuv add requests httpx\nuv add --dev pytest ruff mypy\n\n# Sync environment to lockfile\nuv sync\n\n# Run commands in the project environment\nuv run python main.py\nuv run pytest\n```\n\nuv creates a `.venv` automatically, generates `uv.lock`, and resolves dependencies in seconds.\n\n## Project Management\n\n### Creating Projects\n\n```bash\n# New application project\nuv init my-app\n\n# New library project\nuv init --lib my-lib\n\n# Initialize in current directory\nuv init\n```\n\n`uv init` creates `pyproject.toml`, `.python-version`, `README.md`, and a `src/` or `hello.py` scaffold.\n\n### Dependency Management\n\n```bash\n# Add a dependency\nuv add requests\nuv add \"httpx>=0.27\"\n\n# Add dev dependency\nuv add --dev pytest pytest-asyncio\n\n# Add optional dependency group\nuv add --optional docs sphinx\n\n# Remove a dependency\nuv remove requests\n\n# Update a dependency\nuv lock --upgrade-package requests\n```\n\n### Locking and Syncing\n\n```bash\n# Resolve dependencies and write uv.lock\nuv lock\n\n# Sync .venv to match uv.lock exactly\nuv sync\n\n# Sync including dev dependencies (default)\nuv sync --all-extras\n\n# Sync without dev dependencies\nuv sync --no-dev\n```\n\n`uv.lock` is a cross-platform lockfile. Commit it to version control for reproducible builds.\n\n### Running Commands\n\n```bash\n# Run a Python script\nuv run python script.py\n\n# Run a module\nuv run python -m pytest\n\n# Run a project script defined in pyproject.toml\nuv run my-cli\n\n# Run pytest directly\nuv run pytest -v\n\n# Run with extra environment variables\nuv run --env-file .env python main.py\n```\n\n`uv run` auto-creates the virtual environment and installs dependencies if needed.\n\n## pip-Compatible Interface\n\n```bash\n# Install packages (like pip install)\nuv pip install requests flask\n\n# Install from requirements file\nuv pip install -r requirements.txt\n\n# Compile locked requirements (like pip-compile)\nuv pip compile requirements.in -o requirements.txt\n\n# Sync environment to requirements (like pip-sync)\nuv pip sync requirements.txt\n\n# Uninstall packages\nuv pip uninstall requests\n\n# List installed packages\nuv pip list\n\n# Show package info\nuv pip show requests\n\n# Freeze current environment\nuv pip freeze\n```\n\nThe `uv pip` subcommand is a drop-in replacement for pip and pip-tools with 10-100x better performance.\n\n## Virtual Environments\n\n```bash\n# Create a virtual environment (10-100x faster than python -m venv)\nuv venv\n\n# Create with a specific Python version\nuv venv --python 3.12\n\n# Create with a custom path\nuv venv .venv-test\n\n# Activate (same as standard venv)\nsource .venv/bin/activate    # Linux/macOS\n.venv\\Scripts\\activate       # Windows\n```\n\n## Python Version Management\n\n```bash\n# Install a Python version\nuv python install 3.12\nuv python install 3.11 3.12 3.13\n\n# List available Python versions\nuv python list\n\n# List installed Python versions\nuv python list --only-installed\n\n# Pin project to a Python version\nuv python pin 3.12\n\n# Uninstall a Python version\nuv python uninstall 3.11\n```\n\n## Tool Management\n\n```bash\n# Install a CLI tool globally (like pipx)\nuv tool install ruff\nuv tool install black\n\n# Run a tool without installing (like npx)\nuv tool run black .\nuv tool run ruff check .\n\n# Shorthand for uv tool run\nuvx ruff check .\nuvx black --check .\nuvx pytest\n\n# List installed tools\nuv tool list\n\n# Uninstall a tool\nuv tool uninstall ruff\n\n# Upgrade a tool\nuv tool upgrade ruff\n```\n\n## Building and Publishing\n\n```bash\n# Build sdist and wheel\nuv build\n\n# Build only wheel\nuv build --wheel\n\n# Publish to PyPI\nuv publish\n\n# Publish to a custom index\nuv publish --index-url https://upload.pypi.org/legacy/ --token $PYPI_TOKEN\n```\n\n## pyproject.toml Configuration\n\n```toml\n[project]\nname = \"my-project\"\nversion = \"0.1.0\"\ndescription = \"My Python project\"\nrequires-python = \">= 3.11\"\ndependencies = [\n    \"requests>=2.31\",\n    \"httpx>=0.27\",\n]\n\n[project.optional-dependencies]\ndev = [\n    \"pytest>=8.0\",\n    \"ruff>=0.6\",\n]\n\n[project.scripts]\nmy-cli = \"my_project.cli:main\"\n\n[tool.uv]\ndev-dependencies = [\n    \"pytest>=8.0\",\n    \"mypy>=1.10\",\n]\n\n[tool.uv.workspace]\nmembers = [\"packages/*\"]\n\n[tool.uv.sources]\nmy-lib = { path = \"../my-lib\" }\n```\n\n## Workspaces (Monorepos)\n\n```toml\n# Root pyproject.toml\n[tool.uv.workspace]\nmembers = [\"packages/*\", \"apps/*\"]\n```\n\n```bash\n# Sync entire workspace\nuv sync\n\n# Run in a specific package\nuv run --package my-lib pytest\n```\n\n## Environment Variables\n\n| Variable | Purpose |\n|----------|----------|\n| `UV_CACHE_DIR` | Override cache directory (default: platform-specific) |\n| `UV_PYTHON` | Default Python interpreter path |\n| `UV_INDEX_URL` | Override default package index (default: PyPI) |\n| `UV_EXTRA_INDEX_URL` | Additional package indexes |\n| `UV_SYSTEM_PYTHON` | Set to `1` to allow system Python usage |\n| `UV_LINK_MODE` | Set to `copy` or `hardlink` for install strategy |\n| `UV_NO_CACHE` | Disable caching entirely |\n| `UV_NATIVE_TLS` | Use system TLS instead of rustls |\n\n## Resolution Strategies\n\n```bash\n# Lowest compatible versions (useful for library testing)\nuv lock --resolution lowest\n\n# Highest compatible versions (default)\nuv lock --resolution highest\n\n# Override a dependency resolution\nuv add --override \"numpy<2.0\"\n```\n\n## Performance\n\n- **10-100x faster** than pip for installs and resolution\n- **Global cache** eliminates redundant downloads — packages are cached once and linked into each project\n- **Written in Rust** — no Python startup overhead, parallel resolution and installation\n- **Lazy resolution** — only resolves what has changed\n- **Cross-platform lockfile** — `uv.lock` works on Linux, macOS, and Windows\n",
+  "sections": [
+    {
+      "id": "quick-start",
+      "title": "Quick start",
+      "body": "Install uv with `curl -LsSf https://astral.sh/uv/install.sh | sh`. Create a project with `uv init my-project`. Add dependencies with `uv add requests`. Run code with `uv run python main.py`. uv auto-creates the virtual environment and lockfile. Sync an existing project with `uv sync`.",
+      "tags": ["install", "init", "add", "run", "quick-start"]
+    },
+    {
+      "id": "project-management",
+      "title": "Project management",
+      "body": "uv manages the full project lifecycle: `uv init` scaffolds pyproject.toml, `uv add` and `uv remove` manage dependencies, `uv lock` resolves and writes uv.lock, `uv sync` ensures the environment matches the lockfile, and `uv run` executes commands within the project environment. Dev dependencies use `uv add --dev`. Workspaces support monorepos via `[tool.uv.workspace]` in pyproject.toml.",
+      "tags": ["init", "add", "remove", "lock", "sync", "run", "workspace", "pyproject-toml"]
+    },
+    {
+      "id": "pip-interface",
+      "title": "pip-compatible interface",
+      "body": "The `uv pip` subcommand is a drop-in replacement for pip and pip-tools. Use `uv pip install` for ad-hoc installs, `uv pip compile requirements.in -o requirements.txt` to compile locked requirements, and `uv pip sync requirements.txt` to sync an environment. This is useful when migrating existing projects or working with requirements.txt-based workflows.",
+      "tags": ["pip", "pip-compile", "pip-sync", "requirements", "migration"]
+    },
+    {
+      "id": "python-management",
+      "title": "Python version management",
+      "body": "uv can install and manage Python versions directly, replacing pyenv. Use `uv python install 3.12` to install, `uv python list` to see available versions, and `uv python pin 3.12` to set the project default. Use `uv venv --python 3.12` to create a venv with a specific Python version. The `uvx` shorthand runs CLI tools without permanent installation, like npx.",
+      "tags": ["python", "version", "install", "pyenv", "uvx", "tool"]
+    },
+    {
+      "id": "performance",
+      "title": "Performance and caching",
+      "body": "uv is 10-100x faster than pip, written in Rust with parallel resolution and installation. A global cache stores downloaded packages once and links them into project environments, eliminating redundant downloads. The cache can be configured via UV_CACHE_DIR. The uv.lock lockfile is cross-platform and deterministic. Use `--resolution lowest` for library compatibility testing.",
+      "tags": ["performance", "rust", "cache", "speed", "lockfile", "resolution"]
+    }
+  ],
+  "links": [
+    { "uri": "python/pip", "context": "Standard pip installer — uv replaces and extends pip functionality" },
+    { "uri": "python/venv", "context": "Virtual environments — uv venv is 10-100x faster than python -m venv" },
+    { "uri": "python/poetry", "context": "Poetry for dependency management — uv is a faster alternative" },
+    { "uri": "python/testing", "context": "Run pytest and other test tools via uv run" }
+  ],
+  "related": [
+    { "uri": "python/pip", "relation": "alternative", "note": "uv replaces pip with a faster, more capable package installer" },
+    { "uri": "python/poetry", "relation": "alternative", "note": "uv replaces poetry for dependency management, lockfiles, and publishing" },
+    { "uri": "python/venv", "relation": "extends", "note": "uv venv creates virtual environments 10-100x faster than python -m venv" }
+  ],
+  "scripts": [
+    {
+      "id": "uv-setup",
+      "name": "Initialize uv Project",
+      "description": "Create a new uv project, add dependencies, and sync the environment",
+      "lang": "bash",
+      "runtime": "uv",
+      "entry": "./scripts/uv-setup.sh",
+      "inline": "#!/bin/bash\nset -e\n\nPROJECT_NAME=\"${PROJECT_NAME:-my-project}\"\nDEPS=\"${DEPENDENCIES:-}\"\n\necho \"Creating project: $PROJECT_NAME\"\nuv init \"$PROJECT_NAME\"\ncd \"$PROJECT_NAME\"\n\nif [ -n \"$DEPS\" ]; then\n  echo \"Adding dependencies: $DEPS\"\n  IFS=',' read -ra DEP_ARRAY <<< \"$DEPS\"\n  for dep in \"${DEP_ARRAY[@]}\"; do\n    dep=$(echo \"$dep\" | xargs)\n    if [ -n \"$dep\" ]; then\n      uv add \"$dep\"\n    fi\n  done\nfi\n\necho \"Adding dev dependencies: pytest, ruff\"\nuv add --dev pytest ruff\n\necho \"Syncing environment...\"\nuv sync\n\nPYTHON_VERSION=$(uv run python --version 2>&1)\necho \"\"\necho \"Project created: $(pwd)\"\necho \"Python version: $PYTHON_VERSION\"\necho \"Lockfile: uv.lock\"\necho \"Virtual env: .venv/\"\necho \"\"\necho \"Next steps:\"\necho \"  cd $PROJECT_NAME\"\necho \"  uv run python hello.py\"\necho \"  uv add <package>\"",
+      "env": {
+        "PROJECT_NAME": { "required": false, "default": "my-project", "description": "Name for the new project directory" },
+        "DEPENDENCIES": { "required": false, "default": "", "description": "Comma-separated list of dependencies to add (e.g., requests,httpx,pydantic)" }
+      },
+      "packages": ["uv"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "project_name": { "type": "string", "description": "Name for the new project" },
+        "dependencies": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "List of package dependencies to install"
+        },
+        "dev_dependencies": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "List of dev dependencies to install"
+        },
+        "python_version": { "type": "string", "description": "Python version to use (e.g., 3.12)" }
+      },
+      "required": ["project_name"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "project_path": { "type": "string", "description": "Absolute path to the created project" },
+        "python_version": { "type": "string", "description": "Python version used in the project" },
+        "lockfile": { "type": "string", "description": "Path to the uv.lock file" },
+        "venv_path": { "type": "string", "description": "Path to the .venv directory" }
+      }
+    }
+  },
+  "depends": [],
+  "more": {
+    "docs": "https://docs.astral.sh/uv/",
+    "repo": "https://github.com/astral-sh/uv",
+    "changelog": "https://github.com/astral-sh/uv/blob/main/CHANGELOG.md",
+    "pypi": "https://pypi.org/project/uv/"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "6 min",
+    "prerequisites": [],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

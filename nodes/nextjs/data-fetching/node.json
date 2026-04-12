@@ -1,0 +1,102 @@
+{
+  "name": "data-fetching",
+  "version": "1.0.0",
+  "uri": "nextjs/data-fetching",
+  "type": "context",
+  "content_type": "guide",
+  "context": "Data fetching patterns in Next.js — Server Components, fetch API, caching, revalidation, streaming, and client-side fetching with SWR",
+  "info": "Next.js provides multiple data fetching strategies across both routers. In the App Router, Server Components can fetch data directly with async/await using the native `fetch` API or any async data source (databases, ORMs, APIs). Fetch requests are automatically deduplicated and can be cached with time-based or on-demand revalidation. Streaming with Suspense enables progressive rendering of data-dependent UI. Client Components use hooks like SWR or React Query for browser-side data fetching. In the Pages Router, `getStaticProps` fetches at build time (with optional ISR), `getServerSideProps` fetches per request, and `getStaticPaths` defines dynamic routes for static generation. Understanding when to use each pattern is critical for building performant Next.js applications.",
+  "parent": "nextjs",
+  "tags": ["data-fetching", "fetch", "caching", "revalidation", "streaming", "swr", "server-components", "suspense", "nextjs"],
+  "aliases": [
+    "data fetching",
+    "next data fetching",
+    "nextjs fetch",
+    "server component data",
+    "fetch in next.js",
+    "caching in next.js",
+    "revalidation",
+    "swr next",
+    "react query next",
+    "streaming data",
+    "suspense next.js",
+    "isr next.js"
+  ],
+  "triggers": [
+    "fetch data in next.js",
+    "how to load data in server components",
+    "cache API responses in next.js",
+    "revalidate data in next.js",
+    "stream data with suspense",
+    "use SWR in next.js",
+    "parallel data fetching",
+    "incremental static regeneration",
+    "when to use getStaticProps vs getServerSideProps",
+    "client-side data fetching in next"
+  ],
+  "body": "# Data Fetching\n\nNext.js provides multiple patterns for loading data, from server-side fetching in components to client-side hooks.\n\n## Server Components (App Router — Recommended)\n\nServer Components can fetch data directly with async/await. No special APIs needed.\n\n### fetch API\n\n```tsx\n// app/posts/page.tsx\nexport default async function PostsPage() {\n  const res = await fetch('https://api.example.com/posts')\n  const posts = await res.json()\n\n  return (\n    <ul>\n      {posts.map((post: { id: string; title: string }) => (\n        <li key={post.id}>{post.title}</li>\n      ))}\n    </ul>\n  )\n}\n```\n\n### Database / ORM\n\n```tsx\n// app/users/page.tsx\nimport { db } from '@/lib/db'\n\nexport default async function UsersPage() {\n  const users = await db.user.findMany()\n  return (\n    <ul>\n      {users.map(user => (\n        <li key={user.id}>{user.name}</li>\n      ))}\n    </ul>\n  )\n}\n```\n\n### Parallel Fetching\n\n```tsx\nexport default async function DashboardPage() {\n  // Start both requests simultaneously\n  const statsPromise = getStats()\n  const activityPromise = getActivity()\n\n  // Wait for both\n  const [stats, activity] = await Promise.all([statsPromise, activityPromise])\n\n  return (\n    <div>\n      <StatsPanel stats={stats} />\n      <ActivityFeed activity={activity} />\n    </div>\n  )\n}\n```\n\n### Sequential Fetching\n\n```tsx\nexport default async function ArtistPage({ params }: { params: Promise<{ id: string }> }) {\n  const { id } = await params\n  const artist = await getArtist(id) // Fetch first\n  const albums = await getAlbums(artist.id) // Then fetch dependent data\n\n  return (\n    <div>\n      <h1>{artist.name}</h1>\n      <AlbumList albums={albums} />\n    </div>\n  )\n}\n```\n\n## Caching\n\nNext.js extends the `fetch` API with caching options:\n\n```tsx\n// Cached by default (equivalent to force-cache)\nconst data = await fetch('https://api.example.com/data')\n\n// No caching — always fresh\nconst data = await fetch('https://api.example.com/data', {\n  cache: 'no-store',\n})\n\n// Time-based revalidation (seconds)\nconst data = await fetch('https://api.example.com/data', {\n  next: { revalidate: 3600 }, // Revalidate every hour\n})\n\n// Tag-based revalidation\nconst data = await fetch('https://api.example.com/data', {\n  next: { tags: ['posts'] },\n})\n```\n\n### Route Segment Config\n\n```tsx\n// Force dynamic rendering for the entire route\nexport const dynamic = 'force-dynamic'\n\n// Set default revalidation for all fetches in this segment\nexport const revalidate = 60 // seconds\n\n// Force static rendering\nexport const dynamic = 'force-static'\n```\n\n## Revalidation\n\n### Time-Based\n\n```tsx\n// Revalidate cached data every 60 seconds\nconst data = await fetch('https://api.example.com/data', {\n  next: { revalidate: 60 },\n})\n```\n\n### On-Demand\n\n```tsx\n// In a Server Action or Route Handler\nimport { revalidatePath } from 'next/cache'\nimport { revalidateTag } from 'next/cache'\n\nexport async function updatePost() {\n  await db.post.update(...)\n\n  revalidatePath('/blog')         // Revalidate a specific path\n  revalidateTag('posts')          // Revalidate all fetches with this tag\n}\n```\n\n## Streaming with Suspense\n\nWrap slow data-fetching components in Suspense to stream them progressively:\n\n```tsx\nimport { Suspense } from 'react'\n\nexport default function DashboardPage() {\n  return (\n    <div>\n      <h1>Dashboard</h1>\n      {/* Shows instantly */}\n      <StaticContent />\n\n      {/* Streams in when data is ready */}\n      <Suspense fallback={<Skeleton />}>\n        <SlowDataComponent />\n      </Suspense>\n\n      <Suspense fallback={<Skeleton />}>\n        <AnotherSlowComponent />\n      </Suspense>\n    </div>\n  )\n}\n\nasync function SlowDataComponent() {\n  const data = await fetchSlowAPI() // Takes 2 seconds\n  return <DataDisplay data={data} />\n}\n```\n\n### loading.tsx (Automatic Suspense)\n\n```tsx\n// app/dashboard/loading.tsx\nexport default function Loading() {\n  return <DashboardSkeleton />\n}\n// Next.js wraps the page in <Suspense fallback={<Loading />}> automatically\n```\n\n## Static Generation (generateStaticParams)\n\n```tsx\n// app/blog/[slug]/page.tsx\nexport async function generateStaticParams() {\n  const posts = await getAllPosts()\n  return posts.map(post => ({ slug: post.slug }))\n}\n\nexport default async function PostPage({ params }: { params: Promise<{ slug: string }> }) {\n  const { slug } = await params\n  const post = await getPost(slug)\n  return <article><h1>{post.title}</h1></article>\n}\n```\n\n## Client-Side Fetching\n\n### SWR\n\n```tsx\n'use client'\nimport useSWR from 'swr'\n\nconst fetcher = (url: string) => fetch(url).then(r => r.json())\n\nexport default function UserProfile() {\n  const { data, error, isLoading } = useSWR('/api/user', fetcher)\n\n  if (isLoading) return <div>Loading...</div>\n  if (error) return <div>Error</div>\n  return <div>Hello, {data.name}</div>\n}\n```\n\n### React `use` API\n\n```tsx\n// Pass promise from Server Component to Client Component\n// app/page.tsx (Server)\nimport { Suspense } from 'react'\nimport ClientList from './client-list'\n\nexport default function Page() {\n  const dataPromise = fetchData() // Don't await!\n  return (\n    <Suspense fallback={<div>Loading...</div>}>\n      <ClientList dataPromise={dataPromise} />\n    </Suspense>\n  )\n}\n\n// app/client-list.tsx (Client)\n'use client'\nimport { use } from 'react'\n\nexport default function ClientList({ dataPromise }: { dataPromise: Promise<Item[]> }) {\n  const data = use(dataPromise)\n  return <ul>{data.map(item => <li key={item.id}>{item.name}</li>)}</ul>\n}\n```\n\n## Pages Router Data Fetching\n\n| Method | When | Use Case |\n|--------|------|----------|\n| `getStaticProps` | Build time (+ ISR) | Blog, marketing, products |\n| `getServerSideProps` | Every request | Dashboards, auth pages |\n| `getStaticPaths` | Build time | Dynamic routes with SSG |\n| Client-side (SWR) | Browser | User-specific, real-time |\n\nSee [[nextjs/pages-router]] for detailed Pages Router data fetching examples.\n\n## Decision Guide\n\n| Scenario | Approach |\n|----------|----------|\n| Public page, rarely changes | Static (default in App Router) |\n| Public page, changes hourly | Time-based revalidation (`next: { revalidate: 3600 }`) |\n| User-specific data, server-rendered | Server Component with no cache |\n| User-specific data, interactive | Client-side with SWR |\n| Multiple independent data sources | Parallel `Promise.all()` |\n| Dependent data sources | Sequential with Suspense boundaries |\n| Large page, mixed fast/slow data | Streaming with `<Suspense>` |\n",
+  "sections": [
+    {
+      "id": "server-components",
+      "title": "Server Component data fetching",
+      "body": "Server Components in the App Router can fetch data directly with async/await. Use `fetch()` for HTTP APIs, or call databases, ORMs, and internal services directly. Server Component code never ships to the client, so secrets and credentials are safe. Fetch requests are automatically deduplicated within a single render — multiple components fetching the same URL only make one request.",
+      "tags": ["server-components", "async-await", "fetch", "deduplication"]
+    },
+    {
+      "id": "caching",
+      "title": "Caching and revalidation",
+      "body": "Next.js extends `fetch()` with caching: `cache: 'force-cache'` (default) caches indefinitely, `cache: 'no-store'` disables caching, `next: { revalidate: N }` enables time-based revalidation every N seconds, `next: { tags: ['name'] }` enables on-demand revalidation via `revalidateTag()`. Route-level `export const revalidate = N` sets default revalidation for all fetches in a route segment. Use `revalidatePath()` and `revalidateTag()` in Server Actions for on-demand invalidation.",
+      "tags": ["caching", "revalidate", "force-cache", "no-store", "tags", "on-demand"]
+    },
+    {
+      "id": "streaming",
+      "title": "Streaming with Suspense",
+      "body": "Wrap async Server Components in `<Suspense fallback={<Loading />}>` to stream them progressively. The shell renders instantly with the fallback, then the completed component HTML is streamed when data is ready. Use `loading.tsx` for route-level Suspense or wrap individual components for granular control. Streaming reduces Time to First Byte (TTFB) and enables fast initial page loads even with slow data sources.",
+      "tags": ["streaming", "suspense", "loading", "progressive-rendering", "ttfb"]
+    },
+    {
+      "id": "client-side",
+      "title": "Client-side data fetching",
+      "body": "Client Components use hooks for browser-side fetching: `useSWR` (Vercel's SWR library) provides caching, revalidation, and error handling. React Query (`@tanstack/react-query`) offers similar features with more control. The React `use()` API can consume promises passed from Server Components. Client-side fetching is best for user-specific data, real-time updates, and interactive features that need frequent refetching.",
+      "tags": ["client-side", "swr", "react-query", "use-api", "hooks"]
+    },
+    {
+      "id": "patterns",
+      "title": "Fetching patterns",
+      "body": "**Parallel**: Start multiple fetches simultaneously with `Promise.all()` to avoid waterfalls. **Sequential**: Await fetches in order when results depend on each other (e.g., user → user's posts). **Preloading**: Call `preload()` functions early to start data fetching before components that need it render. **Deduplication**: React and Next.js automatically deduplicate identical `fetch()` calls within a single render pass.",
+      "tags": ["parallel", "sequential", "waterfall", "preload", "deduplication", "promise-all"]
+    }
+  ],
+  "links": [
+    { "uri": "nextjs/app-router", "context": "Server Components are the primary App Router data fetching mechanism" },
+    { "uri": "nextjs/pages-router", "context": "getStaticProps and getServerSideProps for Pages Router data fetching" },
+    { "uri": "nextjs/server-actions", "context": "Server Actions trigger revalidation after data mutations" },
+    { "uri": "nextjs/api-routes", "context": "Route Handlers can serve data to client-side fetching" },
+    { "uri": "nextjs/config", "context": "Configure default caching behavior in next.config" }
+  ],
+  "related": [
+    { "uri": "nextjs/server-actions", "relation": "see-also", "note": "Server Actions handle mutations and trigger revalidation of fetched data" },
+    { "uri": "nextjs/app-router", "relation": "prerequisite", "note": "Server Component data fetching requires the App Router" },
+    { "uri": "nextjs/pages-router", "relation": "see-also", "note": "Pages Router has its own data fetching methods" }
+  ],
+  "more": {
+    "docs": "https://nextjs.org/docs/app/building-your-application/data-fetching",
+    "caching": "https://nextjs.org/docs/app/building-your-application/caching",
+    "swr": "https://swr.vercel.app"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "8 min",
+    "prerequisites": ["nextjs"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

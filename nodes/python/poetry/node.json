@@ -1,0 +1,125 @@
+{
+  "name": "poetry",
+  "version": "1.0.0",
+  "uri": "python/poetry",
+  "type": "skill",
+  "context": "Manage Python project dependencies, virtual environments, builds, and publishing with Poetry using pyproject.toml and deterministic lock files",
+  "info": "Poetry is Python's modern dependency management and packaging tool. It replaces the scattered workflow of pip, setuptools, and virtualenv with a single coherent tool. Poetry uses pyproject.toml for project metadata and dependency declarations, poetry.lock for deterministic reproducible installs, and manages isolated virtual environments automatically. Key workflows: scaffold projects with `poetry new` or `poetry init`, add/remove dependencies with `poetry add`/`poetry remove`, install from lock with `poetry install`, build sdist and wheel with `poetry build`, and publish to PyPI with `poetry publish`. Poetry supports dependency groups (dev, test, docs), version constraints (^, ~, >=), private registries, and environment variable configuration. For pip-based workflows, see [[python/pip]]. For the newer uv tool, see [[python/uv]].",
+  "parent": "python",
+  "tags": ["poetry", "dependency-management", "packaging", "pyproject-toml", "virtualenv", "lock-file", "build", "publish", "pypi"],
+  "aliases": [
+    "poetry",
+    "python poetry",
+    "poetry add",
+    "pyproject.toml",
+    "poetry install",
+    "poetry lock"
+  ],
+  "triggers": [
+    "manage python dependencies with poetry",
+    "create a python project",
+    "publish python package",
+    "add python dependency",
+    "set up pyproject.toml",
+    "build a python wheel",
+    "export requirements.txt from poetry"
+  ],
+  "body": "# Poetry — Python Dependency Management\n\nPoetry is a single tool for dependency management, virtual environment handling, building, and publishing Python projects. It centers on `pyproject.toml` for declaration and `poetry.lock` for reproducibility.\n\n## Project Setup\n\n```bash\n# Scaffold a new project with directory structure\npoetry new my-project\n# Creates:\n#   my-project/\n#     pyproject.toml\n#     README.md\n#     my_project/__init__.py\n#     tests/__init__.py\n\n# Initialize in an existing directory\ncd existing-project\npoetry init\n\n# Use a specific Python interpreter\npoetry env use python3.12\n\n# Show environment details\npoetry env info\n```\n\n## Dependency Management\n\n```bash\n# Add a runtime dependency\npoetry add requests\n\n# Add with version constraint\npoetry add 'requests>=2.28,<3.0'\n\n# Add a dev dependency\npoetry add --group dev pytest\n\n# Add to a custom group\npoetry add --group docs sphinx\n\n# Remove a dependency\npoetry remove requests\n\n# Install all dependencies from lock file\npoetry install\n\n# Install without dev dependencies (production)\npoetry install --without dev\n\n# Lock dependencies without installing\npoetry lock\n\n# Update all dependencies within constraints\npoetry update\n\n# Update a single package\npoetry update requests\n\n# Show dependency tree\npoetry show --tree\n\n# Export for pip compatibility\npoetry export -f requirements.txt --output requirements.txt\n```\n\n## Running Code\n\n```bash\n# Run a command inside the poetry-managed venv\npoetry run python script.py\npoetry run pytest\n\n# Activate the venv shell\npoetry shell\n```\n\n## Building and Publishing\n\n```bash\n# Build sdist and wheel\npoetry build\n\n# Publish to PyPI\npoetry publish\n\n# Build and publish in one step\npoetry publish --build\n\n# Configure PyPI token\npoetry config pypi-token.pypi pypi-XXXXXXXX\n```\n\n## pyproject.toml Structure\n\n```toml\n[tool.poetry]\nname = \"my-project\"\nversion = \"0.1.0\"\ndescription = \"A short description\"\nauthors = [\"Your Name <you@example.com>\"]\nreadme = \"README.md\"\npackages = [{include = \"my_project\"}]\n\n[tool.poetry.dependencies]\npython = \"^3.10\"\nrequests = \"^2.31\"\n\n[tool.poetry.group.dev.dependencies]\npytest = \"^8.0\"\nmypy = \"^1.8\"\n\n[tool.poetry.scripts]\nmy-cli = \"my_project.cli:main\"\n\n[[tool.poetry.source]]\nname = \"private\"\nurl = \"https://private.pypi.org/simple/\"\npriority = \"supplemental\"\n\n[build-system]\nrequires = [\"poetry-core\"]\nbuild-backend = \"poetry.core.masonry.api\"\n```\n\n## Version Constraints\n\n| Syntax | Meaning |\n|--------|---------|\n| `^1.2.3` | `>=1.2.3, <2.0.0` (caret — compatible releases) |\n| `~1.2.3` | `>=1.2.3, <1.3.0` (tilde — patch-level) |\n| `>=1.0,<2.0` | Explicit range |\n| `*` | Any version |\n| `==1.2.3` | Exact version |\n\n## Configuration\n\nProject-level `poetry.toml`:\n```toml\n[virtualenvs]\nin-project = true\ncreate = true\n```\n\nEnvironment variables:\n- `POETRY_VIRTUALENVS_IN_PROJECT=true` — create `.venv` in project root\n- `POETRY_VIRTUALENVS_CREATE=false` — skip venv creation (use system Python)\n- `POETRY_PYPI_TOKEN_PYPI=pypi-xxx` — PyPI authentication token\n",
+  "sections": [
+    {
+      "id": "project-setup",
+      "title": "Project setup and initialization",
+      "body": "Use `poetry new my-project` to scaffold a new project with pyproject.toml, package directory, and tests directory. Use `poetry init` to add Poetry to an existing project interactively. Select a Python interpreter with `poetry env use python3.12`. Check environment details with `poetry env info`.",
+      "tags": ["new", "init", "scaffold", "env", "interpreter"]
+    },
+    {
+      "id": "dependency-management",
+      "title": "Adding, removing, and locking dependencies",
+      "body": "Add packages with `poetry add <pkg>`. Use `--group dev` for dev dependencies, `--group <name>` for custom groups. Remove with `poetry remove <pkg>`. Install from lock with `poetry install`. Update within constraints with `poetry update`. View the dependency tree with `poetry show --tree`. Export for pip with `poetry export -f requirements.txt`.",
+      "tags": ["add", "remove", "install", "lock", "update", "export", "groups"]
+    },
+    {
+      "id": "building-publishing",
+      "title": "Building and publishing packages",
+      "body": "Run `poetry build` to produce sdist and wheel in the `dist/` directory. Publish to PyPI with `poetry publish` or `poetry publish --build` to combine both steps. Configure credentials with `poetry config pypi-token.pypi <token>` or the POETRY_PYPI_TOKEN_PYPI environment variable. For private registries, add a `[[tool.poetry.source]]` section in pyproject.toml.",
+      "tags": ["build", "publish", "pypi", "wheel", "sdist", "registry"]
+    },
+    {
+      "id": "configuration",
+      "title": "Configuration and environment variables",
+      "body": "Poetry reads configuration from poetry.toml (project-level) and the global config. Key settings: `virtualenvs.in-project = true` stores the venv as `.venv` in the project root. Environment variables follow the pattern POETRY_<SECTION>_<KEY>, e.g., POETRY_VIRTUALENVS_IN_PROJECT. Private registries are configured via `[[tool.poetry.source]]` with name, url, and priority fields.",
+      "tags": ["config", "poetry-toml", "environment-variables", "virtualenvs", "private-registry"]
+    }
+  ],
+  "links": [
+    { "uri": "python/pip", "context": "Traditional pip-based dependency installation" },
+    { "uri": "python/venv", "context": "Python virtual environments that Poetry manages automatically" },
+    { "uri": "python/uv", "context": "Newer, faster alternative to Poetry for dependency management" },
+    { "uri": "python/testing", "context": "Testing workflows using pytest as a dev dependency" }
+  ],
+  "related": [
+    { "uri": "python/pip", "relation": "alternative", "note": "Poetry replaces manual pip + requirements.txt workflows" },
+    { "uri": "python/uv", "relation": "alternative", "note": "uv is a faster Rust-based alternative with compatible pyproject.toml support" },
+    { "uri": "python/venv", "relation": "see-also", "note": "Poetry manages its own virtualenvs but understanding venv concepts helps" }
+  ],
+  "scripts": [
+    {
+      "id": "poetry-setup",
+      "name": "Poetry Project Setup",
+      "description": "Scaffold a new Poetry project, configure in-project venv, and add specified dependencies",
+      "lang": "bash",
+      "runtime": "python>=3.10",
+      "entry": "./scripts/poetry-setup.sh",
+      "inline": "#!/bin/bash\nset -e\n\nPROJECT_NAME=\"${PROJECT_NAME:-my-project}\"\nDEPS=\"${DEPENDENCIES:-}\"\n\n# Create new project\npoetry new \"$PROJECT_NAME\"\ncd \"$PROJECT_NAME\"\n\n# Configure in-project virtualenv\npoetry config virtualenvs.in-project true --local\n\n# Add dependencies if specified\nif [ -n \"$DEPS\" ]; then\n  IFS=',' read -ra DEP_ARRAY <<< \"$DEPS\"\n  for dep in \"${DEP_ARRAY[@]}\"; do\n    dep=$(echo \"$dep\" | xargs)  # trim whitespace\n    echo \"Adding dependency: $dep\"\n    poetry add \"$dep\"\n  done\nfi\n\n# Add common dev dependencies\npoetry add --group dev pytest mypy\n\n# Install everything\npoetry install\n\n# Report results\nVENV_PATH=$(poetry env info --path)\necho \"\"\necho \"Project created: $(pwd)\"\necho \"Virtualenv: $VENV_PATH\"\necho \"Run: cd $PROJECT_NAME && poetry run pytest\"",
+      "env": {
+        "PROJECT_NAME": { "required": false, "default": "my-project", "description": "Name for the new Poetry project" },
+        "DEPENDENCIES": { "required": false, "default": "", "description": "Comma-separated list of dependencies to add (e.g., 'requests,flask,sqlalchemy')" }
+      },
+      "packages": ["poetry"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "project_name": { "type": "string", "description": "Name for the new Poetry project" },
+        "dependencies": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "List of package dependencies to install (e.g., ['requests', 'flask>=3.0'])"
+        }
+      },
+      "required": ["project_name"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "project_path": { "type": "string", "description": "Absolute path to the created project directory" },
+        "venv_path": { "type": "string", "description": "Absolute path to the Poetry-managed virtual environment" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "python/venv", "optional": true, "reason": "Poetry manages its own virtualenvs but builds on venv concepts" }
+  ],
+  "more": {
+    "docs": "https://python-poetry.org/docs/",
+    "repo": "https://github.com/python-poetry/poetry",
+    "pypi": "https://pypi.org/project/poetry/"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "6 min",
+    "prerequisites": [],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

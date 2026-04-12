@@ -1,138 +1,106 @@
 ---
-name: mcp-server
-description: Build MCP servers that expose tools, resources, and prompts to AI agents. Use when creating a new MCP server, adding capabilities to an existing server, or debugging server issues.
+name: server
+description: Build MCP servers that expose tools, resources, and prompts to AI applications. Use when creating a new MCP server, adding capabilities to an existing server, or deploying servers for Claude Desktop, VS Code, or other MCP hosts.
 ---
 
-# MCP Server Development
+# MCP Server
 
-Build servers that expose tools, resources, and prompts through the Model Context Protocol.
+Build servers that expose tools, resources, and prompts via the Model Context Protocol.
 
 ## When to Use
 
 - Creating a new MCP server from scratch
-- Adding tools, resources, or prompts to an existing server
-- Configuring server transport (stdio vs HTTP)
+- Adding tools, resources, or prompts to a server
+- Configuring server transport (stdio or HTTP)
+- Deploying a server to Claude Desktop or another host
 - Debugging MCP server issues
-- Testing servers with the MCP Inspector
-
-## Prerequisites
-
-- Python 3.10+ with `mcp[cli]` package, OR
-- Node.js 18+ with `@modelcontextprotocol/sdk` package
 
 ## Workflow
 
-### 1. Scaffold the Server
+1. Choose language: Python (`mcp[cli]`) or TypeScript (`@modelcontextprotocol/sdk`)
+2. Initialize server: `FastMCP("name")` or `new McpServer({name, version})`
+3. Register primitives: tools (`@mcp.tool()`), resources (`@mcp.resource(uri)`), prompts (`@mcp.prompt()`)
+4. Choose transport: stdio (local) or Streamable HTTP (remote)
+5. Run and test: `mcp dev server.py` for inspector, or configure in host app
+6. Deploy: `mcp install server.py` for Claude Desktop, or host HTTP endpoint
 
-**Python:**
-```bash
-uv init my-server && cd my-server
-uv add "mcp[cli]"
-```
+## Python Quick Reference
 
-**TypeScript:**
-```bash
-npm init -y
-npm install @modelcontextprotocol/sdk zod
-```
-
-### 2. Define Capabilities
-
-Choose which primitives your server exposes:
-- **Tools** — Functions the LLM can call (model-controlled)
-- **Resources** — Data the application can read (application-controlled)
-- **Prompts** — Templates the user can select (user-controlled)
-
-### 3. Implement the Server
-
-**Python (FastMCP):**
 ```python
 from mcp.server.fastmcp import FastMCP
 
-mcp = FastMCP("my-server")
+mcp = FastMCP("server-name")
 
+# Tool — model-controlled, LLM invokes it
 @mcp.tool()
-async def search(query: str) -> str:
-    """Search the knowledge base."""
-    results = await kb.search(query)
-    return json.dumps(results)
+def search(query: str, limit: int = 10) -> str:
+    """Search for items matching the query."""
+    return json.dumps(do_search(query, limit))
 
-@mcp.resource("docs://readme")
-def readme() -> str:
-    """Project README."""
-    return open("README.md").read()
+# Resource — application-controlled context data
+@mcp.resource("schema://main")
+def get_schema() -> str:
+    """Database schema for context."""
+    return schema_ddl
 
+# Prompt — user-controlled interaction template
 @mcp.prompt()
-def expert(domain: str) -> str:
-    """Act as a domain expert."""
-    return f"You are an expert in {domain}. Answer questions precisely."
+def review(code: str) -> str:
+    """Create a code review prompt."""
+    return f"Review this code:\n\n{code}"
 
 if __name__ == "__main__":
     mcp.run()
 ```
 
-**TypeScript:**
+## TypeScript Quick Reference
+
 ```typescript
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 
-const server = new McpServer({ name: "my-server", version: "1.0.0" });
+const server = new McpServer({ name: "server-name", version: "1.0.0" });
 
-server.tool("search", { query: z.string() }, async ({ query }) => ({
-  content: [{ type: "text", text: JSON.stringify(await kb.search(query)) }]
-}));
+server.tool("search", { query: z.string(), limit: z.number().default(10) },
+  async ({ query, limit }) => ({
+    content: [{ type: "text", text: JSON.stringify(doSearch(query, limit)) }]
+  })
+);
 
 const transport = new StdioServerTransport();
 await server.connect(transport);
 ```
 
-### 4. Test with MCP Inspector
+## Configuration
 
-```bash
-npx @modelcontextprotocol/inspector python server.py
-```
-
-The Inspector opens a web UI where you can:
-- List all registered tools, resources, and prompts
-- Call tools with test arguments
-- Read resources
-- View JSON-RPC message exchange
-
-### 5. Configure in a Host
-
-Add to Claude Desktop's `claude_desktop_config.json`:
+Claude Desktop (`claude_desktop_config.json`):
 ```json
 {
   "mcpServers": {
     "my-server": {
       "command": "python",
-      "args": ["path/to/server.py"]
+      "args": ["/path/to/server.py"]
     }
   }
 }
 ```
 
-## Key Rules
+## Testing
 
-1. **STDIO servers must never write to stdout** — it corrupts JSON-RPC. Use `stderr`.
-2. **Always validate tool inputs** — the server is a trust boundary.
-3. **Declare capabilities honestly** — only advertise what you implement.
-4. **Use descriptive tool names and descriptions** — LLMs rely on these to select tools.
-5. **Return structured errors** — use `isError: true` in tool results for execution failures.
+```bash
+# Interactive inspector
+mcp dev server.py
+
+# Install into Claude Desktop
+mcp install server.py --name "My Server"
+```
 
 ## Edge Cases
 
-- **Tool not found**: Return JSON-RPC error code `-32602`
-- **Tool execution failure**: Return result with `isError: true` and error message in content
-- **Server crash**: The host will see the subprocess exit; log to stderr before crashing
-- **Large responses**: Consider pagination or streaming for large datasets
-- **Concurrent requests**: Both Python and TypeScript SDKs handle concurrent JSON-RPC requests
-
-## Environment Variables
-
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `MCP_SERVER_NAME` | No | Server name (defaults to script name) |
-| `MCP_TRANSPORT` | No | `stdio` or `streamable-http` |
-| `MCP_PORT` | No | Port for HTTP transport (default 8000) |
+- stdio servers must never print to stdout — use stderr or logging
+- FastMCP generates schema from type hints; use `Annotated[str, "description"]` for richer schemas
+- Tool functions can be sync or async
+- Resource URIs must be unique within the server
+- Prompt names must be unique within the server
+- Server must handle `initialize` before any primitive operations

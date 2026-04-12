@@ -1,0 +1,124 @@
+{
+  "name": "domains",
+  "version": "1.0.0",
+  "uri": "resend/domains",
+  "type": "skill",
+  "context": "Add, verify, and manage sending domains in Resend with SPF, DKIM, and DMARC DNS records",
+  "info": "This skill covers domain management in Resend: adding a custom sending domain, configuring DNS records (SPF, DKIM, DMARC), verifying domain ownership, checking verification status, and managing multiple domains. Before sending production emails, you must prove domain ownership by adding specific DNS TXT and MX records to your domain's DNS configuration. Resend recommends using subdomains (e.g., `send.yourdomain.com`) to isolate sending reputation from your root domain. Domain status progresses through `not_started`, `pending`, `verified`, `partially_verified`, `partially_failed`, `failed`, and `temporary_failure`. Agents use this skill to set up email infrastructure for new projects, troubleshoot delivery issues, and manage multi-domain setups. See [[resend/auth]] for API authentication and [[resend/send]] for sending after domain verification.",
+  "parent": "resend",
+  "tags": ["domains", "dns", "spf", "dkim", "dmarc", "email-verification", "deliverability", "resend-domains"],
+  "aliases": [
+    "resend domains",
+    "resend domain verification",
+    "resend dns setup",
+    "resend add domain",
+    "verify domain resend",
+    "email domain setup",
+    "resend spf dkim",
+    "sending domain",
+    "resend deliverability"
+  ],
+  "triggers": [
+    "add a domain to resend",
+    "verify domain for resend",
+    "set up dns records for resend",
+    "configure spf dkim dmarc",
+    "check domain verification status",
+    "set up sending domain",
+    "fix email deliverability",
+    "add dns records for email"
+  ],
+  "body": "# Domain Management in Resend\n\nBefore sending production emails, you must add and verify a custom sending domain. This proves you own the domain and authorizes Resend to send email on your behalf.\n\n## Adding a Domain\n\n### Via API\n\n```typescript\nimport { Resend } from 'resend';\nconst resend = new Resend(process.env.RESEND_API_KEY);\n\nconst { data, error } = await resend.domains.create({\n  name: 'send.yourdomain.com',\n});\n\nconsole.log(data);\n// {\n//   id: 'd91cd9bd-1176-453e-8fc1-35364d380206',\n//   name: 'send.yourdomain.com',\n//   status: 'not_started',\n//   records: [\n//     { type: 'TXT', name: 'send', value: 'v=spf1 include:amazonses.com ~all', status: 'not_started' },\n//     { type: 'TXT', name: 'resend._domainkey.send', value: 'p=MIGfMA0GCS...', status: 'not_started' },\n//     { type: 'MX', name: 'send', value: 'feedback-smtp.us-east-1.amazonses.com', priority: 10, status: 'not_started' }\n//   ]\n// }\n```\n\n### Via cURL\n\n```bash\ncurl -X POST 'https://api.resend.com/domains' \\\n  -H 'Authorization: Bearer re_xxxxxxxxxxxx' \\\n  -H 'Content-Type: application/json' \\\n  -d '{\"name\": \"send.yourdomain.com\"}'\n```\n\n## DNS Records Required\n\nAfter adding a domain, Resend returns the DNS records you must add to your DNS provider:\n\n### SPF (Sender Policy Framework)\n\n| Type | Name | Value |\n|------|------|-------|\n| TXT | `send` | `v=spf1 include:amazonses.com ~all` |\n\nSPF authorizes Resend's IP addresses to send email from your domain.\n\n### DKIM (DomainKeys Identified Mail)\n\n| Type | Name | Value |\n|------|------|-------|\n| TXT | `resend._domainkey.send` | `p=MIGfMA0GCSqGSIb3DQEBA...` (public key) |\n\nDKIM signs outgoing emails with a cryptographic key so recipients can verify authenticity.\n\n### MX (Bounce Handling)\n\n| Type | Name | Value | Priority |\n|------|------|-------|----------|\n| MX | `send` | `feedback-smtp.us-east-1.amazonses.com` | 10 |\n\nThe MX record routes bounce and complaint notifications back to Resend.\n\n### DMARC (Optional but Recommended)\n\n| Type | Name | Value |\n|------|------|-------|\n| TXT | `_dmarc.send` | `v=DMARC1; p=none;` |\n\nDMARC builds on SPF and DKIM to tell receiving servers how to handle authentication failures.\n\n## Verifying a Domain\n\nAfter adding DNS records, trigger verification:\n\n```typescript\nconst { data, error } = await resend.domains.verify('d91cd9bd-1176-453e-8fc1-35364d380206');\n```\n\n```bash\ncurl -X POST 'https://api.resend.com/domains/d91cd9bd-1176-453e-8fc1-35364d380206/verify' \\\n  -H 'Authorization: Bearer re_xxxxxxxxxxxx'\n```\n\nDNS propagation typically takes 10 minutes to 48 hours. Resend automatically rechecks `temporary_failure` domains for 72 hours.\n\n## Checking Domain Status\n\n```typescript\nconst { data, error } = await resend.domains.get('d91cd9bd-1176-453e-8fc1-35364d380206');\nconsole.log(data.status); // 'verified', 'pending', 'failed', etc.\n```\n\n## Listing All Domains\n\n```typescript\nconst { data, error } = await resend.domains.list();\nfor (const domain of data.data) {\n  console.log(domain.name, domain.status);\n}\n```\n\n## Deleting a Domain\n\n```typescript\nconst { data, error } = await resend.domains.remove('d91cd9bd-1176-453e-8fc1-35364d380206');\n```\n\n## Domain Statuses\n\n| Status | Meaning |\n|--------|---------|\n| `not_started` | DNS records not yet added |\n| `pending` | Records found, verification in progress |\n| `verified` | All records verified, ready to send |\n| `partially_verified` | Some records verified, others pending |\n| `partially_failed` | Some records failed verification |\n| `failed` | Verification failed after retry period |\n| `temporary_failure` | Temporary DNS issue, auto-retries for 72h |\n\n## Best Practices\n\n1. **Use subdomains** — `send.yourdomain.com` instead of `yourdomain.com` to isolate reputation\n2. **Add DMARC** — even a `p=none` policy improves deliverability signals\n3. **Verify before sending** — sends from unverified domains fail with a 422 error\n4. **Check propagation** — use `dig TXT send.yourdomain.com` to confirm DNS records\n5. **Custom Return-Path** — optionally set via `customReturnPath` API parameter (max 63 chars, starts with letter, alphanumeric and hyphens only)\n\n## Environment Variables\n\n| Variable | Required | Description |\n|----------|----------|-------------|\n| `RESEND_API_KEY` | Yes | API key with full_access permission for domain management |\n",
+  "sections": [
+    {
+      "id": "add-domain",
+      "title": "Adding a domain",
+      "body": "Add a domain via `POST /domains` or `resend.domains.create({ name })`. Use a subdomain like `send.yourdomain.com` to isolate sending reputation. The response includes the domain `id`, `status`, and an array of DNS `records` that must be added to your DNS provider. Each record has `type`, `name`, `value`, and `status`.",
+      "tags": ["add", "create", "subdomain", "new-domain"]
+    },
+    {
+      "id": "dns-records",
+      "title": "DNS record configuration",
+      "body": "Three records are required: an SPF TXT record authorizing Resend's sending IPs, a DKIM TXT record containing a public signing key, and an MX record for bounce handling. Add these to your DNS provider (Cloudflare, Route 53, Namecheap, etc.) using the exact values Resend returns. DMARC is optional but recommended. Use `dig TXT yourdomain.com` to verify propagation.",
+      "tags": ["dns", "spf", "dkim", "dmarc", "mx", "txt-record"]
+    },
+    {
+      "id": "verification",
+      "title": "Verification process",
+      "body": "After adding DNS records, call `resend.domains.verify(domainId)` or `POST /domains/:id/verify` to trigger verification. DNS propagation takes 10 minutes to 48 hours. Resend auto-retries `temporary_failure` states for 72 hours. Check status with `resend.domains.get(domainId)`. A domain must reach `verified` status before it can be used as a `from` address in [[resend/send]].",
+      "tags": ["verify", "status", "propagation", "check"]
+    },
+    {
+      "id": "management",
+      "title": "Listing and deleting domains",
+      "body": "List all domains with `resend.domains.list()` or `GET /domains`. Delete with `resend.domains.remove(id)` or `DELETE /domains/:id`. Deleting a domain immediately prevents sending from that domain. Domain data can be exported in CSV format via the dashboard.",
+      "tags": ["list", "delete", "manage", "export"]
+    }
+  ],
+  "links": [
+    { "uri": "resend/auth", "context": "Full-access API key required for domain management" },
+    { "uri": "resend/send", "context": "Send emails after domain verification" },
+    { "uri": "resend", "context": "Resend ecosystem overview" }
+  ],
+  "related": [
+    { "uri": "resend/auth", "relation": "prerequisite", "note": "A full_access API key is required to add and manage domains" },
+    { "uri": "resend/send", "relation": "see-also", "note": "Verified domains are required for production email sending" },
+    { "uri": "cloudflare/dns", "relation": "see-also", "note": "Cloudflare is a common DNS provider for adding Resend verification records" }
+  ],
+  "scripts": [
+    {
+      "id": "manage-domains",
+      "name": "Manage Domains",
+      "description": "Add, verify, list, and check Resend sending domains via the API",
+      "lang": "typescript",
+      "runtime": "node>=18",
+      "entry": "./scripts/manage-domains.ts",
+      "env": {
+        "RESEND_API_KEY": { "required": true, "secret": true, "description": "Resend API key with full_access permission" }
+      },
+      "packages": ["resend"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "action": { "type": "string", "enum": ["create", "verify", "get", "list", "delete"], "description": "Domain operation to perform" },
+        "name": { "type": "string", "description": "Domain name to add (for create action)" },
+        "domainId": { "type": "string", "description": "Domain ID (for verify, get, delete actions)" }
+      },
+      "required": ["action"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Domain ID" },
+        "name": { "type": "string", "description": "Domain name" },
+        "status": { "type": "string", "description": "Verification status" },
+        "records": { "type": "array", "description": "DNS records to add" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "resend/auth", "reason": "A full_access Resend API key is required for domain management" }
+  ],
+  "more": {
+    "docs": "https://resend.com/docs/dashboard/domains/introduction",
+    "api": "https://resend.com/docs/api-reference/domains/create-domain"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents, DevOps",
+    "estimated_reading_time": "5 min",
+    "prerequisites": ["resend/auth"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

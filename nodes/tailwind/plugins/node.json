@@ -1,0 +1,99 @@
+{
+  "name": "plugins",
+  "version": "1.0.0",
+  "uri": "tailwind/plugins",
+  "type": "context",
+  "content_type": "guide",
+  "context": "Tailwind plugins — official plugins, custom utilities, custom variants, @plugin directive, and the v3/v4 plugin API",
+  "info": "Tailwind's plugin system extends the framework with new utilities, components, base styles, and variants. Official first-party plugins include @tailwindcss/typography (prose classes for rendered markdown/HTML), @tailwindcss/forms (form element reset), and @tailwindcss/container-queries (now built-in to v4). In v4, many plugin use cases are replaced by CSS-native directives: @utility for custom utilities, @custom-variant for custom variants, and @theme for design tokens. The @plugin directive loads legacy JS plugins. This node teaches agents when to use plugins vs CSS directives, how to create custom utilities and variants, and how to integrate official plugins.",
+  "parent": "tailwind",
+  "tags": ["plugins", "typography", "forms", "custom-utilities", "custom-variants", "extend"],
+  "aliases": [
+    "tailwind plugins",
+    "tailwind plugin",
+    "tailwindcss plugins",
+    "tailwind typography",
+    "tailwind forms",
+    "tailwind prose",
+    "@tailwindcss/typography",
+    "@tailwindcss/forms",
+    "custom tailwind utility",
+    "tailwind addUtilities",
+    "tailwind extend"
+  ],
+  "triggers": [
+    "add typography plugin to tailwind",
+    "create custom tailwind utility",
+    "tailwind plugin for forms",
+    "prose class tailwind",
+    "add custom variant tailwind",
+    "style markdown with tailwind",
+    "tailwind form styling",
+    "write a tailwind plugin",
+    "extend tailwind with custom classes",
+    "@plugin directive"
+  ],
+  "body": "# Tailwind CSS Plugins\n\nPlugins extend Tailwind with new utilities, components, base styles, and variants. v4 reduces the need for JS plugins by providing CSS-native extension points.\n\n## Official Plugins\n\n### @tailwindcss/typography\n\nAdds `prose` classes for beautiful typographic defaults on rendered HTML (markdown, CMS content, API responses).\n\n```bash\nnpm install @tailwindcss/typography\n```\n\n#### v4 (CSS)\n```css\n@import \"tailwindcss\";\n@plugin \"@tailwindcss/typography\";\n```\n\n#### v3 (JS config)\n```javascript\n// tailwind.config.js\nmodule.exports = {\n  plugins: [require(\"@tailwindcss/typography\")],\n};\n```\n\n#### Usage\n```html\n<article class=\"prose lg:prose-xl dark:prose-invert max-w-none\">\n  <h1>Article Title</h1>\n  <p>This paragraph gets beautiful default styling.</p>\n  <ul>\n    <li>List items are properly styled</li>\n    <li>With correct spacing and bullets</li>\n  </ul>\n  <pre><code>Code blocks too</code></pre>\n</article>\n```\n\nKey prose modifiers: `prose-sm`, `prose-base`, `prose-lg`, `prose-xl`, `prose-2xl`, `prose-invert` (dark mode), `prose-gray`, `prose-zinc`, `prose-slate`.\n\nOverride specific elements: `prose-headings:text-blue-600`, `prose-a:text-indigo-500`, `prose-code:text-pink-500`, `prose-img:rounded-xl`.\n\n### @tailwindcss/forms\n\nProvides a form reset that makes form elements easy to style with utilities.\n\n```bash\nnpm install @tailwindcss/forms\n```\n\n```css\n@import \"tailwindcss\";\n@plugin \"@tailwindcss/forms\";\n```\n\n```html\n<input type=\"text\" class=\"rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500\" />\n<select class=\"rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500\">\n  <option>Option 1</option>\n</select>\n<textarea class=\"rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500\"></textarea>\n```\n\n### @tailwindcss/container-queries (v3 only)\n\nIn v3, container queries required this plugin. In v4, container queries are built-in — see [[tailwind/responsive#container-queries]].\n\n```bash\n# v3 only\nnpm install @tailwindcss/container-queries\n```\n\n## v4 CSS-Native Extensions\n\nv4 replaces many plugin use cases with CSS directives.\n\n### Custom Utilities (@utility)\n\nCreate utilities that work with all variants (hover, responsive, dark):\n\n```css\n@utility content-auto {\n  content-visibility: auto;\n}\n\n@utility scrollbar-hidden {\n  &::-webkit-scrollbar {\n    display: none;\n  }\n}\n```\n\nUsage: `content-auto`, `hover:content-auto`, `md:content-auto`\n\n### Functional Utilities with Values\n\n```css\n@utility tab-* {\n  tab-size: --value(--tab-size-*);\n}\n```\n\nUsage: `tab-4`, `tab-8` (requires corresponding theme values)\n\n### Custom Variants (@custom-variant)\n\n```css\n@custom-variant theme-midnight (&:where([data-theme=\"midnight\"] *));\n```\n\nUsage: `theme-midnight:bg-black`, `theme-midnight:text-white`\n\n### Custom Component Classes (@layer components)\n\n```css\n@layer components {\n  .btn-primary {\n    border-radius: calc(infinity * 1px);\n    background-color: var(--color-violet-500);\n    padding-inline: --spacing(5);\n    padding-block: --spacing(2);\n    font-weight: var(--font-weight-semibold);\n    color: var(--color-white);\n    box-shadow: var(--shadow-md);\n  }\n}\n```\n\n## v3 Plugin API (Legacy)\n\nFor complex plugins that need JavaScript logic:\n\n```javascript\nconst plugin = require(\"tailwindcss/plugin\");\n\nmodule.exports = plugin(function ({ addUtilities, addComponents, addBase, addVariant, matchUtilities, theme }) {\n  // Add simple utilities\n  addUtilities({\n    \".content-auto\": { \"content-visibility\": \"auto\" },\n    \".content-hidden\": { \"content-visibility\": \"hidden\" },\n  });\n\n  // Add components\n  addComponents({\n    \".card\": {\n      backgroundColor: theme(\"colors.white\"),\n      borderRadius: theme(\"borderRadius.lg\"),\n      padding: theme(\"spacing.6\"),\n      boxShadow: theme(\"boxShadow.xl\"),\n    },\n  });\n\n  // Add base styles\n  addBase({\n    \"h1\": { fontSize: theme(\"fontSize.2xl\") },\n    \"h2\": { fontSize: theme(\"fontSize.xl\") },\n  });\n\n  // Add custom variant\n  addVariant(\"optional\", \"&:optional\");\n  addVariant(\"hocus\", [\"&:hover\", \"&:focus\"]);\n\n  // Dynamic utilities from theme values\n  matchUtilities(\n    { \"tab\": (value) => ({ tabSize: value }) },\n    { values: theme(\"tabSize\") }\n  );\n});\n```\n\n## Loading JS Plugins in v4\n\nUse the `@plugin` directive:\n\n```css\n@import \"tailwindcss\";\n@plugin \"@tailwindcss/typography\";\n@plugin \"./my-custom-plugin.js\";\n```\n\n## When to Use What\n\n| Need | v4 Approach | v3 Approach |\n|------|-------------|-------------|\n| Custom utility | `@utility` in CSS | `addUtilities()` in plugin |\n| Custom variant | `@custom-variant` in CSS | `addVariant()` in plugin |\n| Design tokens | `@theme` in CSS | `theme.extend` in config |\n| Component class | `@layer components` | `addComponents()` in plugin |\n| Complex JS logic | `@plugin \"./file.js\"` | `require()` in config |\n| Typography | `@plugin \"@tailwindcss/typography\"` | `require()` in config |\n| Form reset | `@plugin \"@tailwindcss/forms\"` | `require()` in config |\n",
+  "sections": [
+    {
+      "id": "typography",
+      "title": "@tailwindcss/typography plugin",
+      "body": "Adds `prose` class for rich text styling. Install: `npm install @tailwindcss/typography`. Load: `@plugin \"@tailwindcss/typography\"` (v4) or `require('@tailwindcss/typography')` (v3). Use `prose` on a container to style all child HTML elements. Size modifiers: `prose-sm` through `prose-2xl`. Dark mode: `prose-invert`. Color: `prose-gray`, `prose-slate`. Override elements: `prose-headings:text-blue-600`, `prose-a:text-indigo-500`.",
+      "tags": ["typography", "prose", "markdown", "rich-text"]
+    },
+    {
+      "id": "forms",
+      "title": "@tailwindcss/forms plugin",
+      "body": "Provides opinionated form element reset. Install: `npm install @tailwindcss/forms`. Makes inputs, selects, textareas, and checkboxes easy to style with Tailwind utilities. Without it, form elements have inconsistent cross-browser defaults that resist utility class styling. Apply classes directly: `rounded-md border-gray-300 focus:ring-indigo-500`.",
+      "tags": ["forms", "input", "select", "checkbox", "form-reset"]
+    },
+    {
+      "id": "custom-utilities",
+      "title": "Creating custom utilities",
+      "body": "v4 CSS: `@utility name { property: value; }`. Supports nesting, pseudo-elements. All variants (hover, responsive, dark) work automatically. Functional utilities: `@utility tab-* { tab-size: --value(--tab-size-*); }`. v3 JS: use `addUtilities()` in a plugin function. Custom utilities appear alongside built-in ones in the generated stylesheet.",
+      "tags": ["custom-utility", "at-utility", "addUtilities"]
+    },
+    {
+      "id": "custom-variants",
+      "title": "Creating custom variants",
+      "body": "v4 CSS: `@custom-variant name (selector-pattern);`. Example: `@custom-variant hocus (&:hover, &:focus);` enables `hocus:bg-blue-500`. v3 JS: `addVariant('hocus', ['&:hover', '&:focus'])`. Custom variants compose with all other variants: `dark:hocus:bg-blue-700`.",
+      "tags": ["custom-variant", "at-custom-variant", "addVariant"]
+    },
+    {
+      "id": "plugin-api-v3",
+      "title": "v3 JavaScript plugin API",
+      "body": "Plugin functions receive `addUtilities`, `addComponents`, `addBase`, `addVariant`, `matchUtilities`, and `theme` helpers. `addUtilities` adds classes to the utilities layer. `addComponents` adds to the components layer. `addBase` adds to the base layer. `matchUtilities` creates dynamic utilities from theme values. `addVariant` registers new variant selectors. Wrap in `require('tailwindcss/plugin')(fn)`. Load in v4 with `@plugin` directive.",
+      "tags": ["plugin-api", "javascript", "addUtilities", "addComponents", "addBase", "matchUtilities"]
+    }
+  ],
+  "links": [
+    { "uri": "tailwind/config", "context": "Plugins are registered in config (v3) or loaded via @plugin (v4)" },
+    { "uri": "tailwind/classes", "context": "Plugins create new utility classes" },
+    { "uri": "tailwind/responsive", "context": "Container queries were a plugin in v3, built-in in v4" },
+    { "uri": "tailwind/v4", "context": "v4 CSS directives replace many plugin use cases" }
+  ],
+  "related": [
+    { "uri": "tailwind/config", "relation": "prerequisite", "note": "Must configure Tailwind before adding plugins" },
+    { "uri": "tailwind/v4", "relation": "see-also", "note": "v4 provides CSS-native alternatives to many JS plugins" },
+    { "uri": "tailwind/classes", "relation": "extends", "note": "Plugins extend the available utility classes" }
+  ],
+  "more": {
+    "docs": "https://tailwindcss.com/docs/plugins",
+    "examples": "https://tailwindcss.com/docs/adding-custom-styles"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "frontend developers, AI agents",
+    "estimated_reading_time": "6 min",
+    "prerequisites": ["tailwind/config"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

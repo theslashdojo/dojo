@@ -1,0 +1,166 @@
+{
+  "name": "locking",
+  "version": "1.0.0",
+  "uri": "terraform/state/locking",
+  "type": "skill",
+  "context": "State locking prevents concurrent Terraform operations from corrupting shared state files",
+  "info": "Terraform state locking ensures that only one Terraform operation can modify state at a time. When you run `terraform plan` or `terraform apply`, Terraform acquires a lock on the state file. If another process already holds the lock, Terraform blocks until the lock is released or the timeout expires. Locking is critical for teams sharing remote state via backends like S3+DynamoDB, GCS, Azure Blob, Consul, and Terraform Cloud. Without locking, concurrent applies can produce corrupted state, orphaned resources, or duplicate infrastructure. If a lock becomes stuck (e.g., a CI runner crashed mid-apply), `terraform force-unlock LOCK_ID` manually releases it. See [[terraform/state/backends]] for backend configuration and [[terraform/state]] for state fundamentals.",
+  "parent": "terraform/state",
+  "tags": ["terraform", "state-locking", "locking", "concurrency", "dynamodb", "force-unlock", "lock-timeout"],
+  "aliases": [
+    "terraform state locking",
+    "terraform lock",
+    "state lock",
+    "terraform force-unlock",
+    "force unlock",
+    "lock state file",
+    "dynamodb locking",
+    "concurrent terraform"
+  ],
+  "triggers": [
+    "how does terraform state locking work",
+    "terraform state is locked",
+    "someone else is running terraform",
+    "force unlock terraform state",
+    "terraform force-unlock",
+    "state lock error",
+    "lock timeout terraform",
+    "terraform lock id",
+    "how to fix locked terraform state",
+    "configure state locking",
+    "dynamodb table for terraform locking",
+    "terraform apply is stuck on lock"
+  ],
+  "body": "# Terraform State Locking\n\nState locking prevents two Terraform processes from writing to the same state file simultaneously. Without locking, concurrent `terraform apply` runs can interleave state writes, producing a corrupted state file that no longer accurately represents your infrastructure.\n\n## How Locking Works\n\nWhen Terraform begins any state-modifying operation (`plan`, `apply`, `destroy`, `import`, `taint`, `untaint`, `state mv`, `state rm`):\n\n1. Terraform attempts to acquire a lock on the state\n2. If the lock is already held, Terraform retries until `-lock-timeout` expires (default: `0s` — fail immediately)\n3. Terraform executes the operation\n4. Terraform releases the lock\n\nThe lock contains metadata about who acquired it:\n\n```json\n{\n  \"ID\": \"a1b2c3d4-5678-90ab-cdef-1234567890ab\",\n  \"Operation\": \"OperationTypeApply\",\n  \"Info\": \"\",\n  \"Who\": \"user@hostname\",\n  \"Version\": \"1.7.0\",\n  \"Created\": \"2026-04-11T10:30:00.000Z\",\n  \"Path\": \"terraform.tfstate\"\n}\n```\n\n## Backends That Support Locking\n\n| Backend | Locking Mechanism | Additional Setup |\n|---------|-------------------|------------------|\n| `s3` | DynamoDB table | Create table with `LockID` partition key |\n| `gcs` | Native GCS locking | None — built into GCS API |\n| `azurerm` | Blob lease | None — built into Azure Blob API |\n| `consul` | Consul sessions | None — built into Consul KV |\n| `pg` | PostgreSQL advisory locks | None — built into PostgreSQL |\n| `remote`/`cloud` | Terraform Cloud API | None — managed service |\n| `http` | Optional, via lock/unlock URLs | Configure lock/unlock endpoints |\n| `local` | Local filesystem lock | None, but no shared access |\n\n## DynamoDB Table for S3 Locking\n\nThe S3 backend requires a DynamoDB table for locking. The table must have a partition key named `LockID` of type `String`:\n\n```bash\n# Create the DynamoDB table for Terraform state locking\naws dynamodb create-table \\\n  --table-name terraform-locks \\\n  --attribute-definitions AttributeName=LockID,AttributeType=S \\\n  --key-schema AttributeName=LockID,KeyType=HASH \\\n  --billing-mode PAY_PER_REQUEST \\\n  --region us-east-1\n```\n\nOr in HCL (bootstrapping with a local backend first):\n\n```hcl\nresource \"aws_dynamodb_table\" \"terraform_locks\" {\n  name         = \"terraform-locks\"\n  billing_mode = \"PAY_PER_REQUEST\"\n  hash_key     = \"LockID\"\n\n  attribute {\n    name = \"LockID\"\n    type = \"S\"\n  }\n\n  tags = {\n    Purpose = \"Terraform state locking\"\n  }\n}\n```\n\nReference this table in your backend configuration:\n\n```hcl\nterraform {\n  backend \"s3\" {\n    bucket         = \"my-terraform-state\"\n    key            = \"prod/terraform.tfstate\"\n    region         = \"us-east-1\"\n    dynamodb_table = \"terraform-locks\"\n    encrypt        = true\n  }\n}\n```\n\n## Lock Behavior During Plan and Apply\n\n- **`terraform plan`** — acquires a read lock (prevents concurrent writes but allows concurrent plans on some backends)\n- **`terraform apply`** — acquires an exclusive write lock (blocks all other operations)\n- **`terraform destroy`** — acquires an exclusive write lock\n- **`terraform state *` commands** — acquire an exclusive write lock for any state-modifying subcommand\n\nDisable locking with `-lock=false` (dangerous, only for debugging):\n\n```bash\nterraform apply -lock=false  # DANGEROUS: skips locking entirely\n```\n\n## Lock Timeout\n\nBy default, if the lock is held, Terraform fails immediately. Use `-lock-timeout` to wait:\n\n```bash\n# Wait up to 5 minutes for the lock to be released\nterraform apply -lock-timeout=5m\n\n# Wait up to 30 seconds\nterraform plan -lock-timeout=30s\n```\n\nThis is useful in CI/CD pipelines where multiple jobs might run in sequence.\n\n## Force Unlock\n\nIf a Terraform process crashes or is killed mid-operation, the lock may remain held (stale lock). Force-unlock releases it:\n\n```bash\n# Get the lock ID from the error message:\n# \"Error locking state: Error acquiring the state lock\"\n# \"Lock Info:\"\n# \"  ID: a1b2c3d4-5678-90ab-cdef-1234567890ab\"\n\nterraform force-unlock a1b2c3d4-5678-90ab-cdef-1234567890ab\n```\n\n**Only use `force-unlock` when you are certain no other process is actively using the state.** Force-unlocking while another apply is running will cause state corruption.\n\n## Debugging Lock Issues\n\nCommon lock errors and their solutions:\n\n| Error | Cause | Solution |\n|-------|-------|----------|\n| `Error acquiring the state lock` | Another process holds the lock | Wait for it to finish, or use `force-unlock` if the process crashed |\n| `ConditionalCheckFailedException` | DynamoDB lock contention | Retry with `-lock-timeout`, or investigate which process holds the lock |\n| `state blob is already locked` | Azure blob lease held | Check Azure portal for active leases, or `force-unlock` |\n| `Error unlocking state` | Lock release failed after operation | Usually harmless; lock will expire. Check backend connectivity |\n\n```bash\n# Check who holds the lock in DynamoDB\naws dynamodb get-item \\\n  --table-name terraform-locks \\\n  --key '{\"LockID\": {\"S\": \"my-terraform-state/prod/terraform.tfstate\"}}' \\\n  --region us-east-1\n\n# The LockID in DynamoDB is formatted as: <bucket>/<key>\n```\n",
+  "sections": [
+    {
+      "id": "how-locking-works",
+      "title": "How locking works",
+      "body": "Terraform acquires a lock before any state-modifying operation. The lock contains the lock ID (UUID), operation type, user identity, Terraform version, timestamp, and state path. If the lock is already held, Terraform either fails immediately (default) or retries for the duration specified by `-lock-timeout`. The lock is released when the operation completes. Lock implementations vary by backend — DynamoDB conditional writes for S3, blob leases for Azure, advisory locks for PostgreSQL.",
+      "tags": ["lock-mechanism", "lock-metadata", "lock-id", "conditional-write"]
+    },
+    {
+      "id": "supported-backends",
+      "title": "Backends that support locking",
+      "body": "S3 uses DynamoDB (requires a table with `LockID` partition key). GCS, azurerm, consul, pg, and remote/cloud backends all have native locking built in. The `http` backend supports optional locking if lock and unlock URL endpoints are configured. The `local` backend uses filesystem locking but provides no shared access. See [[terraform/state/backends]] for full backend configuration details.",
+      "tags": ["s3", "dynamodb", "gcs", "azurerm", "consul", "pg", "remote"]
+    },
+    {
+      "id": "dynamodb-setup",
+      "title": "DynamoDB table for S3 locking",
+      "body": "Create a DynamoDB table with a partition key named `LockID` (String type). Use `PAY_PER_REQUEST` billing to avoid capacity planning. The lock ID stored in DynamoDB is formatted as `<bucket>/<key>`, matching the S3 backend's bucket and key configuration. Reference the table name in the backend `dynamodb_table` parameter. One DynamoDB table can serve multiple Terraform state files.",
+      "tags": ["dynamodb", "lockid", "partition-key", "pay-per-request", "s3"]
+    },
+    {
+      "id": "force-unlock",
+      "title": "Force unlock",
+      "body": "Use `terraform force-unlock <LOCK_ID>` to release a stale lock left by a crashed process. The lock ID appears in the error message when a lock acquisition fails. Only force-unlock when you are certain no active Terraform process is using the state — force-unlocking during an active apply causes state corruption. Terraform prompts for confirmation before releasing the lock.",
+      "tags": ["force-unlock", "stale-lock", "crash-recovery", "lock-id"]
+    },
+    {
+      "id": "lock-timeout",
+      "title": "Lock timeout configuration",
+      "body": "The `-lock-timeout` flag specifies how long Terraform should wait to acquire the lock before failing. Default is `0s` (fail immediately). Set to `5m` or longer in CI/CD pipelines where sequential jobs may overlap. Accepts duration strings like `30s`, `5m`, `1h`. Combine with `-lock=false` only for debugging — never in production.",
+      "tags": ["lock-timeout", "ci-cd", "retry", "duration"]
+    },
+    {
+      "id": "debugging",
+      "title": "Debugging lock issues",
+      "body": "For S3+DynamoDB, query the DynamoDB table to see who holds the lock. The `LockID` key is formatted as `<bucket>/<key>`. For Azure, check blob leases in the Azure portal or CLI. For GCS, use `gsutil` to inspect object metadata. Enable Terraform debug logging with `TF_LOG=DEBUG` to see detailed lock acquisition attempts. Common causes of stuck locks: crashed CI runners, terminated SSH sessions, and killed Terraform processes.",
+      "tags": ["debugging", "dynamodb-query", "tf-log", "stuck-lock", "ci-runner"]
+    }
+  ],
+  "links": [
+    { "uri": "terraform/state", "context": "State fundamentals — why state must be protected from concurrent access" },
+    { "uri": "terraform/state/backends", "context": "Backend configuration determines which locking mechanism is used" },
+    { "uri": "terraform/state/import", "context": "Import operations also acquire state locks" },
+    { "uri": "aws/s3", "context": "S3 bucket storing the state file that locking protects" }
+  ],
+  "related": [
+    { "uri": "terraform/state", "relation": "prerequisite", "note": "Understanding state is required before understanding locking" },
+    { "uri": "terraform/state/backends", "relation": "prerequisite", "note": "Locking is configured as part of backend setup" },
+    { "uri": "aws/s3", "relation": "see-also", "note": "S3 stores the state file; DynamoDB provides the locking layer" }
+  ],
+  "scripts": [
+    {
+      "id": "diagnose-state-lock",
+      "name": "Diagnose and Resolve State Lock Issues",
+      "description": "Checks the current state lock status, identifies the lock holder, and optionally force-unlocks a stale lock",
+      "lang": "bash",
+      "runtime": "bash>=4",
+      "inline": "#!/usr/bin/env bash\nset -euo pipefail\n\n# Diagnose and Resolve Terraform State Lock Issues\n# Required env: TF_WORKING_DIR (path to Terraform project)\n# Optional env: DYNAMODB_TABLE, AWS_REGION, FORCE_UNLOCK (true/false)\n\nTF_DIR=\"${TF_WORKING_DIR:?TF_WORKING_DIR is required (path to Terraform project)}\"\nFORCE=\"${FORCE_UNLOCK:-false}\"\n\ncd \"$TF_DIR\"\n\necho \"==> Checking Terraform state lock status...\"\necho \"\"\n\n# Try to run a plan to detect lock errors\nLOCK_OUTPUT=$(terraform plan -lock-timeout=5s -input=false 2>&1) || true\n\nif echo \"$LOCK_OUTPUT\" | grep -q \"Error acquiring the state lock\"; then\n  echo \"[!] State is LOCKED.\"\n  echo \"\"\n\n  # Extract lock info from the error\n  LOCK_ID=$(echo \"$LOCK_OUTPUT\" | grep -oP 'ID:\\s+\\K[a-f0-9-]+')\n  LOCK_WHO=$(echo \"$LOCK_OUTPUT\" | grep -oP 'Who:\\s+\\K.*' || echo \"unknown\")\n  LOCK_OPERATION=$(echo \"$LOCK_OUTPUT\" | grep -oP 'Operation:\\s+\\K.*' || echo \"unknown\")\n  LOCK_CREATED=$(echo \"$LOCK_OUTPUT\" | grep -oP 'Created:\\s+\\K.*' || echo \"unknown\")\n\n  echo \"  Lock ID:     ${LOCK_ID:-not found}\"\n  echo \"  Who:         ${LOCK_WHO}\"\n  echo \"  Operation:   ${LOCK_OPERATION}\"\n  echo \"  Created:     ${LOCK_CREATED}\"\n  echo \"\"\n\n  # If DynamoDB table is configured, query it directly\n  if [ -n \"${DYNAMODB_TABLE:-}\" ] && [ -n \"${AWS_REGION:-}\" ]; then\n    echo \"==> Querying DynamoDB table: ${DYNAMODB_TABLE}\"\n    aws dynamodb scan \\\n      --table-name \"$DYNAMODB_TABLE\" \\\n      --region \"$AWS_REGION\" \\\n      --max-items 10 \\\n      --output table 2>/dev/null || echo \"    Could not query DynamoDB table\"\n    echo \"\"\n  fi\n\n  if [ \"$FORCE\" = \"true\" ] && [ -n \"${LOCK_ID:-}\" ]; then\n    echo \"==> FORCE_UNLOCK is true. Releasing lock: ${LOCK_ID}\"\n    echo \"    WARNING: Only safe if no active Terraform process is running!\"\n    echo \"\"\n    echo \"yes\" | terraform force-unlock \"$LOCK_ID\"\n    echo \"\"\n    echo \"==> Lock released. Verifying...\"\n    terraform plan -lock-timeout=5s -input=false -no-color 2>&1 | head -5\n  else\n    echo \"==> To force-unlock, set FORCE_UNLOCK=true or run:\"\n    echo \"    terraform force-unlock ${LOCK_ID:-<LOCK_ID>}\"\n  fi\nelse\n  echo \"[OK] State is NOT locked. No issues detected.\"\n  echo \"\"\n  echo \"==> Recent state operations:\"\n  terraform state pull 2>/dev/null | python3 -c \"\nimport sys, json\ntry:\n    state = json.load(sys.stdin)\n    print(f'  Serial:  {state.get(\"serial\", \"N/A\")}')\n    print(f'  Version: {state.get(\"terraform_version\", \"N/A\")}')\n    print(f'  Lineage: {state.get(\"lineage\", \"N/A\")}')\nexcept:\n    print('  Could not parse state')\n\" || echo \"  Could not read state\"\nfi\n\necho \"\"\necho \"==> Done.\"",
+      "env": {
+        "TF_WORKING_DIR": { "required": true, "secret": false, "description": "Path to the Terraform project directory" },
+        "DYNAMODB_TABLE": { "required": false, "secret": false, "description": "DynamoDB table name for S3 backend lock inspection" },
+        "AWS_REGION": { "required": false, "secret": false, "description": "AWS region for DynamoDB queries" },
+        "FORCE_UNLOCK": { "required": false, "secret": false, "default": "false", "description": "Set to 'true' to force-unlock a stale lock" }
+      },
+      "packages": ["terraform", "awscli"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "working_dir": {
+          "type": "string",
+          "description": "Path to the Terraform project directory"
+        },
+        "lock_timeout": {
+          "type": "string",
+          "description": "Duration to wait for lock acquisition (e.g., 5m, 30s)"
+        },
+        "force_unlock_id": {
+          "type": "string",
+          "description": "Lock ID to force-unlock (only for stale locks)"
+        }
+      },
+      "required": ["working_dir"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "locked": {
+          "type": "boolean",
+          "description": "Whether the state is currently locked"
+        },
+        "lock_holder": {
+          "type": "string",
+          "description": "Identity of the lock holder (user@host)"
+        },
+        "lock_id": {
+          "type": "string",
+          "description": "UUID of the current lock"
+        },
+        "unlocked": {
+          "type": "boolean",
+          "description": "Whether a force-unlock was performed"
+        }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "terraform/state", "reason": "Locking protects state from concurrent modification" },
+    { "uri": "terraform/state/backends", "reason": "Locking mechanism depends on the configured backend" }
+  ],
+  "more": {
+    "docs": "https://developer.hashicorp.com/terraform/language/state/locking",
+    "spec": "https://developer.hashicorp.com/terraform/cli/commands/force-unlock",
+    "wiki": "https://developer.hashicorp.com/terraform/language/backend/s3#dynamodb-state-locking"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "devops engineers, platform engineers, AI agents",
+    "estimated_reading_time": "6 min",
+    "prerequisites": ["terraform/state", "terraform/state/backends"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

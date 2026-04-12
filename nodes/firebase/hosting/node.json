@@ -1,0 +1,134 @@
+{
+  "name": "hosting",
+  "version": "1.0.0",
+  "uri": "firebase/hosting",
+  "type": "skill",
+  "context": "Deploy static sites and SPAs to Firebase's global CDN with automatic SSL, preview channels, rewrites to Cloud Functions/Cloud Run, and custom domains",
+  "info": "Firebase Hosting serves static assets from a multi-region CDN with automatic SSL provisioning via Let's Encrypt. Configuration in firebase.json controls the public directory, URL rewrites to Cloud Functions or Cloud Run services, HTTP redirects, custom response headers, cleanUrls (drop .html extensions), and trailingSlash behavior. Preview channels create temporary URLs for testing before promoting to production — each channel gets a unique URL and an optional expiration. Custom domains are verified and provisioned through the Firebase console or CLI with automatic SSL certificate management. Deploy targets let a single firebase.json configure multiple hosting sites in one project. The Firebase GitHub Action automates preview deploys on PRs and production deploys on merge. Deploy with `firebase deploy --only hosting`, create preview channels with `firebase hosting:channel:deploy <channel-id>`, and roll back to a previous release with `firebase hosting:rollback`. Each hosting site retains its recent releases for instant rollback. Maximum file size is 2GB, and hosting is optimized for static content — dynamic requests should be handled via rewrites to Cloud Functions or Cloud Run.",
+  "parent": "firebase",
+  "tags": ["hosting", "cdn", "deploy", "ssl", "static-site", "spa", "preview", "custom-domain", "rewrites", "redirects"],
+  "aliases": [
+    "firebase hosting",
+    "firebase deploy",
+    "firebase site",
+    "firebase cdn",
+    "firebase static hosting",
+    "firebase web hosting",
+    "firebase spa"
+  ],
+  "triggers": [
+    "deploy to firebase hosting",
+    "set up firebase hosting",
+    "configure firebase rewrites",
+    "create preview channel",
+    "add custom domain firebase"
+  ],
+  "body": "# Firebase Hosting\n\nServe static sites and SPAs from a global CDN with automatic SSL, preview channels, and rewrites to Cloud Functions or Cloud Run for dynamic content.\n\n## firebase.json Hosting Configuration\n\n```json\n{\n  \"hosting\": {\n    \"public\": \"dist\",\n    \"ignore\": [\"firebase.json\", \"**/.*\", \"**/node_modules/**\"],\n    \"cleanUrls\": true,\n    \"trailingSlash\": false,\n    \"rewrites\": [\n      { \"source\": \"/api/**\", \"function\": \"api\" },\n      { \"source\": \"/app/**\", \"run\": { \"serviceId\": \"my-service\", \"region\": \"us-central1\" } },\n      { \"source\": \"**\", \"destination\": \"/index.html\" }\n    ],\n    \"redirects\": [\n      { \"source\": \"/old-page\", \"destination\": \"/new-page\", \"type\": 301 },\n      { \"source\": \"/blog/:post\", \"destination\": \"https://blog.example.com/:post\", \"type\": 302 }\n    ],\n    \"headers\": [\n      {\n        \"source\": \"**/*.@(js|css)\",\n        \"headers\": [\n          { \"key\": \"Cache-Control\", \"value\": \"public, max-age=31536000, immutable\" }\n        ]\n      },\n      {\n        \"source\": \"/api/**\",\n        \"headers\": [\n          { \"key\": \"Cache-Control\", \"value\": \"no-cache, no-store\" },\n          { \"key\": \"Access-Control-Allow-Origin\", \"value\": \"*\" }\n        ]\n      },\n      {\n        \"source\": \"**/*.@(jpg|jpeg|gif|png|svg|webp)\",\n        \"headers\": [\n          { \"key\": \"Cache-Control\", \"value\": \"public, max-age=86400\" }\n        ]\n      }\n    ]\n  }\n}\n```\n\n## Deploy Commands\n\n```bash\n# Deploy hosting only\nfirebase deploy --only hosting\n\n# Deploy a specific site in a multi-site project\nfirebase deploy --only hosting:my-site\n\n# Deploy with a message\nfirebase deploy --only hosting -m \"v2.1.0 release\"\n```\n\n## Preview Channels\n\nPreview channels create temporary URLs for testing without affecting production:\n\n```bash\n# Create a preview channel (expires in 7 days by default)\nfirebase hosting:channel:deploy preview-name\n\n# Set expiration\nfirebase hosting:channel:deploy staging --expires 3d\n\n# List active channels\nfirebase hosting:channel:list\n\n# Delete a channel\nfirebase hosting:channel:delete preview-name\n```\n\nPreview URL format: `https://PROJECT_ID--CHANNEL_ID-RANDOM.web.app`\n\n## Custom Domain Setup\n\n```bash\n# Via Firebase console: Hosting > Add custom domain\n# Or via CLI:\nfirebase hosting:sites:list\n\n# Steps:\n# 1. Add domain in Firebase console\n# 2. Verify ownership via DNS TXT record\n# 3. Point A records to Firebase IPs\n# 4. SSL certificate auto-provisioned (usually under 24 hours)\n```\n\nRequired DNS records:\n- TXT record for domain verification\n- A records: `151.101.1.195` and `151.101.65.195`\n- For subdomains: CNAME to `PROJECT_ID.web.app`\n\n## Rewrites\n\n### Rewrite to Cloud Functions\n\nRoute dynamic API requests to Cloud Functions:\n\n```json\n{\n  \"rewrites\": [\n    { \"source\": \"/api/**\", \"function\": \"api\" },\n    { \"source\": \"/users/**\", \"function\": \"userService\" }\n  ]\n}\n```\n\nThe function must be an exported HTTP function from your Cloud Functions code.\n\n### Rewrite to Cloud Run\n\nRoute requests to a Cloud Run service:\n\n```json\n{\n  \"rewrites\": [\n    {\n      \"source\": \"/app/**\",\n      \"run\": {\n        \"serviceId\": \"my-service\",\n        \"region\": \"us-central1\"\n      }\n    }\n  ]\n}\n```\n\n### SPA Catch-All Rewrite\n\nRoute all unmatched URLs to index.html for client-side routing:\n\n```json\n{\n  \"rewrites\": [\n    { \"source\": \"**\", \"destination\": \"/index.html\" }\n  ]\n}\n```\n\n## Headers and Caching\n\nSet custom response headers for caching, security, and CORS:\n\n```json\n{\n  \"headers\": [\n    {\n      \"source\": \"**/*.@(js|css|woff2)\",\n      \"headers\": [\n        { \"key\": \"Cache-Control\", \"value\": \"public, max-age=31536000, immutable\" }\n      ]\n    },\n    {\n      \"source\": \"/api/**\",\n      \"headers\": [\n        { \"key\": \"Access-Control-Allow-Origin\", \"value\": \"*\" },\n        { \"key\": \"Access-Control-Allow-Methods\", \"value\": \"GET, POST, OPTIONS\" },\n        { \"key\": \"Cache-Control\", \"value\": \"no-store\" }\n      ]\n    },\n    {\n      \"source\": \"**\",\n      \"headers\": [\n        { \"key\": \"X-Content-Type-Options\", \"value\": \"nosniff\" },\n        { \"key\": \"X-Frame-Options\", \"value\": \"DENY\" }\n      ]\n    }\n  ]\n}\n```\n\n## Deploy Targets (Multi-Site Hosting)\n\nHost multiple sites in one Firebase project:\n\n```bash\n# Register deploy targets\nfirebase target:apply hosting app my-app-site\nfirebase target:apply hosting blog my-blog-site\n```\n\n```json\n{\n  \"hosting\": [\n    {\n      \"target\": \"app\",\n      \"public\": \"app/dist\",\n      \"rewrites\": [{ \"source\": \"**\", \"destination\": \"/index.html\" }]\n    },\n    {\n      \"target\": \"blog\",\n      \"public\": \"blog/dist\"\n    }\n  ]\n}\n```\n\n```bash\n# Deploy specific target\nfirebase deploy --only hosting:app\nfirebase deploy --only hosting:blog\n```\n\n## GitHub Actions CI/CD\n\nAutomate deployments with the official Firebase GitHub Action:\n\n```yaml\n# .github/workflows/firebase-hosting.yml\nname: Deploy to Firebase Hosting\non:\n  push:\n    branches: [main]\n  pull_request:\n    branches: [main]\n\njobs:\n  deploy:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n      - uses: actions/setup-node@v4\n        with:\n          node-version: 20\n      - run: npm ci && npm run build\n      - uses: FirebaseExtended/action-hosting-deploy@v0\n        with:\n          repoToken: ${{ secrets.GITHUB_TOKEN }}\n          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}\n          projectId: my-project-id\n          channelId: live  # 'live' for production, omit for preview on PRs\n```\n\nFor PR preview deploys, omit `channelId` — the action automatically creates a preview channel and comments the URL on the PR.\n\n## Rollback\n\n```bash\n# Roll back to the previous release\nfirebase hosting:rollback\n\n# Roll back a specific site\nfirebase hosting:rollback --site my-site\n```\n\nFirebase retains up to 10 previous releases per site for rollback.\n",
+  "sections": [
+    {
+      "id": "deployment",
+      "title": "Deployment",
+      "body": "Deploy static assets with `firebase deploy --only hosting`. The CLI uploads only changed files using content hashing for fast incremental deploys. Use `--only hosting:TARGET` to deploy a specific site in multi-site projects. Add `-m \"message\"` to tag releases. Deploys are atomic — the new version goes live only after all files upload successfully.",
+      "tags": ["deploy", "cli", "upload", "release"]
+    },
+    {
+      "id": "configuration",
+      "title": "Hosting configuration in firebase.json",
+      "body": "The `hosting` key in firebase.json controls: `public` (build output directory), `ignore` (files to skip), `cleanUrls` (drop .html extensions), `trailingSlash` (enforce or strip trailing slashes), `rewrites` (route patterns to Functions, Cloud Run, or other destinations), `redirects` (HTTP 301/302 redirects), and `headers` (custom response headers per glob pattern). For multi-site projects, `hosting` is an array of objects each with a `target` key.",
+      "tags": ["configuration", "firebase-json", "cleanUrls", "trailingSlash"]
+    },
+    {
+      "id": "preview-channels",
+      "title": "Preview channels",
+      "body": "Preview channels create temporary deployments at unique URLs for testing before production. Create with `firebase hosting:channel:deploy <channel-id>`. Channels expire after 7 days by default; override with `--expires 30d`. Each channel gets a URL like `PROJECT--CHANNEL-RANDOM.web.app`. List channels with `firebase hosting:channel:list` and delete with `firebase hosting:channel:delete <id>`. The Firebase GitHub Action auto-creates preview channels for PRs.",
+      "tags": ["preview", "channels", "staging", "testing"]
+    },
+    {
+      "id": "custom-domains",
+      "title": "Custom domain setup",
+      "body": "Add custom domains via the Firebase console (Hosting > Add custom domain) or CLI. Verify ownership with a DNS TXT record, then point A records (or CNAME for subdomains) to Firebase's servers. SSL certificates are provisioned automatically via Let's Encrypt, usually within 24 hours. Multiple custom domains can point to the same hosting site.",
+      "tags": ["custom-domain", "dns", "ssl", "domain"]
+    },
+    {
+      "id": "rewrites",
+      "title": "URL rewrites",
+      "body": "Rewrites route URL patterns to Cloud Functions (`{\"source\": \"/api/**\", \"function\": \"api\"}`), Cloud Run services (`{\"source\": \"/app/**\", \"run\": {\"serviceId\": \"my-service\"}}`), or static destinations (`{\"source\": \"**\", \"destination\": \"/index.html\"}`). Rewrites are evaluated in order — first match wins. The SPA catch-all rewrite (`** -> /index.html`) should be last. Static files in the public directory take precedence over rewrites.",
+      "tags": ["rewrites", "cloud-functions", "cloud-run", "spa", "routing"]
+    },
+    {
+      "id": "headers-caching",
+      "title": "Headers and caching",
+      "body": "Custom headers are set per glob pattern in the `headers` array. Common patterns: immutable caching for hashed assets (`Cache-Control: public, max-age=31536000, immutable`), no-cache for API routes, CORS headers for cross-origin access, and security headers (X-Content-Type-Options, X-Frame-Options). Firebase CDN respects Cache-Control headers. Static assets should use long cache times with content hashing in filenames for cache busting.",
+      "tags": ["headers", "caching", "cors", "security", "cdn"]
+    }
+  ],
+  "links": [
+    { "uri": "firebase", "context": "Firebase platform — parent ecosystem and project setup" },
+    { "uri": "firebase/functions", "context": "Cloud Functions — dynamic content via hosting rewrites" },
+    { "uri": "firebase/cli", "context": "Firebase CLI — deploy, preview channels, rollback commands" },
+    { "uri": "firebase/config", "context": "firebase.json and .firebaserc configuration" }
+  ],
+  "related": [
+    { "uri": "firebase", "relation": "prerequisite", "note": "Firebase project must be initialized before configuring hosting" },
+    { "uri": "firebase/functions", "relation": "see-also", "note": "Cloud Functions handle dynamic content via hosting rewrites" },
+    { "uri": "firebase/cli", "relation": "prerequisite", "note": "Firebase CLI (firebase-tools) required for deployment" }
+  ],
+  "scripts": [
+    {
+      "id": "deploy-hosting",
+      "name": "Deploy Firebase Hosting",
+      "description": "Deploy static site to Firebase Hosting with support for preview channels and deploy targets",
+      "lang": "bash",
+      "runtime": "node>=18",
+      "entry": "./scripts/deploy-hosting.sh",
+      "env": {
+        "FIREBASE_TOKEN": { "required": false, "secret": true, "description": "Firebase CI token for non-interactive auth (alternative to gcloud auth)" },
+        "GOOGLE_APPLICATION_CREDENTIALS": { "required": false, "secret": true, "description": "Path to service account JSON key for CI/CD" }
+      },
+      "packages": ["firebase-tools"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "projectDir": { "type": "string", "description": "Project directory containing firebase.json (defaults to current directory)" },
+        "site": { "type": "string", "description": "Firebase Hosting site name for multi-site projects" },
+        "channel": { "type": "string", "description": "Preview channel ID (e.g., 'staging', 'pr-42')" },
+        "target": { "type": "string", "description": "Deploy target name for multi-site hosting" }
+      },
+      "required": []
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "hostingUrl": { "type": "string", "description": "Production hosting URL (e.g., https://project-id.web.app)" },
+        "channelUrl": { "type": "string", "description": "Preview channel URL if deploying to a channel" },
+        "expireTime": { "type": "string", "description": "Channel expiration timestamp (ISO 8601) if deploying to a channel" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "firebase/cli", "reason": "Firebase CLI required for deployment" }
+  ],
+  "more": {
+    "docs": "https://firebase.google.com/docs/hosting",
+    "config": "https://firebase.google.com/docs/hosting/full-config",
+    "github-action": "https://github.com/FirebaseExtended/action-hosting-deploy"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "5 min",
+    "prerequisites": ["firebase/cli"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

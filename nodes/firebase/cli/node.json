@@ -1,0 +1,94 @@
+{
+  "name": "cli",
+  "version": "1.0.0",
+  "uri": "firebase/cli",
+  "type": "context",
+  "content_type": "reference",
+  "context": "Firebase CLI (firebase-tools) for project initialization, emulator suite, deployment, hosting channels, and local development workflows",
+  "info": "The Firebase CLI (firebase-tools) is the command-line interface for managing Firebase projects end-to-end. Install globally with `npm install -g firebase-tools`. Authenticate interactively with `firebase login` or generate CI tokens with `firebase login:ci` (sets FIREBASE_TOKEN for non-interactive pipelines). Manage projects with `firebase use PROJECT_ID` to switch active projects and `firebase projects:list` to enumerate all projects. Initialize services with `firebase init` which interactively scaffolds firebase.json, security rules, and functions directories. Deploy everything with `firebase deploy` or target specific services with `--only hosting`, `--only functions:myFunc`, or `--only firestore:rules`. The Emulator Suite (`firebase emulators:start`) runs local instances of Auth, Firestore, Functions, Hosting, Storage, and Pub/Sub with a unified UI at localhost:4000, supporting data import/export between sessions. For CI/CD pipelines, authenticate via FIREBASE_TOKEN environment variable or use Google Cloud service account credentials. Deploy targets let you map multiple hosting sites to named targets for multi-site projects.",
+  "parent": "firebase",
+  "tags": ["cli", "firebase-tools", "emulator", "deploy", "init", "login", "commands", "local-development"],
+  "aliases": [
+    "firebase cli",
+    "firebase tools",
+    "firebase-tools",
+    "firebase command line",
+    "firebase terminal",
+    "firebase commands"
+  ],
+  "triggers": [
+    "install firebase cli",
+    "firebase init",
+    "start firebase emulators",
+    "deploy with firebase",
+    "firebase login"
+  ],
+  "body": "# Firebase CLI\n\nThe Firebase CLI (`firebase-tools`) is the primary command-line tool for initializing, developing, testing, and deploying Firebase projects.\n\n## Installation\n\n```bash\n# Install globally via npm\nnpm install -g firebase-tools\n\n# Verify installation\nfirebase --version\n```\n\n## Authentication\n\n```bash\n# Interactive login (opens browser)\nfirebase login\n\n# Generate a CI token for non-interactive environments\nfirebase login:ci\n# Prints a token — set it as FIREBASE_TOKEN in your CI environment\n\n# Login with a specific account\nfirebase login --reauth\n\n# Logout\nfirebase logout\n```\n\nFor CI/CD pipelines, set the `FIREBASE_TOKEN` environment variable with the token from `firebase login:ci`. Alternatively, use Google Cloud service account credentials by setting `GOOGLE_APPLICATION_CREDENTIALS` to the path of a service account JSON key file.\n\n## Project Setup\n\n```bash\n# Interactive project initialization — select services (Firestore, Functions, Hosting, etc.)\nfirebase init\n\n# Add a project alias\nfirebase use --add\n\n# Switch active project\nfirebase use PROJECT_ID\n\n# List all available projects\nfirebase projects:list\n\n# List Firebase apps in the current project\nfirebase apps:list\n```\n\n`firebase init` creates `firebase.json` (service configuration and deploy settings) and `.firebaserc` (project aliases). Select individual services during init or run `firebase init` again to add more.\n\n## Key Commands\n\n| Command | Description |\n|---------|-------------|\n| `firebase init` | Initialize project — select and configure Firebase services |\n| `firebase deploy` | Deploy all configured services to production |\n| `firebase deploy --only hosting` | Deploy only hosting |\n| `firebase deploy --only functions:myFunc` | Deploy a specific Cloud Function |\n| `firebase emulators:start` | Start the full Emulator Suite |\n| `firebase emulators:start --only firestore,functions` | Start specific emulators only |\n| `firebase hosting:channel:deploy NAME` | Create a preview channel for hosting |\n| `firebase hosting:rollback` | Rollback hosting to previous deployment |\n| `firebase functions:log` | View Cloud Functions logs |\n| `firebase firestore:indexes` | List Firestore composite indexes |\n| `firebase auth:export users.json` | Export authentication users to JSON |\n| `firebase auth:import users.json` | Import authentication users from JSON |\n| `firebase use PROJECT_ID` | Switch active project |\n| `firebase projects:list` | List all Firebase projects |\n| `firebase serve` | Start local development server |\n| `firebase apps:list` | List Firebase apps in current project |\n\n## Emulator Suite\n\nThe Firebase Emulator Suite runs local instances of Firebase services for offline development and testing.\n\n```bash\n# Start all configured emulators\nfirebase emulators:start\n\n# Start specific emulators\nfirebase emulators:start --only auth,firestore,functions\n\n# Import data from a previous export on startup\nfirebase emulators:start --import=./emulator-data\n\n# Export emulator data on shutdown\nfirebase emulators:start --export-on-exit=./emulator-data\n\n# Import and auto-export for persistent local data\nfirebase emulators:start --import=./emulator-data --export-on-exit\n```\n\n### Default Emulator Ports\n\n| Emulator | Default Port |\n|----------|--------------|\n| Emulator UI | 4000 |\n| Auth | 9099 |\n| Firestore | 8080 |\n| Functions | 5001 |\n| Hosting | 5000 |\n| Storage | 9199 |\n| Pub/Sub | 8085 |\n| Database (RTDB) | 9000 |\n\nPorts are configured in `firebase.json` under the `emulators` key:\n\n```json\n{\n  \"emulators\": {\n    \"auth\": { \"port\": 9099 },\n    \"firestore\": { \"port\": 8080 },\n    \"functions\": { \"port\": 5001 },\n    \"hosting\": { \"port\": 5000 },\n    \"storage\": { \"port\": 9199 },\n    \"ui\": { \"enabled\": true, \"port\": 4000 }\n  }\n}\n```\n\nThe Emulator UI at `http://localhost:4000` provides a dashboard for inspecting Auth users, Firestore documents, Functions logs, and Storage files. Emulator data is ephemeral by default — use `--import` and `--export-on-exit` to persist data across restarts.\n\n## CI/CD Usage\n\nAuthenticate in CI/CD pipelines without interactive login:\n\n```bash\n# Option 1: FIREBASE_TOKEN (legacy but widely used)\nexport FIREBASE_TOKEN=$(firebase login:ci)  # Run once locally, save the token\n# In CI:\nFIREBASE_TOKEN=${{ secrets.FIREBASE_TOKEN }} firebase deploy\n\n# Option 2: Google Cloud service account (recommended)\nexport GOOGLE_APPLICATION_CREDENTIALS=service-account.json\nfirebase deploy\n\n# Deploy only on main branch merges\nfirebase deploy --only hosting --message \"Deploy from CI - commit $COMMIT_SHA\"\n```\n\n## Deploy Targets (Multi-Site Hosting)\n\nDeploy targets map multiple hosting sites to named targets for projects with more than one site:\n\n```bash\n# Register a deploy target\nfirebase target:apply hosting app my-app-site\nfirebase target:apply hosting blog my-blog-site\n\n# Configure in firebase.json\n# {\n#   \"hosting\": [\n#     { \"target\": \"app\", \"public\": \"dist/app\", \"rewrites\": [...] },\n#     { \"target\": \"blog\", \"public\": \"dist/blog\" }\n#   ]\n# }\n\n# Deploy a specific target\nfirebase deploy --only hosting:app\nfirebase deploy --only hosting:blog\n```\n",
+  "sections": [
+    {
+      "id": "installation",
+      "title": "Installation",
+      "body": "Install globally with `npm install -g firebase-tools`. Verify with `firebase --version`. The CLI is a Node.js package requiring Node 18+. Update with `npm update -g firebase-tools`.",
+      "tags": ["install", "npm", "firebase-tools", "setup"]
+    },
+    {
+      "id": "authentication",
+      "title": "Authentication",
+      "body": "Use `firebase login` for interactive browser-based auth. Use `firebase login:ci` to generate a token for CI/CD pipelines — store it as the FIREBASE_TOKEN environment variable. For GCP-native auth, use a service account JSON key via GOOGLE_APPLICATION_CREDENTIALS. Revoke credentials with `firebase logout`.",
+      "tags": ["auth", "login", "token", "ci", "service-account"]
+    },
+    {
+      "id": "project-management",
+      "title": "Project management",
+      "body": "`firebase init` interactively selects and configures services (Firestore, Functions, Hosting, Storage, Emulators). `firebase use PROJECT_ID` switches the active project. `firebase use --add` registers a new project alias in .firebaserc. `firebase projects:list` shows all projects. `firebase apps:list` enumerates apps in the current project.",
+      "tags": ["init", "project", "use", "alias", "firebaserc"]
+    },
+    {
+      "id": "deployment",
+      "title": "Deployment",
+      "body": "`firebase deploy` pushes all configured services. Use `--only` to target specific services: `--only hosting`, `--only functions`, `--only firestore:rules`, `--only functions:myFunc`. Preview channels (`firebase hosting:channel:deploy NAME`) create temporary URLs for testing. Rollback hosting with `firebase hosting:rollback`. Add `--message` to annotate deployments.",
+      "tags": ["deploy", "hosting", "functions", "rules", "preview", "rollback"]
+    },
+    {
+      "id": "emulator-suite",
+      "title": "Emulator Suite",
+      "body": "`firebase emulators:start` launches local instances of Auth (9099), Firestore (8080), Functions (5001), Hosting (5000), Storage (9199), and Pub/Sub (8085). The Emulator UI at port 4000 provides a dashboard. Use `--import` and `--export-on-exit` to persist data across sessions. Configure ports in the `emulators` key of firebase.json. Start specific emulators with `--only firestore,functions`. Connect client SDKs to emulators using `connectAuthEmulator()`, `connectFirestoreEmulator()`, etc.",
+      "tags": ["emulator", "local", "testing", "ports", "emulator-ui", "import", "export"]
+    },
+    {
+      "id": "ci-cd",
+      "title": "CI/CD usage",
+      "body": "For non-interactive deployment in CI/CD, authenticate with FIREBASE_TOKEN (from `firebase login:ci`) or GOOGLE_APPLICATION_CREDENTIALS (service account JSON key). FIREBASE_TOKEN is legacy but widely supported; service account auth is recommended for new setups. Use `firebase deploy --only hosting --message 'CI deploy'` to annotate. Deploy targets support multi-site hosting in a single project.",
+      "tags": ["ci", "cd", "token", "service-account", "automation", "pipeline"]
+    }
+  ],
+  "links": [
+    { "uri": "firebase", "context": "Firebase ecosystem overview — all services and project structure" },
+    { "uri": "firebase/hosting", "context": "Firebase Hosting — static sites, SPAs, preview channels, deploy targets" },
+    { "uri": "firebase/functions", "context": "Cloud Functions — deploy and manage server-side functions via CLI" },
+    { "uri": "firebase/config", "context": "Configuration — firebase.json, .firebaserc, project settings" }
+  ],
+  "related": [
+    { "uri": "firebase", "relation": "prerequisite", "note": "Firebase ecosystem context — understand project structure before using the CLI" },
+    { "uri": "firebase/config", "relation": "see-also", "note": "firebase.json and .firebaserc are managed by the CLI" },
+    { "uri": "gcp/gcloud", "relation": "see-also", "note": "gcloud CLI manages the underlying GCP project; service account auth works across both CLIs" }
+  ],
+  "more": {
+    "docs": "https://firebase.google.com/docs/cli"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents, DevOps engineers",
+    "estimated_reading_time": "5 min",
+    "prerequisites": ["node"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

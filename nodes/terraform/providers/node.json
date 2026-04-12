@@ -1,0 +1,109 @@
+{
+  "name": "providers",
+  "version": "1.0.0",
+  "uri": "terraform/providers",
+  "type": "context",
+  "content_type": "reference",
+  "context": "Terraform providers are plugins that translate HCL into API calls for cloud platforms, SaaS tools, and infrastructure services",
+  "info": "Terraform providers are the plugin layer between your HCL configuration and the upstream APIs of cloud platforms, SaaS products, and other services. Each provider supplies a set of resource types and data sources that Terraform can manage. Providers are declared in the required_providers block inside the terraform {} block, versioned with constraints, and downloaded automatically by terraform init. The provider source address follows the format registry.terraform.io/<NAMESPACE>/<TYPE> (e.g. registry.terraform.io/hashicorp/aws). Providers are classified as official (maintained by HashiCorp), partner (maintained by a technology partner), or community (maintained by individual contributors). Provider aliases enable managing multiple configurations of the same provider, such as deploying to multiple AWS regions or multiple GCP projects in a single root module.",
+  "parent": "terraform",
+  "sub": [
+    "terraform/providers/aws",
+    "terraform/providers/gcp",
+    "terraform/providers/azure"
+  ],
+  "tags": ["terraform", "providers", "hcl", "infrastructure-as-code", "hashicorp", "plugin", "registry", "version-constraints", "provider-alias"],
+  "aliases": [
+    "terraform providers",
+    "terraform plugins",
+    "terraform provider configuration",
+    "tf providers",
+    "required_providers",
+    "terraform provider block",
+    "terraform registry providers",
+    "provider version constraints"
+  ],
+  "triggers": [
+    "configure a terraform provider",
+    "add a provider to terraform",
+    "set provider version constraints",
+    "use multiple provider aliases",
+    "lock terraform provider versions",
+    "what is a terraform provider",
+    "how do terraform providers work",
+    "terraform required_providers block",
+    "terraform provider source address"
+  ],
+  "body": "# Terraform Providers\n\nProviders are the translation layer between Terraform's declarative HCL and the imperative API calls of cloud platforms, SaaS tools, and infrastructure services. Without providers, Terraform has no way to create, read, update, or delete real resources.\n\nEvery provider ships a set of **resource types** (managed objects Terraform creates) and **data sources** (read-only lookups Terraform queries). Terraform downloads providers during `terraform init` and caches them in `.terraform/providers/`.\n\n## Declaring Providers\n\nProviders are declared inside the `terraform {}` configuration block:\n\n```hcl\nterraform {\n  required_providers {\n    aws = {\n      source  = \"hashicorp/aws\"\n      version = \"~> 5.0\"\n    }\n    google = {\n      source  = \"hashicorp/google\"\n      version = \">= 5.20, < 6.0\"\n    }\n    azurerm = {\n      source  = \"hashicorp/azurerm\"\n      version = \"~> 3.100\"\n    }\n  }\n  required_version = \">= 1.5\"\n}\n```\n\nThe `source` attribute follows the format `<NAMESPACE>/<TYPE>`, which expands to `registry.terraform.io/<NAMESPACE>/<TYPE>`. HashiCorp-maintained providers use the `hashicorp` namespace.\n\n## Provider Configuration\n\nAfter declaring a provider in `required_providers`, you configure it with a `provider` block:\n\n```hcl\nprovider \"aws\" {\n  region = \"us-east-1\"\n\n  default_tags {\n    tags = {\n      ManagedBy   = \"terraform\"\n      Environment = var.environment\n    }\n  }\n}\n```\n\nSome providers require no configuration at all (they read credentials from environment variables or instance metadata). Others, like [[terraform/providers/azure]], require specific blocks even if empty.\n\n## Version Constraints\n\nTerraform uses version constraint syntax to pin provider versions:\n\n| Operator | Meaning | Example |\n|----------|---------|----------|\n| `=` | Exact version | `= 5.40.0` |\n| `!=` | Exclude a version | `!= 5.38.0` |\n| `>`, `>=`, `<`, `<=` | Comparison | `>= 5.0, < 6.0` |\n| `~>` | Pessimistic (allows rightmost increment) | `~> 5.40` allows `5.40.x` through `5.99.x` |\n\nThe `~>` operator is the most common. `~> 5.40` allows any `5.x` where `x >= 40`. `~> 5.40.0` allows `5.40.x` only.\n\n## Provider Lock File\n\nAfter `terraform init`, Terraform writes `.terraform.lock.hcl` containing the exact resolved versions and platform-specific checksums for every provider. This file should be committed to version control to ensure reproducible builds:\n\n```hcl\n# .terraform.lock.hcl (auto-generated)\nprovider \"registry.terraform.io/hashicorp/aws\" {\n  version     = \"5.46.0\"\n  constraints = \"~> 5.0\"\n  hashes = [\n    \"h1:abc123...\",\n    \"zh:def456...\",\n  ]\n}\n```\n\nRun `terraform init -upgrade` to update providers within their constraint ranges.\n\n## Provider Aliases\n\nTo use the same provider with different configurations (e.g., deploying to two AWS regions), define aliases:\n\n```hcl\nprovider \"aws\" {\n  region = \"us-east-1\"\n}\n\nprovider \"aws\" {\n  alias  = \"west\"\n  region = \"us-west-2\"\n}\n\nresource \"aws_instance\" \"east_server\" {\n  ami           = \"ami-0abcdef1234567890\"\n  instance_type = \"t3.micro\"\n  # Uses the default (non-aliased) provider\n}\n\nresource \"aws_instance\" \"west_server\" {\n  provider      = aws.west\n  ami           = \"ami-0fedcba9876543210\"\n  instance_type = \"t3.micro\"\n}\n```\n\nResources reference aliased providers with the `provider` meta-argument using `<PROVIDER>.<ALIAS>` syntax.\n\n## Provider Source Format\n\nThe full source address for a provider follows this structure:\n\n```\nregistry.terraform.io/<NAMESPACE>/<TYPE>\n```\n\n- **Official providers** (HashiCorp-maintained): `hashicorp/aws`, `hashicorp/google`, `hashicorp/azurerm`\n- **Partner providers** (vendor-maintained, verified): `datadog/datadog`, `cloudflare/cloudflare`\n- **Community providers** (individual maintainers): published on the Terraform Registry under personal namespaces\n\nThe Terraform Registry at `registry.terraform.io` is the default source. Private registries can also host providers.\n\n## Provider Categories\n\n| Category | Maintained By | Examples |\n|----------|---------------|----------|\n| Official | HashiCorp | aws, azurerm, google, kubernetes, helm |\n| Partner | Technology partner | datadog, cloudflare, pagerduty, mongodbatlas |\n| Community | Individuals | Custom or niche integrations |\n",
+  "sections": [
+    {
+      "id": "required-providers",
+      "title": "Declaring required_providers",
+      "body": "The `required_providers` block inside `terraform {}` declares which providers a module depends on and their version constraints. Each entry maps a local name to a `source` (registry address) and `version` constraint. The local name is used as the key in `provider` configuration blocks and as the first label in resource types (e.g., the `aws` in `aws_instance`). Run `terraform init` after modifying `required_providers` to download new providers.",
+      "tags": ["required-providers", "terraform-block", "source", "version", "init"]
+    },
+    {
+      "id": "configuration",
+      "title": "Provider configuration blocks",
+      "body": "A `provider` block configures a specific provider with attributes like region, project, credentials, and default tags. Some providers (like [[terraform/providers/aws]]) read most settings from environment variables and need minimal configuration. Others (like [[terraform/providers/azure]]) require explicit blocks even when empty. Provider configuration can reference variables (`var.region`) but not resource attributes, because providers are initialized before any resources are planned.",
+      "tags": ["provider-block", "configuration", "region", "credentials", "default-tags"]
+    },
+    {
+      "id": "version-constraints",
+      "title": "Version constraints",
+      "body": "Terraform supports six version constraint operators: `=` (exact), `!=` (exclude), `>`, `>=`, `<`, `<=` (comparison), and `~>` (pessimistic). The pessimistic operator `~>` is the most idiomatic. `~> 5.40` means `>= 5.40, < 6.0`. `~> 5.40.0` means `>= 5.40.0, < 5.41.0`. Multiple constraints can be combined with commas: `>= 5.20, < 6.0`. Always pin major versions to avoid breaking changes from provider upgrades.",
+      "tags": ["version", "constraints", "pessimistic", "pinning", "semver", "upgrade"]
+    },
+    {
+      "id": "lock-file",
+      "title": "Provider lock file",
+      "body": "After `terraform init`, the `.terraform.lock.hcl` file records the exact provider versions and their platform-specific checksums (hashes). Commit this file to version control to ensure every team member and CI pipeline uses identical provider binaries. Run `terraform init -upgrade` to update providers within their constraint ranges and regenerate the lock file. Run `terraform providers lock -platform=linux_amd64 -platform=darwin_arm64` to pre-compute hashes for multiple platforms.",
+      "tags": ["lock-file", "terraform-lock-hcl", "checksums", "reproducible", "init-upgrade"]
+    },
+    {
+      "id": "aliases",
+      "title": "Provider aliases for multi-region and multi-account",
+      "body": "Define multiple configurations of the same provider using the `alias` meta-argument. The default (non-aliased) provider is used unless a resource specifies `provider = <PROVIDER>.<ALIAS>`. Common patterns: multi-region deployments (e.g., `aws` default for us-east-1 and `aws.west` for us-west-2), cross-account access (different assume_role per alias), and multi-project GCP configurations. Modules accept aliased providers via the `providers` meta-argument in `module` blocks.",
+      "tags": ["alias", "multi-region", "multi-account", "provider-meta-argument", "module-providers"]
+    },
+    {
+      "id": "provider-types",
+      "title": "Official, partner, and community providers",
+      "body": "Official providers are maintained by HashiCorp and cover major clouds and infrastructure tools (aws, azurerm, google, kubernetes, helm, vault). Partner providers are maintained by technology partners and verified on the registry (datadog, cloudflare, pagerduty). Community providers are maintained by individuals and may vary in quality and support. The Terraform Registry shows a tier badge for each provider. For production use, prefer official and partner providers with active maintenance.",
+      "tags": ["official", "partner", "community", "registry", "tier", "maintenance"]
+    }
+  ],
+  "links": [
+    { "uri": "terraform/providers/aws", "context": "AWS provider — the most widely used Terraform provider" },
+    { "uri": "terraform/providers/gcp", "context": "Google Cloud Platform provider for GCP resources" },
+    { "uri": "terraform/providers/azure", "context": "Azure provider (azurerm) for Microsoft Azure resources" }
+  ],
+  "related": [
+    { "uri": "terraform/providers/aws", "relation": "see-also", "note": "AWS is the most popular Terraform provider by download count" },
+    { "uri": "terraform/providers/gcp", "relation": "see-also", "note": "GCP provider for Google Cloud resources" },
+    { "uri": "terraform/providers/azure", "relation": "see-also", "note": "Azure provider for Microsoft cloud resources" },
+    { "uri": "aws", "relation": "see-also", "note": "AWS ecosystem node covering SDK-based access to AWS services" },
+    { "uri": "aws/cloudformation", "relation": "alternative", "note": "CloudFormation is AWS's native IaC alternative to Terraform" }
+  ],
+  "more": {
+    "docs": "https://developer.hashicorp.com/terraform/language/providers",
+    "registry": "https://registry.terraform.io/browse/providers",
+    "repo": "https://github.com/hashicorp/terraform"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents, DevOps engineers, SREs",
+    "estimated_reading_time": "7 min",
+    "prerequisites": ["terraform"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://github.com/hashicorp/terraform",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

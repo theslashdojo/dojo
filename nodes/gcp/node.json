@@ -1,0 +1,90 @@
+{
+  "name": "gcp",
+  "version": "1.0.0",
+  "uri": "gcp",
+  "type": "ecosystem",
+  "context": "Google Cloud Platform — compute, storage, serverless functions, IAM, and gcloud CLI automation",
+  "info": "The Google Cloud Platform ecosystem covers VM-based compute via Compute Engine, object storage via Cloud Storage (GCS), event-driven serverless functions via Cloud Functions, identity and access management (IAM) for security policies, and the gcloud CLI for all infrastructure automation. This tree is organized around the jobs an agent actually performs: provisioning and managing VMs, uploading and serving files from buckets, deploying serverless handlers, configuring access control, and scripting infrastructure changes. The gcloud CLI and client libraries (Python, Node.js, Go, Java) are the primary execution surfaces. Authentication uses service accounts, Application Default Credentials (ADC), and OAuth 2.0. All operations target the Google Cloud REST APIs or gcloud commands.",
+  "parent": null,
+  "tags": ["gcp", "google-cloud", "compute", "storage", "functions", "iam", "gcloud", "cloud", "serverless", "infrastructure"],
+  "aliases": [
+    "gcp",
+    "google cloud",
+    "google cloud platform",
+    "gcloud",
+    "gce",
+    "gcs",
+    "cloud functions",
+    "google cloud storage",
+    "google compute engine",
+    "gcf",
+    "google cloud functions"
+  ],
+  "triggers": [
+    "deploy to google cloud",
+    "create a gcp instance",
+    "upload files to gcs",
+    "set up a cloud function",
+    "configure iam permissions",
+    "use gcloud cli",
+    "provision google cloud resources",
+    "manage gcp infrastructure",
+    "google cloud storage bucket",
+    "deploy serverless function on gcp"
+  ],
+  "body": "# Google Cloud Platform Ecosystem\n\nGoogle Cloud Platform (GCP) provides compute, storage, networking, AI/ML, and serverless services across 40+ regions. Agents interact with GCP primarily through the `gcloud` CLI and language-specific client libraries.\n\n## Core Services\n\n| Service | Node | What It Does |\n|---------|------|--------------|\n| Compute Engine | [[gcp/compute]] | Virtual machines — create, configure, SSH, start/stop |\n| Cloud Storage | [[gcp/storage]] | Object storage — buckets, uploads, signed URLs, lifecycle |\n| Cloud Functions | [[gcp/functions]] | Serverless event-driven functions — HTTP and event triggers |\n| IAM | [[gcp/iam]] | Identity & access management — roles, service accounts, policies |\n| gcloud CLI | [[gcp/gcloud]] | Command-line interface for all GCP services |\n\n## Authentication\n\nGCP authentication follows a hierarchy agents must understand:\n\n1. **Service Accounts** — machine-to-machine, key files (JSON), attached to resources\n2. **Application Default Credentials (ADC)** — `gcloud auth application-default login` sets credentials that all client libraries auto-discover\n3. **OAuth 2.0** — user-facing flows for interactive applications\n4. **Workload Identity Federation** — keyless auth from external providers (AWS, Azure, GitHub Actions)\n\n```bash\n# Authenticate the gcloud CLI\ngcloud auth login\n\n# Set Application Default Credentials for client libraries\ngcloud auth application-default login\n\n# Activate a service account\ngcloud auth activate-service-account --key-file=sa-key.json\n\n# Set the active project\ngcloud config set project my-project-id\n```\n\n## Environment Variables\n\n| Variable | Purpose |\n|----------|----------|\n| `GOOGLE_CLOUD_PROJECT` | Default project ID |\n| `GOOGLE_APPLICATION_CREDENTIALS` | Path to service account JSON key file |\n| `CLOUDSDK_CORE_PROJECT` | Alternative project ID for gcloud |\n| `CLOUDSDK_COMPUTE_REGION` | Default compute region |\n| `CLOUDSDK_COMPUTE_ZONE` | Default compute zone |\n\n## Client Libraries\n\n- **Python** — `google-cloud-*` packages (e.g., `google-cloud-storage`, `google-cloud-compute`)\n- **Node.js** — `@google-cloud/*` packages (e.g., `@google-cloud/storage`, `@google-cloud/functions`)\n- **Go** — `cloud.google.com/go/*`\n- **Java** — `com.google.cloud:google-cloud-*`\n- **gcloud CLI** — `gcloud`, `gsutil`, `bq` (BigQuery)\n\n## Project Structure\n\nEvery GCP resource lives inside a **project**. Projects are the billing boundary, IAM boundary, and API enablement boundary. Before using any service, enable its API:\n\n```bash\n# Enable Compute Engine API\ngcloud services enable compute.googleapis.com\n\n# Enable Cloud Functions API\ngcloud services enable cloudfunctions.googleapis.com\n\n# List enabled APIs\ngcloud services list --enabled\n```\n",
+  "sections": [
+    {
+      "id": "authentication",
+      "title": "Authentication and credentials",
+      "body": "GCP uses a layered auth model. For local development, `gcloud auth application-default login` sets up ADC that all client libraries auto-discover via the `GOOGLE_APPLICATION_CREDENTIALS` environment variable or the well-known file path. For production, attach a service account to the resource (VM, function, Cloud Run) — no key file needed. For CI/CD, use Workload Identity Federation to avoid managing service account keys. See [[gcp/iam]] for role assignment and [[gcp/gcloud]] for CLI auth commands.",
+      "tags": ["auth", "adc", "service-account", "credentials", "oauth", "workload-identity"]
+    },
+    {
+      "id": "project-setup",
+      "title": "Project setup",
+      "body": "Create a project with `gcloud projects create PROJECT_ID`. Set it as default with `gcloud config set project PROJECT_ID`. Enable required APIs with `gcloud services enable SERVICE_API`. Set default region/zone with `gcloud config set compute/region REGION` and `gcloud config set compute/zone ZONE`. All resources are scoped to a project and billed to its linked billing account.",
+      "tags": ["project", "setup", "api-enable", "region", "zone", "billing"]
+    },
+    {
+      "id": "client-libraries",
+      "title": "Client libraries",
+      "body": "Google Cloud client libraries are available for Python (`pip install google-cloud-storage`), Node.js (`npm install @google-cloud/storage`), Go (`go get cloud.google.com/go/storage`), and Java. All libraries auto-discover credentials via ADC. Initialize a client, then call methods that map 1:1 to REST API operations. Client libraries handle retries, pagination, and credential refresh automatically.",
+      "tags": ["sdk", "client-library", "python", "nodejs", "go", "java"]
+    }
+  ],
+  "links": [
+    { "uri": "gcp/compute", "context": "Create and manage Compute Engine VMs" },
+    { "uri": "gcp/storage", "context": "Object storage with Cloud Storage (GCS)" },
+    { "uri": "gcp/functions", "context": "Serverless functions with Cloud Functions" },
+    { "uri": "gcp/iam", "context": "Identity & access management — roles, service accounts, policies" },
+    { "uri": "gcp/gcloud", "context": "gcloud CLI for all GCP operations" }
+  ],
+  "related": [
+    { "uri": "gcp/iam", "relation": "see-also", "note": "IAM controls access to all GCP services" },
+    { "uri": "gcp/gcloud", "relation": "see-also", "note": "gcloud CLI is the primary interface for managing GCP" },
+    { "uri": "terraform", "relation": "see-also", "note": "Terraform can provision GCP resources declaratively" },
+    { "uri": "kubernetes", "relation": "see-also", "note": "GKE is Google's managed Kubernetes offering" }
+  ],
+  "more": {
+    "docs": "https://cloud.google.com/docs",
+    "api": "https://cloud.google.com/apis",
+    "repo": "https://github.com/googleapis/google-cloud-python",
+    "examples": "https://cloud.google.com/docs/samples"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents, DevOps engineers",
+    "estimated_reading_time": "5 min",
+    "prerequisites": [],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

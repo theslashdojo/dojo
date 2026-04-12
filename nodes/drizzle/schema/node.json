@@ -1,0 +1,166 @@
+{
+  "name": "schema",
+  "version": "1.0.0",
+  "uri": "drizzle/schema",
+  "type": "skill",
+  "context": "Define Drizzle ORM tables, columns, indexes, enums, and constraints in TypeScript using pgTable/mysqlTable/sqliteTable",
+  "info": "Drizzle schemas are plain TypeScript — no custom language, no code generation. You define tables using dialect-specific functions (pgTable, mysqlTable, sqliteTable) with columns, constraints, and indexes. Column types map directly to database types: serial, integer, text, varchar, boolean, timestamp, uuid, json/jsonb, numeric, bigint. Constraints are chained: .primaryKey(), .notNull(), .unique(), .default(), .references(). Indexes and composite keys are defined in a third argument callback. Enums use pgEnum for PostgreSQL or inline for MySQL. Schema files are the source of truth for drizzle-kit migrations — every change to a schema file can be detected and turned into SQL via [[drizzle/migrate]]. Organize schemas in a single file or split across multiple files. See [[drizzle/relations]] for application-level relation definitions and [[drizzle/config]] for pointing drizzle-kit at your schema files.",
+  "parent": "drizzle",
+  "tags": ["schema", "drizzle-schema", "tables", "columns", "indexes", "enums", "constraints", "pgTable", "mysqlTable", "sqliteTable"],
+  "aliases": [
+    "drizzle schema",
+    "drizzle table",
+    "drizzle tables",
+    "drizzle model",
+    "drizzle models",
+    "pgTable",
+    "mysqlTable",
+    "sqliteTable",
+    "drizzle columns",
+    "drizzle enum",
+    "define drizzle table",
+    "drizzle schema definition"
+  ],
+  "triggers": [
+    "create a drizzle schema",
+    "define a drizzle table",
+    "add a table to drizzle",
+    "create a drizzle model",
+    "add columns to a drizzle table",
+    "add an index in drizzle",
+    "create an enum in drizzle",
+    "define a foreign key in drizzle",
+    "write drizzle schema",
+    "set up drizzle tables"
+  ],
+  "body": "# Drizzle Schema Definition\n\nDrizzle schemas are TypeScript files that define your database structure. Each table is created with a dialect-specific function, columns are typed functions, and constraints are chained methods.\n\n## PostgreSQL Schema\n\n```typescript\nimport {\n  pgTable, pgEnum, serial, integer, text, varchar,\n  boolean, timestamp, uuid, jsonb, numeric, index, uniqueIndex\n} from 'drizzle-orm/pg-core';\n\n// Enum\nexport const roleEnum = pgEnum('role', ['user', 'admin', 'moderator']);\n\n// Users table\nexport const users = pgTable('users', {\n  id: serial('id').primaryKey(),\n  name: text('name').notNull(),\n  email: varchar('email', { length: 255 }).notNull().unique(),\n  role: roleEnum('role').default('user'),\n  bio: text('bio'),\n  metadata: jsonb('metadata'),\n  createdAt: timestamp('created_at').defaultNow().notNull(),\n  updatedAt: timestamp('updated_at').defaultNow().notNull(),\n}, (table) => [\n  index('email_idx').on(table.email),\n]);\n\n// Posts table with foreign key\nexport const posts = pgTable('posts', {\n  id: serial('id').primaryKey(),\n  title: varchar('title', { length: 256 }).notNull(),\n  content: text('content'),\n  slug: varchar('slug', { length: 256 }).unique(),\n  published: boolean('published').default(false),\n  authorId: integer('author_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),\n  createdAt: timestamp('created_at').defaultNow().notNull(),\n}, (table) => [\n  index('author_idx').on(table.authorId),\n  index('slug_idx').on(table.slug),\n]);\n\n// Tags — many-to-many via join table\nexport const tags = pgTable('tags', {\n  id: serial('id').primaryKey(),\n  name: varchar('name', { length: 64 }).notNull().unique(),\n});\n\nexport const postsToTags = pgTable('posts_to_tags', {\n  postId: integer('post_id').references(() => posts.id, { onDelete: 'cascade' }).notNull(),\n  tagId: integer('tag_id').references(() => tags.id, { onDelete: 'cascade' }).notNull(),\n}, (table) => [\n  { pk: primaryKey({ columns: [table.postId, table.tagId] }) },\n]);\n```\n\n## MySQL Schema\n\n```typescript\nimport {\n  mysqlTable, mysqlEnum, int, varchar, text,\n  boolean, timestamp, serial, json, index\n} from 'drizzle-orm/mysql-core';\n\nexport const users = mysqlTable('users', {\n  id: serial('id').primaryKey(),\n  name: varchar('name', { length: 256 }).notNull(),\n  email: varchar('email', { length: 256 }).notNull().unique(),\n  role: mysqlEnum('role', ['user', 'admin']).default('user'),\n  createdAt: timestamp('created_at').defaultNow().notNull(),\n});\n```\n\n## SQLite Schema\n\n```typescript\nimport {\n  sqliteTable, integer, text, index\n} from 'drizzle-orm/sqlite-core';\n\nexport const users = sqliteTable('users', {\n  id: integer('id').primaryKey({ autoIncrement: true }),\n  name: text('name').notNull(),\n  email: text('email').notNull().unique(),\n  role: text('role').$type<'user' | 'admin'>().default('user'),\n  createdAt: text('created_at').default(sql`(CURRENT_TIMESTAMP)`),\n});\n```\n\n## Column Types by Dialect\n\n| Type | PostgreSQL | MySQL | SQLite |\n|------|-----------|-------|--------|\n| Auto-increment ID | `serial()` | `serial()` / `int().autoincrement()` | `integer().primaryKey({ autoIncrement: true })` |\n| Integer | `integer()` | `int()` | `integer()` |\n| Text | `text()` | `text()` | `text()` |\n| Varchar | `varchar({ length })` | `varchar({ length })` | N/A (use `text()`) |\n| Boolean | `boolean()` | `boolean()` | `integer({ mode: 'boolean' })` |\n| Timestamp | `timestamp()` | `timestamp()` | `text()` / `integer({ mode: 'timestamp' })` |\n| UUID | `uuid()` | N/A | N/A |\n| JSON | `json()` / `jsonb()` | `json()` | `text({ mode: 'json' })` |\n| Numeric | `numeric()` / `decimal()` | `decimal()` | `real()` |\n| BigInt | `bigint()` | `bigint()` | `blob({ mode: 'bigint' })` |\n\n## Column Constraints\n\n```typescript\n// Primary key\nid: serial('id').primaryKey()\n\n// Generated identity (PostgreSQL)\nid: integer('id').generatedAlwaysAsIdentity()\n\n// Not null\nname: text('name').notNull()\n\n// Unique\nemail: varchar('email').unique()\n\n// Default value\nrole: text('role').default('user')\n\n// Default with function\nslug: varchar('slug').$default(() => generateSlug())\n\n// Default now (timestamps)\ncreatedAt: timestamp('created_at').defaultNow()\n\n// Foreign key\nauthorId: integer('author_id').references(() => users.id)\n\n// Foreign key with actions\nauthorId: integer('author_id').references(() => users.id, {\n  onDelete: 'cascade',\n  onUpdate: 'cascade',\n})\n\n// Self-referencing\nparentId: integer('parent_id').references((): AnyPgColumn => categories.id)\n```\n\n## Indexes and Composite Keys\n\n```typescript\nimport { pgTable, integer, text, index, uniqueIndex, primaryKey } from 'drizzle-orm/pg-core';\n\nexport const posts = pgTable('posts', {\n  id: serial('id').primaryKey(),\n  title: text('title').notNull(),\n  authorId: integer('author_id').notNull(),\n  categoryId: integer('category_id'),\n}, (table) => [\n  index('author_idx').on(table.authorId),\n  index('author_category_idx').on(table.authorId, table.categoryId),\n  uniqueIndex('title_unique_idx').on(table.title),\n]);\n\n// Composite primary key (join tables)\nexport const postsToTags = pgTable('posts_to_tags', {\n  postId: integer('post_id').notNull(),\n  tagId: integer('tag_id').notNull(),\n}, (table) => [\n  primaryKey({ columns: [table.postId, table.tagId] }),\n]);\n```\n\n## PostgreSQL Enums\n\n```typescript\nimport { pgEnum } from 'drizzle-orm/pg-core';\n\nexport const statusEnum = pgEnum('status', ['draft', 'published', 'archived']);\n\nexport const posts = pgTable('posts', {\n  status: statusEnum('status').default('draft'),\n});\n```\n\n## Automatic camelCase to snake_case\n\n```typescript\n// In your drizzle instance — maps camelCase TS keys to snake_case DB columns\nconst db = drizzle({ connection: process.env.DATABASE_URL, casing: 'snake_case' });\n\n// Now you write:\nexport const users = pgTable('users', {\n  firstName: text(),    // maps to first_name in DB\n  lastName: text(),     // maps to last_name in DB\n  createdAt: timestamp() // maps to created_at in DB\n});\n```\n\n## Reusable Column Helpers\n\n```typescript\n// src/db/columns.ts\nimport { timestamp } from 'drizzle-orm/pg-core';\n\nexport const timestamps = {\n  createdAt: timestamp('created_at').defaultNow().notNull(),\n  updatedAt: timestamp('updated_at').defaultNow().notNull(),\n};\n\n// src/db/schema.ts\nimport { timestamps } from './columns';\n\nexport const users = pgTable('users', {\n  id: serial('id').primaryKey(),\n  name: text('name').notNull(),\n  ...timestamps,\n});\n```\n\n## Schema Organization\n\nSingle file: `src/db/schema.ts` — good for small projects.\n\nMultiple files:\n```\nsrc/db/schema/\n  users.ts\n  posts.ts\n  tags.ts\n  index.ts     # re-export all\n```\n\nPoint [[drizzle/config]] at the directory: `schema: './src/db/schema'`.\n\n## Type Inference\n\n```typescript\n// Infer select type (what you read from DB)\ntype User = typeof users.$inferSelect;\n\n// Infer insert type (what you write to DB)\ntype NewUser = typeof users.$inferInsert;\n```\n\n## Environment Variables\n\n| Variable | Purpose |\n|----------|--------|\n| `DATABASE_URL` | Used in drizzle.config.ts for drizzle-kit operations |\n",
+  "sections": [
+    {
+      "id": "table-definition",
+      "title": "Table definition patterns",
+      "body": "Use `pgTable('name', columns)` for PostgreSQL, `mysqlTable('name', columns)` for MySQL, `sqliteTable('name', columns)` for SQLite. Columns are functions from the dialect's core module (e.g., `drizzle-orm/pg-core`). Chain constraints: `.primaryKey()`, `.notNull()`, `.unique()`, `.default(value)`, `.references(() => otherTable.column)`. A third argument callback defines indexes and composite keys.",
+      "tags": ["pgTable", "mysqlTable", "sqliteTable", "columns", "definition"]
+    },
+    {
+      "id": "column-types",
+      "title": "Column types reference",
+      "body": "PostgreSQL: `serial`, `integer`, `bigint`, `text`, `varchar`, `boolean`, `timestamp`, `date`, `uuid`, `json`, `jsonb`, `numeric`, `real`, `doublePrecision`, `bytea`. MySQL: `serial`, `int`, `bigint`, `tinyint`, `varchar`, `text`, `boolean`, `timestamp`, `datetime`, `json`, `decimal`, `float`, `double`, `binary`. SQLite: `integer`, `text`, `real`, `blob`. Use `$type<T>()` on any column to override the TypeScript type.",
+      "tags": ["types", "serial", "integer", "text", "varchar", "boolean", "timestamp", "uuid", "json"]
+    },
+    {
+      "id": "constraints",
+      "title": "Constraints and references",
+      "body": "`.primaryKey()` sets the primary key. `.notNull()` adds NOT NULL. `.unique()` adds a UNIQUE constraint. `.default(value)` sets a default (use `defaultNow()` for timestamps). `.references(() => table.column)` creates a foreign key — pass `{ onDelete: 'cascade' }` for delete behavior. Options: `cascade`, `restrict`, `no action`, `set null`, `set default`. Use `primaryKey({ columns: [a, b] })` in the third arg for composite PKs.",
+      "tags": ["constraints", "primary-key", "not-null", "unique", "default", "foreign-key", "references", "cascade"]
+    },
+    {
+      "id": "indexes",
+      "title": "Indexes",
+      "body": "Define indexes in the third argument callback: `(table) => [index('name').on(table.col), uniqueIndex('name').on(table.col)]`. Composite indexes: `index('name').on(table.col1, table.col2)`. Indexes improve query performance on columns used in WHERE, ORDER BY, and JOIN clauses. Always index foreign key columns.",
+      "tags": ["indexes", "composite-index", "unique-index", "performance"]
+    },
+    {
+      "id": "enums",
+      "title": "Enums",
+      "body": "PostgreSQL: `export const role = pgEnum('role', ['user', 'admin'])` then `role('role').default('user')` in the table. MySQL: `mysqlEnum('role', ['user', 'admin'])` inline. SQLite: use `text().$type<'user' | 'admin'>()` since SQLite has no native enum. Enums are type-safe — TypeScript will error if you pass an invalid value.",
+      "tags": ["enums", "pgEnum", "mysqlEnum", "type-safe"]
+    },
+    {
+      "id": "type-inference",
+      "title": "Type inference",
+      "body": "Use `typeof users.$inferSelect` for the shape returned by queries (all fields, nullable where optional). Use `typeof users.$inferInsert` for the shape accepted by inserts (omits auto-generated fields like serial IDs and defaulted timestamps). These types stay in sync with your schema automatically — no code generation step needed.",
+      "tags": ["types", "inference", "inferSelect", "inferInsert", "typescript"]
+    }
+  ],
+  "sub": [],
+  "links": [
+    { "uri": "drizzle/migrate", "context": "Generate SQL migrations from schema changes" },
+    { "uri": "drizzle/queries", "context": "Query the database using the tables you defined" },
+    { "uri": "drizzle/relations", "context": "Add application-level relations for nested queries" },
+    { "uri": "drizzle/config", "context": "Point drizzle-kit at your schema files" }
+  ],
+  "related": [
+    { "uri": "drizzle/migrate", "relation": "see-also", "note": "After changing the schema, run drizzle-kit generate to create migrations" },
+    { "uri": "drizzle/relations", "relation": "see-also", "note": "Relations are defined separately from tables but reference schema columns" },
+    { "uri": "drizzle/queries", "relation": "see-also", "note": "Schema tables are passed to db.select().from() and db.insert()" },
+    { "uri": "prisma/schema", "relation": "alternative", "note": "Prisma uses a custom .prisma schema language; Drizzle uses plain TypeScript" }
+  ],
+  "scripts": [
+    {
+      "id": "define-schema",
+      "name": "Define Drizzle Schema",
+      "description": "Generate a Drizzle schema file with tables, columns, indexes, and enums for PostgreSQL, MySQL, or SQLite",
+      "lang": "typescript",
+      "runtime": "node>=18",
+      "entry": "./scripts/define-schema.ts",
+      "env": {
+        "DRIZZLE_DIALECT": { "required": false, "default": "postgresql", "description": "Database dialect: postgresql, mysql, or sqlite" }
+      },
+      "packages": ["drizzle-orm", "drizzle-kit"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "dialect": { "type": "string", "enum": ["postgresql", "mysql", "sqlite"], "default": "postgresql", "description": "Database dialect" },
+        "tables": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": { "type": "string", "description": "Table name (snake_case)" },
+              "columns": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "name": { "type": "string" },
+                    "type": { "type": "string" },
+                    "constraints": { "type": "array", "items": { "type": "string" } }
+                  },
+                  "required": ["name", "type"]
+                }
+              }
+            },
+            "required": ["name"]
+          },
+          "description": "Tables to define"
+        }
+      },
+      "required": ["dialect"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "schemaPath": { "type": "string", "description": "Path to the generated schema file" },
+        "dialect": { "type": "string", "description": "Database dialect used" },
+        "tableCount": { "type": "integer", "description": "Number of tables defined" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "drizzle/config", "reason": "drizzle-kit needs a config file pointing to the schema for migration generation", "optional": true }
+  ],
+  "more": {
+    "docs": "https://orm.drizzle.team/docs/sql-schema-declaration",
+    "pg-columns": "https://orm.drizzle.team/docs/column-types/pg",
+    "mysql-columns": "https://orm.drizzle.team/docs/column-types/mysql",
+    "sqlite-columns": "https://orm.drizzle.team/docs/column-types/sqlite"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "5 min",
+    "prerequisites": [],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

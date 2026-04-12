@@ -1,0 +1,94 @@
+{
+  "name": "environment",
+  "version": "1.0.0",
+  "uri": "shell/environment",
+  "type": "context",
+  "content_type": "reference",
+  "context": "Understand and manage environment variables, PATH, shell configuration files, and process environments",
+  "info": "Environment variables are key-value pairs that configure process behavior without modifying code. Every process inherits its parent's environment. This context covers how environment variables work, how to set and export them, the role of PATH in command resolution, dotfiles that configure shell sessions (.bashrc, .bash_profile, .profile, .env), the distinction between login and non-login shells, and tools for inspecting and manipulating the environment (env, printenv, export, unset). Agents need this knowledge to configure tools, manage secrets safely, and understand why commands succeed or fail based on PATH and variable state. See [[shell/bash]] for variable expansion syntax and [[shell/processes]] for how child processes inherit environment.",
+  "parent": "shell",
+  "tags": ["environment", "env", "path", "export", "dotfiles", "bashrc", "profile", "variables"],
+  "aliases": [
+    "environment variables",
+    "env vars",
+    "PATH",
+    "export",
+    ".bashrc",
+    ".profile",
+    ".env",
+    "dotfiles",
+    "shell config",
+    "printenv",
+    "env",
+    "shell configuration"
+  ],
+  "triggers": [
+    "set an environment variable",
+    "add to PATH",
+    "what is in my PATH",
+    "where is bashrc",
+    "difference between .bashrc and .profile",
+    "load a .env file",
+    "export a variable",
+    "check environment variables",
+    "why command not found",
+    "configure shell startup"
+  ],
+  "body": "# Environment Variables\n\nEnvironment variables are the primary mechanism for configuring process behavior. They pass configuration from the shell to commands, scripts, and child processes without hardcoding values.\n\n## Setting and Exporting Variables\n\n```bash\n# Shell variable (local to current shell, NOT inherited by children)\nMY_VAR=\"value\"\n\n# Environment variable (exported to child processes)\nexport MY_VAR=\"value\"\n\n# Set and export in one line\nexport API_KEY=\"sk-abc123\"\n\n# Set for a single command only (does NOT persist)\nDEBUG=true node server.js\n\n# Unset a variable\nunset MY_VAR\n\n# Readonly variable (cannot be changed or unset)\nreadonly DB_HOST=\"localhost\"\ndeclare -r DB_HOST=\"localhost\"  # Same thing\n```\n\n## Viewing the Environment\n\n```bash\n# All environment variables\nenv                          # POSIX standard\nprintenv                     # Same, slightly different output\nexport -p                    # Bash: all exported variables\n\n# Specific variable\necho \"$PATH\"\nprintenv HOME\nprintf '%s\\n' \"$SHELL\"\n\n# All shell variables (including non-exported)\nset                          # Everything: variables, functions\ndeclare -p                   # All declared variables\n```\n\n## PATH — Command Resolution\n\nPATH is a colon-separated list of directories. When you type a command, the shell searches PATH left-to-right for a matching executable.\n\n```bash\n# View PATH\necho \"$PATH\"\n# /usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin\n\n# Add to PATH (prepend — highest priority)\nexport PATH=\"$HOME/.local/bin:$PATH\"\n\n# Add to PATH (append — lowest priority)\nexport PATH=\"$PATH:/opt/custom/bin\"\n\n# Which executable will run?\nwhich python          # First match in PATH\nwhich -a python       # ALL matches in PATH\ntype -a python        # Same, plus builtins and aliases\ncommand -v python     # POSIX-portable way to check\n\n# Common PATH troubleshooting\n# \"command not found\" means:\n# 1. The program isn't installed, OR\n# 2. Its directory isn't in PATH, OR\n# 3. The file exists but lacks execute permission\n```\n\n## Key Environment Variables\n\n| Variable | Purpose | Example |\n|----------|---------|----------|\n| `PATH` | Executable search path | `/usr/local/bin:/usr/bin:/bin` |\n| `HOME` | User home directory | `/home/user` |\n| `USER` / `LOGNAME` | Current username | `developer` |\n| `SHELL` | Login shell | `/bin/bash` |\n| `PWD` | Current working directory | `/workspaces/project` |\n| `OLDPWD` | Previous directory (`cd -`) | `/home/user` |\n| `TERM` | Terminal type | `xterm-256color` |\n| `LANG` / `LC_ALL` | Locale settings | `en_US.UTF-8` |\n| `EDITOR` / `VISUAL` | Default editor | `vim`, `code --wait` |\n| `TMPDIR` | Temporary file directory | `/tmp` |\n| `XDG_CONFIG_HOME` | User config directory | `~/.config` |\n| `XDG_DATA_HOME` | User data directory | `~/.local/share` |\n| `HISTFILE` | Shell history file | `~/.bash_history` |\n| `HISTSIZE` | History entries in memory | `1000` |\n| `PS1` | Primary prompt string | `\\u@\\h:\\w\\$ ` |\n\n## Shell Configuration Files\n\nShell startup files execute in a specific order depending on whether the shell is a login shell, interactive shell, or neither.\n\n### Login Shell (ssh, `su -`, terminal login)\n\n```\n1. /etc/profile           (system-wide)\n2. ~/.bash_profile        (user, checked first)\n   OR ~/.bash_login       (fallback)\n   OR ~/.profile          (fallback)\n3. ~/.bash_logout         (on exit)\n```\n\n### Interactive Non-Login Shell (new terminal tab, subshell)\n\n```\n1. /etc/bash.bashrc       (system-wide, some distros)\n2. ~/.bashrc              (user)\n```\n\n### Non-Interactive Shell (scripts, cron jobs)\n\n```\n1. $BASH_ENV              (if set, this file is sourced)\n```\n\n### Best Practice\n\nMost users put everything in `~/.bashrc` and have `~/.bash_profile` source it:\n\n```bash\n# ~/.bash_profile\n[[ -f ~/.bashrc ]] && source ~/.bashrc\n```\n\n## .env Files\n\nDotenv files store project-specific configuration. They are NOT automatically loaded by bash — you need to source them or use a dotenv library.\n\n```bash\n# .env file format\nDATABASE_URL=postgres://localhost:5432/mydb\nREDIS_URL=redis://localhost:6379\nSECRET_KEY=supersecret123\nDEBUG=true\n\n# Load .env in bash (careful: no export prefix in file)\nset -a                       # Auto-export all variables\nsource .env\nset +a                       # Stop auto-exporting\n\n# Alternative: export each line\nexport $(grep -v '^#' .env | xargs)\n\n# Load specific variables\neval $(grep '^DATABASE_URL=' .env)\n```\n\n**Security**: NEVER commit `.env` files to git. Add `.env` to `.gitignore`. Use `.env.example` as a template with placeholder values.\n\n## Process Environment Inheritance\n\nChild processes inherit the parent's exported environment:\n\n```bash\nexport FOO=\"bar\"      # Set in parent\nbash -c 'echo $FOO'  # Child sees \"bar\"\n\nBAZ=\"qux\"             # NOT exported\nbash -c 'echo $BAZ'  # Child sees \"\" (empty)\n\n# Override for single child\nFOO=\"override\" bash -c 'echo $FOO'   # \"override\"\necho \"$FOO\"                            # Still \"bar\" in parent\n```\n\nOn Linux, inspect a running process's environment:\n```bash\ncat /proc/PID/environ | tr '\\0' '\\n'\n```\n\n## Environment Hygiene for Agents\n\n```bash\n# Check required variables before proceeding\n: \"${DATABASE_URL:?DATABASE_URL must be set}\"\n: \"${API_KEY:?API_KEY must be set}\"\n\n# Use defaults for optional variables\nPORT=\"${PORT:-8080}\"\nLOG_LEVEL=\"${LOG_LEVEL:-info}\"\n\n# Isolate environment for a subprocess\nenv -i HOME=\"$HOME\" PATH=\"$PATH\" command   # Clean environment\n\n# Mask secrets in logs\necho \"Using API key: ${API_KEY:0:4}...\"\n```\n",
+  "sections": [
+    {
+      "id": "path",
+      "title": "PATH and command resolution",
+      "body": "PATH is a colon-separated list of directories searched left-to-right for executables. `which command` shows the first match. `which -a command` shows all matches. `type -a command` includes builtins and aliases. \"command not found\" means the executable isn't in PATH or doesn't have execute permission. Prepend to PATH for priority (`PATH=\"$HOME/bin:$PATH\"`), append for fallback (`PATH=\"$PATH:/opt/bin\"`). PATH changes in a script only affect that script's process unless exported and sourced.",
+      "tags": ["path", "which", "type", "command-not-found", "executable", "resolution"]
+    },
+    {
+      "id": "dotfiles",
+      "title": "Shell configuration files",
+      "body": "Login shells source `~/.bash_profile` (or `~/.profile`). Interactive non-login shells source `~/.bashrc`. Best practice: put everything in `~/.bashrc` and have `~/.bash_profile` source it. System-wide config lives in `/etc/profile` and `/etc/bash.bashrc`. Non-interactive shells (scripts) source `$BASH_ENV` if set. Zsh uses `~/.zshrc` (interactive) and `~/.zprofile` (login). Changes to dotfiles take effect in new shells — use `source ~/.bashrc` to reload in current shell.",
+      "tags": ["bashrc", "bash-profile", "profile", "dotfiles", "login-shell", "interactive", "zshrc"]
+    },
+    {
+      "id": "dotenv",
+      "title": "Working with .env files",
+      "body": ".env files store project-specific environment variables. They are not loaded automatically by bash. Load with `set -a; source .env; set +a` (auto-export mode). Alternatively: `export $(grep -v '^#' .env | xargs)`. Never commit .env files — add to .gitignore, provide .env.example as a template. Node.js uses the `dotenv` package. Python uses `python-dotenv`. Docker Compose reads .env files natively. Format: `KEY=value` (no spaces around `=`, no export prefix).",
+      "tags": ["dotenv", "env-file", "secrets", "gitignore", "configuration", "project-config"]
+    },
+    {
+      "id": "inheritance",
+      "title": "Environment inheritance",
+      "body": "Child processes inherit all exported variables from their parent. `export VAR=val` makes VAR available to children. Non-exported shell variables (`VAR=val`) are local. Override for a single command: `VAR=val command`. Process environment is copied at fork — subsequent parent changes don't propagate. On Linux, inspect `/proc/PID/environ` for a process's environment. Use `env -i` to start a process with a clean environment. `exec env` can be used to replace the current process with a modified environment.",
+      "tags": ["inheritance", "export", "child-process", "fork", "env-i", "proc-environ"]
+    }
+  ],
+  "links": [
+    { "uri": "shell", "context": "Parent shell ecosystem" },
+    { "uri": "shell/bash", "context": "Variable expansion syntax ($var, ${var:-default})" },
+    { "uri": "shell/processes", "context": "Processes inherit parent environment" },
+    { "uri": "shell/scripting", "context": "Scripts use environment variables for configuration" },
+    { "uri": "shell/files", "context": "Dotfiles and .env file management" }
+  ],
+  "related": [
+    { "uri": "shell/bash", "relation": "prerequisite", "note": "Bash expansion syntax is how environment variables are accessed" },
+    { "uri": "shell/processes", "relation": "see-also", "note": "Environment is inherited across process boundaries" },
+    { "uri": "shell/scripting", "relation": "see-also", "note": "Scripts rely on environment variables for external configuration" }
+  ],
+  "more": {
+    "docs": "https://www.gnu.org/software/bash/manual/bash.html#Shell-Variables",
+    "wiki": "https://wiki.archlinux.org/title/Environment_variables"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "AI agents, developers",
+    "estimated_reading_time": "5 min",
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

@@ -1,0 +1,83 @@
+{
+  "name": "troubleshooting",
+  "version": "1.0.0",
+  "uri": "cloudflare/troubleshooting",
+  "type": "context",
+  "context": "Debug Cloudflare Workers errors, deployment failures, binding issues, and platform limits",
+  "info": "This node covers common errors, debugging strategies, and platform limits across the Cloudflare developer platform. Workers have specific constraints: 1MB script size (free), 10MB (paid), 10ms CPU time (free), 30s (paid), 128MB memory, no Node.js built-in modules (use compatibility flags). Common failures include binding misconfiguration, wrangler.toml errors, authentication failures, and hitting rate or size limits. The primary debugging tools are `wrangler tail` for live log streaming, `wrangler dev` for local development, and the Workers dashboard for error analytics.",
+  "parent": "cloudflare",
+  "tags": ["troubleshooting", "debugging", "errors", "limits", "wrangler-tail", "common-errors"],
+  "aliases": [
+    "cloudflare troubleshooting",
+    "cloudflare errors",
+    "worker not working",
+    "cloudflare debugging",
+    "cf debug",
+    "wrangler errors",
+    "worker limits",
+    "cloudflare limits"
+  ],
+  "triggers": [
+    "my cloudflare worker is not working",
+    "debug a cloudflare worker",
+    "cloudflare deployment failed",
+    "worker size limit exceeded",
+    "cloudflare cpu time exceeded",
+    "wrangler deploy error",
+    "what are cloudflare worker limits"
+  ],
+  "body": "# Troubleshooting Cloudflare\n\n## Common Errors\n\n### 1. Script Too Large (1101)\n\n```\nError: Script startup exceeded CPU time limit\n```\n\nWorkers have size limits: 1MB compressed (free), 10MB compressed (paid). Solutions:\n- Tree-shake unused dependencies\n- Use `wrangler deploy --minify`\n- Move large data to KV or R2 instead of bundling\n- Split into multiple Workers with Service Bindings\n\n### 2. CPU Time Exceeded (1102)\n\n```\nError: Worker exceeded CPU time limit\n```\n\nFree plan: 10ms CPU time. Paid: 30s CPU time (not wall-clock — waiting for I/O doesn't count). Solutions:\n- Offload heavy computation to a Durable Object or external service\n- Use `waitUntil()` for non-critical background work\n- Cache expensive computations in [[cloudflare/kv]]\n\n### 3. Memory Limit (1103)\n\nWorkers have 128MB memory limit. Solutions:\n- Stream large responses instead of buffering\n- Process data in chunks\n- Use [[cloudflare/r2]] for large objects instead of in-memory processing\n\n### 4. Binding Not Found\n\n```\nError: No binding named 'MY_KV' found\n```\n\nBinding is missing from `wrangler.toml` or environment doesn't match. Check:\n- Binding name in `wrangler.toml` matches the code reference\n- Correct environment section (production vs preview)\n- Run `wrangler deploy` after adding bindings\n\n### 5. Authentication Errors (9109, 10000)\n\n```json\n{\"success\":false,\"errors\":[{\"code\":10000,\"message\":\"Authentication error\"}]}\n```\n\nSolutions:\n- Verify `CLOUDFLARE_API_TOKEN` is set and not expired\n- Check token has required permissions. See [[cloudflare/auth#permission-sets]]\n- Ensure `CLOUDFLARE_ACCOUNT_ID` is correct\n- Run `wrangler whoami` to verify credentials\n\n### 6. Subrequest Limit\n\nWorkers can make up to 50 subrequests (fetch calls) per invocation (free) or 1000 (paid). Solutions:\n- Batch API calls where possible\n- Use Durable Objects for coordination\n- Cache responses in [[cloudflare/kv]] to reduce repeated fetches\n\n## Debugging Tools\n\n### wrangler tail\n\nStream live logs from a deployed Worker:\n\n```bash\n# Stream all logs\nwrangler tail my-worker\n\n# Filter by status\nwrangler tail my-worker --status error\n\n# Filter by search string\nwrangler tail my-worker --search \"TypeError\"\n\n# JSON output for piping\nwrangler tail my-worker --format json\n```\n\n### wrangler dev\n\nLocal development with hot reload:\n\n```bash\n# Start local dev server\nwrangler dev\n\n# With remote resources (KV, R2, D1)\nwrangler dev --remote\n\n# Specify port\nwrangler dev --port 8787\n```\n\n### Console Logging\n\n```javascript\nexport default {\n  async fetch(request, env) {\n    console.log('Request URL:', request.url);\n    console.log('Request method:', request.method);\n    console.log('KV binding exists:', !!env.MY_KV);\n    // Logs appear in wrangler tail and wrangler dev\n  }\n};\n```\n\n## Platform Limits\n\n| Resource | Free | Paid |\n|----------|------|------|\n| Requests/day | 100,000 | 10M included, then $0.50/M |\n| CPU time/request | 10ms | 30s |\n| Script size | 1MB | 10MB |\n| Memory | 128MB | 128MB |\n| Subrequests | 50 | 1,000 |\n| Environment variables | 64 | 128 |\n| KV reads/day | 100,000 | $0.50/M |\n| KV writes/day | 1,000 | $5.00/M |\n| KV value size | 25MB | 25MB |\n| R2 storage | 10GB | $0.015/GB/mo |\n| D1 rows read/day | 5M | $0.001/M |\n| D1 rows written/day | 100K | $1.00/M |\n| D1 database size | 500MB | 10GB |\n",
+  "sections": [
+    {
+      "id": "common-errors",
+      "title": "Common error codes",
+      "body": "1101: Script too large. 1102: CPU time exceeded. 1103: Memory limit. 9109/10000: Authentication error. Check [[cloudflare/auth]] for credential setup. Binding errors (no binding named X) mean `wrangler.toml` is missing the binding or the environment doesn't match.",
+      "tags": ["errors", "error-codes", "1101", "1102", "10000"]
+    },
+    {
+      "id": "debugging-tools",
+      "title": "Debugging tools",
+      "body": "`wrangler tail <worker>` streams live logs from production. `wrangler dev` runs locally with hot reload. `wrangler dev --remote` uses real KV/R2/D1 bindings. `console.log()` in Worker code appears in both tail and dev output. The Workers dashboard shows error rates, CPU time, and request analytics.",
+      "tags": ["wrangler-tail", "wrangler-dev", "logging", "console-log"]
+    },
+    {
+      "id": "limits",
+      "title": "Platform limits reference",
+      "body": "Free plan: 100K requests/day, 10ms CPU, 1MB script, 128MB memory, 50 subrequests. Paid: 10M requests/month included, 30s CPU, 10MB script, 128MB memory, 1000 subrequests. KV: 25MB max value, 100K reads/day free. R2: 10GB free storage, zero egress. D1: 500MB free, 5M reads/day free.",
+      "tags": ["limits", "quotas", "free-tier", "paid-tier"]
+    }
+  ],
+  "links": [
+    { "uri": "cloudflare/auth", "context": "Fix authentication errors with correct token setup" },
+    { "uri": "cloudflare/workers", "context": "Worker deployment and configuration" },
+    { "uri": "cloudflare/wrangler", "context": "CLI debugging commands (tail, dev)" },
+    { "uri": "cloudflare/workers/bindings", "context": "Fix binding configuration issues" },
+    { "uri": "cloudflare/kv", "context": "KV limits and caching strategies" },
+    { "uri": "cloudflare/r2", "context": "R2 storage limits and streaming" },
+    { "uri": "cloudflare/d1", "context": "D1 database size and query limits" }
+  ],
+  "related": [
+    { "uri": "cloudflare/wrangler", "relation": "see-also", "note": "Wrangler provides the primary debugging tools (tail, dev)" },
+    { "uri": "cloudflare/auth", "relation": "see-also", "note": "Most authentication errors are token misconfiguration" }
+  ],
+  "more": {
+    "docs": "https://developers.cloudflare.com/workers/observability/",
+    "api": "https://developers.cloudflare.com/api"
+  },
+  "content_type": "guide",
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "5 min",
+    "prerequisites": ["cloudflare/auth"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

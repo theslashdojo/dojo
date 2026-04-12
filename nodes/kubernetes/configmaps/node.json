@@ -1,0 +1,136 @@
+{
+  "name": "configmaps",
+  "version": "1.0.0",
+  "uri": "kubernetes/configmaps",
+  "type": "skill",
+  "context": "Manage ConfigMaps and Secrets in Kubernetes — externalize configuration, inject env vars, mount config files",
+  "info": "ConfigMaps and Secrets externalize application configuration from container images. ConfigMaps store non-sensitive key-value data (config files, feature flags, environment variables). Secrets store sensitive data (passwords, tokens, TLS certificates) with base64 encoding and optional encryption at rest. Agents use ConfigMaps and Secrets to configure [[kubernetes/pods]] without rebuilding images — inject values as environment variables or mount them as files. Changes to ConfigMaps/Secrets can trigger Pod restarts via annotations or tools like Reloader.",
+  "parent": "kubernetes",
+  "tags": ["configmaps", "secrets", "configuration", "env-vars", "config-files", "sensitive-data", "tls"],
+  "aliases": [
+    "kubernetes configmaps",
+    "k8s configmaps",
+    "configmap",
+    "cm",
+    "kubernetes secrets",
+    "k8s secrets",
+    "secret",
+    "config map",
+    "environment variables kubernetes",
+    "mount config file"
+  ],
+  "triggers": [
+    "create a configmap",
+    "create a kubernetes secret",
+    "inject environment variables in kubernetes",
+    "mount a config file in a pod",
+    "store a password in kubernetes",
+    "update configmap values",
+    "create a tls secret",
+    "how do configmaps work"
+  ],
+  "body": "# ConfigMaps and Secrets\n\nConfigMaps and Secrets decouple configuration from container images. Change configuration without rebuilding or redeploying images.\n\n## ConfigMap\n\n### Create from YAML\n\n```yaml\napiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: app-config\n  namespace: production\ndata:\n  DATABASE_HOST: postgres.production.svc.cluster.local\n  DATABASE_PORT: \"5432\"\n  LOG_LEVEL: info\n  FEATURE_NEW_UI: \"true\"\n  nginx.conf: |\n    server {\n      listen 80;\n      location / {\n        proxy_pass http://localhost:8080;\n      }\n    }\n```\n\n### Create from CLI\n\n```bash\n# From literal values\nkubectl create configmap app-config \\\n  --from-literal=DATABASE_HOST=postgres.production.svc.cluster.local \\\n  --from-literal=LOG_LEVEL=info\n\n# From a file\nkubectl create configmap nginx-config --from-file=nginx.conf\n\n# From an env file\nkubectl create configmap app-env --from-env-file=.env.production\n\n# From a directory (each file becomes a key)\nkubectl create configmap configs --from-file=./config-dir/\n```\n\n## Secrets\n\n### Create from YAML\n\n```yaml\napiVersion: v1\nkind: Secret\nmetadata:\n  name: db-credentials\n  namespace: production\ntype: Opaque\nstringData:       # plain text — Kubernetes encodes to base64\n  username: admin\n  password: s3cret-p@ssw0rd\n  connection-string: postgresql://admin:s3cret-p@ssw0rd@postgres:5432/mydb\n```\n\n### Create from CLI\n\n```bash\n# From literal values\nkubectl create secret generic db-credentials \\\n  --from-literal=username=admin \\\n  --from-literal=password='s3cret-p@ssw0rd'\n\n# TLS secret from cert and key files\nkubectl create secret tls my-tls-secret \\\n  --cert=./tls.crt \\\n  --key=./tls.key\n\n# Docker registry secret\nkubectl create secret docker-registry regcred \\\n  --docker-server=myregistry.io \\\n  --docker-username=user \\\n  --docker-password=token\n\n# View decoded secret value\nkubectl get secret db-credentials -o jsonpath='{.data.password}' | base64 -d\n```\n\n## Consuming in Pods\n\n### As Environment Variables\n\n```yaml\nspec:\n  containers:\n    - name: app\n      image: myregistry/my-app:v1.2.0\n      env:\n        # Single key from ConfigMap\n        - name: LOG_LEVEL\n          valueFrom:\n            configMapKeyRef:\n              name: app-config\n              key: LOG_LEVEL\n        # Single key from Secret\n        - name: DB_PASSWORD\n          valueFrom:\n            secretKeyRef:\n              name: db-credentials\n              key: password\n      # All keys from ConfigMap as env vars\n      envFrom:\n        - configMapRef:\n            name: app-config\n        - secretRef:\n            name: db-credentials\n```\n\n### As Mounted Files\n\n```yaml\nspec:\n  containers:\n    - name: app\n      image: myregistry/my-app:v1.2.0\n      volumeMounts:\n        - name: config-volume\n          mountPath: /etc/app/config\n          readOnly: true\n        - name: tls-volume\n          mountPath: /etc/tls\n          readOnly: true\n  volumes:\n    - name: config-volume\n      configMap:\n        name: app-config\n        items:                  # optional: select specific keys\n          - key: nginx.conf\n            path: nginx.conf   # file name inside mount path\n    - name: tls-volume\n      secret:\n        secretName: my-tls-secret\n```\n\nMounted ConfigMaps are automatically updated when the ConfigMap changes (within kubelet sync period, ~1 minute). Env vars are NOT updated — they require a Pod restart.\n\n## kubectl Commands\n\n```bash\n# List\nkubectl get configmaps -n production\nkubectl get secrets -n production\n\n# Describe\nkubectl describe configmap app-config\nkubectl describe secret db-credentials\n\n# View data\nkubectl get configmap app-config -o yaml\nkubectl get secret db-credentials -o yaml  # base64 encoded\n\n# Edit\nkubectl edit configmap app-config\n\n# Delete\nkubectl delete configmap app-config\nkubectl delete secret db-credentials\n```\n\n## Secret Types\n\n| Type | Purpose |\n|------|----------|\n| `Opaque` | Arbitrary key-value data (default) |\n| `kubernetes.io/tls` | TLS certificate and key |\n| `kubernetes.io/dockerconfigjson` | Docker registry credentials |\n| `kubernetes.io/basic-auth` | Username and password |\n| `kubernetes.io/ssh-auth` | SSH private key |\n| `kubernetes.io/service-account-token` | ServiceAccount token (auto-created) |\n\n## Security Considerations\n\n- Secrets are base64-encoded, **not encrypted** by default\n- Enable encryption at rest in the API server (`EncryptionConfiguration`)\n- Use RBAC to restrict Secret access: [[kubernetes/rbac]]\n- Consider external secret managers: AWS Secrets Manager, HashiCorp Vault, External Secrets Operator\n- Never commit Secrets to git — use sealed-secrets or external-secrets\n\n## Environment Variables\n\n| Variable | Purpose |\n|----------|----------|\n| `KUBECONFIG` | Path to kubeconfig file |\n| `KUBE_NAMESPACE` | Default namespace |\n",
+  "sections": [
+    {
+      "id": "configmaps",
+      "title": "ConfigMaps",
+      "body": "ConfigMaps store non-sensitive configuration data as key-value pairs. Create from literals, files, directories, or env files. Keys become env var names or file names when consumed by Pods. Mounted ConfigMaps auto-update when changed (file mounts only — env vars require Pod restart). Maximum size: 1 MiB per ConfigMap.",
+      "tags": ["configmap", "config", "key-value", "env-file", "auto-update"]
+    },
+    {
+      "id": "secrets",
+      "title": "Secrets",
+      "body": "Secrets store sensitive data (passwords, tokens, certificates) with base64 encoding. Types: Opaque (generic), TLS (cert+key), docker-registry (image pull), basic-auth, ssh-auth. Secrets are stored in etcd — enable encryption at rest for production. Use [[kubernetes/rbac]] to restrict access. For external secret management, use External Secrets Operator with AWS Secrets Manager, HashiCorp Vault, or GCP Secret Manager.",
+      "tags": ["secrets", "passwords", "tokens", "tls", "encryption", "vault", "base64"]
+    },
+    {
+      "id": "consumption",
+      "title": "Consuming config in Pods",
+      "body": "Two methods: 1) **Environment variables** — `valueFrom.configMapKeyRef` or `secretKeyRef` for single keys, `envFrom` for all keys. Simple but not auto-updated. 2) **Volume mounts** — mount as files at a path. Auto-updated when source changes. Use `items` to select specific keys. Use `subPath` to mount a single file without replacing the directory. Mounted Secrets have file permissions 0644 by default — set `defaultMode: 0400` for restrictive permissions.",
+      "tags": ["env-vars", "volume-mount", "envfrom", "valuefrom", "subpath", "auto-update"]
+    }
+  ],
+  "links": [
+    { "uri": "kubernetes/pods", "context": "Pods consume ConfigMaps and Secrets as env vars or file mounts" },
+    { "uri": "kubernetes/deployments", "context": "Update ConfigMaps to change Deployment configuration" },
+    { "uri": "kubernetes/volumes", "context": "ConfigMaps and Secrets can be mounted as volumes" },
+    { "uri": "kubernetes/rbac", "context": "RBAC controls who can read Secrets" },
+    { "uri": "kubernetes/namespaces", "context": "ConfigMaps and Secrets are namespace-scoped" }
+  ],
+  "related": [
+    { "uri": "kubernetes/pods", "relation": "see-also", "note": "Pods are the consumers of ConfigMaps and Secrets" },
+    { "uri": "kubernetes/rbac", "relation": "see-also", "note": "RBAC restricts who can access Secrets" },
+    { "uri": "kubernetes/volumes", "relation": "see-also", "note": "ConfigMaps and Secrets are projected as volume types" }
+  ],
+  "scripts": [
+    {
+      "id": "create-configmap",
+      "name": "Create ConfigMap",
+      "description": "Create a ConfigMap from literal key-value pairs",
+      "lang": "bash",
+      "runtime": "kubectl",
+      "entry": "./scripts/create-configmap.sh",
+      "inline": "#!/bin/bash\nset -euo pipefail\nNAME=${1:?Usage: create-configmap.sh <name> <key=value> [key=value...]}\nshift\nNS=${KUBE_NAMESPACE:-default}\n\nARGS=()\nfor KV in \"$@\"; do\n  ARGS+=(\"--from-literal=$KV\")\ndone\n\nkubectl create configmap \"$NAME\" \"${ARGS[@]}\" -n \"$NS\" --dry-run=client -o yaml | kubectl apply -f -\necho \"ConfigMap $NAME created/updated in namespace $NS\"\nkubectl get configmap \"$NAME\" -n \"$NS\" -o yaml",
+      "env": {
+        "KUBECONFIG": { "required": false, "secret": false, "default": "~/.kube/config", "description": "Path to kubeconfig file" },
+        "KUBE_NAMESPACE": { "required": false, "secret": false, "default": "default", "description": "Target namespace" }
+      },
+      "packages": []
+    },
+    {
+      "id": "create-secret",
+      "name": "Create Secret",
+      "description": "Create a generic Secret from literal key-value pairs",
+      "lang": "bash",
+      "runtime": "kubectl",
+      "entry": "./scripts/create-secret.sh",
+      "inline": "#!/bin/bash\nset -euo pipefail\nNAME=${1:?Usage: create-secret.sh <name> <key=value> [key=value...]}\nshift\nNS=${KUBE_NAMESPACE:-default}\n\nARGS=()\nfor KV in \"$@\"; do\n  ARGS+=(\"--from-literal=$KV\")\ndone\n\nkubectl create secret generic \"$NAME\" \"${ARGS[@]}\" -n \"$NS\" --dry-run=client -o yaml | kubectl apply -f -\necho \"Secret $NAME created/updated in namespace $NS\"",
+      "env": {
+        "KUBECONFIG": { "required": false, "secret": false, "default": "~/.kube/config", "description": "Path to kubeconfig file" },
+        "KUBE_NAMESPACE": { "required": false, "secret": false, "default": "default", "description": "Target namespace" }
+      },
+      "packages": []
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "description": "ConfigMap or Secret name" },
+        "namespace": { "type": "string", "default": "default", "description": "Target namespace" },
+        "data": { "type": "object", "description": "Key-value pairs to store" },
+        "isSecret": { "type": "boolean", "default": false, "description": "Whether to create a Secret instead of ConfigMap" }
+      },
+      "required": ["name", "data"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "kind": { "type": "string", "enum": ["ConfigMap", "Secret"] },
+        "keys": { "type": "array", "items": { "type": "string" }, "description": "Keys stored in the resource" }
+      }
+    }
+  },
+  "depends": [],
+  "more": {
+    "docs": "https://kubernetes.io/docs/concepts/configuration/configmap/",
+    "secrets": "https://kubernetes.io/docs/concepts/configuration/secret/",
+    "api": "https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.31/#configmap-v1-core"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, DevOps engineers, SREs, AI agents",
+    "estimated_reading_time": "5 min",
+    "prerequisites": [],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

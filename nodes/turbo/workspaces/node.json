@@ -1,0 +1,134 @@
+{
+  "name": "workspaces",
+  "version": "1.0.0",
+  "uri": "turbo/workspaces",
+  "type": "skill",
+  "context": "Structure and manage monorepo workspaces — apps/, packages/, internal packages, and workspace dependencies",
+  "info": "This skill covers structuring a Turborepo monorepo: defining workspace directories (apps/ for applications, packages/ for shared libraries), configuring workspace discovery via package manager (npm/yarn workspaces in package.json, pnpm-workspace.yaml), creating internal packages with proper exports and naming conventions, managing cross-workspace dependencies, and using turbo prune to create minimal deployment subsets. Agents use this skill when bootstrapping a monorepo, adding new workspaces, restructuring packages, or setting up internal shared libraries. See [[turbo/config]] for turbo.json setup, [[turbo/pipelines]] for task orchestration across workspaces, and [[turbo/caching]] for workspace-level cache behavior.",
+  "parent": "turbo",
+  "tags": ["workspaces", "monorepo", "packages", "apps", "internal-packages", "turbo-prune", "workspace-deps"],
+  "aliases": [
+    "turbo workspaces",
+    "turborepo workspaces",
+    "monorepo workspaces",
+    "turbo packages",
+    "turbo apps",
+    "turbo prune",
+    "monorepo structure",
+    "internal packages",
+    "workspace dependencies",
+    "turbo gen"
+  ],
+  "triggers": [
+    "create a new workspace in turbo",
+    "add a package to the monorepo",
+    "structure a turborepo monorepo",
+    "set up apps and packages directories",
+    "create an internal shared library",
+    "prune turborepo for deployment",
+    "add a workspace dependency",
+    "generate a new workspace with turbo gen",
+    "configure pnpm workspaces for turbo"
+  ],
+  "body": "# Workspace Management\n\nTurborepo workspaces are the individual packages in your monorepo. Each workspace is a directory with its own package.json, source code, and scripts. Turborepo discovers workspaces through your package manager's workspace configuration.\n\n## Directory Structure\n\n```\nmy-monorepo/\n├── apps/\n│   ├── web/              # Next.js app\n│   │   ├── package.json\n│   │   └── src/\n│   └── api/              # Express API\n│       ├── package.json\n│       └── src/\n├── packages/\n│   ├── ui/               # Shared React components\n│   │   ├── package.json\n│   │   └── src/\n│   ├── utils/            # Shared utilities\n│   │   ├── package.json\n│   │   └── src/\n│   └── config/           # Shared configs (tsconfig, eslint)\n│       ├── package.json\n│       └── src/\n├── package.json          # Root — declares workspaces\n├── turbo.json            # Turborepo config\n└── pnpm-workspace.yaml   # (pnpm only)\n```\n\n## Workspace Configuration\n\n### npm / yarn / bun\n\n```json\n{\n  \"private\": true,\n  \"workspaces\": [\"apps/*\", \"packages/*\"],\n  \"devDependencies\": {\n    \"turbo\": \"latest\"\n  },\n  \"packageManager\": \"pnpm@9.0.0\"\n}\n```\n\n### pnpm\n\n```yaml\n# pnpm-workspace.yaml\npackages:\n  - \"apps/*\"\n  - \"packages/*\"\n```\n\n## Internal Package Setup\n\nEvery workspace needs a properly configured package.json:\n\n```json\n{\n  \"name\": \"@repo/ui\",\n  \"version\": \"0.0.0\",\n  \"private\": true,\n  \"exports\": {\n    \".\": \"./src/index.ts\",\n    \"./button\": \"./src/button.tsx\",\n    \"./card\": \"./src/card.tsx\"\n  },\n  \"scripts\": {\n    \"build\": \"tsup src/index.ts --format esm,cjs --dts\",\n    \"dev\": \"tsup src/index.ts --format esm,cjs --dts --watch\",\n    \"lint\": \"eslint src/\",\n    \"typecheck\": \"tsc --noEmit\"\n  },\n  \"devDependencies\": {\n    \"typescript\": \"^5.0.0\",\n    \"tsup\": \"^8.0.0\"\n  }\n}\n```\n\n**Key conventions:**\n- Use `@repo/` or `@org/` namespace prefixes to avoid npm registry conflicts\n- Set `private: true` for internal packages not published to npm\n- Use the `exports` field to define clean entrypoints\n- Include `build`, `lint`, and `typecheck` scripts for [[turbo/pipelines]] to orchestrate\n\n## Consuming Internal Packages\n\nAdd workspace dependencies in the consuming package:\n\n```json\n{\n  \"name\": \"@repo/web\",\n  \"dependencies\": {\n    \"@repo/ui\": \"workspace:*\",\n    \"@repo/utils\": \"workspace:*\"\n  }\n}\n```\n\npnpm uses `workspace:*` protocol. npm and yarn resolve workspace packages by name matching.\n\nImport in code:\n```typescript\nimport { Button } from \"@repo/ui/button\";\nimport { formatDate } from \"@repo/utils\";\n```\n\n## Adding a New Workspace\n\n```bash\n# Manual approach\nmkdir -p packages/new-lib/src\ncd packages/new-lib\nnpm init -y  # or pnpm init\n\n# Using turbo gen\nturbo gen workspace\n```\n\nAfter creating the workspace, install dependencies from the root to update the lockfile:\n```bash\npnpm install  # or npm install / yarn\n```\n\n## turbo prune\n\nCreate a minimal monorepo subset for deployment:\n\n```bash\n# Create sparse monorepo with only web and its dependencies\nturbo prune web\n\n# Output structure:\n# out/\n#   json/       — pruned package.json files\n#   full/       — full source code\n#   pnpm-lock.yaml (or equivalent)\n```\n\nThis is useful for Docker builds — copy only the packages needed for a specific app:\n\n```dockerfile\nFROM node:20-alpine AS builder\nWORKDIR /app\n\n# Prune to get only what web needs\nCOPY . .\nRUN npx turbo prune web --docker\n\n# Install pruned dependencies\nFROM node:20-alpine AS installer\nWORKDIR /app\nCOPY --from=builder /app/out/json/ .\nCOPY --from=builder /app/out/pnpm-lock.yaml ./pnpm-lock.yaml\nRUN pnpm install --frozen-lockfile\n\n# Build\nCOPY --from=builder /app/out/full/ .\nRUN pnpm turbo build --filter=web\n```\n\n## Constraints\n\n- **No nested workspace globs**: `apps/**` is not supported — use `apps/*` and `apps/group/*`\n- **No cross-package relative imports**: Never use `../` paths — install packages as dependencies\n- **Every workspace needs package.json**: Directories without package.json are not workspaces\n- **Workspace names must be unique**: The `name` field in package.json must be unique across the monorepo\n\n## Environment Variables\n\n| Variable | Purpose |\n|----------|----------|\n| `TURBO_FILTER` | Default --filter value |\n\n## Filtering Workspaces\n\n```bash\nturbo build --filter=web            # By package name\nturbo build --filter=@repo/ui       # By scoped name\nturbo build --filter={./apps/*}     # By directory pattern\nturbo build --filter=web...         # Package and its dependencies\nturbo build --filter=...web         # Package and its dependents\nturbo build --filter=[HEAD^1]       # Changed since last commit\nturbo build --filter=web --filter=api  # Multiple filters\n```\n",
+  "sections": [
+    {
+      "id": "directory-structure",
+      "title": "Monorepo directory structure",
+      "body": "The standard Turborepo layout uses `apps/` for deployable applications and `packages/` for shared libraries. Each directory under these globs is a workspace with its own package.json. The root contains turbo.json, the root package.json (with `private: true` and workspace config), and the lockfile. For pnpm, workspaces are declared in pnpm-workspace.yaml; for npm/yarn/bun, in the root package.json `workspaces` array.",
+      "tags": ["directory-structure", "apps", "packages", "layout"]
+    },
+    {
+      "id": "internal-packages",
+      "title": "Creating internal packages",
+      "body": "Internal packages use `@repo/` or `@org/` namespaces, set `private: true`, and define clean entrypoints via the `exports` field. Consumers add them as dependencies with `workspace:*` (pnpm) or by name (npm/yarn). The `exports` field maps import paths to source files: `\".\": \"./src/index.ts\"`, `\"./button\": \"./src/button.tsx\"`. Include build, lint, and typecheck scripts for Turborepo orchestration.",
+      "tags": ["internal-packages", "exports", "namespace", "workspace-protocol"]
+    },
+    {
+      "id": "turbo-prune",
+      "title": "Pruning for deployment",
+      "body": "Use `turbo prune <workspace>` to generate a minimal monorepo with only the target workspace and its dependencies. The `--docker` flag generates a Docker-optimized layout with `out/json/` (package.json files for dependency install layer) and `out/full/` (full source for build layer). This dramatically reduces Docker image size and build time for monorepo deployments.",
+      "tags": ["prune", "docker", "deployment", "minimal-monorepo"]
+    },
+    {
+      "id": "filtering",
+      "title": "Workspace filtering",
+      "body": "The `--filter` flag targets specific workspaces for task execution. Filter by name (`--filter=web`), scoped name (`--filter=@repo/ui`), directory pattern (`--filter={./apps/*}`), dependency graph (`--filter=web...` for dependencies, `--filter=...web` for dependents), or git changes (`--filter=[HEAD^1]`). Combine multiple filters. Use `!` to negate: `--filter=!web`. The `--affected` flag auto-filters to packages changed on the current branch.",
+      "tags": ["filter", "scope", "affected", "dependency-graph", "git-changes"]
+    },
+    {
+      "id": "turbo-gen",
+      "title": "Generating workspaces",
+      "body": "Use `turbo gen workspace` to scaffold a new workspace interactively. It creates the directory, package.json, and initial files. Custom generators can be defined in the `turbo/generators` directory at the repo root using Plop templates. This standardizes workspace creation across teams.",
+      "tags": ["gen", "generator", "scaffold", "template"]
+    }
+  ],
+  "links": [
+    { "uri": "turbo", "context": "Parent Turborepo ecosystem" },
+    { "uri": "turbo/config", "context": "turbo.json configuration for the monorepo" },
+    { "uri": "turbo/pipelines", "context": "Task orchestration across workspaces" },
+    { "uri": "turbo/caching", "context": "Caching behavior per workspace" },
+    { "uri": "turbo/troubleshooting", "context": "Debug workspace resolution issues" },
+    { "uri": "typescript", "context": "TypeScript project references across workspaces" }
+  ],
+  "related": [
+    { "uri": "turbo/config", "relation": "prerequisite", "note": "Workspace patterns must be configured in package manager config and turbo.json" },
+    { "uri": "turbo/pipelines", "relation": "see-also", "note": "Tasks run across workspaces based on dependency graph" },
+    { "uri": "typescript", "relation": "see-also", "note": "TypeScript project references mirror workspace dependencies" }
+  ],
+  "scripts": [
+    {
+      "id": "manage-workspaces",
+      "name": "Manage Workspaces",
+      "description": "Create new workspaces, list existing ones, or validate workspace configuration",
+      "lang": "bash",
+      "runtime": "bash>=4",
+      "entry": "./scripts/manage-workspaces.sh",
+      "env": {},
+      "packages": ["jq"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "action": { "type": "string", "enum": ["create", "list", "validate", "prune"], "description": "Action to perform" },
+        "name": { "type": "string", "description": "Workspace name (for create)" },
+        "directory": { "type": "string", "enum": ["apps", "packages"], "description": "Parent directory (for create)" },
+        "scope": { "type": "string", "default": "@repo", "description": "Package scope prefix" },
+        "pruneTarget": { "type": "string", "description": "Workspace to prune for (for prune action)" }
+      },
+      "required": ["action"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "workspacePath": { "type": "string", "description": "Path to created/pruned workspace" },
+        "workspaces": { "type": "array", "items": { "type": "string" }, "description": "List of workspace names (for list action)" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "turbo/config", "reason": "turbo.json must exist for workspace orchestration" }
+  ],
+  "more": {
+    "docs": "https://turborepo.dev/repo/docs/crafting-your-repository/structuring-a-repository",
+    "prune": "https://turborepo.dev/repo/docs/reference/prune",
+    "gen": "https://turborepo.dev/repo/docs/reference/generate"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "6 min",
+    "prerequisites": ["turbo/config"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

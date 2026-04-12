@@ -1,0 +1,292 @@
+{
+  "name": "ad-hoc",
+  "version": "1.0.0",
+  "uri": "ansible/ad-hoc",
+  "type": "skill",
+  "context": "Run one-off Ansible modules across selected hosts without creating a full playbook",
+  "info": "Ad-hoc commands are the fastest execution surface in Ansible: they use the `ansible` CLI to run a single module against one or more inventory targets, with support for parallel forks, become, check mode, and inventory patterns. Agents use this skill for investigative work, emergency fixes, fact gathering, service or package changes, file transfer, and other rare tasks that are not worth promoting into a reusable playbook yet. The critical guardrails are module choice, shell quoting, inventory targeting, and explicit limits, because ad-hoc commands are quick but intentionally not reusable.",
+  "parent": "ansible",
+  "sub": [],
+  "tags": [
+    "ansible",
+    "ad-hoc",
+    "ansible-cli",
+    "modules",
+    "one-off",
+    "ping",
+    "become",
+    "check-mode",
+    "parallelism"
+  ],
+  "aliases": [
+    "ansible ad hoc",
+    "ansible one liner",
+    "ansible cli",
+    "run ansible command",
+    "quick ansible task",
+    "ansible module command",
+    "ansible ping"
+  ],
+  "triggers": [
+    "run a one-off ansible command",
+    "ping all hosts with ansible",
+    "restart a service with ansible",
+    "install a package with ansible cli",
+    "gather facts with ansible",
+    "use check mode in ansible cli",
+    "limit an ansible command to one group"
+  ],
+  "body": "# Ansible Ad-Hoc Commands\n\nUse the `ansible` command when you need one module, one target pattern, and a quick answer. It is ideal for rare or investigative operations; if the task needs to be repeated, reviewed, or staged, promote it into [[ansible/playbooks]].\n\n## Common Examples\n\n```bash\nansible all -i inventory.yml -m ansible.builtin.ping\nansible web -i inventory.yml -b -m ansible.builtin.package -a 'name=nginx state=present'\nansible web -i inventory.yml -b -m ansible.builtin.service -a 'name=nginx state=restarted'\nansible db -i inventory.yml -m ansible.builtin.command -a 'systemctl status postgresql'\nansible all -i inventory.yml -m ansible.builtin.setup -a 'filter=ansible_distribution*'\n```\n\n## Check Mode and Limits\n\n```bash\nansible web -i inventory.yml --limit canary --check -m ansible.builtin.file -a 'path=/etc/motd state=touch mode=0644'\n```\n\n## command vs shell\n\nPrefer declarative modules such as `package`, `service`, `copy`, `template`, and `user`. If you need shell features like pipes or redirects, switch from `ansible.builtin.command` to `ansible.builtin.shell` deliberately and quote carefully so the local shell does not expand variables before Ansible sends the command.\n\n## Parallelism and Privilege\n\n`-f` controls fork count, `-u` sets the remote user, and `-b` enables privilege escalation. Those flags are operationally important during fleet changes and emergency fixes.\n",
+  "sections": [
+    {
+      "id": "choose-modules",
+      "title": "Prefer modules over shell commands",
+      "body": "The most reliable ad-hoc runs use purpose-built modules such as `ansible.builtin.package`, `ansible.builtin.service`, `ansible.builtin.copy`, `ansible.builtin.file`, and `ansible.builtin.user`. They are more declarative and more idempotent than arbitrary shell. Use `command` for plain commands and `shell` only when you actually need shell syntax like pipes, redirects, or globbing.",
+      "tags": ["modules", "shell", "command", "idempotence"]
+    },
+    {
+      "id": "targeting",
+      "title": "Patterns and limits prevent full-fleet mistakes",
+      "body": "The first argument to `ansible` is a host pattern, so inventory quality directly determines blast radius. Use patterns such as `web`, `db:&prod`, or `all`, and apply `--limit` for an even tighter subset such as a canary host. Validate inventory with [[ansible/inventory]] before a disruptive run.",
+      "tags": ["patterns", "limit", "blast-radius", "inventory"]
+    },
+    {
+      "id": "become-connection",
+      "title": "Remote user, SSH, and become",
+      "body": "Use `-u` to connect as a specific user, `--private-key` to select an SSH key, and `-b` or `--become-user` for privilege escalation. Many ad-hoc failures are really SSH or sudo issues, not module issues. Load [[ssh/connect]] and [[ssh/config]] when connection behavior is inconsistent across hosts.",
+      "tags": ["ssh", "remote-user", "private-key", "become", "sudo"]
+    },
+    {
+      "id": "dry-run",
+      "title": "Check mode for safe previews",
+      "body": "Use `--check` to ask supported modules what they would change without applying it. This is especially useful before a package or file change on a large host group. Not every module implements check mode equally well, so combine it with targeted host limits and verbose output when stakes are high.",
+      "tags": ["check-mode", "preview", "safety", "dry-run"]
+    }
+  ],
+  "links": [
+    {
+      "uri": "ansible/inventory",
+      "context": "Inventory selection is the first safety check for any ad-hoc run"
+    },
+    {
+      "uri": "ansible/playbooks",
+      "context": "Promote repeated ad-hoc commands into reusable playbooks"
+    },
+    {
+      "uri": "ansible/inventory#patterns",
+      "context": "Validate the exact host pattern and limit before execution"
+    },
+    {
+      "uri": "ansible/troubleshooting",
+      "context": "Debug unreachable hosts, sudo failures, or module errors"
+    },
+    {
+      "uri": "ansible/troubleshooting#connectivity",
+      "context": "Follow the connectivity-specific checks for unreachable hosts"
+    },
+    {
+      "uri": "ssh/connect",
+      "context": "SSH transport and identity issues commonly surface in ad-hoc runs"
+    },
+    {
+      "uri": "ssh/config",
+      "context": "Persist host-specific SSH settings used by Ansible"
+    }
+  ],
+  "related": [
+    {
+      "uri": "ansible/inventory",
+      "relation": "prerequisite",
+      "note": "Ad-hoc commands rely on correctly resolved inventory and patterns"
+    },
+    {
+      "uri": "ansible/playbooks",
+      "relation": "extends",
+      "note": "Ad-hoc tasks are the simplest form of execution; playbooks generalize them"
+    },
+    {
+      "uri": "ssh/connect",
+      "relation": "prerequisite",
+      "note": "Most Linux-host execution depends on working SSH access"
+    }
+  ],
+  "scripts": [
+    {
+      "id": "run-ad-hoc",
+      "name": "Run Ad-Hoc Command",
+      "description": "Execute a single Ansible module against an inventory pattern with optional become, limits, and check mode",
+      "lang": "bash",
+      "runtime": "ansible-core>=2.15",
+      "entry": "./scripts/run-ad-hoc.sh",
+      "env": {
+        "ANSIBLE_PATTERN": {
+          "required": true,
+          "secret": false,
+          "description": "Inventory pattern to target, such as all, web, or db:&prod"
+        },
+        "ANSIBLE_INVENTORY_SOURCE": {
+          "required": false,
+          "secret": false,
+          "default": "inventory",
+          "description": "Inventory file, directory, or plugin source"
+        },
+        "ANSIBLE_MODULE": {
+          "required": false,
+          "secret": false,
+          "default": "ansible.builtin.ping",
+          "description": "Fully qualified Ansible module name"
+        },
+        "ANSIBLE_MODULE_ARGS": {
+          "required": false,
+          "secret": false,
+          "description": "Module arguments in key=value or JSON form"
+        },
+        "ANSIBLE_BECOME": {
+          "required": false,
+          "secret": false,
+          "default": "false",
+          "description": "Set to true to enable privilege escalation"
+        },
+        "ANSIBLE_CHECK_MODE": {
+          "required": false,
+          "secret": false,
+          "default": "false",
+          "description": "Set to true to preview supported module changes"
+        },
+        "ANSIBLE_REMOTE_USER": {
+          "required": false,
+          "secret": false,
+          "description": "Remote SSH user for the ansible CLI"
+        },
+        "ANSIBLE_PRIVATE_KEY_FILE": {
+          "required": false,
+          "secret": false,
+          "description": "Path to the SSH private key file"
+        },
+        "ANSIBLE_LIMIT": {
+          "required": false,
+          "secret": false,
+          "description": "Extra host limit applied after pattern matching"
+        },
+        "ANSIBLE_FORKS": {
+          "required": false,
+          "secret": false,
+          "description": "Maximum number of parallel forks"
+        },
+        "ANSIBLE_EXTRA_VARS": {
+          "required": false,
+          "secret": false,
+          "description": "Extra vars passed with -e in key=value or JSON form"
+        },
+        "ANSIBLE_ONE_LINE": {
+          "required": false,
+          "secret": false,
+          "default": "false",
+          "description": "Set to true to enable one-line output with -o"
+        }
+      },
+      "packages": [
+        "ansible-core"
+      ]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "pattern": {
+          "type": "string",
+          "description": "Inventory pattern to target"
+        },
+        "inventorySource": {
+          "type": "string",
+          "description": "Inventory file, directory, or plugin source"
+        },
+        "module": {
+          "type": "string",
+          "default": "ansible.builtin.ping",
+          "description": "Ansible module to execute"
+        },
+        "moduleArgs": {
+          "type": "string",
+          "description": "Module arguments in key=value or JSON form"
+        },
+        "become": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable privilege escalation"
+        },
+        "limit": {
+          "type": "string",
+          "description": "Additional host limit"
+        },
+        "check": {
+          "type": "boolean",
+          "default": false,
+          "description": "Preview supported changes without applying them"
+        },
+        "remoteUser": {
+          "type": "string",
+          "description": "Remote SSH user"
+        },
+        "privateKeyFile": {
+          "type": "string",
+          "description": "SSH private key path"
+        }
+      },
+      "required": [
+        "pattern"
+      ]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "command": {
+          "type": "string",
+          "description": "The ansible CLI invocation that was executed"
+        },
+        "stdout": {
+          "type": "string",
+          "description": "Rendered command output"
+        },
+        "exitCode": {
+          "type": "integer",
+          "description": "Process exit status"
+        }
+      }
+    }
+  },
+  "depends": [
+    {
+      "uri": "ansible/inventory",
+      "reason": "The ansible CLI targets hosts selected from inventory"
+    },
+    {
+      "uri": "ssh/connect",
+      "reason": "Most managed hosts are reached over SSH"
+    }
+  ],
+  "more": {
+    "docs": "https://docs.ansible.com/projects/ansible/latest/command_guide/intro_adhoc.html",
+    "cli": "https://docs.ansible.com/projects/ansible/latest/command_guide/index.html"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, SREs, AI agents",
+    "estimated_reading_time": "5 min",
+    "prerequisites": [
+      "ansible/inventory",
+      "ssh/connect"
+    ],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://github.com/ansible/ansible",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

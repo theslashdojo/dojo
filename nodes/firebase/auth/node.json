@@ -1,0 +1,134 @@
+{
+  "name": "auth",
+  "version": "1.0.0",
+  "uri": "firebase/auth",
+  "type": "skill",
+  "context": "Firebase Authentication — email/password, OAuth, phone, anonymous sign-in, custom claims, multi-factor auth, and Admin SDK token management",
+  "info": "Firebase Authentication provides drop-in UI and SDK methods for authenticating users via email/password, Google, Facebook, Apple, GitHub, and other OAuth providers, phone number SMS verification, and anonymous guest accounts. The client SDK (firebase/auth) exposes createUserWithEmailAndPassword, signInWithEmailAndPassword, signInWithPopup, signInWithPhoneNumber, signInAnonymously, and onAuthStateChanged for reactive session tracking. ID tokens (JWTs) are issued automatically and can be forwarded to backend services for verification. The Admin SDK (firebase-admin) enables server-side operations: verifying ID tokens with verifyIdToken(), minting custom tokens with createCustomToken(), setting custom claims with setCustomUserClaims() for role-based access control, and managing users programmatically. Firebase Security Rules integrate directly with request.auth to gate Firestore, Realtime Database, and Cloud Storage access. Multi-factor authentication adds SMS-based second factors to existing accounts.",
+  "parent": "firebase",
+  "tags": ["auth", "authentication", "oauth", "email", "password", "phone", "anonymous", "jwt", "custom-claims", "admin-sdk"],
+  "aliases": [
+    "firebase auth",
+    "firebase authentication",
+    "firebase login",
+    "firebase signup",
+    "firebase oauth",
+    "google sign in",
+    "firebase user management"
+  ],
+  "triggers": [
+    "add firebase authentication",
+    "sign in with google firebase",
+    "firebase email password login",
+    "verify firebase token",
+    "firebase custom claims"
+  ],
+  "body": "# Firebase Authentication\n\nFirebase Auth provides backend services, SDKs, and ready-made UI libraries to authenticate users. It supports email/password, phone, OAuth providers, anonymous accounts, and custom tokens.\n\n## Email/Password Sign-Up\n\n```typescript\nimport { getAuth, createUserWithEmailAndPassword } from 'firebase/auth';\n\nconst auth = getAuth();\nconst { user } = await createUserWithEmailAndPassword(\n  auth,\n  'user@example.com',\n  'securepassword123'\n);\nconsole.log('Created user:', user.uid);\n```\n\n## Email/Password Sign-In\n\n```typescript\nimport { signInWithEmailAndPassword } from 'firebase/auth';\n\nconst { user } = await signInWithEmailAndPassword(\n  auth,\n  'user@example.com',\n  'securepassword123'\n);\nconsole.log('Signed in:', user.email);\n```\n\n## Google OAuth with signInWithPopup\n\n```typescript\nimport { signInWithPopup, GoogleAuthProvider } from 'firebase/auth';\n\nconst provider = new GoogleAuthProvider();\nprovider.addScope('email');\nprovider.addScope('profile');\n\nconst result = await signInWithPopup(auth, provider);\nconst credential = GoogleAuthProvider.credentialFromResult(result);\nconst accessToken = credential?.accessToken;\nconsole.log('Google user:', result.user.displayName);\n```\n\n## Phone Auth\n\n```typescript\nimport { signInWithPhoneNumber, RecaptchaVerifier } from 'firebase/auth';\n\n// Set up reCAPTCHA\nconst recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {\n  size: 'normal',\n});\n\n// Send SMS\nconst confirmationResult = await signInWithPhoneNumber(\n  auth,\n  '+15551234567',\n  recaptchaVerifier\n);\n\n// Verify the code entered by user\nconst { user } = await confirmationResult.confirm('123456');\nconsole.log('Phone user:', user.uid);\n```\n\n## Anonymous Auth\n\n```typescript\nimport { signInAnonymously } from 'firebase/auth';\n\nconst { user } = await signInAnonymously(auth);\nconsole.log('Anonymous user:', user.uid, 'isAnonymous:', user.isAnonymous);\n// Later: link with a permanent account via linkWithCredential()\n```\n\n## onAuthStateChanged Listener\n\n```typescript\nimport { onAuthStateChanged } from 'firebase/auth';\n\nconst unsubscribe = onAuthStateChanged(auth, (user) => {\n  if (user) {\n    console.log('User signed in:', user.uid, user.email);\n  } else {\n    console.log('User signed out');\n  }\n});\n// Call unsubscribe() to stop listening\n```\n\n## Getting Current User and ID Token\n\n```typescript\nconst user = auth.currentUser;\nif (user) {\n  const idToken = await user.getIdToken();\n  console.log('ID Token:', idToken);\n\n  // Force refresh if token might be stale\n  const freshToken = await user.getIdToken(/* forceRefresh */ true);\n\n  // Get token result with claims\n  const tokenResult = await user.getIdTokenResult();\n  console.log('Custom claims:', tokenResult.claims);\n}\n```\n\n## Admin SDK: createCustomToken\n\n```typescript\nimport { getAuth } from 'firebase-admin/auth';\n\n// Mint a custom token for a uid (e.g., for custom auth systems)\nconst customToken = await getAuth().createCustomToken('some-uid', {\n  premiumAccount: true,\n});\n// Send customToken to client; client calls signInWithCustomToken(auth, customToken)\n```\n\n## Admin SDK: verifyIdToken\n\n```typescript\nimport { getAuth } from 'firebase-admin/auth';\n\ntry {\n  const decoded = await getAuth().verifyIdToken(idTokenFromClient);\n  console.log('Verified uid:', decoded.uid);\n  console.log('Email:', decoded.email);\n  console.log('Custom claims:', decoded);\n} catch (error) {\n  console.error('Invalid token:', error);\n}\n```\n\n## Admin SDK: Custom Claims\n\n```typescript\nimport { getAuth } from 'firebase-admin/auth';\n\n// Set custom claims (role-based access)\nawait getAuth().setCustomUserClaims('user-uid', {\n  admin: true,\n  accessLevel: 10,\n});\n// Claims appear in the ID token after refresh\n// Client: const { claims } = await user.getIdTokenResult(true);\n```\n\n## Security Rules Integration\n\nFirebase Security Rules use `request.auth` to gate access:\n\n```\n// Firestore rules\nrules_version = '2';\nservice cloud.firestore {\n  match /databases/{database}/documents {\n    // Only authenticated users can read\n    match /posts/{postId} {\n      allow read: if request.auth != null;\n      allow write: if request.auth.uid == resource.data.authorId;\n    }\n\n    // Custom claims for admin access\n    match /admin/{document=**} {\n      allow read, write: if request.auth.token.admin == true;\n    }\n  }\n}\n```\n\n## Sign Out\n\n```typescript\nimport { signOut } from 'firebase/auth';\n\nawait signOut(auth);\n```\n\n## Environment Variables\n\n| Variable | Purpose |\n|----------|----------|\n| `FIREBASE_API_KEY` | Web API key from Firebase console |\n| `FIREBASE_AUTH_DOMAIN` | Auth domain (projectId.firebaseapp.com) |\n| `FIREBASE_PROJECT_ID` | Firebase project identifier |\n| `GOOGLE_APPLICATION_CREDENTIALS` | Path to service account JSON (Admin SDK) |\n",
+  "sections": [
+    {
+      "id": "email-password",
+      "title": "Email/password authentication",
+      "body": "Use createUserWithEmailAndPassword() to register new users and signInWithEmailAndPassword() to log in. Both return a UserCredential with the user object. Send verification emails with sendEmailVerification(user). Reset passwords with sendPasswordResetEmail(auth, email). Email enumeration protection can be enabled in the Firebase console to prevent email existence checks.",
+      "tags": ["email", "password", "signup", "signin", "verification", "reset"]
+    },
+    {
+      "id": "oauth",
+      "title": "OAuth providers",
+      "body": "Firebase supports Google, Facebook, Apple, GitHub, Microsoft, Twitter, and Yahoo as built-in OAuth providers. Use signInWithPopup(auth, provider) for popup flow or signInWithRedirect(auth, provider) for full-page redirect. After redirect, call getRedirectResult(auth) to retrieve the credential. Each provider class (GoogleAuthProvider, FacebookAuthProvider, etc.) supports addScope() for requesting additional OAuth scopes. Enable providers in the Firebase console under Authentication > Sign-in method.",
+      "tags": ["oauth", "google", "facebook", "apple", "github", "popup", "redirect"]
+    },
+    {
+      "id": "phone-auth",
+      "title": "Phone number authentication",
+      "body": "Phone auth uses SMS verification with a reCAPTCHA widget for abuse prevention. Call signInWithPhoneNumber(auth, phoneNumber, recaptchaVerifier) to send an SMS code, then confirmationResult.confirm(code) to verify. Phone auth supports linking to existing accounts. Requires enabling Phone provider in the Firebase console. Test phone numbers can be configured to bypass SMS sending during development.",
+      "tags": ["phone", "sms", "otp", "recaptcha", "verification"]
+    },
+    {
+      "id": "session-management",
+      "title": "Session and state management",
+      "body": "Use onAuthStateChanged(auth, callback) as the primary way to track auth state. It fires on sign-in, sign-out, and token refresh. auth.currentUser provides synchronous access to the current user but may be null during initialization. ID tokens (JWTs) expire after 1 hour and are auto-refreshed by the SDK. Use getIdToken(true) to force-refresh. Auth persistence can be set to LOCAL (survives browser restart), SESSION (tab only), or NONE (in-memory only) via setPersistence().",
+      "tags": ["session", "state", "onAuthStateChanged", "persistence", "token-refresh"]
+    },
+    {
+      "id": "admin-sdk",
+      "title": "Admin SDK operations",
+      "body": "The firebase-admin SDK runs on servers and has elevated privileges. verifyIdToken(idToken) validates client tokens and returns decoded claims. createCustomToken(uid, claims) mints tokens for custom auth systems. getUser(uid), getUserByEmail(email), listUsers() manage user records. deleteUser(uid) removes accounts. The Admin SDK authenticates via a service account JSON file pointed to by GOOGLE_APPLICATION_CREDENTIALS, or automatically on Google Cloud infrastructure.",
+      "tags": ["admin", "server", "verify", "custom-token", "service-account"]
+    },
+    {
+      "id": "custom-claims",
+      "title": "Custom claims and role-based access",
+      "body": "Custom claims are key-value pairs attached to a user's ID token via setCustomUserClaims(uid, claims). They propagate to Security Rules as request.auth.token.<claim>. Use for role-based access (admin, editor, viewer). Claims are limited to 1000 bytes total. Changes take effect on the next token refresh (up to 1 hour) unless the client calls getIdToken(true). Do not store large data in claims; use Firestore for user profiles.",
+      "tags": ["claims", "roles", "rbac", "authorization", "security-rules"]
+    }
+  ],
+  "links": [
+    { "uri": "firebase", "context": "Firebase platform overview and project setup" },
+    { "uri": "firebase/firestore", "context": "Firestore security rules use request.auth from Firebase Auth" },
+    { "uri": "firebase/functions", "context": "Cloud Functions verify ID tokens with Admin SDK for authenticated endpoints" },
+    { "uri": "firebase/config", "context": "Firebase config provides API key, auth domain, and project ID required for Auth initialization" }
+  ],
+  "related": [
+    { "uri": "firebase", "relation": "prerequisite", "note": "Firebase project and SDK initialization required before using Auth" },
+    { "uri": "firebase/firestore", "relation": "see-also", "note": "Firestore security rules integrate with request.auth for access control" },
+    { "uri": "supabase/auth", "relation": "alternative", "note": "Supabase Auth provides similar authentication with Postgres-backed user management" }
+  ],
+  "scripts": [
+    {
+      "id": "auth-setup",
+      "name": "Firebase Auth Setup",
+      "description": "Initialize Firebase Auth with email/password and Google OAuth",
+      "lang": "typescript",
+      "runtime": "node>=18",
+      "entry": "./scripts/auth-setup.ts",
+      "env": {
+        "FIREBASE_API_KEY": { "required": true, "secret": false, "description": "Firebase Web API key" },
+        "FIREBASE_AUTH_DOMAIN": { "required": true, "secret": false, "description": "Firebase Auth domain (projectId.firebaseapp.com)" },
+        "FIREBASE_PROJECT_ID": { "required": true, "secret": false, "description": "Firebase project identifier" }
+      },
+      "packages": ["firebase"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "provider": { "type": "string", "enum": ["email", "google", "facebook", "apple", "github", "phone", "anonymous", "custom"], "description": "Authentication provider to use" },
+        "email": { "type": "string", "description": "User email address (for email provider)" },
+        "password": { "type": "string", "description": "User password (for email provider)" },
+        "phoneNumber": { "type": "string", "description": "Phone number with country code (for phone provider)" }
+      },
+      "required": ["provider"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "Firebase user UID" },
+        "email": { "type": "string", "description": "User email address" },
+        "displayName": { "type": "string", "description": "User display name" },
+        "idToken": { "type": "string", "description": "Firebase ID token (JWT)" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "firebase/config", "reason": "Firebase config required to initialize the Auth SDK" }
+  ],
+  "more": {
+    "docs": "https://firebase.google.com/docs/auth"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "8 min",
+    "prerequisites": ["firebase/config"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

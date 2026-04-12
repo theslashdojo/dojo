@@ -1,0 +1,131 @@
+{
+  "name": "azure",
+  "version": "1.0.0",
+  "uri": "terraform/providers/azure",
+  "type": "skill",
+  "context": "Terraform Azure provider (azurerm) — configure, authenticate, and manage Azure resources including VMs, storage, AKS, networking, and resource groups",
+  "info": "The Azure provider for Terraform (hashicorp/azurerm) enables declarative management of Microsoft Azure resources through HCL. It covers resource groups, virtual networks, virtual machines, storage accounts, AKS clusters, network security groups, and hundreds of other Azure services. The provider uniquely requires a features {} block in every configuration, even if empty. Authentication supports Azure CLI (az login), service principal with client secret or certificate, managed identity, and OIDC federation. Credentials are configured via ARM_* environment variables (ARM_CLIENT_ID, ARM_CLIENT_SECRET, ARM_SUBSCRIPTION_ID, ARM_TENANT_ID) or directly in the provider block. Every Azure resource belongs to a resource group, and the subscription_id determines which Azure subscription Terraform manages.",
+  "parent": "terraform/providers",
+  "tags": ["terraform", "azure", "azurerm", "provider", "hcl", "resource-group", "virtual-machine", "aks", "storage-account", "vnet", "infrastructure-as-code"],
+  "aliases": [
+    "terraform azure provider",
+    "terraform azurerm",
+    "terraform azure",
+    "tf azure",
+    "hashicorp/azurerm",
+    "azure terraform provider",
+    "azure infrastructure as code",
+    "terraform microsoft azure",
+    "azurerm provider"
+  ],
+  "triggers": [
+    "configure the azure terraform provider",
+    "authenticate terraform with azure",
+    "create azure resources with terraform",
+    "deploy to azure with terraform",
+    "manage azure infrastructure with terraform",
+    "terraform azurerm provider setup",
+    "terraform aks cluster",
+    "terraform azure resource group",
+    "set up service principal for terraform azure",
+    "terraform azure features block"
+  ],
+  "body": "# Terraform Azure Provider (azurerm)\n\nThe Azure provider (`hashicorp/azurerm`) manages Microsoft Azure resources declaratively with Terraform. It supports resource groups, virtual networks, VMs, storage accounts, AKS clusters, App Services, and hundreds of other Azure resource types.\n\n## Provider Configuration\n\n```hcl\nterraform {\n  required_providers {\n    azurerm = {\n      source  = \"hashicorp/azurerm\"\n      version = \"~> 3.100\"\n    }\n  }\n}\n\nprovider \"azurerm\" {\n  features {}\n\n  subscription_id = \"00000000-0000-0000-0000-000000000000\"\n}\n```\n\nThe `features {}` block is **required** in every azurerm provider configuration, even if it contains no settings. It controls provider-level behavior for certain resource types:\n\n```hcl\nprovider \"azurerm\" {\n  features {\n    resource_group {\n      prevent_deletion_if_contains_resources = true\n    }\n    key_vault {\n      purge_soft_delete_on_destroy    = false\n      recover_soft_deleted_key_vaults = true\n    }\n    virtual_machine {\n      delete_os_disk_on_deletion     = true\n      graceful_shutdown              = false\n      skip_shutdown_and_force_delete = false\n    }\n  }\n\n  subscription_id = var.subscription_id\n}\n```\n\n## Authentication\n\nThe Azure provider supports multiple authentication methods:\n\n### 1. Azure CLI (Local Development)\n\nThe simplest approach for local development — authenticate with `az login`:\n\n```bash\naz login\naz account set --subscription \"00000000-0000-0000-0000-000000000000\"\n```\n\nNo additional provider configuration is needed. Terraform reads credentials from the Azure CLI session.\n\n### 2. Service Principal with Client Secret\n\nFor CI/CD and automated deployments, create a service principal and set environment variables:\n\n```bash\n# Create a service principal\naz ad sp create-for-rbac --name \"terraform-sp\" --role Contributor \\\n  --scopes /subscriptions/00000000-0000-0000-0000-000000000000\n```\n\nSet the environment variables:\n\n```bash\nexport ARM_CLIENT_ID=\"appId-from-output\"\nexport ARM_CLIENT_SECRET=\"password-from-output\"\nexport ARM_SUBSCRIPTION_ID=\"00000000-0000-0000-0000-000000000000\"\nexport ARM_TENANT_ID=\"tenant-from-output\"\n```\n\nOr configure in the provider block (not recommended for production):\n\n```hcl\nprovider \"azurerm\" {\n  features {}\n\n  subscription_id = \"00000000-0000-0000-0000-000000000000\"\n  client_id       = var.arm_client_id\n  client_secret   = var.arm_client_secret\n  tenant_id       = var.arm_tenant_id\n}\n```\n\n### 3. Service Principal with Certificate\n\n```bash\nexport ARM_CLIENT_ID=\"appId\"\nexport ARM_CLIENT_CERTIFICATE_PATH=\"/path/to/certificate.pfx\"\nexport ARM_CLIENT_CERTIFICATE_PASSWORD=\"certificate-password\"\nexport ARM_SUBSCRIPTION_ID=\"00000000-0000-0000-0000-000000000000\"\nexport ARM_TENANT_ID=\"tenant-id\"\n```\n\n### 4. Managed Identity\n\nFor Terraform running on Azure VMs, App Service, or Azure Functions with a system-assigned or user-assigned managed identity:\n\n```hcl\nprovider \"azurerm\" {\n  features {}\n  use_msi         = true\n  subscription_id = \"00000000-0000-0000-0000-000000000000\"\n}\n```\n\n### 5. OIDC Federation (CI/CD)\n\nFor GitHub Actions, GitLab CI, and other OIDC-capable CI/CD systems:\n\n```hcl\nprovider \"azurerm\" {\n  features {}\n  use_oidc        = true\n  subscription_id = \"00000000-0000-0000-0000-000000000000\"\n}\n```\n\n```bash\nexport ARM_CLIENT_ID=\"appId\"\nexport ARM_SUBSCRIPTION_ID=\"00000000-0000-0000-0000-000000000000\"\nexport ARM_TENANT_ID=\"tenant-id\"\nexport ARM_OIDC_TOKEN=\"token-from-ci-provider\"\n```\n\n## Common Resources\n\n```hcl\n# Resource group — every Azure resource belongs to one\nresource \"azurerm_resource_group\" \"main\" {\n  name     = \"rg-myapp-${var.environment}\"\n  location = \"East US\"\n\n  tags = {\n    ManagedBy   = \"terraform\"\n    Environment = var.environment\n  }\n}\n\n# Virtual network\nresource \"azurerm_virtual_network\" \"main\" {\n  name                = \"vnet-main\"\n  address_space       = [\"10.0.0.0/16\"]\n  location            = azurerm_resource_group.main.location\n  resource_group_name = azurerm_resource_group.main.name\n}\n\n# Subnet\nresource \"azurerm_subnet\" \"internal\" {\n  name                 = \"snet-internal\"\n  resource_group_name  = azurerm_resource_group.main.name\n  virtual_network_name = azurerm_virtual_network.main.name\n  address_prefixes     = [\"10.0.1.0/24\"]\n}\n\n# Network security group\nresource \"azurerm_network_security_group\" \"web\" {\n  name                = \"nsg-web\"\n  location            = azurerm_resource_group.main.location\n  resource_group_name = azurerm_resource_group.main.name\n\n  security_rule {\n    name                       = \"AllowHTTP\"\n    priority                   = 100\n    direction                  = \"Inbound\"\n    access                     = \"Allow\"\n    protocol                   = \"Tcp\"\n    source_port_range          = \"*\"\n    destination_port_range     = \"80\"\n    source_address_prefix      = \"*\"\n    destination_address_prefix = \"*\"\n  }\n\n  security_rule {\n    name                       = \"AllowHTTPS\"\n    priority                   = 110\n    direction                  = \"Inbound\"\n    access                     = \"Allow\"\n    protocol                   = \"Tcp\"\n    source_port_range          = \"*\"\n    destination_port_range     = \"443\"\n    source_address_prefix      = \"*\"\n    destination_address_prefix = \"*\"\n  }\n}\n\n# Network interface\nresource \"azurerm_network_interface\" \"web\" {\n  name                = \"nic-web\"\n  location            = azurerm_resource_group.main.location\n  resource_group_name = azurerm_resource_group.main.name\n\n  ip_configuration {\n    name                          = \"internal\"\n    subnet_id                     = azurerm_subnet.internal.id\n    private_ip_address_allocation = \"Dynamic\"\n  }\n}\n\n# Linux virtual machine\nresource \"azurerm_linux_virtual_machine\" \"web\" {\n  name                = \"vm-web\"\n  resource_group_name = azurerm_resource_group.main.name\n  location            = azurerm_resource_group.main.location\n  size                = \"Standard_B1s\"\n  admin_username      = \"adminuser\"\n\n  network_interface_ids = [azurerm_network_interface.web.id]\n\n  admin_ssh_key {\n    username   = \"adminuser\"\n    public_key = file(\"~/.ssh/id_rsa.pub\")\n  }\n\n  os_disk {\n    caching              = \"ReadWrite\"\n    storage_account_type = \"Standard_LRS\"\n  }\n\n  source_image_reference {\n    publisher = \"Canonical\"\n    offer     = \"0001-com-ubuntu-server-jammy\"\n    sku       = \"22_04-lts\"\n    version   = \"latest\"\n  }\n}\n\n# Storage account\nresource \"azurerm_storage_account\" \"data\" {\n  name                     = \"stmyappdata${var.environment}\"\n  resource_group_name      = azurerm_resource_group.main.name\n  location                 = azurerm_resource_group.main.location\n  account_tier             = \"Standard\"\n  account_replication_type = \"LRS\"\n\n  blob_properties {\n    versioning_enabled = true\n  }\n}\n\n# AKS cluster\nresource \"azurerm_kubernetes_cluster\" \"main\" {\n  name                = \"aks-main\"\n  location            = azurerm_resource_group.main.location\n  resource_group_name = azurerm_resource_group.main.name\n  dns_prefix          = \"aks-main\"\n\n  default_node_pool {\n    name       = \"default\"\n    node_count = 3\n    vm_size    = \"Standard_D2s_v3\"\n  }\n\n  identity {\n    type = \"SystemAssigned\"\n  }\n\n  network_profile {\n    network_plugin = \"azure\"\n    network_policy = \"calico\"\n  }\n}\n```\n\n## Data Sources\n\nData sources query existing Azure resources:\n\n```hcl\n# Current client config (subscription, tenant, object ID)\ndata \"azurerm_client_config\" \"current\" {}\n\noutput \"tenant_id\" {\n  value = data.azurerm_client_config.current.tenant_id\n}\n\noutput \"subscription_id\" {\n  value = data.azurerm_client_config.current.subscription_id\n}\n\n# Current subscription details\ndata \"azurerm_subscription\" \"current\" {}\n\noutput \"subscription_name\" {\n  value = data.azurerm_subscription.current.display_name\n}\n\n# Existing resource group\ndata \"azurerm_resource_group\" \"existing\" {\n  name = \"rg-shared-services\"\n}\n\noutput \"rg_location\" {\n  value = data.azurerm_resource_group.existing.location\n}\n```\n\n## Environment Variables Reference\n\n| Variable | Purpose |\n|----------|----------|\n| `ARM_CLIENT_ID` | Service principal application (client) ID |\n| `ARM_CLIENT_SECRET` | Service principal client secret |\n| `ARM_CLIENT_CERTIFICATE_PATH` | Path to client certificate file (.pfx) |\n| `ARM_CLIENT_CERTIFICATE_PASSWORD` | Password for the client certificate |\n| `ARM_SUBSCRIPTION_ID` | Azure subscription ID |\n| `ARM_TENANT_ID` | Azure Active Directory tenant ID |\n| `ARM_OIDC_TOKEN` | OIDC token for federated identity |\n| `ARM_USE_MSI` | Set to `true` for managed identity authentication |\n| `ARM_USE_OIDC` | Set to `true` for OIDC authentication |\n",
+  "sections": [
+    {
+      "id": "configuration",
+      "title": "Provider configuration",
+      "body": "Declare the Azure provider in `required_providers` with `source = \"hashicorp/azurerm\"` and a version constraint (e.g., `~> 3.100`). The `provider \"azurerm\"` block requires a `features {}` block even if it is empty. Set `subscription_id` to target a specific Azure subscription. The `features {}` block controls provider behavior for resource groups (prevent deletion if not empty), key vaults (soft-delete recovery), virtual machines (OS disk deletion), and other resource types. Without the `features {}` block, Terraform will return a configuration error.",
+      "tags": ["configuration", "features-block", "subscription-id", "required-providers", "azurerm"]
+    },
+    {
+      "id": "authentication",
+      "title": "Authentication methods",
+      "body": "The Azure provider supports five authentication methods: (1) Azure CLI via `az login` for local development, (2) service principal with client secret using ARM_CLIENT_ID, ARM_CLIENT_SECRET, ARM_SUBSCRIPTION_ID, ARM_TENANT_ID environment variables, (3) service principal with client certificate via ARM_CLIENT_CERTIFICATE_PATH, (4) managed identity (`use_msi = true`) for Terraform running on Azure VMs or App Service, (5) OIDC federation (`use_oidc = true`) for GitHub Actions and GitLab CI. For CI/CD, prefer OIDC or managed identity over client secrets. Create service principals with `az ad sp create-for-rbac` scoped to the target subscription.",
+      "tags": ["authentication", "service-principal", "client-secret", "managed-identity", "oidc", "azure-cli", "arm-env-vars"]
+    },
+    {
+      "id": "common-resources",
+      "title": "Most-used Azure resources",
+      "body": "Every Azure resource belongs to an `azurerm_resource_group`. The most commonly managed resources: `azurerm_virtual_network` and `azurerm_subnet` (networking), `azurerm_network_security_group` (firewall rules), `azurerm_linux_virtual_machine` and `azurerm_windows_virtual_machine` (compute), `azurerm_storage_account` (blob/file/queue/table storage), `azurerm_kubernetes_cluster` (AKS), `azurerm_app_service_plan` and `azurerm_linux_web_app` (App Service), `azurerm_key_vault` (secrets management), `azurerm_mssql_server` and `azurerm_mssql_database` (SQL Server). Azure naming conventions typically use prefixes: rg- (resource group), vnet- (virtual network), snet- (subnet), vm- (virtual machine), st (storage account), aks- (AKS cluster).",
+      "tags": ["resources", "resource-group", "virtual-network", "virtual-machine", "storage-account", "aks", "app-service", "key-vault", "nsg"]
+    },
+    {
+      "id": "data-sources",
+      "title": "Most-used Azure data sources",
+      "body": "Data sources query existing Azure state: `data.azurerm_client_config` returns the current subscription ID, tenant ID, and object ID of the authenticated principal. `data.azurerm_subscription` provides subscription details including display name and subscription ID. `data.azurerm_resource_group` looks up existing resource groups by name. `data.azurerm_key_vault` and `data.azurerm_key_vault_secret` retrieve secrets from Key Vault. `data.azurerm_virtual_network` and `data.azurerm_subnet` query existing network infrastructure. These are essential for referencing shared infrastructure managed outside the current Terraform configuration.",
+      "tags": ["data-sources", "client-config", "subscription", "resource-group", "key-vault", "virtual-network"]
+    }
+  ],
+  "links": [
+    { "uri": "terraform/providers", "context": "Parent node covering Terraform provider concepts and configuration" },
+    { "uri": "terraform/providers/aws", "context": "AWS provider for multi-cloud Terraform deployments" },
+    { "uri": "terraform/providers/gcp", "context": "GCP provider for multi-cloud Terraform deployments" }
+  ],
+  "related": [
+    { "uri": "terraform/providers", "relation": "extends", "note": "Azure provider implements the Terraform provider interface for Microsoft Azure" },
+    { "uri": "terraform/providers/aws", "relation": "alternative", "note": "AWS provider is the Amazon cloud alternative for infrastructure as code" },
+    { "uri": "terraform/providers/gcp", "relation": "alternative", "note": "GCP provider is the Google Cloud alternative for infrastructure as code" }
+  ],
+  "scripts": [
+    {
+      "id": "verify-azure-credentials",
+      "name": "Verify Azure Credentials",
+      "description": "Verify Azure credentials are configured, display the active subscription and account, and check Terraform availability",
+      "lang": "bash",
+      "runtime": "azure-cli>=2.50",
+      "inline": "#!/usr/bin/env bash\nset -euo pipefail\n\necho '=== Azure Credential Verification ==='\necho ''\n\n# Check if Azure CLI is available\nif ! command -v az &>/dev/null; then\n  echo 'ERROR: az CLI not found. Install it from https://learn.microsoft.com/en-us/cli/azure/install-azure-cli'\n  exit 1\nfi\n\n# Check authentication\necho '--- Account Info ---'\nif ACCOUNT=$(az account show --output json 2>&1); then\n  echo \"$ACCOUNT\" | python3 -c \"\nimport sys, json\nd = json.load(sys.stdin)\nprint(f\\\"  Subscription: {d['name']}\\\")\nprint(f\\\"  ID:           {d['id']}\\\")\nprint(f\\\"  Tenant:       {d['tenantId']}\\\")\nprint(f\\\"  State:        {d['state']}\\\")\nprint(f\\\"  User:         {d.get('user', {}).get('name', 'N/A')}\\\")\nprint(f\\\"  Auth Type:    {d.get('user', {}).get('type', 'N/A')}\\\")\n\" 2>/dev/null || echo \"$ACCOUNT\"\nelse\n  echo '  Not logged in. Run: az login'\n  exit 1\nfi\n\necho ''\necho '--- ARM Environment Variables ---'\nfor VAR in ARM_CLIENT_ID ARM_SUBSCRIPTION_ID ARM_TENANT_ID ARM_USE_MSI ARM_USE_OIDC; do\n  VALUE=\"${!VAR:-not set}\"\n  if [ \"$VAR\" = \"ARM_CLIENT_ID\" ] && [ \"$VALUE\" != \"not set\" ]; then\n    echo \"  $VAR: ${VALUE:0:8}...\"\n  else\n    echo \"  $VAR: $VALUE\"\n  fi\ndone\n# Check secrets exist without revealing them\nfor VAR in ARM_CLIENT_SECRET ARM_CLIENT_CERTIFICATE_PATH; do\n  if [ -n \"${!VAR:-}\" ]; then\n    echo \"  $VAR: [set]\"\n  else\n    echo \"  $VAR: not set\"\n  fi\ndone\n\necho ''\necho '--- Available Subscriptions ---'\naz account list --output table --query '[].{Name:name, ID:id, State:state, Default:isDefault}' 2>/dev/null || echo '  Could not list subscriptions'\n\necho ''\necho '--- Terraform Check ---'\nif command -v terraform &>/dev/null; then\n  echo \"  Terraform version: $(terraform version -json 2>/dev/null | python3 -c 'import sys,json; print(json.load(sys.stdin)[\"terraform_version\"])' 2>/dev/null || terraform version | head -1)\"\nelse\n  echo '  Terraform not installed. Install from https://developer.hashicorp.com/terraform/install'\nfi\n\necho ''\necho 'Credentials verified successfully.'\n",
+      "env": {
+        "ARM_CLIENT_ID": { "required": false, "secret": false, "description": "Service principal application (client) ID (optional if using Azure CLI auth)" },
+        "ARM_CLIENT_SECRET": { "required": false, "secret": true, "description": "Service principal client secret (optional)" },
+        "ARM_SUBSCRIPTION_ID": { "required": false, "secret": false, "description": "Azure subscription ID (optional if set in Azure CLI)" },
+        "ARM_TENANT_ID": { "required": false, "secret": false, "description": "Azure AD tenant ID (optional if using Azure CLI auth)" }
+      }
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "subscriptionId": { "type": "string", "description": "Azure subscription ID (GUID)" },
+        "tenantId": { "type": "string", "description": "Azure AD tenant ID (GUID)" },
+        "clientId": { "type": "string", "description": "Service principal application (client) ID" },
+        "authMethod": { "type": "string", "enum": ["cli", "client-secret", "client-certificate", "managed-identity", "oidc"], "description": "Authentication method to use" }
+      },
+      "required": ["subscriptionId"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "subscriptionId": { "type": "string", "description": "Azure subscription ID" },
+        "subscriptionName": { "type": "string", "description": "Azure subscription display name" },
+        "tenantId": { "type": "string", "description": "Azure AD tenant ID" },
+        "objectId": { "type": "string", "description": "Object ID of the authenticated principal" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "terraform/providers", "reason": "The Azure provider is a Terraform provider plugin" }
+  ],
+  "more": {
+    "docs": "https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs",
+    "repo": "https://github.com/hashicorp/terraform-provider-azurerm",
+    "examples": "https://github.com/hashicorp/terraform-provider-azurerm/tree/main/examples"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents, DevOps engineers, SREs",
+    "estimated_reading_time": "10 min",
+    "prerequisites": ["terraform/providers"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://github.com/hashicorp/terraform-provider-azurerm",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

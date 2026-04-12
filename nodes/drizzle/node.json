@@ -1,0 +1,87 @@
+{
+  "name": "drizzle",
+  "version": "1.0.0",
+  "uri": "drizzle",
+  "type": "ecosystem",
+  "context": "Drizzle ORM for TypeScript — SQL-like schema definitions, zero-abstraction queries, and push/generate migrations",
+  "info": "Drizzle ORM is a TypeScript-first SQL ORM that lets you define schemas as plain TypeScript, write queries that look like SQL, and manage migrations with drizzle-kit. Unlike Prisma's custom schema language, Drizzle schemas are just TypeScript files using pgTable/mysqlTable/sqliteTable — the schema IS the code. Queries use a chainable builder (db.select().from().where()) that maps 1:1 to SQL, plus a relational query API (db.query.*.findMany) for nested data. drizzle-kit handles migrations via generate (create SQL files), push (prototype without files), pull (introspect existing DB), and migrate (apply). Drizzle supports PostgreSQL, MySQL, SQLite, Turso, Neon, PlanetScale, Cloudflare D1, Vercel Postgres, Supabase, CockroachDB, and MSSQL. Agents use Drizzle skills to define schemas, generate and run migrations, write type-safe queries, and configure the project. The ecosystem follows the workflow: schema → migrate → query.",
+  "parent": null,
+  "tags": ["drizzle", "drizzle-orm", "orm", "database", "typescript", "sql", "postgresql", "mysql", "sqlite", "migrations", "type-safe", "query-builder"],
+  "aliases": [
+    "drizzle",
+    "drizzle orm",
+    "drizzle-orm",
+    "drizzle kit",
+    "drizzle-kit",
+    "drizzleorm",
+    "drizzle db",
+    "drizzle sql",
+    "drizzle typescript orm",
+    "drizzle js",
+    "ts orm"
+  ],
+  "triggers": [
+    "set up drizzle",
+    "add drizzle to my project",
+    "use drizzle orm",
+    "create a drizzle schema",
+    "run drizzle migrations",
+    "query the database with drizzle",
+    "switch from prisma to drizzle",
+    "install drizzle-orm",
+    "configure drizzle-kit",
+    "connect drizzle to my database"
+  ],
+  "body": "# Drizzle ORM\n\nDrizzle is a TypeScript ORM where schemas are code, queries look like SQL, and migrations are automatic. No code generation step, no custom schema language — just TypeScript.\n\n## Core Workflow\n\n```\nschema.ts → drizzle-kit generate → drizzle-kit migrate → db.select().from()\n```\n\n1. **[[drizzle/schema]]** — Define tables with `pgTable`, `mysqlTable`, or `sqliteTable`\n2. **[[drizzle/migrate]]** — Generate SQL migrations or push schema changes directly\n3. **[[drizzle/queries]]** — Select, insert, update, delete with a SQL-like builder\n4. **[[drizzle/relations]]** — Define application-level relations for nested queries\n5. **[[drizzle/config]]** — Configure drizzle-kit via `drizzle.config.ts`\n\n## Quick Start\n\n```bash\n# Install\nnpm install drizzle-orm\nnpm install -D drizzle-kit\n\n# For PostgreSQL (pick your driver)\nnpm install postgres\n# OR npm install @neondatabase/serverless\n# OR npm install pg\n\n# Initialize config\nnpx drizzle-kit generate\nnpx drizzle-kit migrate\n```\n\n## Define a Schema\n\n```typescript\n// src/db/schema.ts\nimport { pgTable, serial, text, integer, timestamp, boolean } from 'drizzle-orm/pg-core';\n\nexport const users = pgTable('users', {\n  id: serial('id').primaryKey(),\n  name: text('name').notNull(),\n  email: text('email').notNull().unique(),\n  createdAt: timestamp('created_at').defaultNow().notNull(),\n});\n\nexport const posts = pgTable('posts', {\n  id: serial('id').primaryKey(),\n  title: text('title').notNull(),\n  content: text('content'),\n  published: boolean('published').default(false),\n  authorId: integer('author_id').references(() => users.id),\n});\n```\n\n## Connect and Query\n\n```typescript\n// src/db/index.ts\nimport { drizzle } from 'drizzle-orm/postgres-js';\nimport postgres from 'postgres';\nimport * as schema from './schema';\n\nconst client = postgres(process.env.DATABASE_URL!);\nexport const db = drizzle(client, { schema });\n\n// Query\nconst allUsers = await db.select().from(schema.users);\nconst user = await db.query.users.findFirst({\n  where: eq(schema.users.email, 'dan@example.com'),\n  with: { posts: true },\n});\n```\n\n## Architecture\n\n```\nsrc/db/\n  schema.ts              # Table definitions (TypeScript)\n  index.ts               # Database connection + drizzle instance\n  relations.ts           # Optional: relation definitions\ndrizzle/\n  0000_migration_name/\n    migration.sql         # Generated SQL\n    snapshot.json         # Schema snapshot\n  meta/\n    _journal.json         # Migration journal\ndrizzle.config.ts         # drizzle-kit configuration\n```\n\n## Supported Databases and Drivers\n\n| Database | Dialect | Drivers |\n|----------|---------|--------|\n| PostgreSQL | `postgresql` | `postgres`, `pg`, `@neondatabase/serverless`, `@vercel/postgres` |\n| MySQL | `mysql` | `mysql2`, `@planetscale/database` |\n| SQLite | `sqlite` | `better-sqlite3`, `bun:sqlite`, `@libsql/client` |\n| Turso | `turso` | `@libsql/client` |\n| Neon | `postgresql` | `@neondatabase/serverless` |\n| Cloudflare D1 | `sqlite` | D1 binding |\n| CockroachDB | `postgresql` | `postgres`, `pg` |\n\n## Key Packages\n\n| Package | Purpose | Install |\n|---------|---------|--------|\n| `drizzle-orm` | Runtime ORM library | `npm i drizzle-orm` |\n| `drizzle-kit` | CLI for migrations and studio | `npm i -D drizzle-kit` |\n\n## Environment Variables\n\n| Variable | Purpose | Example |\n|----------|---------|--------|\n| `DATABASE_URL` | Connection string | `postgres://user:pass@localhost:5432/mydb` |\n\n## Drizzle vs Prisma\n\n| Feature | Drizzle | Prisma |\n|---------|---------|--------|\n| Schema language | TypeScript | Custom `.prisma` |\n| Query style | SQL-like builder | Object-based |\n| Code generation | None needed | Required (`prisma generate`) |\n| Bundle size | ~33KB | ~1.8MB engine |\n| Relations | Application-level | Schema-level |\n| Migration | generate/push/pull | migrate dev/deploy |\n",
+  "sections": [
+    {
+      "id": "quickstart",
+      "title": "Quick start",
+      "body": "Install `drizzle-orm` (runtime) and `drizzle-kit` (dev). Choose a database driver (`postgres` for PostgreSQL, `mysql2` for MySQL, `better-sqlite3` for SQLite). Define tables in a schema file using `pgTable`/`mysqlTable`/`sqliteTable`. Create `drizzle.config.ts` pointing to your schema. Run `npx drizzle-kit generate` then `npx drizzle-kit migrate` to apply. See [[drizzle/config]] for configuration.",
+      "tags": ["quickstart", "install", "setup", "getting-started"]
+    },
+    {
+      "id": "dialects",
+      "title": "Database dialects and drivers",
+      "body": "Set `dialect` in [[drizzle/config]] to `postgresql`, `mysql`, `sqlite`, `turso`, `singlestore`, or `mssql`. Each dialect has multiple driver options. PostgreSQL: `postgres` (postgres.js), `pg` (node-postgres), `@neondatabase/serverless`, `@vercel/postgres`. MySQL: `mysql2`, `@planetscale/database`. SQLite: `better-sqlite3`, `bun:sqlite`, `@libsql/client` (Turso). The driver is auto-detected from the dialect.",
+      "tags": ["dialects", "drivers", "postgresql", "mysql", "sqlite", "turso", "neon"]
+    },
+    {
+      "id": "workflow",
+      "title": "Core workflow",
+      "body": "The Drizzle workflow is: (1) define tables in TypeScript using [[drizzle/schema]], (2) generate SQL migration files with `drizzle-kit generate` or push directly with `drizzle-kit push` via [[drizzle/migrate]], (3) query using the SQL-like builder or relational API via [[drizzle/queries]], (4) optionally define [[drizzle/relations]] for nested query support.",
+      "tags": ["workflow", "lifecycle", "schema-first"]
+    }
+  ],
+  "links": [
+    { "uri": "drizzle/schema", "context": "Define tables, columns, indexes, and enums in TypeScript" },
+    { "uri": "drizzle/migrate", "context": "Generate and apply database migrations with drizzle-kit" },
+    { "uri": "drizzle/queries", "context": "Select, insert, update, delete with type-safe SQL-like API" },
+    { "uri": "drizzle/relations", "context": "Define application-level relations for nested queries" },
+    { "uri": "drizzle/config", "context": "Configure drizzle-kit via drizzle.config.ts" }
+  ],
+  "related": [
+    { "uri": "prisma", "relation": "alternative", "note": "Prisma uses a custom schema language and generated client; Drizzle uses plain TypeScript and SQL-like queries" },
+    { "uri": "typescript", "relation": "prerequisite", "note": "Drizzle schemas and queries are TypeScript — full type inference requires TS" },
+    { "uri": "supabase/database", "relation": "see-also", "note": "Drizzle works with Supabase PostgreSQL via postgres.js or @supabase/supabase-js" }
+  ],
+  "more": {
+    "docs": "https://orm.drizzle.team/docs/overview",
+    "repo": "https://github.com/drizzle-team/drizzle-orm",
+    "examples": "https://github.com/drizzle-team/drizzle-orm/tree/main/examples"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "4 min",
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

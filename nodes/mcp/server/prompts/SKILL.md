@@ -1,50 +1,88 @@
 ---
-name: mcp-server-prompts
-description: Expose reusable prompt templates via MCP — structured message sequences for code review, debugging, analysis. Use when adding prompts to an MCP server.
+name: prompts
+description: Define MCP prompts — reusable interaction templates that surface as slash commands. Use when creating structured conversation starters for AI model interactions via MCP.
 ---
 
-# MCP Server Prompts
+# MCP Prompts
 
-Expose reusable prompt templates that users can select to structure LLM interactions.
+Create reusable interaction templates that users select to structure conversations.
 
 ## When to Use
 
-- Adding reusable prompt templates to an MCP server
-- Creating slash commands for users
-- Building multi-turn conversation starters
-- Implementing few-shot example prompts
+- Creating slash commands for common tasks (code review, analysis, debugging)
+- Building structured conversation starters with parameters
+- Embedding resources into prompt context
+- Setting up multi-turn conversation patterns
 
 ## Workflow
 
-### 1. Define Prompts
+1. Define prompt function with typed arguments
+2. Decorate with `@mcp.prompt()` or call `server.prompt()`
+3. Return a string (single message) or list of messages (multi-turn)
+4. Prompt surfaces as slash command or menu item in host app
+5. User selects prompt, provides arguments, conversation starts
+
+## Python
 
 ```python
-from mcp.server.fastmcp import FastMCP
-
-mcp = FastMCP("my-server")
+@mcp.prompt()
+def review_code(code: str) -> str:
+    """Review code for quality and suggest improvements."""
+    return f"Review this code:\n\n```\n{code}\n```"
 
 @mcp.prompt()
-def code_review(code: str, language: str = "python") -> str:
-    """Review code for bugs, security, and style."""
-    return f"Review this {language} code:\n\n```{language}\n{code}\n```"
+def debug_error(error: str, language: str = "python") -> str:
+    """Debug an error message."""
+    return f"Explain this {language} error and suggest fixes:\n\n{error}"
+```
 
+## TypeScript
+
+```typescript
+server.prompt("review_code", "Review code quality", {
+  code: z.string()
+}, async ({ code }) => ({
+  messages: [{
+    role: "user",
+    content: { type: "text", text: `Review this code:\n\n${code}` }
+  }]
+}));
+```
+
+## Multi-Turn Prompts
+
+Return a list to set up conversation context:
+
+```python
 @mcp.prompt()
-def explain_error(error: str) -> str:
-    """Explain an error message and suggest fixes."""
-    return f"Explain this error and suggest fixes:\n\n{error}"
+def debug_session(error: str, code: str) -> list:
+    """Start an interactive debugging session."""
+    return [
+        {"role": "user", "content": f"Here's my code:\n{code}"},
+        {"role": "assistant", "content": "I see the code. What's the issue?"},
+        {"role": "user", "content": f"I get this error:\n{error}"}
+    ]
 ```
 
-### 2. Test
+## Embedding Resources
 
-```bash
-npx @modelcontextprotocol/inspector python server.py
+```python
+@mcp.prompt()
+def analyze_schema() -> list:
+    """Analyze database schema with live data."""
+    return [{"role": "user", "content": [
+        {"type": "text", "text": "Analyze this schema:"},
+        {"type": "resource", "resource": {
+            "uri": "schema://database",
+            "text": db.get_schema()
+        }}
+    ]}]
 ```
 
-In the Inspector, navigate to the Prompts tab to list and test prompts.
+## Edge Cases
 
-## Best Practices
-
-1. **Descriptive names** — Use clear names that work as slash commands: `code_review`, `debug_error`
-2. **Useful defaults** — Make arguments optional where sensible
-3. **Rich context** — Include embedded resources when prompts need data
-4. **Clear descriptions** — Help users understand when to use each prompt
+- Prompt names must be unique within a server
+- Arguments are optional by default unless marked required
+- Return string for simple prompts, list for multi-turn
+- Resources embedded in prompts are fetched at retrieval time
+- Prompts support pagination if there are many

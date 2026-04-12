@@ -1,0 +1,275 @@
+{
+  "name": "projects",
+  "version": "1.0.0",
+  "uri": "gitlab/projects",
+  "type": "skill",
+  "context": "Create, list, inspect, and update GitLab projects with REST API calls that work on GitLab.com and self-managed hosts",
+  "info": "This skill covers the project lifecycle in GitLab: listing projects visible to the authenticated principal, retrieving project metadata by numeric ID or URL-encoded path, creating new projects in a personal namespace or group namespace, and updating operational settings like visibility, topics, branch defaults, and feature access levels. Agents use it to bootstrap repositories, discover the correct project identifier before downstream API calls, align project settings with policy, and inspect whether issues, merge requests, or pipelines are enabled.",
+  "parent": "gitlab",
+  "tags": [
+    "gitlab",
+    "projects",
+    "repositories",
+    "create-project",
+    "project-settings",
+    "visibility",
+    "topics",
+    "api"
+  ],
+  "aliases": [
+    "gitlab projects",
+    "gitlab project",
+    "create gitlab project",
+    "list gitlab projects",
+    "gitlab repo",
+    "gitlab repository",
+    "project api",
+    "project settings"
+  ],
+  "triggers": [
+    "create a gitlab project",
+    "list my gitlab projects",
+    "look up a gitlab project by path",
+    "update gitlab project settings",
+    "inspect gitlab project metadata"
+  ],
+  "body": "# GitLab Projects\n\nProjects are the anchor object for nearly every other GitLab API workflow. Once an agent knows the project ID or full path, it can branch into issues, merge requests, pipelines, variables, branches, and repository settings.\n\n```bash\n# List projects visible to the current token\npython ./scripts/manage-projects.py list --search platform --membership\n\n# Create a new project with an initialized README\npython ./scripts/manage-projects.py create my-service \\\n  --namespace-id 12345 \\\n  --description 'Service owned by the platform team' \\\n  --visibility private \\\n  --initialize-with-readme\n```\n\nGitLab's Projects API accepts either a numeric project ID or a URL-encoded path such as `group%2Fproject`. The script in this node accepts the human form (`group/project`) and encodes it automatically. Use [[gitlab/auth]] before running it and branch into [[gitlab/issues]], [[gitlab/merge-requests]], or [[gitlab/pipelines]] after the project is known.",
+  "sections": [
+    {
+      "id": "list-and-get",
+      "title": "List and inspect projects",
+      "body": "`GET /projects` lists projects visible to the current principal and supports filters like `membership`, `owned`, `search`, `visibility`, and `updated_after`. `GET /projects/:id` returns the full project object and accepts either a numeric ID or a URL-encoded path. Listing supports offset pagination with `page` and `per_page`, and large project inventories can move to keyset pagination on the API side.",
+      "tags": [
+        "list",
+        "get",
+        "search",
+        "pagination",
+        "project-id"
+      ]
+    },
+    {
+      "id": "create",
+      "title": "Create projects safely",
+      "body": "`POST /projects` creates a project in the authenticated user's namespace unless `namespace_id` points at a group or subgroup. `default_branch` can be set at creation time only when `initialize_with_readme=true`. `initialize_with_readme` and `import_url` are mutually exclusive, and visibility is one of `private`, `internal`, or `public`.",
+      "tags": [
+        "create",
+        "namespace-id",
+        "initialize-with-readme",
+        "default-branch"
+      ]
+    },
+    {
+      "id": "update",
+      "title": "Update settings and feature access",
+      "body": "`PUT /projects/:id` updates settings such as `description`, `topics`, `visibility`, `issues_access_level`, `merge_requests_access_level`, `builds_access_level`, `remove_source_branch_after_merge`, and merge policy settings like `only_allow_merge_if_pipeline_succeeds`. This is the right endpoint when an agent must align a project with team conventions before opening merge requests or triggering deployments.",
+      "tags": [
+        "update",
+        "settings",
+        "feature-access",
+        "policy",
+        "merge-settings"
+      ]
+    },
+    {
+      "id": "identifiers",
+      "title": "Project IDs versus full paths",
+      "body": "GitLab calls the project selector `id`, but it accepts either the numeric project ID or a URL-encoded path such as `group%2Fsubgroup%2Fservice`. Agents often start with a human path from a ticket or repository checkout, so it is common to resolve a project with `group/project` first and then reuse the numeric ID from the response for later workflows.",
+      "tags": [
+        "identifier",
+        "path-with-namespace",
+        "url-encoding"
+      ]
+    }
+  ],
+  "links": [
+    {
+      "uri": "gitlab/auth",
+      "context": "Select the correct token type and host before calling the Projects API"
+    },
+    {
+      "uri": "gitlab/auth#tokens",
+      "context": "Project management starts with the right token header and scope"
+    },
+    {
+      "uri": "gitlab/issues",
+      "context": "Issues live inside a project"
+    },
+    {
+      "uri": "gitlab/merge-requests",
+      "context": "Merge requests are scoped to a project"
+    },
+    {
+      "uri": "gitlab/merge-requests#create",
+      "context": "Project settings often need alignment before an agent opens a merge request"
+    },
+    {
+      "uri": "gitlab/pipelines",
+      "context": "Pipelines are triggered and inspected per project"
+    },
+    {
+      "uri": "gitlab/variables",
+      "context": "CI/CD variables are stored at the project level"
+    },
+    {
+      "uri": "gitlab/variables#scopes",
+      "context": "Project environments often need scoped variables after creation"
+    },
+    {
+      "uri": "git/remote",
+      "context": "Project URLs are used as Git remotes once the repository exists"
+    }
+  ],
+  "related": [
+    {
+      "uri": "gitlab/auth",
+      "relation": "prerequisite",
+      "note": "Projects API calls need an authenticated principal with sufficient role on the namespace"
+    },
+    {
+      "uri": "git/remote",
+      "relation": "see-also",
+      "note": "A newly created project is commonly followed by remote setup or cloning"
+    },
+    {
+      "uri": "gitlab/merge-requests#create",
+      "relation": "see-also",
+      "note": "Once a project exists, the next workflow is usually a branch push and MR creation"
+    },
+    {
+      "uri": "github/repos",
+      "relation": "alternative",
+      "note": "GitHub repository management is the closest equivalent on another platform"
+    }
+  ],
+  "scripts": [
+    {
+      "id": "manage-projects",
+      "name": "Manage GitLab Projects",
+      "description": "List, inspect, create, and update GitLab projects via the REST API",
+      "lang": "python",
+      "runtime": "python>=3.10",
+      "entry": "./scripts/manage-projects.py",
+      "env": {
+        "GITLAB_TOKEN": {
+          "required": false,
+          "secret": true,
+          "description": "Preferred API token; use unless OAUTH_TOKEN or CI_JOB_TOKEN is provided instead"
+        },
+        "OAUTH_TOKEN": {
+          "required": false,
+          "secret": true,
+          "description": "Optional OAuth bearer token for delegated access"
+        },
+        "CI_JOB_TOKEN": {
+          "required": false,
+          "secret": true,
+          "description": "Optional CI job token for in-pipeline automation"
+        },
+        "GITLAB_HOST": {
+          "required": false,
+          "default": "https://gitlab.com",
+          "description": "GitLab host, including scheme, for example https://gitlab.example.com"
+        },
+        "GITLAB_HTTP_DEBUG": {
+          "required": false,
+          "default": "0",
+          "description": "Set to 1 to print request details to stderr"
+        }
+      }
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "action": {
+          "type": "string",
+          "enum": [
+            "list",
+            "get",
+            "create",
+            "update"
+          ],
+          "description": "Project operation to perform"
+        },
+        "project": {
+          "type": "string",
+          "description": "Numeric project ID or full path like group/project"
+        },
+        "name": {
+          "type": "string",
+          "description": "Project name for creation"
+        },
+        "namespaceId": {
+          "type": "integer",
+          "description": "Namespace or group ID for project creation"
+        },
+        "visibility": {
+          "type": "string",
+          "enum": [
+            "private",
+            "internal",
+            "public"
+          ]
+        },
+        "topics": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "action"
+      ]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "integer"
+        },
+        "pathWithNamespace": {
+          "type": "string"
+        },
+        "webUrl": {
+          "type": "string"
+        },
+        "defaultBranch": {
+          "type": "string"
+        },
+        "visibility": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "depends": [
+    {
+      "uri": "gitlab/auth",
+      "reason": "The correct token type and host must be established before project API calls succeed"
+    }
+  ],
+  "more": {
+    "docs": "https://docs.gitlab.com/api/projects/",
+    "project-creation": "https://docs.gitlab.com/user/project/working_with_projects/"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents, platform engineers",
+    "estimated_reading_time": "6 min",
+    "prerequisites": [
+      "gitlab/auth"
+    ],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://gitlab.com/gitlab-org/gitlab",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

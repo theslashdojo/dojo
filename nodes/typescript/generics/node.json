@@ -1,0 +1,98 @@
+{
+  "name": "generics",
+  "version": "1.0.0",
+  "uri": "typescript/generics",
+  "type": "context",
+  "content_type": "guide",
+  "context": "TypeScript generics — type parameters, constraints, inference, conditional types, and reusable type-safe abstractions",
+  "info": "Generics are TypeScript's mechanism for writing reusable, type-safe code that works with multiple types without losing type information. A generic function or type accepts type parameters (like `<T>`) that are filled in at each usage site, either explicitly or via type inference. Generics are essential for agent development: they power typed API clients, type-safe event emitters, generic data structures, and framework abstractions. This node covers generic functions, generic interfaces and classes, type parameter constraints (`extends`), default type parameters, the `infer` keyword for extracting types, conditional types with generics, variance annotations (`in`/`out`), and common generic patterns like builder types and fluent APIs. See [[typescript/types]] for the underlying type system and [[typescript/config]] for strict mode options that affect generic inference.",
+  "parent": "typescript",
+  "tags": ["generics", "type-parameters", "constraints", "inference", "infer", "conditional-types", "variance", "reusable", "type-safe", "abstract"],
+  "aliases": [
+    "generics",
+    "typescript generics",
+    "ts generics",
+    "type parameters",
+    "generic types",
+    "generic functions",
+    "generic classes",
+    "type constraints",
+    "extends constraint",
+    "<T>"
+  ],
+  "triggers": [
+    "write a generic function",
+    "add type parameter",
+    "constrain a generic type",
+    "generic interface typescript",
+    "use infer keyword",
+    "generic class typescript",
+    "default type parameter",
+    "typescript variance",
+    "generic utility type",
+    "make this function generic",
+    "type parameter constraint"
+  ],
+  "body": "# TypeScript Generics\n\nGenerics let you write functions, classes, and types that work with any type while preserving type information. Instead of using `any`, generics capture the specific type at each call site.\n\n## Generic Functions\n\n```typescript\n// Without generics — loses type information\nfunction firstAny(arr: any[]): any {\n  return arr[0];\n}\nconst x = firstAny([1, 2, 3]); // any — lost the number type\n\n// With generics — preserves type information\nfunction first<T>(arr: T[]): T | undefined {\n  return arr[0];\n}\nconst y = first([1, 2, 3]);      // number | undefined — inferred\nconst z = first<string>([\"a\"]);  // string | undefined — explicit\n\n// Multiple type parameters\nfunction pair<A, B>(a: A, b: B): [A, B] {\n  return [a, b];\n}\nconst p = pair(\"hello\", 42); // [string, number]\n\n// Generic arrow functions\nconst identity = <T>(x: T): T => x;\n\n// In .tsx files, use trailing comma to disambiguate from JSX\nconst identity2 = <T,>(x: T): T => x;\n```\n\n## Type Parameter Constraints\n\nUse `extends` to restrict what types a generic parameter can accept.\n\n```typescript\n// T must have a 'length' property\nfunction longest<T extends { length: number }>(a: T, b: T): T {\n  return a.length >= b.length ? a : b;\n}\n\nlongest(\"hello\", \"world\");   // OK — strings have length\nlongest([1, 2], [1, 2, 3]);  // OK — arrays have length\n// longest(10, 20);           // Error: number has no 'length'\n\n// Constrain to keys of an object\nfunction getProperty<T, K extends keyof T>(obj: T, key: K): T[K] {\n  return obj[key];\n}\n\nconst user = { name: \"Alice\", age: 30 };\ngetProperty(user, \"name\"); // string\ngetProperty(user, \"age\");  // number\n// getProperty(user, \"email\"); // Error: not a key of user\n```\n\n## Default Type Parameters\n\nProvide defaults when a type parameter is not explicitly specified.\n\n```typescript\ninterface ApiResponse<T = unknown> {\n  data: T;\n  status: number;\n  headers: Record<string, string>;\n}\n\nconst response1: ApiResponse = { data: \"anything\", status: 200, headers: {} };\nconst response2: ApiResponse<User> = { data: user, status: 200, headers: {} };\n\n// Defaults with constraints\ntype Container<T extends object = Record<string, unknown>> = {\n  value: T;\n  meta: string;\n};\n```\n\n## Generic Interfaces\n\n```typescript\ninterface Repository<T> {\n  findById(id: string): Promise<T | null>;\n  findAll(): Promise<T[]>;\n  create(item: Omit<T, \"id\">): Promise<T>;\n  update(id: string, item: Partial<T>): Promise<T>;\n  delete(id: string): Promise<void>;\n}\n\ninterface User {\n  id: string;\n  name: string;\n  email: string;\n}\n\nclass UserRepository implements Repository<User> {\n  async findById(id: string): Promise<User | null> { /* ... */ return null; }\n  async findAll(): Promise<User[]> { return []; }\n  async create(item: Omit<User, \"id\">): Promise<User> { return { id: \"1\", ...item }; }\n  async update(id: string, item: Partial<User>): Promise<User> { return { id, name: \"\", email: \"\", ...item }; }\n  async delete(id: string): Promise<void> { /* ... */ }\n}\n```\n\n## Generic Classes\n\n```typescript\nclass Stack<T> {\n  private items: T[] = [];\n\n  push(item: T): void {\n    this.items.push(item);\n  }\n\n  pop(): T | undefined {\n    return this.items.pop();\n  }\n\n  peek(): T | undefined {\n    return this.items[this.items.length - 1];\n  }\n\n  get size(): number {\n    return this.items.length;\n  }\n}\n\nconst numStack = new Stack<number>();\nnumStack.push(1);\nnumStack.push(2);\nconst top = numStack.pop(); // number | undefined\n```\n\n## The `infer` Keyword\n\n`infer` declares a type variable inside a conditional type, extracting parts of a type.\n\n```typescript\n// Extract return type\ntype Return<T> = T extends (...args: any[]) => infer R ? R : never;\ntype A = Return<() => string>;   // string\ntype B = Return<(x: number) => boolean>; // boolean\n\n// Extract element type from array\ntype Flatten<T> = T extends (infer E)[] ? E : T;\ntype C = Flatten<number[]>;    // number\ntype D = Flatten<string>;      // string (not an array, returns as-is)\n\n// Extract promise value\ntype UnwrapPromise<T> = T extends Promise<infer U> ? UnwrapPromise<U> : T;\ntype E = UnwrapPromise<Promise<Promise<number>>>;  // number\n\n// Extract function parameters\ntype FirstParam<T> = T extends (first: infer F, ...rest: any[]) => any ? F : never;\ntype F = FirstParam<(name: string, age: number) => void>; // string\n\n// Infer in template literal types\ntype ExtractId<T> = T extends `${infer _Prefix}-${infer Id}` ? Id : never;\ntype G = ExtractId<\"user-123\">;  // \"123\"\n```\n\n## Conditional Types with Generics\n\n```typescript\n// Distribute over unions\ntype ToArray<T> = T extends unknown ? T[] : never;\ntype H = ToArray<string | number>; // string[] | number[]\n\n// Filter a union\ntype FilterStrings<T> = T extends string ? T : never;\ntype I = FilterStrings<string | number | boolean>; // string\n\n// Recursive conditional types\ntype DeepReadonly<T> = T extends object\n  ? { readonly [K in keyof T]: DeepReadonly<T[K]> }\n  : T;\n\ntype ReadonlyUser = DeepReadonly<{\n  name: string;\n  address: { street: string; city: string };\n}>;\n// { readonly name: string; readonly address: { readonly street: string; readonly city: string } }\n\n// NonNullable implementation\ntype MyNonNullable<T> = T extends null | undefined ? never : T;\n```\n\n## `const` Type Parameters (5.0+)\n\nPreserve literal types in generic inference.\n\n```typescript\n// Without const — widens to string[]\nfunction withoutConst<T extends readonly string[]>(arr: T): T {\n  return arr;\n}\nconst a1 = withoutConst([\"a\", \"b\"]); // string[]\n\n// With const — preserves literal types\nfunction withConst<const T extends readonly string[]>(arr: T): T {\n  return arr;\n}\nconst a2 = withConst([\"a\", \"b\"]); // readonly [\"a\", \"b\"]\n```\n\n## Variance Annotations (4.7+)\n\nExplicitly mark type parameter variance for correctness and performance.\n\n```typescript\n// 'out' — covariant (producer)\ninterface Producer<out T> {\n  get(): T;\n}\n\n// 'in' — contravariant (consumer)\ninterface Consumer<in T> {\n  accept(value: T): void;\n}\n\n// 'in out' — invariant (both)\ninterface ReadWrite<in out T> {\n  get(): T;\n  set(value: T): void;\n}\n```\n\nVariance annotations are checked by the compiler: if you mark `out T` but use `T` in an input position, TypeScript reports an error.\n\n## Common Generic Patterns\n\n### Type-Safe Event Emitter\n\n```typescript\ntype EventMap = {\n  connect: { host: string; port: number };\n  message: { text: string; from: string };\n  disconnect: { reason: string };\n};\n\nclass TypedEmitter<Events extends Record<string, unknown>> {\n  private listeners = new Map<string, Set<Function>>();\n\n  on<K extends keyof Events>(event: K, handler: (data: Events[K]) => void): void {\n    const set = this.listeners.get(event as string) ?? new Set();\n    set.add(handler);\n    this.listeners.set(event as string, set);\n  }\n\n  emit<K extends keyof Events>(event: K, data: Events[K]): void {\n    this.listeners.get(event as string)?.forEach(fn => fn(data));\n  }\n}\n\nconst emitter = new TypedEmitter<EventMap>();\nemitter.on(\"connect\", (data) => {\n  console.log(data.host); // typed: { host: string; port: number }\n});\n```\n\n### Builder Pattern\n\n```typescript\nclass QueryBuilder<T extends object> {\n  private conditions: string[] = [];\n\n  where<K extends keyof T>(key: K, value: T[K]): this {\n    this.conditions.push(`${String(key)} = ${JSON.stringify(value)}`);\n    return this;\n  }\n\n  build(): string {\n    return this.conditions.join(\" AND \");\n  }\n}\n\ninterface Product {\n  name: string;\n  price: number;\n  category: string;\n}\n\nconst query = new QueryBuilder<Product>()\n  .where(\"category\", \"electronics\")  // OK\n  .where(\"price\", 99.99)             // OK\n  // .where(\"price\", \"cheap\")        // Error: string not assignable to number\n  .build();\n```\n\n### Branded / Opaque Types\n\n```typescript\ntype Brand<T, B extends string> = T & { __brand: B };\n\ntype UserId = Brand<string, \"UserId\">;\ntype OrderId = Brand<string, \"OrderId\">;\n\nfunction getUser(id: UserId): void { /* ... */ }\nfunction getOrder(id: OrderId): void { /* ... */ }\n\nconst userId = \"user-123\" as UserId;\nconst orderId = \"order-456\" as OrderId;\n\ngetUser(userId);   // OK\n// getUser(orderId); // Error: OrderId not assignable to UserId\n```\n\n## Generic Pitfalls\n\n### 1. Over-constraining\n\n```typescript\n// Bad — T is constrained but never used beyond the constraint\nfunction bad<T extends string>(x: T): string {\n  return x.toUpperCase();\n}\n// Better — just use string directly\nfunction good(x: string): string {\n  return x.toUpperCase();\n}\n```\n\n### 2. Unnecessary generics\n\n```typescript\n// Bad — T is only used once, provides no benefit\nfunction bad2<T>(x: T): void {\n  console.log(x);\n}\n// Better\nfunction good2(x: unknown): void {\n  console.log(x);\n}\n```\n\n### 3. Not constraining enough\n\n```typescript\n// Bad — T could be anything, .name might not exist\n// function getName<T>(obj: T): string {\n//   return obj.name; // Error\n// }\n\n// Good — constrain to types with a name property\nfunction getName<T extends { name: string }>(obj: T): string {\n  return obj.name;\n}\n```\n\n**Rule of thumb**: Use generics when the type parameter appears in at least two positions (input and output, or two inputs that must match). If it appears only once, you probably don't need a generic.\n",
+  "sections": [
+    {
+      "id": "functions",
+      "title": "Generic functions",
+      "body": "Generic functions accept type parameters in angle brackets: `function fn<T>(arg: T): T`. TypeScript infers `T` from the argument when possible, or you can specify it explicitly: `fn<string>(\"hello\")`. Arrow functions in `.tsx` files need a trailing comma to disambiguate from JSX: `<T,>(x: T) => x`. Use multiple type parameters when inputs/outputs must correlate: `function map<T, U>(arr: T[], fn: (item: T) => U): U[]`. Generic functions enable typed wrappers, data transformations, and API clients that preserve request/response type relationships.",
+      "tags": ["functions", "inference", "arrow-functions", "type-parameters"]
+    },
+    {
+      "id": "constraints",
+      "title": "Type parameter constraints",
+      "body": "Use `extends` to restrict generic parameters: `<T extends { length: number }>` ensures `T` has a `length` property. Common constraint patterns: `<K extends keyof T>` (key of an object type), `<T extends readonly unknown[]>` (any array/tuple), `<T extends (...args: any[]) => any>` (any function), `<T extends new (...args: any[]) => any>` (any constructor). Constraints enable safe property access and method calls on generic values. Default parameters work with constraints: `<T extends object = Record<string, unknown>>`.",
+      "tags": ["extends", "constraints", "keyof", "bounds", "defaults"]
+    },
+    {
+      "id": "infer-keyword",
+      "title": "The infer keyword",
+      "body": "The `infer` keyword declares a type variable inside a conditional type's `extends` clause: `T extends Promise<infer U> ? U : T` extracts the promised type. Common uses: `T extends (infer E)[]` (array element), `T extends (...args: infer P) => infer R` (function parts), `T extends { [key: string]: infer V }` (object value type). `infer` can appear in template literal types: `` T extends `${infer Head}-${infer Tail}` ``. Multiple `infer` positions in the same clause extract multiple types. `infer` is the building block for TypeScript's built-in utility types like `ReturnType`, `Parameters`, and `Awaited`.",
+      "tags": ["infer", "extract", "conditional-types", "ReturnType", "Parameters"]
+    },
+    {
+      "id": "variance",
+      "title": "Variance annotations",
+      "body": "Variance describes how subtyping of a generic type relates to subtyping of its type parameter. `out T` (covariant): if `Dog extends Animal`, then `Producer<Dog> extends Producer<Animal>`. `in T` (contravariant): if `Dog extends Animal`, then `Consumer<Animal> extends Consumer<Dog>`. `in out T` (invariant): no subtype relationship. TypeScript 4.7+ lets you annotate variance explicitly. This improves type safety (compiler catches misuse) and compilation speed (compiler skips structural comparison). Use `out` for types that produce/return `T`, `in` for types that consume/accept `T`.",
+      "tags": ["variance", "covariant", "contravariant", "invariant", "in", "out"]
+    },
+    {
+      "id": "patterns",
+      "title": "Common generic patterns",
+      "body": "**Event emitter**: `class Emitter<Events extends Record<string, unknown>>` with `on<K extends keyof Events>(event: K, handler: (data: Events[K]) => void)`. **Builder**: methods return `this` for chaining, with generic constraints on keys. **Branded types**: `type Brand<T, B> = T & { __brand: B }` creates nominally distinct types from structural equivalents. **Type-safe records**: `Record<K, V>` with constrained keys. **Discriminated union factories**: generic functions that return discriminated unions based on input. **Recursive types**: `type DeepPartial<T> = { [K in keyof T]?: DeepPartial<T[K]> }` for deep transformations.",
+      "tags": ["patterns", "event-emitter", "builder", "branded-types", "recursive", "factory"]
+    }
+  ],
+  "links": [
+    { "uri": "typescript/types", "context": "Foundation types that generics parameterize over" },
+    { "uri": "typescript/config", "context": "Strict mode options affect generic type inference" },
+    { "uri": "typescript/compiler", "context": "tsc reports generic constraint violations and inference failures" }
+  ],
+  "related": [
+    { "uri": "typescript/types", "relation": "prerequisite", "note": "Understanding the type system is essential before working with generics" },
+    { "uri": "typescript/config", "relation": "see-also", "note": "strictFunctionTypes affects how generic function types are compared" }
+  ],
+  "more": {
+    "docs": "https://www.typescriptlang.org/docs/handbook/2/generics.html",
+    "conditional-types": "https://www.typescriptlang.org/docs/handbook/2/conditional-types.html",
+    "variance": "https://www.typescriptlang.org/docs/handbook/2/generics.html#variance-annotations"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "10 min",
+    "prerequisites": ["typescript/types"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

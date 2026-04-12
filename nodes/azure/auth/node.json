@@ -1,0 +1,157 @@
+{
+  "name": "auth",
+  "uri": "azure/auth",
+  "type": "context",
+  "context": "Authenticate Azure CLI sessions with user login, service principals, managed identities, and explicit subscription selection",
+  "info": "Azure authentication for automation is a choice between interactive user sign-in, service principals, and managed identities. Agents need this node whenever `az` commands fail with authorization errors, a workflow must run without human prompts, or the active subscription and tenant must be pinned before changes. Microsoft Learn's Azure CLI authentication guidance now warns that MFA is required for user identities starting in September 2025, which makes service principals, workload identity, and managed identities the operationally correct path for unattended jobs.",
+  "parent": "azure",
+  "content_type": "guide",
+  "tags": [
+    "azure",
+    "auth",
+    "az-login",
+    "service-principal",
+    "managed-identity",
+    "entra-id",
+    "subscription",
+    "tenant",
+    "rbac"
+  ],
+  "aliases": [
+    "azure login",
+    "az login",
+    "azure cli auth",
+    "service principal login",
+    "managed identity login",
+    "azure tenant switch",
+    "azure subscription context",
+    "entra auth for azure cli",
+    "noninteractive azure auth"
+  ],
+  "triggers": [
+    "login to azure",
+    "authenticate azure cli with a service principal",
+    "use managed identity with az cli",
+    "set the active azure subscription",
+    "switch azure tenants",
+    "fix azure authorization failed",
+    "authenticate azure in ci",
+    "get an access token from az",
+    "use certificate auth for azure cli"
+  ],
+  "body": "# Azure Authentication\n\nStart every automation session by proving identity and confirming the active subscription. Human interactive login is fine for exploration, but unattended workflows should prefer service principals, workload identity, or managed identities.\n\n~~~bash\n# Interactive user login\naz login\naz account list --output table\naz account set --subscription \"$AZURE_SUBSCRIPTION_ID\"\n\n# Service principal with client secret\naz login --service-principal \\\n  --username \"$AZURE_CLIENT_ID\" \\\n  --password \"$AZURE_CLIENT_SECRET\" \\\n  --tenant \"$AZURE_TENANT_ID\"\n\n# Service principal with certificate\naz login --service-principal \\\n  --username \"$AZURE_CLIENT_ID\" \\\n  --certificate /path/to/cert.pem \\\n  --tenant \"$AZURE_TENANT_ID\"\n\n# Managed identity\naz login --identity\naz login --identity --client-id \"$AZURE_CLIENT_ID\"\n\n# Token hand-off to other tools\naz account get-access-token --resource https://management.azure.com/\n~~~\n\nUse service principal auth when the agent runs off-Azure, such as in GitHub Actions or a local automation host. Use managed identity when the agent already runs on an Azure resource and should avoid stored credentials entirely.\n\nWhen an operation fails, verify all three layers in order:\n\n- identity type: user, service principal, or managed identity\n- active tenant and subscription: `az account show`\n- RBAC scope: does this principal have the required role on the subscription, resource group, or resource?\n\nMove next into [[azure/resource-groups]] or another workload node only after `az account show` confirms the intended subscription.\n",
+  "sections": [
+    {
+      "id": "interactive-login",
+      "title": "Interactive login",
+      "body": "Use `az login` for exploratory work or manual diagnosis. Immediately follow it with `az account list --output table` and `az account set --subscription ...` because many operators belong to multiple tenants and subscriptions. As of September 2025, Microsoft Learn states that MFA is required for user identities in Azure CLI, so these sessions are not a durable automation primitive.",
+      "tags": [
+        "interactive",
+        "mfa",
+        "subscription",
+        "tenant"
+      ]
+    },
+    {
+      "id": "service-principal",
+      "title": "Service principal auth",
+      "body": "Use `az login --service-principal --username APP_ID --password CLIENT_SECRET --tenant TENANT_ID` for secret-based automation, or replace `--password` with `--certificate /path/to/cert.pem` for certificate auth. Service principals are the standard noninteractive identity for CI runners and external agents, but they still need RBAC at the correct scope.",
+      "tags": [
+        "service-principal",
+        "client-secret",
+        "certificate",
+        "ci"
+      ]
+    },
+    {
+      "id": "managed-identity",
+      "title": "Managed identity auth",
+      "body": "Use `az login --identity` when the agent already runs on Azure infrastructure that has a managed identity attached. For a user-assigned managed identity, pass `--client-id`, `--object-id`, or `--resource-id`. This is the cleanest path for App Service, Function Apps, VMs, and AKS nodes because there are no static credentials to rotate or leak.",
+      "tags": [
+        "managed-identity",
+        "secretless",
+        "client-id",
+        "resource-id"
+      ]
+    },
+    {
+      "id": "subscription-context",
+      "title": "Subscription and token context",
+      "body": "After login, pin the intended subscription with `az account set --subscription ...` and verify with `az account show`. If another tool needs a bearer token, `az account get-access-token` can mint one for Azure Resource Manager or another audience. Treat the active subscription as part of every change plan, especially before delete operations.",
+      "tags": [
+        "account-set",
+        "account-show",
+        "access-token",
+        "subscription"
+      ]
+    }
+  ],
+  "links": [
+    {
+      "uri": "azure/resource-groups",
+      "context": "Manage the group boundary after auth context is pinned"
+    },
+    {
+      "uri": "azure/key-vault",
+      "context": "Use RBAC-backed secret operations once the right identity is active"
+    },
+    {
+      "uri": "azure/app-service",
+      "context": "Attach or use managed identity on web apps after authentication is understood"
+    },
+    {
+      "uri": "azure/functions",
+      "context": "Use noninteractive auth for function deployment and settings changes"
+    },
+    {
+      "uri": "azure/aks",
+      "context": "Create clusters or fetch kubeconfig only after subscription context is correct"
+    },
+    {
+      "uri": "github/actions",
+      "context": "CI systems often hand off to Azure using OIDC or service principal credentials"
+    }
+  ],
+  "related": [
+    {
+      "uri": "azure",
+      "relation": "prerequisite",
+      "note": "Every Azure change begins by selecting the correct identity and subscription context"
+    },
+    {
+      "uri": "github/actions",
+      "relation": "see-also",
+      "note": "CI workflows commonly use Azure login actions and OIDC-backed auth"
+    },
+    {
+      "uri": "shell/environment",
+      "relation": "see-also",
+      "note": "Automation usually passes tenant, client, and subscription identifiers through environment variables"
+    }
+  ],
+  "more": {
+    "docs": "https://learn.microsoft.com/en-us/cli/azure/authenticate-azure-cli",
+    "service_principal": "https://learn.microsoft.com/en-us/cli/azure/authenticate-azure-cli-service-principal",
+    "managed_identity": "https://learn.microsoft.com/en-us/cli/azure/authenticate-azure-cli-managed-identity",
+    "account": "https://learn.microsoft.com/en-us/cli/azure/account?view=azure-cli-latest"
+  },
+  "frontmatter": {
+    "created": "2026-04-12",
+    "updated": "2026-04-12",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "6 min",
+    "prerequisites": [
+      "azure"
+    ],
+    "status": "living",
+    "confidence": "high"
+  },
+  "repository": "https://github.com/Azure/azure-cli",
+  "version": "1.0.0",
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-12T00:00:00Z",
+  "updated": "2026-04-12T00:00:00Z",
+  "status": "published"
+}

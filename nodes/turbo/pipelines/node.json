@@ -1,0 +1,141 @@
+{
+  "name": "pipelines",
+  "version": "1.0.0",
+  "uri": "turbo/pipelines",
+  "type": "skill",
+  "context": "Define task dependency graphs in turbo.json — dependsOn, outputs, inputs, caching rules, and execution order",
+  "info": "This skill covers defining and managing tasks in turbo.json's tasks object. Tasks are the core of Turborepo — they map to package.json scripts and define how work flows through your monorepo. Key concepts include topological dependencies (^build ensures libraries build before apps), same-package dependencies (test depends on build within each workspace), workspace-specific dependencies (web#lint depends on utils#build), output declarations for caching, input patterns for cache invalidation, persistent tasks for dev servers, and the transit node pattern for type checking. Agents use this skill when adding new tasks, configuring build pipelines, optimizing task parallelism, or debugging dependency ordering. See [[turbo/config]] for global configuration and [[turbo/caching]] for cache behavior.",
+  "parent": "turbo",
+  "tags": ["pipelines", "tasks", "depends-on", "topological", "outputs", "inputs", "persistent", "task-graph", "parallel"],
+  "aliases": [
+    "turbo tasks",
+    "turbo pipelines",
+    "turbo pipeline",
+    "turbo dependsOn",
+    "turbo task graph",
+    "turbo task dependencies",
+    "turbo build pipeline",
+    "turbo depends on",
+    "task configuration",
+    "turbo run config"
+  ],
+  "triggers": [
+    "add a task to turbo.json",
+    "configure build dependencies in turbo",
+    "set up turbo task pipeline",
+    "make test depend on build in turbo",
+    "add outputs to turbo task",
+    "configure persistent task in turbo",
+    "set up dev server in turbo",
+    "define turbo pipeline",
+    "configure dependsOn in turbo.json",
+    "run tasks in topological order"
+  ],
+  "body": "# Task Pipelines\n\nTasks in turbo.json define how work flows through your monorepo. Each task maps to a script in package.json and declares its dependencies, outputs, inputs, and caching behavior.\n\n## Task Definition Structure\n\n```json\n{\n  \"tasks\": {\n    \"build\": {\n      \"dependsOn\": [\"^build\"],\n      \"outputs\": [\"dist/**\"],\n      \"inputs\": [\"src/**\", \"tsconfig.json\"],\n      \"env\": [\"NODE_ENV\"],\n      \"cache\": true\n    }\n  }\n}\n```\n\n## dependsOn Syntax\n\n### Topological Dependencies (`^`)\n\nThe caret prefix means \"run this task in all dependencies first\":\n\n```json\n{\n  \"build\": {\n    \"dependsOn\": [\"^build\"]\n  }\n}\n```\n\nIf `web` depends on `ui` and `utils`, then `ui#build` and `utils#build` run before `web#build`.\n\n### Same-Package Dependencies\n\nPlain strings mean \"run this task in the same package first\":\n\n```json\n{\n  \"test\": {\n    \"dependsOn\": [\"build\"]\n  }\n}\n```\n\n`build` must complete in each package before `test` starts in that same package.\n\n### Workspace-Specific Dependencies\n\nTarget a specific package's task:\n\n```json\n{\n  \"deploy\": {\n    \"dependsOn\": [\"web#build\", \"api#build\"]\n  }\n}\n```\n\n### No Dependencies\n\nTasks with no dependencies run immediately in parallel:\n\n```json\n{\n  \"lint\": {\n    \"dependsOn\": []\n  }\n}\n```\n\nOmitting `dependsOn` entirely is equivalent to `[]`.\n\n## Outputs\n\nDeclare which files to cache after a successful task run:\n\n```json\n{\n  \"build\": {\n    \"outputs\": [\"dist/**\", \".next/**\", \"!.next/cache/**\"]\n  }\n}\n```\n\nCommon output patterns:\n- **Vite/Rollup**: `[\"dist/**\"]`\n- **Next.js**: `[\".next/**\", \"!.next/cache/**\"]`\n- **TypeScript**: `[\"dist/**\"]` or `[\"build/**\"]`\n- **Storybook**: `[\"storybook-static/**\"]`\n\nGlobs are relative to each workspace root. Use `!` to exclude patterns.\n\n**Important**: If you don't declare outputs, Turborepo won't cache any files for that task.\n\n## Inputs\n\nControl which file changes trigger cache invalidation:\n\n```json\n{\n  \"test\": {\n    \"inputs\": [\"src/**\", \"tests/**\", \"jest.config.*\"]\n  },\n  \"lint\": {\n    \"inputs\": [\"$TURBO_DEFAULT$\", \"!README.md\"]\n  }\n}\n```\n\n`$TURBO_DEFAULT$` includes the default input set (all files tracked by git minus outputs). Use it with exclusions to fine-tune cache invalidation.\n\n## Persistent Tasks\n\nLong-running tasks like dev servers must be marked persistent:\n\n```json\n{\n  \"dev\": {\n    \"persistent\": true,\n    \"cache\": false\n  }\n}\n```\n\nPersistent tasks cannot be depended on by other tasks. They never cache.\n\n## The `with` Field\n\nRun sibling tasks alongside a persistent task:\n\n```json\n{\n  \"dev\": {\n    \"with\": [\"api#dev\"],\n    \"persistent\": true,\n    \"cache\": false\n  }\n}\n```\n\n## Interactive Tasks\n\nTasks that need stdin:\n\n```json\n{\n  \"login\": {\n    \"interactive\": true,\n    \"persistent\": true,\n    \"cache\": false\n  }\n}\n```\n\n## Root Tasks\n\nRun scripts from the root package.json with the `//` prefix:\n\n```json\n{\n  \"//#lint:root\": {},\n  \"//#format\": {\n    \"outputs\": []\n  }\n}\n```\n\n## Transit Node Pattern\n\nOptimize parallelism for type checking across workspaces:\n\n```json\n{\n  \"transit\": {\n    \"dependsOn\": [\"^transit\"]\n  },\n  \"check-types\": {\n    \"dependsOn\": [\"transit\"]\n  }\n}\n```\n\nThis creates workspace awareness without forcing sequential execution of the actual type-check task.\n\n## Task-Level Fields Reference\n\n| Field | Type | Default | Description |\n|-------|------|---------|-------------|\n| `dependsOn` | `string[]` | `[]` | Task dependencies |\n| `outputs` | `string[]` | `[]` | Files to cache |\n| `inputs` | `string[]` | all files | Files that affect cache key |\n| `env` | `string[]` | `[]` | Env vars in task hash |\n| `passThroughEnv` | `string[]` | `null` | Env vars available but not hashed |\n| `cache` | `boolean` | `true` | Enable caching |\n| `persistent` | `boolean` | `false` | Long-running task |\n| `interactive` | `boolean` | `false` | Accepts stdin |\n| `interruptible` | `boolean` | `false` | Restartable in watch mode |\n| `outputLogs` | `string` | `\"full\"` | Log verbosity |\n| `with` | `string[]` | `[]` | Sibling tasks to run alongside |\n| `description` | `string` | - | Documentation for the task |\n",
+  "sections": [
+    {
+      "id": "depends-on",
+      "title": "dependsOn syntax",
+      "body": "The `dependsOn` array defines task execution order. `^task` is a topological dependency (run in package dependencies first). `task` is a same-package dependency (run within the same workspace first). `package#task` is a workspace-specific dependency (run a specific package's task first). Empty array `[]` means no dependencies — runs immediately. Tasks without `dependsOn` also have no dependencies.",
+      "tags": ["depends-on", "topological", "dependencies", "execution-order"]
+    },
+    {
+      "id": "outputs",
+      "title": "Output caching",
+      "body": "The `outputs` array declares file patterns to cache after successful completion. Globs are relative to workspace root. Use `!` to exclude patterns (e.g., `!.next/cache/**`). If outputs is empty or omitted, no files are cached but the task result (exit code, logs) is still cached. Common patterns: `dist/**` for compiled output, `.next/**` for Next.js, `storybook-static/**` for Storybook, `coverage/**` for test coverage.",
+      "tags": ["outputs", "cache", "globs", "artifacts"]
+    },
+    {
+      "id": "inputs",
+      "title": "Input patterns and cache invalidation",
+      "body": "The `inputs` array defines which file changes invalidate the cache. By default, all files tracked by git (minus outputs) are inputs. Override with explicit patterns: `[\"src/**\", \"tsconfig.json\"]`. Use `$TURBO_DEFAULT$` to start from defaults and add exclusions: `[\"$TURBO_DEFAULT$\", \"!README.md\"]`. Narrower inputs mean more cache hits — a docs change won't invalidate a build if README.md is excluded from inputs.",
+      "tags": ["inputs", "cache-invalidation", "turbo-default", "file-patterns"]
+    },
+    {
+      "id": "persistent-tasks",
+      "title": "Persistent and interactive tasks",
+      "body": "Set `persistent: true` for long-running tasks like dev servers, watchers, or REPL processes. Persistent tasks never cache and cannot be depended on by other tasks (Turborepo would deadlock). Use `with` to run sibling tasks alongside a persistent task. Set `interactive: true` for tasks needing stdin (implies persistent). Set `interruptible: true` to allow turbo watch to restart the task on file changes.",
+      "tags": ["persistent", "interactive", "dev-server", "watch", "long-running"]
+    },
+    {
+      "id": "root-tasks",
+      "title": "Root workspace tasks",
+      "body": "Prefix task names with `//` to run scripts from the root package.json: `//#lint:root`, `//#format`. This is useful for repository-wide linting, formatting, or other root-level scripts. Root tasks follow the same configuration options as workspace tasks.",
+      "tags": ["root-tasks", "root-workspace", "monorepo-root"]
+    },
+    {
+      "id": "transit-pattern",
+      "title": "Transit node pattern",
+      "body": "The transit pattern optimizes type checking across workspaces. Define a `transit` task with `dependsOn: [\"^transit\"]` and have `check-types` depend on `transit`. This gives the type checker package awareness (it knows about dependency outputs) without forcing sequential execution of the type-check itself across the dependency graph. The transit task has no script — it's a graph-only node.",
+      "tags": ["transit", "type-checking", "optimization", "parallel"]
+    }
+  ],
+  "links": [
+    { "uri": "turbo", "context": "Parent Turborepo ecosystem" },
+    { "uri": "turbo/config", "context": "Global turbo.json configuration" },
+    { "uri": "turbo/workspaces", "context": "Workspace structure tasks operate on" },
+    { "uri": "turbo/caching", "context": "How outputs and inputs affect caching" },
+    { "uri": "turbo/troubleshooting", "context": "Debug task ordering and dependency issues" }
+  ],
+  "related": [
+    { "uri": "turbo/config", "relation": "prerequisite", "note": "turbo.json must exist before defining tasks" },
+    { "uri": "turbo/caching", "relation": "see-also", "note": "outputs, inputs, and env fields directly control cache behavior" },
+    { "uri": "turbo/workspaces", "relation": "see-also", "note": "Topological dependencies follow workspace dependency graph" }
+  ],
+  "scripts": [
+    {
+      "id": "add-pipeline-task",
+      "name": "Add Pipeline Task",
+      "description": "Add or update a task definition in turbo.json with dependency graph configuration",
+      "lang": "bash",
+      "runtime": "bash>=4",
+      "entry": "./scripts/add-task.sh",
+      "env": {},
+      "packages": ["jq"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "taskName": { "type": "string", "description": "Name of the task (must match a package.json script)" },
+        "dependsOn": { "type": "array", "items": { "type": "string" }, "description": "Task dependencies (use ^ for topological)" },
+        "outputs": { "type": "array", "items": { "type": "string" }, "description": "Output file globs to cache" },
+        "inputs": { "type": "array", "items": { "type": "string" }, "description": "Input file globs for cache invalidation" },
+        "env": { "type": "array", "items": { "type": "string" }, "description": "Environment variables in task hash" },
+        "cache": { "type": "boolean", "default": true, "description": "Enable caching for this task" },
+        "persistent": { "type": "boolean", "default": false, "description": "Mark as long-running task" }
+      },
+      "required": ["taskName"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "configPath": { "type": "string", "description": "Path to updated turbo.json" },
+        "taskAdded": { "type": "string", "description": "Name of the task that was added/updated" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "turbo/config", "reason": "turbo.json must exist to add task definitions" }
+  ],
+  "more": {
+    "docs": "https://turborepo.dev/repo/docs/crafting-your-repository/configuring-tasks",
+    "reference": "https://turborepo.dev/repo/docs/reference/configuration"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "6 min",
+    "prerequisites": ["turbo/config"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

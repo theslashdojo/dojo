@@ -1,0 +1,145 @@
+{
+  "name": "aws",
+  "version": "1.0.0",
+  "uri": "terraform/providers/aws",
+  "type": "skill",
+  "context": "Terraform AWS provider — configure, authenticate, and manage AWS resources with HCL including EC2, S3, VPC, IAM, Lambda, and RDS",
+  "info": "The AWS provider for Terraform is the most widely used provider by download count, enabling declarative management of hundreds of AWS service resources. It translates HCL resource blocks into AWS API calls, handling create, read, update, and delete operations across EC2, S3, VPC, IAM, Lambda, RDS, ECS, and many more services. Authentication follows the standard AWS credential chain: environment variables, shared credentials file (~/.aws/credentials), IAM instance profiles, and OIDC federation. The provider supports assume_role for cross-account access, default_tags for consistent tagging, and aliases for multi-region deployments. Data sources let you query existing AWS resources (AMIs, VPCs, caller identity) without managing them.",
+  "parent": "terraform/providers",
+  "tags": ["terraform", "aws", "provider", "hcl", "ec2", "s3", "vpc", "iam", "lambda", "rds", "ecs", "infrastructure-as-code"],
+  "aliases": [
+    "terraform aws provider",
+    "terraform aws",
+    "tf aws",
+    "hashicorp/aws",
+    "aws terraform provider",
+    "terraform amazon web services",
+    "aws infrastructure as code",
+    "terraform aws resources"
+  ],
+  "triggers": [
+    "configure the aws terraform provider",
+    "authenticate terraform with aws",
+    "create aws resources with terraform",
+    "deploy to aws with terraform",
+    "manage aws infrastructure with terraform",
+    "terraform aws provider setup",
+    "terraform multi-region aws",
+    "use assume role in terraform aws",
+    "set default tags in terraform aws"
+  ],
+  "body": "# Terraform AWS Provider\n\nThe AWS provider (`hashicorp/aws`) is the most widely used Terraform provider, with over a billion downloads. It maps HCL resource declarations to AWS API calls across hundreds of services.\n\n## Provider Configuration\n\n```hcl\nterraform {\n  required_providers {\n    aws = {\n      source  = \"hashicorp/aws\"\n      version = \"~> 5.0\"\n    }\n  }\n}\n\nprovider \"aws\" {\n  region = \"us-east-1\"\n\n  default_tags {\n    tags = {\n      ManagedBy   = \"terraform\"\n      Environment = var.environment\n      Project     = var.project_name\n    }\n  }\n}\n```\n\nThe `region` argument is the only commonly required setting. Most other configuration is read from environment variables or the AWS credentials chain.\n\n## Authentication\n\nThe provider resolves credentials in this order:\n\n1. **Environment variables** — `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, and optionally `AWS_SESSION_TOKEN`\n2. **Shared credentials file** — `~/.aws/credentials` with profile selection via `AWS_PROFILE` or the `profile` argument\n3. **IAM instance profile** — EC2 instance metadata (used in CI/CD runners on AWS)\n4. **OIDC / Web identity** — `AWS_WEB_IDENTITY_TOKEN_FILE` for GitHub Actions, GitLab CI, and other OIDC providers\n\n```hcl\n# Explicit profile selection\nprovider \"aws\" {\n  region  = \"us-east-1\"\n  profile = \"production\"\n}\n```\n\nFor cross-account access, use `assume_role`:\n\n```hcl\nprovider \"aws\" {\n  region = \"us-east-1\"\n\n  assume_role {\n    role_arn     = \"arn:aws:iam::987654321098:role/TerraformDeployRole\"\n    session_name = \"terraform-deploy\"\n    external_id  = \"unique-external-id\"\n  }\n}\n```\n\n## Common Resources\n\nThe most-used AWS resource types in Terraform:\n\n```hcl\n# EC2 instance\nresource \"aws_instance\" \"web\" {\n  ami           = data.aws_ami.ubuntu.id\n  instance_type = \"t3.micro\"\n  subnet_id     = aws_subnet.public.id\n\n  vpc_security_group_ids = [aws_security_group.web.id]\n\n  tags = {\n    Name = \"web-server\"\n  }\n}\n\n# S3 bucket\nresource \"aws_s3_bucket\" \"assets\" {\n  bucket = \"my-app-assets-${var.environment}\"\n}\n\nresource \"aws_s3_bucket_versioning\" \"assets\" {\n  bucket = aws_s3_bucket.assets.id\n  versioning_configuration {\n    status = \"Enabled\"\n  }\n}\n\n# VPC\nresource \"aws_vpc\" \"main\" {\n  cidr_block           = \"10.0.0.0/16\"\n  enable_dns_hostnames = true\n  enable_dns_support   = true\n\n  tags = { Name = \"main-vpc\" }\n}\n\nresource \"aws_subnet\" \"public\" {\n  vpc_id                  = aws_vpc.main.id\n  cidr_block              = \"10.0.1.0/24\"\n  availability_zone       = \"us-east-1a\"\n  map_public_ip_on_launch = true\n\n  tags = { Name = \"public-subnet-1a\" }\n}\n\n# Security group\nresource \"aws_security_group\" \"web\" {\n  name        = \"web-sg\"\n  description = \"Allow HTTP and HTTPS inbound\"\n  vpc_id      = aws_vpc.main.id\n\n  ingress {\n    from_port   = 80\n    to_port     = 80\n    protocol    = \"tcp\"\n    cidr_blocks = [\"0.0.0.0/0\"]\n  }\n\n  ingress {\n    from_port   = 443\n    to_port     = 443\n    protocol    = \"tcp\"\n    cidr_blocks = [\"0.0.0.0/0\"]\n  }\n\n  egress {\n    from_port   = 0\n    to_port     = 0\n    protocol    = \"-1\"\n    cidr_blocks = [\"0.0.0.0/0\"]\n  }\n}\n\n# IAM role\nresource \"aws_iam_role\" \"lambda_exec\" {\n  name = \"lambda-execution-role\"\n\n  assume_role_policy = jsonencode({\n    Version = \"2012-10-17\"\n    Statement = [{\n      Action = \"sts:AssumeRole\"\n      Effect = \"Allow\"\n      Principal = {\n        Service = \"lambda.amazonaws.com\"\n      }\n    }]\n  })\n}\n\n# Lambda function\nresource \"aws_lambda_function\" \"api\" {\n  function_name = \"api-handler\"\n  role          = aws_iam_role.lambda_exec.arn\n  handler       = \"index.handler\"\n  runtime       = \"nodejs20.x\"\n  filename      = \"lambda.zip\"\n\n  environment {\n    variables = {\n      TABLE_NAME = \"my-table\"\n    }\n  }\n}\n\n# RDS instance\nresource \"aws_db_instance\" \"postgres\" {\n  identifier           = \"app-db\"\n  engine               = \"postgres\"\n  engine_version       = \"16.2\"\n  instance_class       = \"db.t3.micro\"\n  allocated_storage    = 20\n  db_name              = \"appdb\"\n  username             = var.db_username\n  password             = var.db_password\n  skip_final_snapshot  = true\n}\n\n# ECS service\nresource \"aws_ecs_service\" \"app\" {\n  name            = \"app-service\"\n  cluster         = aws_ecs_cluster.main.id\n  task_definition = aws_ecs_task_definition.app.arn\n  desired_count   = 2\n  launch_type     = \"FARGATE\"\n\n  network_configuration {\n    subnets         = [aws_subnet.public.id]\n    security_groups = [aws_security_group.web.id]\n  }\n}\n```\n\n## Data Sources\n\nData sources query existing AWS resources without managing their lifecycle:\n\n```hcl\n# Look up the latest Ubuntu AMI\ndata \"aws_ami\" \"ubuntu\" {\n  most_recent = true\n  owners      = [\"099720109477\"] # Canonical\n\n  filter {\n    name   = \"name\"\n    values = [\"ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*\"]\n  }\n}\n\n# Current caller identity\ndata \"aws_caller_identity\" \"current\" {}\noutput \"account_id\" {\n  value = data.aws_caller_identity.current.account_id\n}\n\n# Current region\ndata \"aws_region\" \"current\" {}\n\n# Available AZs\ndata \"aws_availability_zones\" \"available\" {\n  state = \"available\"\n}\n\n# Look up an existing VPC\ndata \"aws_vpc\" \"existing\" {\n  filter {\n    name   = \"tag:Name\"\n    values = [\"production-vpc\"]\n  }\n}\n```\n\n## Multi-Region Deployments\n\nUse provider aliases to deploy resources across multiple AWS regions:\n\n```hcl\nprovider \"aws\" {\n  region = \"us-east-1\"\n}\n\nprovider \"aws\" {\n  alias  = \"eu\"\n  region = \"eu-west-1\"\n}\n\nresource \"aws_s3_bucket\" \"us_data\" {\n  bucket = \"my-app-us-data\"\n}\n\nresource \"aws_s3_bucket\" \"eu_data\" {\n  provider = aws.eu\n  bucket   = \"my-app-eu-data\"\n}\n```\n\nCross-account deployments combine aliases with assume_role:\n\n```hcl\nprovider \"aws\" {\n  alias  = \"staging\"\n  region = \"us-east-1\"\n\n  assume_role {\n    role_arn = \"arn:aws:iam::111111111111:role/TerraformRole\"\n  }\n}\n\nprovider \"aws\" {\n  alias  = \"production\"\n  region = \"us-east-1\"\n\n  assume_role {\n    role_arn = \"arn:aws:iam::222222222222:role/TerraformRole\"\n  }\n}\n```\n\n## Default Tags\n\nThe `default_tags` block applies tags to every resource that supports tagging, avoiding repetition:\n\n```hcl\nprovider \"aws\" {\n  region = \"us-east-1\"\n\n  default_tags {\n    tags = {\n      ManagedBy   = \"terraform\"\n      Environment = var.environment\n      Team        = \"platform\"\n      CostCenter  = \"eng-infra\"\n    }\n  }\n}\n```\n\nResource-level tags are merged with default_tags. Resource tags take precedence on conflicts.\n",
+  "sections": [
+    {
+      "id": "configuration",
+      "title": "Provider configuration",
+      "body": "Declare the AWS provider in `required_providers` with `source = \"hashicorp/aws\"` and a version constraint (e.g., `~> 5.0`). The `provider \"aws\"` block accepts `region` (required in most setups), `profile` (named AWS CLI profile), `default_tags` (consistent tagging), and `allowed_account_ids` (safety check preventing deployment to wrong accounts). The provider reads configuration from environment variables (`AWS_REGION`, `AWS_DEFAULT_REGION`) when arguments are omitted.",
+      "tags": ["configuration", "required-providers", "region", "profile", "default-tags", "allowed-account-ids"]
+    },
+    {
+      "id": "authentication",
+      "title": "Authentication and credential chain",
+      "body": "The AWS provider resolves credentials in order: (1) static credentials in the provider block (not recommended), (2) environment variables `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` plus optional `AWS_SESSION_TOKEN`, (3) shared credentials file `~/.aws/credentials` selected by `AWS_PROFILE` or the `profile` argument, (4) EC2 instance metadata / ECS task role, (5) OIDC web identity via `AWS_WEB_IDENTITY_TOKEN_FILE`. For cross-account access, use `assume_role` with a `role_arn`, optional `session_name`, and optional `external_id`. For CI/CD, prefer OIDC federation (GitHub Actions, GitLab) over long-lived access keys.",
+      "tags": ["authentication", "credentials", "access-key", "secret-key", "session-token", "assume-role", "oidc", "instance-profile", "shared-credentials"]
+    },
+    {
+      "id": "common-resources",
+      "title": "Most-used AWS resources",
+      "body": "The most commonly managed AWS resources in Terraform: `aws_instance` (EC2 virtual machines), `aws_s3_bucket` and `aws_s3_bucket_versioning` (object storage), `aws_vpc`, `aws_subnet`, `aws_security_group` (networking), `aws_iam_role` and `aws_iam_policy` (access control), `aws_lambda_function` (serverless compute), `aws_db_instance` (RDS databases), `aws_ecs_service` and `aws_ecs_task_definition` (container orchestration), `aws_route53_record` (DNS), and `aws_cloudwatch_log_group` (logging). Each resource type maps directly to an AWS API resource and supports full lifecycle management.",
+      "tags": ["resources", "ec2", "s3", "vpc", "subnet", "security-group", "iam-role", "lambda", "rds", "ecs"]
+    },
+    {
+      "id": "data-sources",
+      "title": "Most-used AWS data sources",
+      "body": "Data sources read existing AWS resources without managing them. `data.aws_ami` looks up AMIs by owner and filters (essential for EC2). `data.aws_vpc` and `data.aws_subnet` query existing network infrastructure. `data.aws_caller_identity` returns the current account ID, user ARN, and user ID. `data.aws_region` returns the current region. `data.aws_availability_zones` lists available AZs for the current region. `data.aws_iam_policy_document` generates JSON IAM policy documents from HCL, which is more readable than inline JSON.",
+      "tags": ["data-sources", "aws-ami", "caller-identity", "availability-zones", "vpc-lookup", "iam-policy-document"]
+    },
+    {
+      "id": "multi-region",
+      "title": "Multi-region and multi-account deployments",
+      "body": "Use the `alias` meta-argument to configure multiple instances of the AWS provider targeting different regions or accounts. Resources reference aliased providers with `provider = aws.<alias>`. For multi-account, combine aliases with `assume_role` blocks pointing to different account role ARNs. Pass aliased providers to child modules using the `providers` map in the `module` block: `providers = { aws = aws.eu }`. This pattern enables deploying identical infrastructure across regions for disaster recovery or compliance.",
+      "tags": ["multi-region", "multi-account", "alias", "assume-role", "cross-account", "disaster-recovery"]
+    }
+  ],
+  "links": [
+    { "uri": "terraform/providers", "context": "Parent node covering Terraform provider concepts and configuration" },
+    { "uri": "terraform/providers/gcp", "context": "GCP provider for multi-cloud Terraform deployments" },
+    { "uri": "terraform/providers/azure", "context": "Azure provider for multi-cloud Terraform deployments" },
+    { "uri": "aws", "context": "AWS ecosystem node with SDK-based service access" },
+    { "uri": "aws/iam", "context": "IAM roles and policies referenced in provider assume_role and resource definitions" },
+    { "uri": "aws/s3", "context": "S3 bucket management — one of the most common Terraform AWS resources" },
+    { "uri": "aws/ec2", "context": "EC2 instances managed by the aws_instance resource type" },
+    { "uri": "aws/lambda", "context": "Lambda functions managed by aws_lambda_function" },
+    { "uri": "aws/rds", "context": "RDS instances managed by aws_db_instance" }
+  ],
+  "related": [
+    { "uri": "terraform/providers", "relation": "extends", "note": "AWS provider is the most-used implementation of the Terraform provider interface" },
+    { "uri": "terraform/providers/gcp", "relation": "alternative", "note": "GCP provider is the Google Cloud alternative for infrastructure as code" },
+    { "uri": "terraform/providers/azure", "relation": "alternative", "note": "Azure provider is the Microsoft cloud alternative for infrastructure as code" },
+    { "uri": "aws", "relation": "see-also", "note": "The AWS ecosystem covers SDK-based service access; the Terraform AWS provider covers declarative IaC" },
+    { "uri": "aws/iam", "relation": "prerequisite", "note": "IAM roles and policies are needed for provider authentication and resource permissions" },
+    { "uri": "aws/cloudformation", "relation": "alternative", "note": "CloudFormation is AWS's native IaC tool; Terraform is the multi-cloud alternative" }
+  ],
+  "scripts": [
+    {
+      "id": "verify-aws-credentials",
+      "name": "Verify AWS Credentials",
+      "description": "Verify AWS credentials are configured correctly, display the caller identity, current region, and list available resource types in the Terraform AWS provider",
+      "lang": "bash",
+      "runtime": "aws-cli>=2",
+      "inline": "#!/usr/bin/env bash\nset -euo pipefail\n\necho '=== AWS Credential Verification ==='\necho ''\n\n# Check if AWS CLI is available\nif ! command -v aws &>/dev/null; then\n  echo 'ERROR: aws CLI not found. Install it from https://aws.amazon.com/cli/'\n  exit 1\nfi\n\n# Verify credentials by calling STS\necho '--- Caller Identity ---'\nif IDENTITY=$(aws sts get-caller-identity --output json 2>&1); then\n  echo \"$IDENTITY\" | python3 -c \"\nimport sys, json\nd = json.load(sys.stdin)\nprint(f\\\"  Account:  {d['Account']}\\\")\nprint(f\\\"  UserId:   {d['UserId']}\\\")\nprint(f\\\"  ARN:      {d['Arn']}\\\")\n\" 2>/dev/null || echo \"$IDENTITY\"\nelse\n  echo \"ERROR: AWS credentials not configured or invalid.\"\n  echo \"  Set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY, or run 'aws configure'.\"\n  echo \"  Error: $IDENTITY\"\n  exit 1\nfi\n\necho ''\necho '--- Current Region ---'\nREGION=${AWS_REGION:-${AWS_DEFAULT_REGION:-$(aws configure get region 2>/dev/null || echo 'not set')}}\necho \"  Region: $REGION\"\n\necho ''\necho '--- Available Services (sample) ---'\nfor SVC in ec2 s3 iam lambda rds ecs sts; do\n  if aws $SVC help &>/dev/null 2>&1; then\n    echo \"  [OK] $SVC\"\n  else\n    echo \"  [--] $SVC (not available or not authorized)\"\n  fi\ndone\n\necho ''\necho '--- Terraform Provider Check ---'\nif command -v terraform &>/dev/null; then\n  echo \"  Terraform version: $(terraform version -json 2>/dev/null | python3 -c 'import sys,json; print(json.load(sys.stdin)[\"terraform_version\"])' 2>/dev/null || terraform version | head -1)\"\nelse\n  echo '  Terraform not installed. Install from https://developer.hashicorp.com/terraform/install'\nfi\n\necho ''\necho 'Credentials verified successfully.'\n",
+      "env": {
+        "AWS_ACCESS_KEY_ID": { "required": false, "secret": true, "description": "IAM access key identifier (optional if using shared credentials or instance profile)" },
+        "AWS_SECRET_ACCESS_KEY": { "required": false, "secret": true, "description": "IAM secret access key (optional if using shared credentials or instance profile)" },
+        "AWS_SESSION_TOKEN": { "required": false, "secret": true, "description": "Temporary session token for assumed roles (optional)" },
+        "AWS_REGION": { "required": false, "secret": false, "default": "us-east-1", "description": "AWS region to use" },
+        "AWS_PROFILE": { "required": false, "secret": false, "description": "Named AWS CLI profile to use from ~/.aws/credentials" }
+      }
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "region": { "type": "string", "description": "AWS region for the provider (e.g., us-east-1)" },
+        "profile": { "type": "string", "description": "Named AWS CLI profile" },
+        "assumeRoleArn": { "type": "string", "description": "ARN of the IAM role to assume for cross-account access" },
+        "defaultTags": { "type": "object", "additionalProperties": { "type": "string" }, "description": "Default tags applied to all resources" }
+      },
+      "required": ["region"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "accountId": { "type": "string", "description": "AWS account ID from caller identity" },
+        "region": { "type": "string", "description": "Configured AWS region" },
+        "callerArn": { "type": "string", "description": "ARN of the authenticated principal" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "terraform/providers", "reason": "The AWS provider is a Terraform provider plugin" },
+    { "uri": "aws/iam", "reason": "IAM credentials and roles are required for provider authentication", "optional": false }
+  ],
+  "more": {
+    "docs": "https://registry.terraform.io/providers/hashicorp/aws/latest/docs",
+    "repo": "https://github.com/hashicorp/terraform-provider-aws",
+    "examples": "https://github.com/hashicorp/terraform-provider-aws/tree/main/examples"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents, DevOps engineers, SREs",
+    "estimated_reading_time": "10 min",
+    "prerequisites": ["terraform/providers"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://github.com/hashicorp/terraform-provider-aws",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

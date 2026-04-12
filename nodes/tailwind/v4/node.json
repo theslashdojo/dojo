@@ -1,0 +1,104 @@
+{
+  "name": "v4",
+  "version": "1.0.0",
+  "uri": "tailwind/v4",
+  "type": "context",
+  "content_type": "changelog",
+  "context": "Tailwind CSS v4 — CSS-first config, @theme, Oxide engine, new features, breaking changes, and v3 migration",
+  "info": "Tailwind CSS v4 (released January 2025) is a ground-up rewrite that moves configuration from JavaScript to CSS, dramatically improves build performance (up to 182x faster incremental builds), and adds major features: built-in container queries, 3D transforms, expanded gradient APIs, @starting-style support, and a modernized OKLCH color palette. The most significant change for agents is that tailwind.config.js is replaced by @theme in CSS, the three @tailwind directives become a single @import \"tailwindcss\", and content detection is automatic. This node teaches agents to recognize v3 vs v4 projects, understand the new directives (@theme, @utility, @custom-variant, @plugin, @source), and migrate between versions.",
+  "parent": "tailwind",
+  "tags": ["v4", "migration", "upgrade", "oxide", "theme", "css-first", "breaking-changes"],
+  "aliases": [
+    "tailwind v4",
+    "tailwindcss v4",
+    "tailwind 4",
+    "tailwind css 4",
+    "tailwind version 4",
+    "tailwind v4 migration",
+    "tailwind upgrade",
+    "tailwind oxide",
+    "tailwind v3 to v4",
+    "tw4"
+  ],
+  "triggers": [
+    "upgrade tailwind to v4",
+    "migrate from tailwind v3",
+    "tailwind v4 changes",
+    "what is new in tailwind v4",
+    "tailwind v4 breaking changes",
+    "tailwind css first config",
+    "replace tailwind.config.js with css",
+    "tailwind @theme directive",
+    "is this tailwind v3 or v4"
+  ],
+  "body": "# Tailwind CSS v4\n\nReleased January 22, 2025. A ground-up rewrite with CSS-first configuration and massive performance improvements.\n\n## Identifying v3 vs v4\n\n| Signal | v3 | v4 |\n|--------|----|----|  \n| Config file | `tailwind.config.js` exists | No config file (or `@config` for compat) |\n| CSS imports | `@tailwind base/components/utilities` | `@import \"tailwindcss\"` |\n| Content config | `content: [...]` in config | Automatic detection |\n| PostCSS plugin | `tailwindcss` | `@tailwindcss/postcss` |\n| Theme customization | JS `theme.extend` | CSS `@theme {}` |\n| Color format | RGB hex | OKLCH |\n| Gradient classes | `bg-gradient-to-r` | `bg-linear-to-r` |\n| Container queries | `@tailwindcss/container-queries` plugin | Built-in `@container` |\n\n## Performance\n\n| Metric | v3.4 | v4.0 | Speedup |\n|--------|------|------|---------|\n| Full build | 378ms | 100ms | 3.78x |\n| Incremental (new CSS) | 44ms | 5ms | 8.8x |\n| Incremental (no new CSS) | 35ms | 192us | 182x |\n\n## New Directives\n\n### @import\nSingle entry point replaces three @tailwind directives:\n```css\n/* v3 */\n@tailwind base;\n@tailwind components;\n@tailwind utilities;\n\n/* v4 */\n@import \"tailwindcss\";\n```\n\n### @theme\nCSS-first configuration replaces tailwind.config.js:\n```css\n@import \"tailwindcss\";\n\n@theme {\n  --color-brand: oklch(0.6 0.2 260);\n  --font-display: \"Cal Sans\", sans-serif;\n  --breakpoint-3xl: 120rem;\n  --ease-snappy: cubic-bezier(0.2, 0, 0, 1);\n  \n  --animate-fade-in: fade-in 0.3s ease-out;\n  @keyframes fade-in {\n    from { opacity: 0; }\n    to { opacity: 1; }\n  }\n}\n```\n\nTheme variables become CSS custom properties on `:root` AND generate utility classes.\n\n### @utility\nCustom utilities with full variant support:\n```css\n@utility content-auto {\n  content-visibility: auto;\n}\n```\n\n### @custom-variant\nCustom variants without JavaScript:\n```css\n@custom-variant dark (&:where(.dark, .dark *));\n@custom-variant hocus (&:hover, &:focus);\n```\n\n### @source\nExplicitly add content detection paths:\n```css\n@source \"../node_modules/@my-company/ui-lib\";\n```\n\n### @plugin\nLoad legacy JS plugins:\n```css\n@plugin \"@tailwindcss/typography\";\n@plugin \"./my-custom-plugin.js\";\n```\n\n### @reference\nImport types without emitting CSS (for scoped styles):\n```vue\n<style>\n  @reference \"tailwindcss\";\n  h1 { @apply text-2xl font-bold; }\n</style>\n```\n\n## New Features\n\n### Built-in Container Queries\n```html\n<div class=\"@container\">\n  <div class=\"grid grid-cols-1 @sm:grid-cols-3 @lg:grid-cols-4\">\n    Responds to container, not viewport\n  </div>\n</div>\n```\n\n### Max-Width Breakpoint Variants\n```html\n<div class=\"flex flex-row max-md:flex-col\">\n  Row by default, column below 768px\n</div>\n```\n\n### 3D Transforms\n```html\n<div class=\"perspective-distant\">\n  <div class=\"rotate-x-51 rotate-z-43 transform-3d\">\n    3D transformed element\n  </div>\n</div>\n```\n\n### Expanded Gradients\n```html\n<!-- Angled linear gradients -->\n<div class=\"bg-linear-45 from-blue-500 to-purple-500\" />\n\n<!-- Color interpolation -->\n<div class=\"bg-linear-to-r/oklch from-indigo-500 to-teal-400\" />\n\n<!-- Conic & radial -->\n<div class=\"bg-conic from-red-500 to-blue-500\" />\n<div class=\"bg-radial-[at_25%_25%] from-white to-zinc-900\" />\n```\n\n### New Utilities\n- `not-hover:opacity-75` — negate any variant\n- `inset-shadow-*`, `inset-ring-*` — stackable shadow layers\n- `field-sizing-content` — auto-resize textareas without JS\n- `color-scheme-dark` — scrollbar dark mode\n- `font-stretch-*` — variable font width\n- `starting:opacity-0` — @starting-style for entry animations\n- `in-*` — group-like variant without `group` class\n- `nth-*` — :nth-child selectors\n\n### OKLCH Color Palette\nAll default colors migrated from sRGB to OKLCH for wider gamut on modern displays:\n```css\n/* v4 default */\n--color-blue-500: oklch(62.3% 0.214 259.815);\n/* v3 was hex/rgb */\n```\n\n### Cascade Layers\nv4 uses native CSS cascade layers for predictable specificity:\n```css\n@layer theme, base, components, utilities;\n```\n\n## Migration from v3\n\n### Automated Upgrade Tool\n```bash\nnpx @tailwindcss/upgrade\n```\n\nThis handles most mechanical changes automatically.\n\n### Manual Migration Checklist\n\n1. **Install new packages**\n   ```bash\n   npm install tailwindcss@latest @tailwindcss/postcss\n   npm uninstall postcss-import autoprefixer\n   ```\n\n2. **Update PostCSS config**\n   ```javascript\n   // postcss.config.js\n   export default { plugins: [\"@tailwindcss/postcss\"] };\n   ```\n\n3. **Replace CSS entry**\n   ```css\n   /* Remove @tailwind directives, add: */\n   @import \"tailwindcss\";\n   ```\n\n4. **Move theme to CSS**\n   ```css\n   /* Move tailwind.config.js theme.extend to: */\n   @theme {\n     --color-brand: #4f46e5;\n     --font-display: \"Cal Sans\", sans-serif;\n   }\n   ```\n\n5. **Move plugins to @plugin**\n   ```css\n   @plugin \"@tailwindcss/typography\";\n   @plugin \"@tailwindcss/forms\";\n   ```\n\n6. **Remove content config** — v4 auto-detects\n\n7. **Rename utilities**\n   - `bg-gradient-to-r` → `bg-linear-to-r`\n   - `bg-opacity-50` → `bg-black/50` (modifier syntax)\n\n8. **Delete tailwind.config.js** (once migrated)\n\n### Breaking Changes Summary\n\n| Change | v3 | v4 |\n|--------|----|----|  \n| Config format | JavaScript | CSS @theme |\n| CSS entry | `@tailwind` directives | `@import \"tailwindcss\"` |\n| Content config | Required | Auto-detected |\n| PostCSS plugin | `tailwindcss` | `@tailwindcss/postcss` |\n| Color space | sRGB | OKLCH |\n| Gradient prefix | `bg-gradient-*` | `bg-linear-*` |\n| Opacity utilities | `bg-opacity-50` | `bg-black/50` modifier |\n| Container queries | Plugin | Built-in |\n| Dark mode config | `darkMode: \"class\"` | `@custom-variant dark (...)` |\n| PostCSS imports | `postcss-import` needed | Built-in |\n| Autoprefixer | Required | Not needed |\n\n## Keeping v3 Compatibility\n\nIf you can't migrate everything at once, use `@config` to load a v3 config:\n```css\n@import \"tailwindcss\";\n@config \"../../tailwind.config.js\";\n```\n",
+  "sections": [
+    {
+      "id": "identify-version",
+      "title": "Identifying v3 vs v4 projects",
+      "body": "v3 indicators: `tailwind.config.js` or `tailwind.config.ts` exists, CSS uses `@tailwind base; @tailwind components; @tailwind utilities;`, `content` array in config, PostCSS uses `tailwindcss` plugin. v4 indicators: no config file, CSS uses `@import \"tailwindcss\"`, has `@theme` blocks, PostCSS uses `@tailwindcss/postcss`, may have `@tailwindcss/vite` in vite.config.",
+      "tags": ["identify", "detect", "version", "v3", "v4"]
+    },
+    {
+      "id": "css-first-config",
+      "title": "CSS-first configuration with @theme",
+      "body": "The `@theme` directive in CSS replaces `tailwind.config.js`. Define `--color-*`, `--font-*`, `--breakpoint-*`, `--spacing`, `--radius-*`, `--shadow-*`, `--ease-*`, `--animate-*` variables. They compile to CSS custom properties AND generate utility classes. Use `--namespace-*: initial;` to remove defaults before adding custom values. Theme variables are accessible via `var()` in any CSS.",
+      "tags": ["theme", "css-first", "configuration", "design-tokens"]
+    },
+    {
+      "id": "new-directives",
+      "title": "New v4 directives",
+      "body": "`@import \"tailwindcss\"` replaces three @tailwind directives. `@theme {}` defines design tokens. `@utility name {}` creates custom utilities with variant support. `@custom-variant name (selector)` adds custom variants. `@source \"path\"` adds content detection paths. `@plugin \"package\"` loads JS plugins. `@reference \"tailwindcss\"` imports types without CSS output. `@config \"path\"` loads v3 config for compatibility.",
+      "tags": ["directives", "import", "theme", "utility", "custom-variant", "source", "plugin"]
+    },
+    {
+      "id": "new-features",
+      "title": "New features in v4",
+      "body": "Built-in container queries (@container, @sm:, @md:). Max-width breakpoint variants (max-md:). 3D transforms (rotate-x-*, perspective-*). Expanded gradients (bg-linear-45, bg-conic, bg-radial, color interpolation with /oklch). OKLCH color palette. Cascade layers. not-* variant for negation. @starting-style for entry animations. field-sizing for auto-resize textareas. inset-shadow-* and inset-ring-* for layered shadows.",
+      "tags": ["features", "container-queries", "3d-transforms", "gradients", "oklch"]
+    },
+    {
+      "id": "migration",
+      "title": "v3 to v4 migration guide",
+      "body": "Run `npx @tailwindcss/upgrade` for automated migration. Manual steps: (1) install tailwindcss@latest and @tailwindcss/postcss, (2) update postcss.config.js, (3) replace @tailwind directives with @import \"tailwindcss\", (4) move theme.extend to @theme CSS block, (5) move plugins to @plugin directives, (6) remove content config, (7) rename bg-gradient-* to bg-linear-*, (8) delete tailwind.config.js. Use @config for incremental migration.",
+      "tags": ["migration", "upgrade", "v3-to-v4", "breaking-changes"]
+    },
+    {
+      "id": "performance",
+      "title": "Performance improvements",
+      "body": "v4 uses the Oxide engine (Rust-based). Full builds are 3.78x faster (378ms → 100ms). Incremental rebuilds with new CSS are 8.8x faster (44ms → 5ms). Incremental rebuilds with no new CSS are 182x faster (35ms → 192 microseconds). Built-in @import support eliminates postcss-import. Automatic content detection eliminates file-list overhead.",
+      "tags": ["performance", "oxide", "speed", "build-time"]
+    }
+  ],
+  "links": [
+    { "uri": "tailwind/config", "context": "v4 replaces tailwind.config.js with CSS @theme" },
+    { "uri": "tailwind/classes", "context": "New utility classes and renamed classes in v4" },
+    { "uri": "tailwind/responsive", "context": "v4 adds max-width variants and built-in container queries" },
+    { "uri": "tailwind/dark-mode", "context": "v4 uses @custom-variant instead of darkMode config" },
+    { "uri": "tailwind/plugins", "context": "v4 @plugin directive loads JS plugins from CSS" }
+  ],
+  "related": [
+    { "uri": "tailwind/config", "relation": "evolution", "note": "v4 evolves configuration from JavaScript to CSS-first" },
+    { "uri": "tailwind/plugins", "relation": "evolution", "note": "v4 CSS directives replace many JS plugin use cases" },
+    { "uri": "tailwind/responsive", "relation": "extends", "note": "v4 adds container queries and max-width variants to responsive" }
+  ],
+  "more": {
+    "docs": "https://tailwindcss.com/docs/upgrade-guide",
+    "spec": "https://tailwindcss.com/blog/tailwindcss-v4"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "frontend developers, AI agents migrating projects",
+    "estimated_reading_time": "7 min",
+    "prerequisites": ["tailwind/config"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

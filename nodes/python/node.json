@@ -1,0 +1,99 @@
+{
+  "name": "python",
+  "version": "1.0.0",
+  "uri": "python",
+  "type": "ecosystem",
+  "context": "Python language ecosystem — packaging, environments, async, typing, testing, and agent development patterns",
+  "info": "The Python ecosystem covers the language, runtime, and tooling for building AI agents and automation. Python is the dominant language for AI/ML work due to its extensive library ecosystem, readable syntax, and first-class support from Anthropic, OpenAI, LangChain, and every major AI framework. Agent developers need fluency in virtual environments (venv, conda), package management (pip, poetry, uv), async concurrency (asyncio, async/await), type annotations (typing module, mypy, Pydantic), and testing (pytest). Python 3.10+ is the practical baseline for modern agent work: structural pattern matching (3.10), exception groups and TaskGroups (3.11), improved error messages and f-string flexibility (3.12), and free-threaded mode and improved REPL (3.13). The CPython interpreter runs everywhere, and pyproject.toml has replaced setup.py as the standard project configuration format.",
+  "parent": null,
+  "tags": ["python", "python3", "cpython", "pip", "venv", "poetry", "uv", "asyncio", "typing", "pytest", "packaging", "virtual-environments", "pyproject-toml", "agent-development"],
+  "aliases": [
+    "python",
+    "py",
+    "python3",
+    "cpython",
+    "python ecosystem",
+    "python language",
+    "python programming",
+    "python development",
+    "python env",
+    "python tooling"
+  ],
+  "triggers": [
+    "set up a python project",
+    "install python packages",
+    "create a virtual environment",
+    "manage python dependencies",
+    "write async python code",
+    "add type hints to python",
+    "test python code",
+    "build a python agent",
+    "configure pyproject.toml",
+    "which python version should I use",
+    "python packaging best practices"
+  ],
+  "body": "# Python Ecosystem\n\nPython is the primary language for AI agent development. Its ecosystem spans the interpreter, packaging tools, environment isolation, concurrency primitives, type safety, and testing frameworks.\n\n## Python Versions\n\nUse Python 3.10+ for agent work. Each version adds capabilities that matter:\n\n| Version | Release | Key Features for Agents |\n|---------|---------|------------------------|\n| 3.10 | Oct 2021 | Structural pattern matching (`match`/`case`), `ParamSpec`, union types `X \\| Y` |\n| 3.11 | Oct 2022 | `ExceptionGroup`, `asyncio.TaskGroup`, 10-60% faster CPython, `tomllib` |\n| 3.12 | Oct 2023 | Improved f-strings (nested quotes), per-interpreter GIL (subinterpreters), `type` statement |\n| 3.13 | Oct 2024 | Free-threaded mode (no GIL, experimental), improved REPL with colors, `copy.replace()` |\n\n```bash\n# Check installed version\npython3 --version\n\n# Use pyenv to manage multiple versions\npyenv install 3.12.4\npyenv local 3.12.4\n\n# Verify interpreter path\nwhich python3\npython3 -c \"import sys; print(sys.executable)\"\n```\n\n## Package Management\n\nThree tools dominate Python packaging. Choose based on project needs:\n\n| Tool | Speed | Lockfile | Env Mgmt | Publish | Best For |\n|------|-------|----------|----------|---------|----------|\n| **[[python/pip]]** | Moderate | `requirements.txt` (manual) | No (use with venv) | `twine` | Simple scripts, quick installs |\n| **[[python/poetry]]** | Moderate | `poetry.lock` (auto) | Yes (built-in) | Yes | Libraries, apps needing reproducibility |\n| **[[python/uv]]** | Very fast | `uv.lock` (auto) | Yes (built-in) | Yes | All projects (Rust-based, 10-100x faster) |\n\n### pip\n\n```bash\n# Install packages\npip install requests anthropic\n\n# Install from requirements file\npip install -r requirements.txt\n\n# Freeze current environment\npip freeze > requirements.txt\n\n# Install in editable mode for development\npip install -e \".[dev]\"\n```\n\n### poetry\n\n```bash\n# Create new project\npoetry new my-agent\n\n# Add dependencies\npoetry add anthropic httpx\npoetry add --group dev pytest mypy ruff\n\n# Install all dependencies\npoetry install\n\n# Run commands in the poetry environment\npoetry run python main.py\npoetry run pytest\n```\n\n### uv\n\n```bash\n# Create new project (creates pyproject.toml + .venv)\nuv init my-agent\ncd my-agent\n\n# Add dependencies (resolves and installs in seconds)\nuv add anthropic httpx\nuv add --dev pytest mypy ruff\n\n# Run commands (auto-creates venv if needed)\nuv run python main.py\nuv run pytest\n\n# Sync environment from lockfile\nuv sync\n\n# Install a standalone Python\nuv python install 3.12\n```\n\n## Virtual Environments\n\nNever install packages globally. Always isolate project dependencies.\n\n```bash\n# Create with venv (stdlib)\npython3 -m venv .venv\nsource .venv/bin/activate   # Linux/macOS\n.venv\\Scripts\\activate      # Windows\n\n# Create with uv (faster)\nuv venv\nsource .venv/bin/activate\n\n# Deactivate\ndeactivate\n```\n\nSee [[python/venv]] for activation patterns, `.venv` conventions, and IDE integration.\n\n## Project Configuration — pyproject.toml\n\nThe standard for Python project metadata. All modern tools read it.\n\n```toml\n[project]\nname = \"my-agent\"\nversion = \"0.1.0\"\ndescription = \"An AI agent built with Claude\"\nrequires-python = \">= 3.11\"\ndependencies = [\n    \"anthropic>=0.40.0\",\n    \"httpx>=0.27.0\",\n    \"pydantic>=2.0\",\n]\n\n[project.optional-dependencies]\ndev = [\n    \"pytest>=8.0\",\n    \"mypy>=1.10\",\n    \"ruff>=0.6\",\n]\n\n[project.scripts]\nmy-agent = \"my_agent.cli:main\"\n\n[tool.pytest.ini_options]\ntestpaths = [\"tests\"]\nasyncio_mode = \"auto\"\n\n[tool.mypy]\nstrict = true\npython_version = \"3.11\"\n\n[tool.ruff]\ntarget-version = \"py311\"\nline-length = 100\n\n[tool.ruff.lint]\nselect = [\"E\", \"F\", \"I\", \"UP\", \"B\", \"SIM\"]\n```\n\n## Async Python\n\nAgent code is inherently async — waiting on API calls, tool execution, and I/O.\n\n```python\nimport asyncio\nimport httpx\n\nasync def fetch_data(url: str) -> dict:\n    async with httpx.AsyncClient() as client:\n        response = await client.get(url)\n        return response.json()\n\nasync def main():\n    # Run tasks concurrently with TaskGroup (3.11+)\n    async with asyncio.TaskGroup() as tg:\n        task1 = tg.create_task(fetch_data(\"https://api.example.com/a\"))\n        task2 = tg.create_task(fetch_data(\"https://api.example.com/b\"))\n    print(task1.result(), task2.result())\n\nasyncio.run(main())\n```\n\nSee [[python/async]] for patterns: semaphores, timeouts, `async for`, `async with`, and structured concurrency.\n\n## Type Annotations\n\nType hints make agent code self-documenting and catch bugs before runtime.\n\n```python\nfrom typing import Any\nfrom collections.abc import AsyncIterator\nfrom dataclasses import dataclass\n\n@dataclass\nclass ToolResult:\n    name: str\n    output: str | None = None\n    error: str | None = None\n\nasync def call_tools(\n    tools: list[ToolResult],\n    timeout: float = 30.0,\n) -> AsyncIterator[ToolResult]:\n    for tool in tools:\n        yield tool\n```\n\nSee [[python/typing]] for generics, `Protocol`, `TypeVar`, Pydantic models, and `mypy` configuration.\n\n## Testing\n\npytest is the standard. Agent tests need async support and mocking of external APIs.\n\n```python\nimport pytest\nfrom unittest.mock import AsyncMock, patch\n\n@pytest.mark.asyncio\nasync def test_agent_tool_call():\n    mock_client = AsyncMock()\n    mock_client.messages.create.return_value.content = [\n        {\"type\": \"text\", \"text\": \"result\"}\n    ]\n    result = await run_agent(client=mock_client, prompt=\"test\")\n    assert result == \"result\"\n    mock_client.messages.create.assert_called_once()\n```\n\nSee [[python/testing]] for fixtures, parametrize, coverage, and snapshot testing.\n\n## Environment Variables\n\n| Variable | Purpose |\n|----------|----------|\n| `PYTHONPATH` | Additional directories to search for modules |\n| `PYTHONDONTWRITEBYTECODE` | Set to `1` to skip `.pyc` file generation |\n| `PYTHONUNBUFFERED` | Set to `1` for unbuffered stdout/stderr (important in containers) |\n| `VIRTUAL_ENV` | Path to active virtual environment (set by activate script) |\n| `PIP_INDEX_URL` | Override default PyPI index |\n| `UV_CACHE_DIR` | Override uv cache location |\n| `PYTHONASYNCIODEBUG` | Set to `1` for asyncio debug mode |\n| `PYTHONSTARTUP` | Script to run on interpreter startup |\n\n## REPL and Quick Prototyping\n\n```bash\n# Standard REPL\npython3\n\n# Enhanced REPL (Python 3.13+ has colors and multiline editing)\npython3 -q\n\n# IPython for richer interactive sessions\npip install ipython\nipython\n\n# Run a module directly\npython3 -m http.server 8000\npython3 -m json.tool data.json\npython3 -m venv .venv\n```\n\n## Agent Development Stack\n\nA typical AI agent project uses this stack:\n\n```\nmy-agent/\n  pyproject.toml          # Project config and dependencies\n  .venv/                  # Virtual environment (git-ignored)\n  src/\n    my_agent/\n      __init__.py\n      agent.py            # Core agent logic\n      tools.py            # Tool definitions\n      prompts.py          # Prompt templates\n  tests/\n    test_agent.py\n    test_tools.py\n    conftest.py           # Shared fixtures\n  .python-version         # Pin Python version (pyenv)\n```\n\nKey dependencies for agent projects:\n\n```bash\nuv add anthropic          # Claude API client\nuv add httpx              # Async HTTP client\nuv add pydantic           # Data validation and settings\nuv add mcp                # MCP server/client SDK\nuv add --dev pytest pytest-asyncio mypy ruff\n```\n",
+  "sections": [
+    {
+      "id": "package-management",
+      "title": "Package management",
+      "body": "Python has three major package managers: pip (the standard, ships with Python), poetry (dependency management with lockfiles and publishing), and uv (Rust-based, 10-100x faster than pip). All read from pyproject.toml. pip uses requirements.txt for pinning. poetry and uv generate lockfiles automatically. For new projects, uv is the recommended default — it handles environment creation, dependency resolution, and Python version management in a single tool. See [[python/pip]], [[python/poetry]], [[python/uv]] for detailed usage.",
+      "tags": ["pip", "poetry", "uv", "packaging", "dependencies", "pyproject-toml", "lockfile"]
+    },
+    {
+      "id": "virtual-environments",
+      "title": "Virtual environments",
+      "body": "Virtual environments isolate project dependencies from the system Python and from other projects. The stdlib venv module creates environments. uv and poetry can also manage environments automatically. The convention is to name the environment directory .venv and git-ignore it. Activation sets PATH and VIRTUAL_ENV so python and pip point to the isolated copies. IDEs like VS Code and PyCharm detect .venv automatically. See [[python/venv]] for activation scripts, shell integration, and troubleshooting.",
+      "tags": ["venv", "virtualenv", "isolation", "activate", "dotenv", "environment"]
+    },
+    {
+      "id": "language-features",
+      "title": "Language features for agents",
+      "body": "Agent code relies on several Python language features: asyncio for concurrent I/O (awaiting API calls, running tools in parallel), type annotations for self-documenting interfaces and catching errors with mypy, dataclasses and Pydantic for structured data, context managers for resource cleanup, decorators for tool registration, and generators/async generators for streaming responses. Python 3.11+ added TaskGroup for structured concurrency and exception groups for handling multiple failures. See [[python/async]] and [[python/typing]].",
+      "tags": ["asyncio", "typing", "dataclass", "pydantic", "pattern-matching", "generators", "decorators"]
+    },
+    {
+      "id": "agent-development",
+      "title": "Agent development patterns",
+      "body": "Building AI agents in Python follows a common pattern: define tools as typed functions, register them with an API client or MCP server, run an event loop that sends prompts and dispatches tool calls, and test with mocked API responses. The key libraries are anthropic (Claude API), mcp (Model Context Protocol), httpx (async HTTP), and pydantic (validation). Project layout uses src-layout with pyproject.toml, and testing uses pytest with pytest-asyncio for async test functions. See [[python/testing]] for testing strategies.",
+      "tags": ["agent", "tools", "mcp", "anthropic", "httpx", "pydantic", "testing", "event-loop"]
+    }
+  ],
+  "links": [
+    { "uri": "python/pip", "context": "Standard package installer — install, freeze, and manage Python packages from PyPI" },
+    { "uri": "python/venv", "context": "Virtual environment creation, activation, and management for dependency isolation" },
+    { "uri": "python/poetry", "context": "Dependency management with lockfiles, virtual environments, and package publishing" },
+    { "uri": "python/uv", "context": "Fast Rust-based package installer — environment, dependency, and Python version management" },
+    { "uri": "python/async", "context": "asyncio, async/await, TaskGroup, and structured concurrency patterns" },
+    { "uri": "python/typing", "context": "Type annotations, generics, Protocol, Pydantic models, and mypy configuration" },
+    { "uri": "python/testing", "context": "pytest, async testing, fixtures, mocking, coverage, and CI integration" }
+  ],
+  "related": [
+    { "uri": "anthropic", "relation": "see-also", "note": "The Anthropic Python SDK is the primary client for building Claude-based agents" },
+    { "uri": "mcp", "relation": "see-also", "note": "MCP's Python SDK uses asyncio, typing, and Pydantic for server and client development" },
+    { "uri": "node", "relation": "see-also", "note": "Node.js is the other major ecosystem for AI agent development alongside Python" }
+  ],
+  "more": {
+    "docs": "https://docs.python.org/3/",
+    "pypi": "https://pypi.org",
+    "peps": "https://peps.python.org",
+    "packaging": "https://packaging.python.org",
+    "repo": "https://github.com/python/cpython"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents, integrators",
+    "estimated_reading_time": "8 min",
+    "prerequisites": [],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://github.com/python/cpython",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

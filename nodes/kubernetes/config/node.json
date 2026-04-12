@@ -1,0 +1,100 @@
+{
+  "name": "config",
+  "version": "1.0.0",
+  "uri": "kubernetes/config",
+  "type": "context",
+  "content_type": "reference",
+  "context": "Kubeconfig files, cluster contexts, authentication methods, and namespace configuration for connecting to Kubernetes clusters",
+  "info": "Kubernetes configuration governs how clients (kubectl, SDKs, CI/CD pipelines) connect to clusters. The kubeconfig file (~/.kube/config) defines clusters (API server URLs, CA certs), users (auth credentials: tokens, client certs, OIDC, exec-based), and contexts (cluster + user + namespace combinations). Agents need to understand kubeconfig to switch between clusters (dev, staging, prod), set default namespaces, manage credentials securely, and configure CI/CD pipelines. This node covers kubeconfig structure, context management, authentication methods (service accounts, OIDC, cloud provider auth), namespace configuration, and multi-cluster workflows. See [[kubernetes/kubectl]] for the CLI commands that use this configuration.",
+  "parent": "kubernetes",
+  "tags": ["config", "kubeconfig", "context", "authentication", "namespace", "cluster-connection", "rbac", "service-account", "oidc"],
+  "aliases": [
+    "kubernetes config",
+    "kubeconfig",
+    "k8s config",
+    "kube config",
+    "kubectl config",
+    "kubernetes context",
+    "cluster context",
+    "kube context",
+    "kubernetes authentication",
+    "kube auth",
+    "kubeconfig file"
+  ],
+  "triggers": [
+    "configure kubectl",
+    "set up kubeconfig",
+    "switch kubernetes context",
+    "set default namespace",
+    "connect to a kubernetes cluster",
+    "kubernetes authentication",
+    "multiple kubernetes clusters",
+    "kubeconfig not working",
+    "merge kubeconfig files",
+    "service account token"
+  ],
+  "body": "# Kubernetes Configuration\n\nAll Kubernetes client access flows through a kubeconfig file. This file tells kubectl (and any K8s SDK) which cluster to talk to, how to authenticate, and what namespace to default to.\n\n## Kubeconfig File Structure\n\nDefault location: `~/.kube/config`. Override with `$KUBECONFIG` or `--kubeconfig` flag.\n\n```yaml\napiVersion: v1\nkind: Config\ncurrent-context: production\n\nclusters:\n  - name: production\n    cluster:\n      server: https://api.prod.example.com:6443\n      certificate-authority-data: <base64-ca-cert>\n  - name: staging\n    cluster:\n      server: https://api.staging.example.com:6443\n      certificate-authority-data: <base64-ca-cert>\n  - name: local\n    cluster:\n      server: https://127.0.0.1:6443\n      insecure-skip-tls-verify: true\n\nusers:\n  - name: admin\n    user:\n      client-certificate-data: <base64-client-cert>\n      client-key-data: <base64-client-key>\n  - name: developer\n    user:\n      token: <bearer-token>\n  - name: oidc-user\n    user:\n      exec:\n        apiVersion: client.authentication.k8s.io/v1beta1\n        command: kubelogin\n        args: [\"get-token\", \"--oidc-issuer-url=https://login.example.com\"]\n\ncontexts:\n  - name: production\n    context:\n      cluster: production\n      user: admin\n      namespace: default\n  - name: staging\n    context:\n      cluster: staging\n      user: developer\n      namespace: staging-app\n  - name: local-dev\n    context:\n      cluster: local\n      user: admin\n      namespace: dev\n```\n\n## Context Management\n\nA context binds a cluster + user + namespace into a named profile:\n\n```bash\n# List all contexts\nkubectl config get-contexts\n\n# Show current context\nkubectl config current-context\n\n# Switch context\nkubectl config use-context staging\n\n# Set default namespace for current context\nkubectl config set-context --current --namespace=my-app\n\n# Create a new context\nkubectl config set-context my-context \\\n  --cluster=production \\\n  --user=admin \\\n  --namespace=my-team\n\n# Delete a context\nkubectl config delete-context old-context\n\n# Rename a context\nkubectl config rename-context old-name new-name\n```\n\n### Fast Switching with kubectx/kubens\n\n```bash\n# Install\nbrew install kubectx\n\n# Switch context interactively\nkubectx\nkubectx production  # switch directly\nkubectx -           # switch to previous\n\n# Switch namespace\nkubens\nkubens my-app       # switch directly\nkubens -            # switch to previous\n```\n\n## Authentication Methods\n\n### 1. Bearer Token (ServiceAccount)\n\nUsed by in-cluster Pods and CI/CD pipelines:\n\n```bash\n# Create a ServiceAccount\nkubectl create serviceaccount deploy-bot -n production\n\n# Create a long-lived token (k8s 1.24+)\nkubectl create token deploy-bot -n production --duration=8760h\n\n# Or create a Secret-bound token (older clusters)\nkubectl apply -f - <<EOF\napiVersion: v1\nkind: Secret\nmetadata:\n  name: deploy-bot-token\n  namespace: production\n  annotations:\n    kubernetes.io/service-account.name: deploy-bot\ntype: kubernetes.io/service-account-token\nEOF\n\n# Extract token\nkubectl get secret deploy-bot-token -n production -o jsonpath='{.data.token}' | base64 -d\n```\n\nSet in kubeconfig:\n```yaml\nusers:\n  - name: deploy-bot\n    user:\n      token: <the-token>\n```\n\n### 2. Client Certificate\n\nUsed by cluster admins, generated during cluster setup:\n\n```yaml\nusers:\n  - name: admin\n    user:\n      client-certificate-data: <base64>\n      client-key-data: <base64>\n```\n\n### 3. OIDC / Cloud Provider Auth\n\nCloud-managed clusters use provider-specific auth plugins:\n\n```bash\n# AWS EKS\naws eks update-kubeconfig --name my-cluster --region us-east-1\n# Uses aws-iam-authenticator or aws eks get-token under the hood\n\n# GCP GKE\ngcloud container clusters get-credentials my-cluster --zone us-central1-a\n# Uses gcloud for auth\n\n# Azure AKS\naz aks get-credentials --resource-group my-rg --name my-cluster\n# Uses kubelogin for Azure AD\n```\n\n### 4. Exec-based Auth\n\nDynamic token generation via external commands:\n\n```yaml\nusers:\n  - name: oidc-user\n    user:\n      exec:\n        apiVersion: client.authentication.k8s.io/v1beta1\n        command: kubelogin\n        args:\n          - get-token\n          - --oidc-issuer-url=https://login.example.com\n          - --oidc-client-id=kubectl\n        interactiveMode: IfAvailable\n```\n\n## Merging Multiple Kubeconfigs\n\nWhen managing multiple clusters, merge configs:\n\n```bash\n# Set KUBECONFIG to multiple files (colon-separated on Linux/macOS)\nexport KUBECONFIG=~/.kube/config:~/.kube/staging.yaml:~/.kube/production.yaml\n\n# Verify all contexts are available\nkubectl config get-contexts\n\n# Permanently merge into one file\nKUBECONFIG=~/.kube/config:~/.kube/new-cluster.yaml kubectl config view --flatten > ~/.kube/merged\nmv ~/.kube/merged ~/.kube/config\n```\n\n## In-Cluster Configuration\n\nPods running inside a cluster automatically get a ServiceAccount token mounted at `/var/run/secrets/kubernetes.io/serviceaccount/`:\n\n```bash\n# Inside a Pod\nTOKEN=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)\nCA_CERT=/var/run/secrets/kubernetes.io/serviceaccount/ca.crt\nAPI_SERVER=https://kubernetes.default.svc\n\n# Direct API call\ncurl -s --cacert $CA_CERT -H \"Authorization: Bearer $TOKEN\" \\\n  $API_SERVER/api/v1/namespaces/default/pods\n```\n\nKubernetes SDKs auto-detect in-cluster config:\n```python\n# Python (kubernetes client)\nfrom kubernetes import client, config\nconfig.load_incluster_config()  # auto-detects in-cluster\nv1 = client.CoreV1Api()\n```\n\n```javascript\n// Node.js (@kubernetes/client-node)\nconst k8s = require('@kubernetes/client-node');\nconst kc = new k8s.KubeConfig();\nkc.loadFromCluster(); // auto-detects in-cluster\n```\n\n## Namespace Configuration\n\nNamespaces isolate resources within a cluster:\n\n```bash\n# List namespaces\nkubectl get namespaces\n\n# Create a namespace\nkubectl create namespace my-team\n\n# Set default namespace for kubectl\nkubectl config set-context --current --namespace=my-team\n\n# All subsequent commands target my-team:\nkubectl get pods  # same as: kubectl get pods -n my-team\n```\n\nSee [[kubernetes/namespaces]] for namespace isolation, resource quotas, and network policies.\n\n## CI/CD Pipeline Configuration\n\n```bash\n# Set up kubectl in a CI pipeline\n# 1. Store kubeconfig or token as CI secret\n# 2. Configure kubectl\nexport KUBECONFIG=$(mktemp)\nkubectl config set-cluster production \\\n  --server=https://api.prod.example.com:6443 \\\n  --certificate-authority=/path/to/ca.crt\nkubectl config set-credentials deployer \\\n  --token=$KUBE_TOKEN\nkubectl config set-context deploy \\\n  --cluster=production \\\n  --user=deployer \\\n  --namespace=production\nkubectl config use-context deploy\n\n# 3. Deploy\nkubectl apply -f ./k8s/\nkubectl rollout status deployment/my-app\n```\n\n## Security Best Practices\n\n1. **Never commit kubeconfig** — add `*.kubeconfig` and `.kube/` to `.gitignore`\n2. **Use short-lived tokens** — prefer `kubectl create token` over long-lived Secrets\n3. **Scope ServiceAccounts** — bind minimal [[kubernetes/rbac]] Roles per ServiceAccount\n4. **Rotate credentials** — regenerate tokens and certificates on schedule\n5. **Use exec-based auth** — OIDC/cloud auth refreshes automatically\n6. **Separate kubeconfigs** — don't mix prod and dev in one file\n\n## Environment Variables\n\n| Variable | Purpose |\n|----------|----------|\n| `KUBECONFIG` | Path to kubeconfig file(s), colon-separated (default: `~/.kube/config`) |\n| `KUBE_CONTEXT` | Override active context name |\n| `KUBE_NAMESPACE` | Default namespace for operations |\n| `KUBERNETES_SERVICE_HOST` | API server host (set automatically in-cluster) |\n| `KUBERNETES_SERVICE_PORT` | API server port (set automatically in-cluster) |\n",
+  "sections": [
+    {
+      "id": "kubeconfig-structure",
+      "title": "Kubeconfig file structure",
+      "body": "A kubeconfig has four top-level keys: `clusters` (API server endpoints + CA certs), `users` (auth credentials), `contexts` (cluster + user + namespace tuples), and `current-context` (the active context). Each cluster entry has `server` (URL) and `certificate-authority-data` or `certificate-authority` (path). Each user entry has auth credentials (token, client cert/key, exec command). Each context binds a cluster name to a user name and optionally a default namespace.",
+      "tags": ["kubeconfig", "structure", "clusters", "users", "contexts", "yaml"]
+    },
+    {
+      "id": "authentication",
+      "title": "Authentication methods",
+      "body": "Four primary auth methods: **Bearer tokens** — ServiceAccount tokens (short-lived via `kubectl create token` or Secret-bound). **Client certificates** — x509 certs generated during cluster setup. **OIDC** — federated identity via OpenID Connect (Azure AD, Google, Okta). **Exec-based** — external command generates token dynamically (aws-iam-authenticator, gcloud, kubelogin). Cloud providers (EKS, GKE, AKS) use exec-based auth by default. In-cluster Pods get automatic ServiceAccount tokens at `/var/run/secrets/kubernetes.io/serviceaccount/token`.",
+      "tags": ["authentication", "token", "certificate", "oidc", "exec", "service-account", "in-cluster"]
+    },
+    {
+      "id": "multi-cluster",
+      "title": "Multi-cluster configuration",
+      "body": "Manage multiple clusters by: 1) Multiple contexts in one kubeconfig, 2) Separate kubeconfig files merged via `KUBECONFIG=file1:file2`, 3) Per-command override with `--kubeconfig` flag. Use `kubectx` for fast interactive switching. In CI/CD, build kubeconfig dynamically per environment. For multi-cluster tools (Argo CD, Rancher, Crossplane), register clusters separately.",
+      "tags": ["multi-cluster", "merge", "kubectx", "ci-cd", "environments"]
+    },
+    {
+      "id": "in-cluster",
+      "title": "In-cluster configuration",
+      "body": "Pods running inside a Kubernetes cluster have automatic access to the API server. The ServiceAccount token, CA cert, and namespace are mounted at `/var/run/secrets/kubernetes.io/serviceaccount/`. Client libraries detect this automatically: Python's `config.load_incluster_config()`, Go's `rest.InClusterConfig()`, Node's `kc.loadFromCluster()`. The API server is reachable at `https://kubernetes.default.svc`. No kubeconfig file is needed. The Pod's ServiceAccount determines [[kubernetes/rbac]] permissions.",
+      "tags": ["in-cluster", "serviceaccount", "api-server", "sdk", "automatic", "mounted-token"]
+    },
+    {
+      "id": "security",
+      "title": "Security best practices",
+      "body": "Never commit kubeconfig files to version control. Use short-lived tokens (`kubectl create token`) instead of long-lived Secret-based tokens. Scope ServiceAccounts with minimal [[kubernetes/rbac]] Roles. Use exec-based auth (OIDC, cloud provider) for automatic credential refresh. Separate kubeconfig files per environment. In CI/CD, use dedicated ServiceAccounts with scoped permissions, not admin credentials. Rotate client certificates and tokens on schedule.",
+      "tags": ["security", "tokens", "rotation", "gitignore", "oidc", "least-privilege"]
+    }
+  ],
+  "links": [
+    { "uri": "kubernetes/kubectl", "context": "kubectl uses kubeconfig to connect to clusters" },
+    { "uri": "kubernetes/rbac", "context": "RBAC controls what authenticated users and ServiceAccounts can do" },
+    { "uri": "kubernetes/namespaces", "context": "Namespaces scope kubectl commands and resource isolation" },
+    { "uri": "kubernetes/troubleshooting", "context": "Connection and auth failures are common troubleshooting targets" }
+  ],
+  "related": [
+    { "uri": "kubernetes/kubectl", "relation": "see-also", "note": "kubectl is the primary consumer of kubeconfig" },
+    { "uri": "kubernetes/rbac", "relation": "see-also", "note": "RBAC policies control what authenticated identities can do in the cluster" },
+    { "uri": "kubernetes/namespaces", "relation": "see-also", "note": "Contexts can specify a default namespace" }
+  ],
+  "more": {
+    "docs": "https://kubernetes.io/docs/concepts/configuration/organize-cluster-access-kubeconfig/",
+    "auth": "https://kubernetes.io/docs/reference/access-authn-authz/authentication/",
+    "api": "https://kubernetes.io/docs/reference/config-api/kubeconfig.v1/"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, DevOps engineers, SREs, AI agents",
+    "estimated_reading_time": "5 min",
+    "prerequisites": [],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

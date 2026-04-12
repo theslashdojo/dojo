@@ -1,0 +1,118 @@
+{
+  "name": "venv",
+  "version": "1.0.0",
+  "uri": "python/venv",
+  "type": "skill",
+  "context": "Create and manage Python virtual environments using the stdlib venv module for dependency isolation and reproducible projects",
+  "info": "The venv module (stdlib since Python 3.3) creates lightweight virtual environments with their own site-packages directory, isolated from system Python. Each venv gets its own python binary (symlink), pip, and site-packages. This is the standard mechanism for isolating project dependencies — every Python project should use one. Create with `python -m venv .venv`, activate with `source .venv/bin/activate` (Linux/macOS) or `.venv\\Scripts\\activate` (Windows), deactivate with `deactivate`. The venv writes a `pyvenv.cfg` file at its root and sets the `VIRTUAL_ENV` environment variable when active. For the older, more featureful third-party alternative, see virtualenv. For package installation inside a venv, see [[python/pip]]. For higher-level workflow tools that manage venvs automatically, see [[python/poetry]] and [[python/uv]].",
+  "parent": "python",
+  "tags": ["venv", "virtual-environment", "isolation", "stdlib", "dependencies", "python-environment", "site-packages"],
+  "aliases": [
+    "venv",
+    "virtualenv",
+    "virtual environment",
+    "python venv",
+    "python virtual environment",
+    ".venv",
+    "activate venv"
+  ],
+  "triggers": [
+    "create a virtual environment",
+    "activate venv",
+    "set up python environment",
+    "isolate python dependencies",
+    "make a venv",
+    "set up .venv",
+    "python -m venv"
+  ],
+  "body": "# venv — Python Virtual Environments\n\nThe `venv` module creates isolated Python environments so each project gets its own dependencies.\n\n## Create\n\n```bash\n# Standard creation — .venv is the conventional directory name\npython -m venv .venv\n\n# With upgraded pip and setuptools inside the venv\npython -m venv --upgrade-deps .venv\n\n# Include system-wide packages (useful for large packages like numpy already installed globally)\npython -m venv --system-site-packages .venv\n\n# Minimal venv without pip (for environments using external package managers)\npython -m venv --without-pip .venv\n\n# Wipe and recreate an existing venv from scratch\npython -m venv --clear .venv\n```\n\n## Activate\n\n```bash\n# Linux / macOS\nsource .venv/bin/activate\n\n# Windows (cmd)\n.venv\\Scripts\\activate.bat\n\n# Windows (PowerShell)\n.venv\\Scripts\\Activate.ps1\n\n# Fish shell\nsource .venv/bin/activate.fish\n```\n\nOnce activated, your shell prompt changes to `(.venv)` and `python` / `pip` resolve to the venv copies.\n\n```bash\n# Leave the virtual environment\ndeactivate\n```\n\n## Running Without Activating\n\nYou can run the venv's Python directly without activating:\n\n```bash\n.venv/bin/python script.py\n.venv/bin/pip install requests\n```\n\n## Internals\n\nA venv is a directory with this structure:\n\n```\n.venv/\n  pyvenv.cfg              # Config: home, include-system-site-packages, version\n  bin/                    # Linux/macOS (Scripts/ on Windows)\n    python -> /usr/bin/python3  # Symlink to base Python\n    pip\n    activate              # Shell activation script\n  lib/\n    python3.x/\n      site-packages/      # Installed packages go here\n  include/                # C headers for building extensions\n```\n\n`pyvenv.cfg` contents:\n\n```ini\nhome = /usr/bin\ninclude-system-site-packages = false\nversion = 3.12.0\nexecutable = /usr/bin/python3.12\ncommand = /usr/bin/python3.12 -m venv .venv\n```\n\nWhen activated, the `VIRTUAL_ENV` environment variable points to the venv root and `PATH` is modified to prioritize the venv's `bin/` directory.\n\n## Best Practices\n\n1. **Always use `.venv`** as the directory name — it is the de facto convention\n2. **Always add to `.gitignore`:**\n\n```gitignore\n.venv/\nvenv/\nenv/\n```\n\n3. **Create per-project** — one venv per project, inside the project root\n4. **Use `--upgrade-deps`** to start with current pip\n5. **Pin your Python version** — venvs are tied to the Python that created them\n6. **Recreate, don't repair** — if a venv breaks, `--clear` and rebuild from `requirements.txt`\n7. **Never commit the venv** — it contains platform-specific binaries\n\n## Integration with Package Managers\n\nAfter creating and activating a venv:\n\n```bash\n# pip — install packages directly\npip install -r requirements.txt\n\n# poetry — creates/manages venvs automatically\npoetry install\npoetry config virtualenvs.in-project true  # use .venv in project root\n\n# uv — ultrafast pip replacement, venv-aware\nuv venv .venv        # uv can also create venvs\nuv pip install -r requirements.txt\n```\n\nSee [[python/pip]], [[python/poetry]], [[python/uv]] for details.\n\n## virtualenv vs venv\n\n| Feature | venv (stdlib) | virtualenv (third-party) |\n|---------|--------------|-------------------------|\n| Installation | Built-in since 3.3 | `pip install virtualenv` |\n| Speed | Standard | Faster (caches seed packages) |\n| Python versions | Only the running version | Can target other installed versions |\n| Features | Minimal, sufficient | Plugins, config files, more flags |\n| Recommendation | Default choice | Use if you need extra features |\n\nPrefer `venv` unless you specifically need virtualenv's features.\n",
+  "sections": [
+    {
+      "id": "create",
+      "title": "Creating virtual environments",
+      "body": "Use `python -m venv .venv` to create a venv. Key flags: `--upgrade-deps` (upgrade pip/setuptools), `--system-site-packages` (inherit system packages), `--clear` (recreate from scratch), `--without-pip` (minimal, no pip). The `.venv` directory name is the standard convention. Always use the specific Python version you want: `python3.12 -m venv .venv`.",
+      "tags": ["create", "setup", "flags", "python-m-venv"]
+    },
+    {
+      "id": "activate",
+      "title": "Activating and deactivating",
+      "body": "Activate with `source .venv/bin/activate` (Linux/macOS) or `.venv\\Scripts\\activate` (Windows). Activation sets `VIRTUAL_ENV`, modifies `PATH`, and changes the shell prompt. Deactivate with `deactivate`. You can also run venv binaries directly without activating: `.venv/bin/python script.py`.",
+      "tags": ["activate", "deactivate", "shell", "path", "virtual-env"]
+    },
+    {
+      "id": "internals",
+      "title": "How venvs work internally",
+      "body": "A venv directory contains `pyvenv.cfg` (configuration), `bin/` or `Scripts/` (executables and activation scripts), `lib/pythonX.Y/site-packages/` (installed packages), and `include/` (C headers). The `bin/python` is a symlink to the base interpreter. `pyvenv.cfg` records the home directory, Python version, and whether system site-packages are included. The `VIRTUAL_ENV` environment variable is set on activation.",
+      "tags": ["internals", "pyvenv-cfg", "site-packages", "symlink", "structure"]
+    },
+    {
+      "id": "best-practices",
+      "title": "Best practices",
+      "body": "Use `.venv` as the directory name. Add `.venv/`, `venv/`, and `env/` to `.gitignore`. Create one venv per project. Use `--upgrade-deps` for a current pip. Recreate with `--clear` instead of repairing. Never commit the venv directory. Pin your Python version since venvs are tied to the creating interpreter.",
+      "tags": ["best-practices", "gitignore", "convention", "isolation", "reproducibility"]
+    }
+  ],
+  "links": [
+    { "uri": "python/pip", "context": "Install packages inside a venv with pip" },
+    { "uri": "python/poetry", "context": "Poetry manages venvs automatically for project workflows" },
+    { "uri": "python/uv", "context": "uv can create venvs and install packages ultrafast" }
+  ],
+  "related": [
+    { "uri": "python/pip", "relation": "see-also", "note": "Primary tool for installing packages inside a venv" },
+    { "uri": "python/poetry", "relation": "see-also", "note": "Higher-level tool that manages venvs and dependencies together" },
+    { "uri": "python/uv", "relation": "see-also", "note": "Fast Rust-based alternative that can create venvs and install packages" }
+  ],
+  "scripts": [
+    {
+      "id": "create-venv",
+      "name": "Create and Activate Venv",
+      "description": "Create a Python virtual environment, activate it, and upgrade pip to latest",
+      "lang": "bash",
+      "runtime": "python>=3.3",
+      "entry": "./scripts/create-venv.sh",
+      "inline": "#!/bin/bash\nset -e\n\nPYTHON_PATH=\"${PYTHON_PATH:-python3}\"\nVENV_DIR=\"${VENV_DIR:-.venv}\"\n\necho \"Creating venv with: $PYTHON_PATH -m venv $VENV_DIR\"\n\"$PYTHON_PATH\" -m venv --upgrade-deps \"$VENV_DIR\"\n\necho \"Activating venv...\"\nsource \"$VENV_DIR/bin/activate\"\n\nPYTHON_VERSION=$(python --version 2>&1)\nVENV_PATH=$(cd \"$VENV_DIR\" && pwd)\n\necho \"\"\necho \"Virtual environment ready:\"\necho \"  venv_path: $VENV_PATH\"\necho \"  python_version: $PYTHON_VERSION\"\necho \"  python: $(which python)\"\necho \"  pip: $(pip --version)\"\necho \"\"\necho \"To activate manually: source $VENV_DIR/bin/activate\"",
+      "env": {
+        "PYTHON_PATH": { "required": false, "default": "python3", "description": "Path to the Python interpreter to use" },
+        "VENV_DIR": { "required": false, "default": ".venv", "description": "Directory name for the virtual environment" }
+      },
+      "packages": []
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "python_path": { "type": "string", "description": "Path to the Python interpreter to use for creating the venv", "default": "python3" },
+        "venv_dir": { "type": "string", "description": "Directory name or path for the virtual environment", "default": ".venv" }
+      },
+      "required": []
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "venv_path": { "type": "string", "description": "Absolute path to the created virtual environment" },
+        "python_version": { "type": "string", "description": "Python version inside the venv (e.g., Python 3.12.0)" }
+      }
+    }
+  },
+  "depends": [],
+  "more": {
+    "docs": "https://docs.python.org/3/library/venv.html",
+    "pep": "https://peps.python.org/pep-0405/"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "5 min",
+    "prerequisites": [],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

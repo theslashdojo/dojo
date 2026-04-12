@@ -1,0 +1,130 @@
+{
+  "name": "pages",
+  "version": "1.0.0",
+  "uri": "cloudflare/pages",
+  "type": "skill",
+  "context": "Deploy static sites and full-stack applications to Cloudflare Pages with Git integration and edge functions",
+  "info": "Cloudflare Pages deploys static sites and full-stack applications to the edge. It integrates with GitHub and GitLab for automatic deployments on push. Pages supports all major frameworks (Next.js, Astro, SvelteKit, Nuxt, Remix, Vite) via build presets. Pages Functions provide server-side compute using the Workers runtime, enabling full-stack apps with file-based routing in the `functions/` directory. Preview deployments are automatic for every branch and PR. Custom domains, redirects, headers, and environment variables are configurable. Free tier: unlimited sites, unlimited requests, unlimited bandwidth, 500 builds/month.",
+  "parent": "cloudflare",
+  "tags": ["pages", "deploy", "static-site", "fullstack", "git", "preview", "framework"],
+  "aliases": [
+    "cloudflare pages",
+    "cf pages",
+    "pages deploy",
+    "cloudflare static site",
+    "cloudflare hosting",
+    "deploy to pages",
+    "pages functions",
+    "cloudflare fullstack"
+  ],
+  "triggers": [
+    "deploy a site to cloudflare pages",
+    "deploy a static site to cloudflare",
+    "set up cloudflare pages",
+    "deploy next.js to cloudflare",
+    "deploy astro to cloudflare",
+    "connect github to cloudflare pages",
+    "deploy a fullstack app to cloudflare"
+  ],
+  "body": "# Cloudflare Pages\n\nPages deploys static and full-stack applications to the edge with automatic Git integration, preview deployments, and zero configuration for popular frameworks.\n\n## Quick Start\n\n### From Git (Dashboard)\n\n1. Go to Cloudflare Dashboard > Workers & Pages > Create\n2. Connect GitHub/GitLab account\n3. Select repository\n4. Configure build settings (framework preset auto-detected)\n5. Deploy\n\n### From CLI\n\n```bash\n# Deploy a directory directly\nwrangler pages deploy ./dist\n\n# Deploy with project name\nwrangler pages deploy ./dist --project-name my-site\n\n# Create a new Pages project\nwrangler pages project create my-site --production-branch main\n```\n\n## Framework Presets\n\nPages auto-detects and configures builds for:\n\n| Framework | Build Command | Output Directory |\n|-----------|---------------|------------------|\n| Next.js | `npx @cloudflare/next-on-pages` | `.vercel/output/static` |\n| Astro | `npm run build` | `dist` |\n| SvelteKit | `npm run build` | `.svelte-kit/cloudflare` |\n| Nuxt | `npm run build` | `.output/public` |\n| Remix | `npm run build` | `build/client` |\n| Vite/React | `npm run build` | `dist` |\n| Hugo | `hugo` | `public` |\n| Gatsby | `gatsby build` | `public` |\n\n## Pages Functions (Full-Stack)\n\nAdd server-side logic with file-based routing in the `functions/` directory:\n\n```typescript\n// functions/api/hello.ts\nexport const onRequestGet: PagesFunction = async (context) => {\n  return Response.json({ message: 'Hello from Pages Functions!' });\n};\n\nexport const onRequestPost: PagesFunction<Env> = async (context) => {\n  const body = await context.request.json();\n  const result = await context.env.DB.prepare(\n    'INSERT INTO items (name) VALUES (?) RETURNING id'\n  ).bind(body.name).first();\n  return Response.json(result, { status: 201 });\n};\n```\n\n```\nfunctions/\n├── api/\n│   ├── hello.ts          → GET/POST /api/hello\n│   ├── users/\n│   │   ├── index.ts      → GET/POST /api/users\n│   │   └── [id].ts       → GET/PUT/DELETE /api/users/:id\n│   └── [[path]].ts       → Catch-all /api/*\n└── _middleware.ts         → Runs before all functions\n```\n\n## Custom Domains\n\n```bash\n# Add a custom domain\nwrangler pages project create my-site\n# Then in Dashboard: Pages project > Custom domains > Set up a domain\n\n# Or via API\ncurl -X POST \"https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/pages/projects/my-site/domains\" \\\n  -H \"Authorization: Bearer $CLOUDFLARE_API_TOKEN\" \\\n  -H \"Content-Type: application/json\" \\\n  --data '{\"name\":\"app.example.com\"}'\n```\n\n## Environment Variables\n\n```bash\n# Set environment variables for Pages\nwrangler pages secret put DATABASE_URL --project-name my-site\n\n# Or in wrangler.toml for Pages\n# [vars]\n# API_URL = \"https://api.example.com\"\n```\n\n## Preview Deployments\n\nEvery push to a non-production branch creates a preview deployment at:\n`https://<commit-hash>.my-site.pages.dev`\n\nPR comments show the preview URL automatically when GitHub integration is configured.\n\n## Redirects and Headers\n\n```\n# _redirects file in output directory\n/old-page /new-page 301\n/blog/* /news/:splat 302\n```\n\n```\n# _headers file in output directory\n/api/*\n  Access-Control-Allow-Origin: *\n  Cache-Control: no-cache\n\n/*.js\n  Cache-Control: public, max-age=31536000, immutable\n```\n\n## Bindings in Pages\n\nPages Functions support the same bindings as Workers:\n\n```toml\n# wrangler.toml\n[[d1_databases]]\nbinding = \"DB\"\ndatabase_name = \"my-db\"\ndatabase_id = \"xxx\"\n\n[[kv_namespaces]]\nbinding = \"KV\"\nid = \"yyy\"\n\n[[r2_buckets]]\nbinding = \"BUCKET\"\nbucket_name = \"my-bucket\"\n```\n",
+  "sections": [
+    {
+      "id": "deploy",
+      "title": "Deploying Pages",
+      "body": "Deploy via `wrangler pages deploy ./dist` for direct uploads, or connect a Git repo through the dashboard for automatic deploys on push. Use `--project-name` to specify the project. Framework presets auto-detect build commands and output directories. Production deploys go to `<project>.pages.dev`; branch deploys go to `<branch>.<project>.pages.dev`.",
+      "tags": ["deploy", "wrangler", "git", "automatic", "build"]
+    },
+    {
+      "id": "functions",
+      "title": "Pages Functions",
+      "body": "Add server-side routes by creating files in the `functions/` directory. File-based routing: `functions/api/users.ts` maps to `/api/users`. Dynamic routes use `[param].ts` brackets. Export `onRequestGet`, `onRequestPost`, etc. for method-specific handlers. `_middleware.ts` runs before all functions in its directory. Functions use the Workers runtime and support all Worker bindings.",
+      "tags": ["functions", "server-side", "routing", "middleware", "api"]
+    },
+    {
+      "id": "preview",
+      "title": "Preview deployments",
+      "body": "Every push to a non-production branch creates a unique preview URL: `https://<hash>.<project>.pages.dev`. Branch-specific previews use: `https://<branch>.<project>.pages.dev`. GitHub integration adds preview URLs to PR comments. Preview deployments use preview bindings (KV, D1, R2) from `wrangler.toml`.",
+      "tags": ["preview", "branch", "pr", "staging"]
+    },
+    {
+      "id": "frameworks",
+      "title": "Framework support",
+      "body": "Pages supports all major frameworks: Next.js (via @cloudflare/next-on-pages), Astro, SvelteKit, Nuxt, Remix, Vite, Hugo, Gatsby. Build presets auto-configure the build command and output directory. Next.js on Pages requires `@cloudflare/next-on-pages` adapter. Astro and SvelteKit have native Cloudflare adapters.",
+      "tags": ["nextjs", "astro", "svelte", "nuxt", "remix", "vite", "hugo"]
+    }
+  ],
+  "links": [
+    { "uri": "cloudflare/workers", "context": "Pages Functions use the Workers runtime" },
+    { "uri": "cloudflare/d1", "context": "Bind D1 databases to Pages Functions" },
+    { "uri": "cloudflare/kv", "context": "Bind KV namespaces to Pages Functions" },
+    { "uri": "cloudflare/r2", "context": "Bind R2 buckets to Pages Functions" },
+    { "uri": "cloudflare/dns", "context": "Point custom domains to Pages projects" },
+    { "uri": "cloudflare/wrangler", "context": "CLI for Pages deployment" },
+    { "uri": "cloudflare/auth", "context": "Authentication for Pages API" },
+    { "uri": "cloudflare/troubleshooting", "context": "Debug deployment failures" }
+  ],
+  "related": [
+    { "uri": "cloudflare/auth", "relation": "prerequisite", "note": "API token required for CLI deployments" },
+    { "uri": "cloudflare/workers", "relation": "see-also", "note": "Pages Functions are Workers with file-based routing" },
+    { "uri": "vercel/deploy", "relation": "alternative", "note": "Vercel is an alternative deployment platform with similar Git integration" },
+    { "uri": "nextjs/deployment", "relation": "see-also", "note": "Next.js can deploy to Pages via @cloudflare/next-on-pages" }
+  ],
+  "scripts": [
+    {
+      "id": "deploy-pages",
+      "name": "Deploy Pages",
+      "description": "Deploy a static site or full-stack app to Cloudflare Pages",
+      "lang": "bash",
+      "runtime": "node>=18",
+      "entry": "./scripts/deploy-pages.sh",
+      "env": {
+        "CLOUDFLARE_API_TOKEN": { "required": true, "secret": true, "description": "API token with Cloudflare Pages Edit permission" },
+        "CLOUDFLARE_ACCOUNT_ID": { "required": true, "secret": false, "description": "Cloudflare account identifier" }
+      },
+      "packages": ["wrangler"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "directory": { "type": "string", "description": "Build output directory to deploy (e.g., ./dist)" },
+        "projectName": { "type": "string", "description": "Pages project name" },
+        "branch": { "type": "string", "description": "Branch name for preview deployments" }
+      },
+      "required": ["directory", "projectName"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "url": { "type": "string", "description": "Deployment URL" },
+        "environment": { "type": "string", "enum": ["production", "preview"], "description": "Deployment environment" },
+        "id": { "type": "string", "description": "Deployment ID" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "cloudflare/auth", "reason": "API token required for deployment" },
+    { "uri": "cloudflare/wrangler", "reason": "Wrangler CLI for Pages deployment" }
+  ],
+  "more": {
+    "docs": "https://developers.cloudflare.com/pages/",
+    "frameworks": "https://developers.cloudflare.com/pages/framework-guides/",
+    "functions": "https://developers.cloudflare.com/pages/functions/"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "5 min",
+    "prerequisites": ["cloudflare/auth"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

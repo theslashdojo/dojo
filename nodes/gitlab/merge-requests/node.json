@@ -1,0 +1,271 @@
+{
+  "name": "merge-requests",
+  "version": "1.0.0",
+  "uri": "gitlab/merge-requests",
+  "type": "skill",
+  "context": "List, inspect, create, and merge GitLab merge requests with source and target branch aware API workflows",
+  "info": "This skill covers merge request automation in GitLab: list merge requests in a project, inspect a specific MR by IID, create a new MR from a prepared source branch to a target branch, and merge an MR with SHA guards, squash, source branch cleanup, or auto-merge behavior. Agents use it after local Git work is pushed and before deployment or release automation proceeds. It is also the place to understand MR-specific pipeline behavior and merge-status checks.",
+  "parent": "gitlab",
+  "tags": [
+    "gitlab",
+    "merge-requests",
+    "mrs",
+    "review",
+    "merge",
+    "squash",
+    "auto-merge",
+    "branches"
+  ],
+  "aliases": [
+    "gitlab merge request",
+    "gitlab mr",
+    "open gitlab mr",
+    "merge gitlab mr",
+    "accept merge request",
+    "merge request iid"
+  ],
+  "triggers": [
+    "create a gitlab merge request",
+    "merge a gitlab merge request",
+    "list merge requests in a gitlab project",
+    "inspect gitlab merge status",
+    "open an mr from a branch"
+  ],
+  "body": "# GitLab Merge Requests\n\nMerge requests are the review and merge unit for code changes in GitLab. Agents usually arrive here after using `git push` to publish a branch and after using [[gitlab/projects]] to resolve the project identifier.\n\n```bash\npython ./scripts/manage-merge-requests.py create group/project feature/refactor main 'Refactor deploy flow' \\\n  --description 'Splits deploy logic into reusable steps' \\\n  --remove-source-branch \\\n  --squash\n\npython ./scripts/manage-merge-requests.py merge group/project 17 --sha 4f8a1b2c3d\n```\n\nCreation uses `POST /projects/:id/merge_requests` and requires `source_branch`, `target_branch`, and `title`. Merging uses `PUT /projects/:id/merge_requests/:merge_request_iid/merge`; use the optional `sha` guard to ensure only the reviewed commit set is merged. For merge-request-specific pipelines, load [[gitlab/pipelines]] and remember that they are separate from ordinary branch pipelines.",
+  "sections": [
+    {
+      "id": "list-and-inspect",
+      "title": "List and inspect merge requests",
+      "body": "Project-scoped merge requests are listed with `GET /projects/:id/merge_requests`, commonly filtered by `state`, `source_branch`, `target_branch`, `reviewer_id`, or text search. The response includes `detailed_merge_status`, which is more useful than the legacy `merge_status` field for deciding whether an MR can actually merge.",
+      "tags": [
+        "list",
+        "inspect",
+        "state",
+        "detailed-merge-status"
+      ]
+    },
+    {
+      "id": "create",
+      "title": "Create merge requests",
+      "body": "Creating an MR requires a source branch that already exists in the source project. Optional fields include assignees, reviewers, labels, `remove_source_branch`, `target_project_id`, and `squash`. If you need a draft MR, prefix the title with `Draft:` because draft state is encoded in the title on creation.",
+      "tags": [
+        "create",
+        "source-branch",
+        "target-branch",
+        "reviewers",
+        "draft"
+      ]
+    },
+    {
+      "id": "merge",
+      "title": "Merge safely",
+      "body": "Merging uses `PUT /projects/:id/merge_requests/:merge_request_iid/merge` and supports `sha`, `squash`, `should_remove_source_branch`, and `auto_merge`. The `sha` parameter acts like optimistic locking: GitLab refuses the merge if the source branch head has changed since review. This is the safest default for autonomous agents that must avoid merging unreviewed commits.",
+      "tags": [
+        "merge",
+        "sha-guard",
+        "auto-merge",
+        "remove-source-branch"
+      ]
+    },
+    {
+      "id": "mr-pipelines",
+      "title": "Merge request pipelines",
+      "body": "GitLab has a dedicated endpoint to create pipelines for a merge request, and those pipelines are distinct from ordinary branch pipelines. A MR pipeline often uses rules such as `$CI_PIPELINE_SOURCE == \"merge_request_event\"`. If an agent expects a branch pipeline but only MR rules exist, the pipeline will appear missing until the trigger source is corrected.",
+      "tags": [
+        "merge-request-pipeline",
+        "pipeline-source",
+        "rules"
+      ]
+    }
+  ],
+  "links": [
+    {
+      "uri": "gitlab/auth",
+      "context": "MR creation and merge require the correct token and project role"
+    },
+    {
+      "uri": "gitlab/auth#job-tokens",
+      "context": "CI-driven merge automation may use job tokens instead of long-lived user tokens"
+    },
+    {
+      "uri": "gitlab/projects",
+      "context": "Resolve the project path or ID before creating or merging an MR"
+    },
+    {
+      "uri": "gitlab/projects#identifiers",
+      "context": "Encoded project paths are a frequent source of MR API mistakes"
+    },
+    {
+      "uri": "gitlab/pipelines",
+      "context": "Inspect branch and merge-request pipelines that gate MR merges"
+    },
+    {
+      "uri": "gitlab/pipelines#retry-and-cancel",
+      "context": "Failed MR pipelines often need a retry before merge can proceed"
+    },
+    {
+      "uri": "git/branch",
+      "context": "Branches must exist and be pushed before an MR can be opened"
+    },
+    {
+      "uri": "git/rebase",
+      "context": "Rebasing is often required when the target branch moved"
+    },
+    {
+      "uri": "github/pulls",
+      "context": "Comparable pull-request workflow on GitHub"
+    }
+  ],
+  "related": [
+    {
+      "uri": "gitlab/auth",
+      "relation": "prerequisite",
+      "note": "Merge actions need an authenticated token with merge rights on the target project"
+    },
+    {
+      "uri": "git/branch",
+      "relation": "prerequisite",
+      "note": "Source and target branches are the core inputs to merge request creation"
+    },
+    {
+      "uri": "gitlab/pipelines#retry-and-cancel",
+      "relation": "see-also",
+      "note": "Merge automation frequently waits on pipeline reruns or cancellation of obsolete runs"
+    },
+    {
+      "uri": "github/pulls",
+      "relation": "alternative",
+      "note": "GitHub pull requests are the nearest equivalent on another platform"
+    }
+  ],
+  "scripts": [
+    {
+      "id": "manage-merge-requests",
+      "name": "Manage GitLab Merge Requests",
+      "description": "List, inspect, create, and merge GitLab merge requests",
+      "lang": "python",
+      "runtime": "python>=3.10",
+      "entry": "./scripts/manage-merge-requests.py",
+      "env": {
+        "GITLAB_TOKEN": {
+          "required": false,
+          "secret": true,
+          "description": "Preferred API token; use unless OAUTH_TOKEN or CI_JOB_TOKEN is provided instead"
+        },
+        "OAUTH_TOKEN": {
+          "required": false,
+          "secret": true,
+          "description": "Optional OAuth bearer token"
+        },
+        "CI_JOB_TOKEN": {
+          "required": false,
+          "secret": true,
+          "description": "Optional CI job token for in-pipeline automation"
+        },
+        "GITLAB_HOST": {
+          "required": false,
+          "default": "https://gitlab.com",
+          "description": "GitLab host, including scheme"
+        },
+        "GITLAB_HTTP_DEBUG": {
+          "required": false,
+          "default": "0",
+          "description": "Set to 1 to print request details to stderr"
+        }
+      }
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "action": {
+          "type": "string",
+          "enum": [
+            "list",
+            "get",
+            "create",
+            "merge"
+          ]
+        },
+        "project": {
+          "type": "string"
+        },
+        "mergeRequestIid": {
+          "type": "integer"
+        },
+        "sourceBranch": {
+          "type": "string"
+        },
+        "targetBranch": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "sha": {
+          "type": "string",
+          "description": "Expected HEAD SHA used as a merge guard"
+        }
+      },
+      "required": [
+        "action",
+        "project"
+      ]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "iid": {
+          "type": "integer"
+        },
+        "title": {
+          "type": "string"
+        },
+        "state": {
+          "type": "string"
+        },
+        "webUrl": {
+          "type": "string"
+        },
+        "detailedMergeStatus": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "depends": [
+    {
+      "uri": "gitlab/auth",
+      "reason": "Merge request operations require authenticated project access"
+    },
+    {
+      "uri": "gitlab/projects",
+      "reason": "MR operations are scoped to a project path or ID"
+    }
+  ],
+  "more": {
+    "docs": "https://docs.gitlab.com/api/merge_requests/",
+    "glab-merge": "https://docs.gitlab.com/cli/mr/merge/"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents, reviewers",
+    "estimated_reading_time": "6 min",
+    "prerequisites": [
+      "gitlab/auth",
+      "gitlab/projects",
+      "git/branch"
+    ],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://gitlab.com/gitlab-org/gitlab",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

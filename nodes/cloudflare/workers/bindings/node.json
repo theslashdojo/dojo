@@ -1,0 +1,86 @@
+{
+  "name": "bindings",
+  "version": "1.0.0",
+  "uri": "cloudflare/workers/bindings",
+  "type": "sub",
+  "context": "Configure Worker bindings to connect to KV, R2, D1, Queues, Durable Objects, and other services",
+  "info": "Bindings are the mechanism Workers use to access Cloudflare services. They are declared in `wrangler.toml` and injected into the Worker's `env` parameter at runtime. Bindings are zero-latency references — no network call is needed to establish the connection. Supported binding types: KV Namespaces, R2 Buckets, D1 Databases, Queues (producers and consumers), Durable Objects, Service Bindings (Worker-to-Worker), AI, Vectorize, Hyperdrive, Browser Rendering, and environment variables/secrets. Each binding type has its own TOML syntax and TypeScript type.",
+  "parent": "cloudflare/workers",
+  "tags": ["bindings", "kv-binding", "r2-binding", "d1-binding", "queue-binding", "service-binding", "env"],
+  "aliases": [
+    "worker bindings",
+    "cloudflare bindings",
+    "wrangler bindings",
+    "kv binding",
+    "r2 binding",
+    "d1 binding",
+    "service binding",
+    "env bindings"
+  ],
+  "triggers": [
+    "add a binding to a worker",
+    "connect a worker to kv",
+    "bind r2 to a worker",
+    "add a d1 binding",
+    "configure worker bindings",
+    "what bindings does my worker need"
+  ],
+  "body": "# Worker Bindings\n\nBindings connect Workers to Cloudflare services via zero-latency references configured in `wrangler.toml` and accessed through the `env` parameter.\n\n## KV Namespace Binding\n\n```toml\n[[kv_namespaces]]\nbinding = \"MY_KV\"              # env.MY_KV in Worker code\nid = \"abc123\"                   # production namespace ID\npreview_id = \"def456\"           # preview namespace ID (wrangler dev)\n```\n\n```typescript\n// TypeScript type: KVNamespace\nconst value = await env.MY_KV.get('key');\nawait env.MY_KV.put('key', 'value');\n```\n\n## R2 Bucket Binding\n\n```toml\n[[r2_buckets]]\nbinding = \"MY_BUCKET\"           # env.MY_BUCKET\nbucket_name = \"my-bucket\"       # production bucket\npreview_bucket_name = \"preview\" # preview bucket (wrangler dev)\n```\n\n```typescript\n// TypeScript type: R2Bucket\nconst object = await env.MY_BUCKET.get('file.txt');\nawait env.MY_BUCKET.put('file.txt', 'content');\n```\n\n## D1 Database Binding\n\n```toml\n[[d1_databases]]\nbinding = \"DB\"                  # env.DB\ndatabase_name = \"my-database\"   # database name\ndatabase_id = \"xxxx-yyyy\"       # database UUID\n```\n\n```typescript\n// TypeScript type: D1Database\nconst { results } = await env.DB.prepare('SELECT * FROM users').all();\n```\n\n## Queue Bindings\n\n```toml\n# Producer (send messages)\n[[queues.producers]]\nbinding = \"MY_QUEUE\"            # env.MY_QUEUE\nqueue = \"my-queue\"              # queue name\n\n# Consumer (receive messages)\n[[queues.consumers]]\nqueue = \"my-queue\"\nmax_batch_size = 10\nmax_batch_timeout = 30\n```\n\n```typescript\n// Producer\nawait env.MY_QUEUE.send({ type: 'email', to: 'user@example.com' });\n\n// Consumer handler\nexport default {\n  async queue(batch: MessageBatch, env: Env) {\n    for (const msg of batch.messages) {\n      console.log(msg.body);\n      msg.ack();\n    }\n  },\n};\n```\n\n## Service Bindings (Worker-to-Worker)\n\n```toml\n[[services]]\nbinding = \"AUTH_SERVICE\"        # env.AUTH_SERVICE\nservice = \"auth-worker\"         # target worker name\n```\n\n```typescript\n// Call another Worker directly (no network hop)\nconst response = await env.AUTH_SERVICE.fetch(\n  new Request('https://auth/verify', {\n    method: 'POST',\n    body: JSON.stringify({ token }),\n  })\n);\n```\n\n## Environment Variables\n\n```toml\n# Plain text variables\n[vars]\nAPI_URL = \"https://api.example.com\"\nENVIRONMENT = \"production\"\n```\n\n```bash\n# Encrypted secrets (not in wrangler.toml)\nwrangler secret put API_KEY\n```\n\n```typescript\n// Both accessed the same way\nconst apiUrl = env.API_URL;    // string\nconst apiKey = env.API_KEY;    // string\n```\n\n## AI Binding\n\n```toml\n[ai]\nbinding = \"AI\"                  # env.AI\n```\n\n```typescript\nconst result = await env.AI.run('@cf/meta/llama-3.1-8b-instruct', {\n  messages: [{ role: 'user', content: 'Hello' }],\n});\n```\n\n## Env Type Definition\n\nDefine the full `Env` interface for TypeScript:\n\n```typescript\nexport interface Env {\n  // KV\n  MY_KV: KVNamespace;\n  // R2\n  MY_BUCKET: R2Bucket;\n  // D1\n  DB: D1Database;\n  // Queue\n  MY_QUEUE: Queue;\n  // Service\n  AUTH_SERVICE: Fetcher;\n  // AI\n  AI: Ai;\n  // Variables\n  API_URL: string;\n  API_KEY: string;\n}\n```\n",
+  "sections": [
+    {
+      "id": "storage-bindings",
+      "title": "Storage bindings (KV, R2, D1)",
+      "body": "KV: `[[kv_namespaces]]` with `binding`, `id`, `preview_id`. Type: `KVNamespace`. R2: `[[r2_buckets]]` with `binding`, `bucket_name`. Type: `R2Bucket`. D1: `[[d1_databases]]` with `binding`, `database_name`, `database_id`. Type: `D1Database`. All accessed via `env.BINDING_NAME` in Worker code.",
+      "tags": ["kv", "r2", "d1", "storage", "namespace", "bucket", "database"]
+    },
+    {
+      "id": "service-bindings",
+      "title": "Service bindings",
+      "body": "Service bindings enable Worker-to-Worker calls without network overhead. Configure with `[[services]]` in `wrangler.toml` specifying `binding` and `service` (target worker name). Access via `env.BINDING.fetch(request)`. The call happens within Cloudflare's network — no external HTTP roundtrip.",
+      "tags": ["service", "worker-to-worker", "fetch", "internal"]
+    },
+    {
+      "id": "queue-bindings",
+      "title": "Queue bindings",
+      "body": "Queue producers send messages with `[[queues.producers]]` binding. Queue consumers process batches with `[[queues.consumers]]`. Producer: `env.QUEUE.send(message)`. Consumer: export `queue(batch, env)` handler. Configure `max_batch_size` and `max_batch_timeout` on the consumer.",
+      "tags": ["queues", "producer", "consumer", "messaging", "batch"]
+    },
+    {
+      "id": "vars-secrets",
+      "title": "Variables and secrets",
+      "body": "Plain text variables in `[vars]` block — stored in `wrangler.toml`, visible in dashboard. Secrets via `wrangler secret put` — encrypted at rest, never displayed after creation. Both accessed as `env.NAME` (string type). Use secrets for API keys, tokens, and credentials. Use vars for non-sensitive configuration.",
+      "tags": ["vars", "secrets", "environment", "configuration", "encrypted"]
+    }
+  ],
+  "links": [
+    { "uri": "cloudflare/workers", "context": "Workers that consume bindings" },
+    { "uri": "cloudflare/kv", "context": "KV namespace operations via binding" },
+    { "uri": "cloudflare/r2", "context": "R2 bucket operations via binding" },
+    { "uri": "cloudflare/d1", "context": "D1 database operations via binding" },
+    { "uri": "cloudflare/wrangler", "context": "Configure bindings in wrangler.toml" }
+  ],
+  "related": [
+    { "uri": "cloudflare/workers", "relation": "prerequisite", "note": "Bindings are configured on Workers" },
+    { "uri": "cloudflare/kv", "relation": "see-also", "note": "KV binding provides KVNamespace interface" },
+    { "uri": "cloudflare/r2", "relation": "see-also", "note": "R2 binding provides R2Bucket interface" },
+    { "uri": "cloudflare/d1", "relation": "see-also", "note": "D1 binding provides D1Database interface" }
+  ],
+  "more": {
+    "docs": "https://developers.cloudflare.com/workers/runtime-apis/bindings/"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "4 min",
+    "prerequisites": ["cloudflare/workers"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

@@ -1,0 +1,123 @@
+{
+  "name": "seed",
+  "version": "1.0.0",
+  "uri": "prisma/seed",
+  "type": "skill",
+  "context": "Create and run Prisma database seed scripts to populate development and test data",
+  "info": "Database seeding populates your database with initial or test data. Prisma seeds are TypeScript or JavaScript scripts that use the Prisma Client to insert records. The seed script is configured in `package.json` under `prisma.seed` (or `prisma.config.ts` for Prisma v7+) and executed with `npx prisma db seed`. Seeds run after `prisma migrate reset` to repopulate data. Use `upsert` instead of `create` to make seeds idempotent — safe to run multiple times. See [[prisma/client]] for query methods used in seeds and [[prisma/migrate]] for the reset workflow.",
+  "parent": "prisma",
+  "tags": ["seed", "seeding", "test-data", "initial-data", "fixtures", "prisma-seed"],
+  "aliases": [
+    "prisma seed",
+    "prisma db seed",
+    "database seeding",
+    "seed script",
+    "seed data",
+    "prisma fixtures",
+    "test data",
+    "seed file",
+    "seed.ts",
+    "seed.js"
+  ],
+  "triggers": [
+    "seed the database",
+    "create seed data",
+    "write a prisma seed script",
+    "populate test data",
+    "run prisma db seed",
+    "add initial data to database",
+    "create fixtures for testing",
+    "set up seed file"
+  ],
+  "body": "# Prisma Database Seeding\n\nSeed scripts populate your database with initial, development, or test data using [[prisma/client]].\n\n## Setup\n\n### Configuration (package.json)\n\n```json\n{\n  \"prisma\": {\n    \"seed\": \"tsx prisma/seed.ts\"\n  }\n}\n```\n\nAlternative runners:\n- `\"ts-node prisma/seed.ts\"` — using ts-node\n- `\"node prisma/seed.js\"` — plain JavaScript\n- `\"npx tsx prisma/seed.ts\"` — using npx\n\n### Install tsx (recommended TypeScript runner)\n\n```bash\nnpm install tsx --save-dev\n```\n\n## Seed Script Template\n\n```typescript\n// prisma/seed.ts\nimport { PrismaClient } from '@prisma/client';\n\nconst prisma = new PrismaClient();\n\nasync function main() {\n  // Use upsert for idempotent seeds (safe to run multiple times)\n  const alice = await prisma.user.upsert({\n    where: { email: 'alice@example.com' },\n    update: {},\n    create: {\n      email: 'alice@example.com',\n      name: 'Alice',\n      role: 'ADMIN',\n      posts: {\n        create: [\n          {\n            title: 'Getting Started with Prisma',\n            content: 'Prisma is a next-generation ORM...',\n            published: true,\n          },\n          {\n            title: 'Advanced Prisma Patterns',\n            content: 'Let us explore transactions...',\n            published: false,\n          },\n        ],\n      },\n    },\n  });\n\n  const bob = await prisma.user.upsert({\n    where: { email: 'bob@example.com' },\n    update: {},\n    create: {\n      email: 'bob@example.com',\n      name: 'Bob',\n      role: 'USER',\n      profile: {\n        create: { bio: 'Full-stack developer' },\n      },\n    },\n  });\n\n  // Seed lookup tables\n  const tags = ['typescript', 'prisma', 'database', 'orm', 'nodejs'];\n  for (const name of tags) {\n    await prisma.tag.upsert({\n      where: { name },\n      update: {},\n      create: { name },\n    });\n  }\n\n  console.log('Seeded:', { alice: alice.email, bob: bob.email, tags: tags.length });\n}\n\nmain()\n  .then(async () => {\n    await prisma.$disconnect();\n  })\n  .catch(async (e) => {\n    console.error(e);\n    await prisma.$disconnect();\n    process.exit(1);\n  });\n```\n\n## Running Seeds\n\n```bash\n# Run the seed script\nnpx prisma db seed\n\n# Pass arguments to the seed script\nnpx prisma db seed -- --environment development\n\n# Seeds also run after:\nnpx prisma migrate reset  # Drop + reapply migrations + seed\n```\n\n## Patterns\n\n### Idempotent Seeds with upsert\n\nAlways use `upsert` instead of `create` so seeds can run multiple times without errors:\n\n```typescript\nawait prisma.user.upsert({\n  where: { email: 'alice@example.com' },\n  update: {},  // Don't overwrite existing data\n  create: { email: 'alice@example.com', name: 'Alice' },\n});\n```\n\n### Environment-Specific Seeds\n\n```typescript\nconst args = process.argv.slice(2);\nconst env = args.includes('--production') ? 'production' : 'development';\n\nif (env === 'development') {\n  // Seed test users, sample data\n  await seedTestData();\n}\n\n// Always seed required lookup data\nawait seedLookupTables();\n```\n\n### Seeding with Faker\n\n```typescript\nimport { faker } from '@faker-js/faker';\n\nfor (let i = 0; i < 50; i++) {\n  await prisma.user.create({\n    data: {\n      email: faker.internet.email(),\n      name: faker.person.fullName(),\n      posts: {\n        create: Array.from({ length: faker.number.int({ min: 0, max: 5 }) }, () => ({\n          title: faker.lorem.sentence(),\n          content: faker.lorem.paragraphs(3),\n          published: faker.datatype.boolean(),\n        })),\n      },\n    },\n  });\n}\n```\n\n### Batch Seeding with createMany\n\nFor large datasets, `createMany` is faster than individual `create` calls:\n\n```typescript\nawait prisma.user.createMany({\n  data: users,\n  skipDuplicates: true,\n});\n```\n\nNote: `createMany` doesn't support nested creates — use it for flat data.\n\n## Environment Variables\n\n| Variable | Purpose |\n|----------|--------|\n| `DATABASE_URL` | Target database for seeding |\n",
+  "sections": [
+    {
+      "id": "setup",
+      "title": "Seed script setup",
+      "body": "Configure the seed command in `package.json` under `prisma.seed`. Use `tsx` or `ts-node` for TypeScript seeds, or `node` for JavaScript. The seed file is typically `prisma/seed.ts`. Install the runner as a dev dependency (e.g., `npm install tsx --save-dev`).",
+      "tags": ["setup", "configuration", "package-json", "tsx", "ts-node"]
+    },
+    {
+      "id": "idempotent",
+      "title": "Idempotent seeding",
+      "body": "Use `upsert` with `update: {}` to make seeds safe for repeated execution. This creates records on first run and skips them on subsequent runs. Never use `create` in seeds — it fails on duplicate unique fields (P2002). For bulk data, use `createMany` with `skipDuplicates: true`.",
+      "tags": ["idempotent", "upsert", "skipDuplicates", "safe", "repeatable"]
+    },
+    {
+      "id": "faker",
+      "title": "Generating test data",
+      "body": "Use `@faker-js/faker` to generate realistic test data. Faker provides methods for emails, names, addresses, lorem text, dates, and more. Combine with loops and nested creates to populate complex data structures. Install with `npm install @faker-js/faker --save-dev`.",
+      "tags": ["faker", "test-data", "realistic", "generated"]
+    }
+  ],
+  "links": [
+    { "uri": "prisma/client", "context": "Prisma Client methods used in seed scripts" },
+    { "uri": "prisma/client/queries", "context": "CRUD operations for inserting seed data" },
+    { "uri": "prisma/client/relations", "context": "Nested creates for seeding related data" },
+    { "uri": "prisma/migrate", "context": "Seeds run after migrate reset" },
+    { "uri": "prisma/schema", "context": "Schema defines the models available for seeding" }
+  ],
+  "related": [
+    { "uri": "prisma/client", "relation": "prerequisite", "note": "Seeds use Prisma Client to insert data" },
+    { "uri": "prisma/migrate", "relation": "see-also", "note": "migrate reset triggers the seed script" },
+    { "uri": "prisma/schema", "relation": "prerequisite", "note": "Models must be defined before seeding" }
+  ],
+  "scripts": [
+    {
+      "id": "create-seed",
+      "name": "Create Seed Script",
+      "description": "Generate a Prisma seed script with upsert-based idempotent seeding",
+      "lang": "bash",
+      "runtime": "bash",
+      "entry": "./scripts/create-seed.sh",
+      "env": {
+        "DATABASE_URL": { "required": true, "secret": true, "description": "Database connection string" }
+      },
+      "packages": ["prisma", "@prisma/client", "tsx"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "models": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Model names to seed (e.g., ['User', 'Post', 'Tag'])"
+        },
+        "count": { "type": "integer", "default": 10, "description": "Number of records to generate per model" },
+        "useFaker": { "type": "boolean", "default": false, "description": "Use @faker-js/faker for realistic data" }
+      },
+      "required": ["models"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "seedPath": { "type": "string", "description": "Path to the generated seed file" },
+        "seeded": { "type": "object", "description": "Count of seeded records per model" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "prisma/client", "reason": "Seeds use Prisma Client to insert data" },
+    { "uri": "prisma/schema", "reason": "Schema defines the models available for seeding" }
+  ],
+  "more": {
+    "docs": "https://www.prisma.io/docs/orm/prisma-migrate/workflows/seeding"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "4 min",
+    "prerequisites": ["prisma/client", "prisma/schema"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

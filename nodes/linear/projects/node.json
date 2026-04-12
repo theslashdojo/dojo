@@ -1,0 +1,138 @@
+{
+  "name": "projects",
+  "version": "1.0.0",
+  "uri": "linear/projects",
+  "type": "skill",
+  "context": "Create, query, and manage Linear projects for cross-team initiatives and milestone tracking",
+  "info": "Projects in Linear group related issues across teams into larger initiatives with milestones, status updates, and progress tracking. Unlike issues which belong to a single team, projects can span multiple teams. Projects have a status (planned, started, paused, completed, cancelled), lead, target date, and associated issues. The GraphQL API provides mutations for creating and updating projects, adding/removing issues, and posting project updates. Agents use this skill to set up new initiatives, track cross-team progress, and report project status. See [[linear/issues]] for the issues that belong to projects and [[linear/teams]] for team context.",
+  "parent": "linear",
+  "tags": ["projects", "initiatives", "milestones", "cross-team", "roadmap", "status-tracking"],
+  "aliases": [
+    "linear projects",
+    "linear project",
+    "linear initiatives",
+    "linear roadmap",
+    "create linear project",
+    "manage linear projects",
+    "project milestones",
+    "linear project api"
+  ],
+  "triggers": [
+    "create a linear project",
+    "list linear projects",
+    "check project status in linear",
+    "add issues to a linear project",
+    "track project progress in linear",
+    "create a roadmap in linear",
+    "manage linear initiatives"
+  ],
+  "body": "# Linear Project Management\n\nProjects group related issues into larger initiatives. They can span multiple teams and provide high-level progress tracking.\n\n## Querying Projects\n\n```graphql\nquery Projects {\n  projects(\n    filter: { state: { in: [\"started\", \"planned\"] } }\n    first: 25\n    orderBy: updatedAt\n  ) {\n    nodes {\n      id\n      name\n      description\n      state\n      progress\n      targetDate\n      startDate\n      lead {\n        name\n      }\n      teams {\n        nodes {\n          name\n          key\n        }\n      }\n      issues {\n        nodes {\n          identifier\n          title\n          state {\n            name\n            type\n          }\n        }\n      }\n    }\n  }\n}\n```\n\nWith the SDK:\n\n```typescript\nimport { LinearClient } from \"@linear/sdk\";\n\nconst client = new LinearClient({ apiKey: process.env.LINEAR_API_KEY });\n\nconst projects = await client.projects({\n  filter: { state: { in: [\"started\", \"planned\"] } },\n});\n\nfor (const project of projects.nodes) {\n  console.log(`${project.name} — ${project.state} (${Math.round(project.progress * 100)}%)`);\n}\n```\n\n## Creating a Project\n\n```graphql\nmutation CreateProject($input: ProjectCreateInput!) {\n  projectCreate(input: $input) {\n    success\n    project {\n      id\n      name\n      url\n    }\n  }\n}\n```\n\nVariables:\n\n```json\n{\n  \"input\": {\n    \"name\": \"Q3 Platform Rewrite\",\n    \"description\": \"Rewrite core platform services for scalability\",\n    \"teamIds\": [\"team-uuid-1\", \"team-uuid-2\"],\n    \"leadId\": \"user-uuid\",\n    \"targetDate\": \"2026-09-30\",\n    \"state\": \"planned\"\n  }\n}\n```\n\nWith the SDK:\n\n```typescript\nconst result = await client.createProject({\n  name: \"Q3 Platform Rewrite\",\n  description: \"Rewrite core platform services for scalability\",\n  teamIds: [engTeam.id, infraTeam.id],\n  leadId: leadUser.id,\n  targetDate: \"2026-09-30\",\n  state: \"planned\",\n});\n\nif (result.success) {\n  const project = await result.project;\n  console.log(`Created: ${project.name} — ${project.url}`);\n}\n```\n\n## Updating a Project\n\n```typescript\nconst result = await client.updateProject(\"PROJECT_UUID\", {\n  state: \"started\",\n  description: \"Updated scope: includes API and frontend\",\n});\n```\n\n## Adding Issues to a Project\n\nAssociate an issue with a project by setting `projectId` when creating or updating the issue:\n\n```typescript\n// When creating\nawait client.createIssue({\n  teamId: team.id,\n  title: \"Implement new auth flow\",\n  projectId: project.id,\n});\n\n// When updating\nawait client.updateIssue(issue.id, {\n  projectId: project.id,\n});\n```\n\n## Project Status\n\n| Status | Meaning |\n|--------|----------|\n| `backlog` | Not yet planned |\n| `planned` | Scheduled but not started |\n| `started` | Actively in progress |\n| `paused` | Temporarily on hold |\n| `completed` | Finished successfully |\n| `cancelled` | Abandoned |\n\n## Project Updates\n\nPost progress updates to a project:\n\n```graphql\nmutation PostProjectUpdate {\n  projectUpdateCreate(input: {\n    projectId: \"PROJECT_UUID\"\n    body: \"## Week 12 Update\\n\\nCompleted auth service migration. Frontend work starts next week.\"\n    health: \"onTrack\"\n  }) {\n    success\n    projectUpdate {\n      id\n      createdAt\n    }\n  }\n}\n```\n\nHealth values: `onTrack`, `atRisk`, `offTrack`.\n\n## Progress Tracking\n\nThe `progress` field (0.0 to 1.0) is automatically calculated from the ratio of completed issues to total issues in the project. You can also query `issues` on the project to compute custom metrics.\n\n## Environment Variables\n\n| Variable | Purpose |\n|----------|----------|\n| `LINEAR_API_KEY` | Personal API key for authentication |\n",
+  "sections": [
+    {
+      "id": "query",
+      "title": "Querying projects",
+      "body": "List projects with `projects(filter, first, orderBy)`. Filter by `state` (planned, started, paused, completed, cancelled), `lead`, or `teams`. Each project includes `name`, `description`, `state`, `progress` (0-1), `targetDate`, `startDate`, `lead`, `teams`, and `issues`. Paginate with cursor-based pagination.",
+      "tags": ["query", "list", "filter", "status"]
+    },
+    {
+      "id": "create",
+      "title": "Creating projects",
+      "body": "Use `projectCreate(input)` mutation with `name` (required) and optional `description`, `teamIds`, `leadId`, `targetDate`, `startDate`, `state`. Returns `{ success, project { id, name, url } }`. Projects start in `planned` state by default.",
+      "tags": ["create", "new-project", "initiative"]
+    },
+    {
+      "id": "updates",
+      "title": "Project updates",
+      "body": "Post status updates with `projectUpdateCreate(input: { projectId, body, health })`. Health values: `onTrack`, `atRisk`, `offTrack`. Updates support markdown. They appear in the project's activity feed and notify subscribers. Use updates for weekly standup reports and milestone announcements.",
+      "tags": ["updates", "status-report", "health", "progress"]
+    },
+    {
+      "id": "progress",
+      "title": "Progress tracking",
+      "body": "The `progress` field is automatically calculated as completed issues / total issues (0.0 to 1.0). Query project issues and their states for custom metrics. Milestone tracking uses `targetDate` — compare with current progress to determine if the project is on track.",
+      "tags": ["progress", "metrics", "milestones", "completion"]
+    }
+  ],
+  "links": [
+    { "uri": "linear", "context": "Linear ecosystem overview" },
+    { "uri": "linear/issues", "context": "Issues are grouped into projects" },
+    { "uri": "linear/issues/create", "context": "Create issues within a project" },
+    { "uri": "linear/issues/update", "context": "Add existing issues to a project" },
+    { "uri": "linear/teams", "context": "Projects can span multiple teams" },
+    { "uri": "linear/auth", "context": "Authentication required for all project operations" },
+    { "uri": "linear/webhooks", "context": "Webhook events fire on project changes" }
+  ],
+  "related": [
+    { "uri": "linear/auth", "relation": "prerequisite", "note": "Authentication required for project operations" },
+    { "uri": "linear/issues", "relation": "see-also", "note": "Issues are the work items within projects" },
+    { "uri": "linear/teams", "relation": "see-also", "note": "Projects span teams" }
+  ],
+  "scripts": [
+    {
+      "id": "manage-projects",
+      "name": "Manage Linear Projects",
+      "description": "List, create, and update Linear projects",
+      "lang": "typescript",
+      "runtime": "node>=18",
+      "entry": "./scripts/manage-projects.ts",
+      "env": {
+        "LINEAR_API_KEY": { "required": true, "secret": true, "description": "Linear personal API key" }
+      },
+      "packages": ["@linear/sdk"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "action": { "type": "string", "enum": ["list", "create", "update", "get"], "description": "Operation to perform" },
+        "name": { "type": "string", "description": "Project name (for create)" },
+        "description": { "type": "string", "description": "Project description" },
+        "teamIds": { "type": "array", "items": { "type": "string" }, "description": "Team UUIDs" },
+        "state": { "type": "string", "enum": ["backlog", "planned", "started", "paused", "completed", "cancelled"] },
+        "targetDate": { "type": "string", "description": "Target date YYYY-MM-DD" },
+        "projectId": { "type": "string", "description": "Project UUID (for update/get)" }
+      },
+      "required": ["action"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "projects": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": { "type": "string" },
+              "state": { "type": "string" },
+              "progress": { "type": "number" },
+              "targetDate": { "type": "string" }
+            }
+          }
+        },
+        "success": { "type": "boolean" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "linear/auth", "reason": "Authentication required for all project API calls" }
+  ],
+  "more": {
+    "docs": "https://linear.app/developers"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "4 min",
+    "prerequisites": ["linear/auth"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

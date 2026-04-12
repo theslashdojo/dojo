@@ -1,0 +1,94 @@
+{
+  "name": "execution",
+  "version": "1.0.0",
+  "uri": "dojo/execution",
+  "type": "context",
+  "content_type": "explainer",
+  "context": "How Dojo skill scripts execute — runtimes, environment variables, packages, inline vs file scripts, and safety",
+  "info": "The execution model defines how agents run skill scripts. Every skill or sub node can declare scripts in its `scripts[]` array, each with a language, runtime requirement, entry file or inline code, environment variable declarations, and package dependencies. The execution runtime resolves these declarations: it checks that the required runtime is available, installs packages, injects environment variables, and runs the script. Scripts can be bash, JavaScript, TypeScript, Python, Rust, Go, or Solidity. Environment variables can be marked as required, secret, or optional with defaults. The execution model deliberately does not sandbox scripts — Dojo trusts that verified and trusted nodes have been reviewed. See [[dojo/spec]] for the formal script schema and [[dojo/validate/schema]] for script validation.",
+  "parent": "dojo",
+  "tags": ["execution", "scripts", "runtime", "env-vars", "packages", "safety", "inline"],
+  "aliases": [
+    "execution model",
+    "script execution",
+    "how scripts run",
+    "dojo execution",
+    "runtime model",
+    "env vars in dojo",
+    "script runtime",
+    "dojo scripts"
+  ],
+  "triggers": [
+    "how do dojo scripts execute",
+    "what runtimes does dojo support",
+    "how do environment variables work in dojo",
+    "how to write a dojo script",
+    "inline vs file scripts",
+    "script safety in dojo"
+  ],
+  "body": "# Execution Model\n\nDojo skills are executable. The execution model defines how scripts are declared, resolved, and run.\n\n## Script Declaration\n\nScripts live in the `scripts[]` array of a `node.json`:\n\n```json\n{\n  \"scripts\": [\n    {\n      \"id\": \"deploy-production\",\n      \"name\": \"Deploy to Production\",\n      \"description\": \"Deploy the current project to production\",\n      \"lang\": \"bash\",\n      \"runtime\": \"node>=18\",\n      \"entry\": \"./scripts/deploy.sh\",\n      \"env\": {\n        \"VERCEL_TOKEN\": {\n          \"required\": true,\n          \"secret\": true,\n          \"description\": \"Vercel API token\"\n        },\n        \"VERCEL_PROJECT_ID\": {\n          \"required\": false,\n          \"default\": \"\",\n          \"description\": \"Project ID (auto-detected if not set)\"\n        }\n      },\n      \"packages\": [\"vercel\"]\n    }\n  ]\n}\n```\n\n## Script Fields\n\n| Field | Required | Description |\n|-------|----------|-------------|\n| `id` | Yes | Unique identifier within the node (lowercase-hyphenated) |\n| `name` | Yes | Human-readable name |\n| `description` | No | What the script does |\n| `lang` | Yes | Language: `bash`, `javascript`, `typescript`, `python`, `rust`, `go`, `solidity` |\n| `runtime` | No | Runtime requirement: `node>=18`, `python>=3.10`, `bash>=4` |\n| `entry` | No* | Path to script file relative to node root |\n| `inline` | No* | Inline script source code |\n| `env` | No | Environment variable declarations |\n| `packages` | No | Required packages (e.g., `[\"express\", \"axios\"]`) |\n\n*Either `entry` or `inline` must be provided.\n\n## Entry vs Inline Scripts\n\n**Entry scripts** are separate files in the `scripts/` directory:\n\n```json\n{ \"entry\": \"./scripts/deploy.sh\" }\n```\n\nUse entry scripts for complex logic, testable code, and reusable scripts.\n\n**Inline scripts** are embedded in the manifest:\n\n```json\n{ \"inline\": \"curl -s $DOJO_URL/v1/search?q=$1 | jq '.results[]'\" }\n```\n\nUse inline scripts for one-liners and simple commands.\n\n## Environment Variables\n\nEach env var declaration includes:\n\n```json\n{\n  \"VARIABLE_NAME\": {\n    \"required\": true,      // must be set before execution\n    \"secret\": true,        // should not be logged or displayed\n    \"default\": \"value\",    // used when not set (only if not required)\n    \"description\": \"What this variable is for\"\n  }\n}\n```\n\nThe execution runtime:\n1. Checks all `required: true` vars are set — fails with a clear error if missing\n2. Applies `default` values for optional vars that are unset\n3. Masks `secret: true` vars in logs and error output\n4. Injects all vars into the script's environment\n\n## Supported Runtimes\n\n| Language | Runtime | Example |\n|----------|---------|----------|\n| `bash` | `bash>=4` | Shell scripts, CLI wrappers |\n| `javascript` | `node>=18` | Node.js scripts, API clients |\n| `typescript` | `node>=18` + `tsx` | TypeScript with ts-node or tsx |\n| `python` | `python>=3.10` | Python scripts, data processing |\n| `rust` | `cargo` | Compiled Rust binaries |\n| `go` | `go>=1.21` | Go scripts via `go run` |\n| `solidity` | `solc` | Smart contract compilation |\n\n## Package Resolution\n\nThe `packages[]` array lists runtime dependencies:\n\n```json\n{ \"packages\": [\"@octokit/rest\", \"axios\"] }\n```\n\nThe execution runtime installs packages before running:\n- JavaScript/TypeScript: `npm install <packages>`\n- Python: `pip install <packages>`\n- Go: `go get <packages>`\n\n## Execution Flow\n\n```\n1. Parse script declaration from node.json\n2. Check runtime availability (node --version, python --version)\n3. Validate required environment variables\n4. Apply default values for optional env vars\n5. Install packages if any are declared\n6. Execute: entry file or inline code\n7. Capture stdout, stderr, exit code\n8. Return structured result\n```\n\n## Safety Considerations\n\nDojo does **not** sandbox script execution. Scripts run with the same permissions as the calling process. Safety is ensured through:\n\n- **Node status** — Only `verified` and `trusted` nodes have been reviewed\n- **Env var declarations** — Secret vars are masked in logs\n- **Schema contracts** — Input/output schemas document what scripts expect and produce\n- **Review workflow** — [[dojo/validate]] checks script declarations before publish\n\nAgents should only execute scripts from `verified` or `trusted` nodes unless the user explicitly opts in to `draft` or `published` nodes.\n",
+  "sections": [
+    {
+      "id": "script-fields",
+      "title": "Script fields",
+      "body": "Every script needs `id` (unique identifier), `name` (display name), and `lang` (language). Optional: `description`, `runtime` (version constraint), `entry` (file path) or `inline` (embedded code), `env` (environment variables), `packages` (dependencies). Either `entry` or `inline` is required — a script without executable code is invalid. See [[dojo/spec]] for the formal schema.",
+      "tags": ["fields", "id", "name", "lang", "entry", "inline", "env", "packages"]
+    },
+    {
+      "id": "env-vars",
+      "title": "Environment variables",
+      "body": "Env var declarations include `required` (boolean), `secret` (boolean), `default` (string), and `description` (string). Required vars must be set before execution — the runtime fails with a clear error listing missing vars. Secret vars are masked in all logs and error output. Defaults are applied for optional vars that are unset. This system makes scripts self-documenting — an agent can read env declarations to understand what credentials and config are needed.",
+      "tags": ["env-vars", "required", "secret", "default", "self-documenting"]
+    },
+    {
+      "id": "runtimes",
+      "title": "Supported runtimes",
+      "body": "Seven languages: bash (shell scripts), javascript (Node.js), typescript (tsx/ts-node), python, rust (cargo), go, solidity (solc). Runtime constraints use semver: `node>=18`, `python>=3.10`. The execution runtime checks availability before running and fails with a clear error if the constraint is not met.",
+      "tags": ["runtimes", "bash", "javascript", "typescript", "python", "rust", "go", "solidity"]
+    },
+    {
+      "id": "safety",
+      "title": "Safety considerations",
+      "body": "Dojo does not sandbox scripts — they run with caller permissions. Safety relies on: node status (verified/trusted means reviewed), env var masking (secrets hidden in logs), schema contracts (documented I/O), and the validation workflow ([[dojo/validate]]). Agents should prefer verified/trusted nodes and prompt the user before executing draft nodes.",
+      "tags": ["safety", "security", "sandbox", "trust", "verification", "permissions"]
+    },
+    {
+      "id": "execution-flow",
+      "title": "Execution flow",
+      "body": "The runtime follows seven steps: (1) parse the script from node.json, (2) check runtime availability, (3) validate required env vars, (4) apply defaults for optional vars, (5) install packages, (6) execute the entry file or inline code, (7) capture and return stdout/stderr/exit code as a structured result. Any step failure halts execution with a descriptive error.",
+      "tags": ["flow", "steps", "runtime-check", "install", "execute", "result"]
+    }
+  ],
+  "links": [
+    { "uri": "dojo/spec", "context": "Formal script schema definition" },
+    { "uri": "dojo/validate/schema", "context": "Schema validation for script declarations" },
+    { "uri": "dojo/authoring#execution-fields", "context": "How to author script declarations" },
+    { "uri": "dojo/skill", "context": "Meta-skill that uses the execution model" },
+    { "uri": "dojo/server", "context": "Server that runs script execution" },
+    { "uri": "dojo/templates", "context": "Templates include script stubs for skill/sub types" }
+  ],
+  "related": [
+    { "uri": "dojo/spec", "relation": "prerequisite", "note": "The spec defines the script schema" },
+    { "uri": "dojo/validate/schema", "relation": "see-also", "note": "Schema validation checks script field integrity" },
+    { "uri": "dojo/authoring", "relation": "see-also", "note": "Authoring explains how to write script declarations" }
+  ],
+  "more": {
+    "docs": "https://github.com/theslashdojo/dojo/blob/main/SPEC.md",
+    "repo": "https://github.com/theslashdojo/dojo"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "node authors, agent developers, runtime implementers",
+    "estimated_reading_time": "5 min",
+    "prerequisites": ["dojo/spec"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

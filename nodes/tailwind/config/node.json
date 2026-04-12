@@ -1,0 +1,132 @@
+{
+  "name": "config",
+  "version": "1.0.0",
+  "uri": "tailwind/config",
+  "type": "skill",
+  "context": "Install, configure, and customize Tailwind CSS — theme, content detection, PostCSS, Vite plugin, and v3/v4 setup",
+  "info": "This skill covers Tailwind project setup end-to-end: installation via npm (PostCSS plugin or Vite plugin), CSS entry point configuration, theme customization (colors, spacing, fonts, breakpoints), content source detection, and build pipeline integration. In v4, configuration moved from JavaScript (tailwind.config.js) to CSS (@theme directive) — this skill covers both approaches since agents encounter both v3 and v4 projects. Agents use this skill when bootstrapping new projects, adding Tailwind to existing codebases, customizing design tokens, or debugging build issues where classes aren't generating. See [[tailwind/classes]] for applying utilities, [[tailwind/plugins]] for extending with plugins, and [[tailwind/v4]] for the full v4 migration story.",
+  "parent": "tailwind",
+  "tags": ["config", "configuration", "install", "setup", "theme", "postcss", "vite", "tailwind-config"],
+  "aliases": [
+    "tailwind config",
+    "tailwind configuration",
+    "tailwind setup",
+    "tailwind install",
+    "tailwind.config.js",
+    "tailwind.config.ts",
+    "tailwind theme",
+    "tw config",
+    "configure tailwindcss",
+    "postcss tailwind"
+  ],
+  "triggers": [
+    "install tailwind css",
+    "set up tailwind in my project",
+    "configure tailwind theme",
+    "customize tailwind colors",
+    "add tailwind to vite",
+    "add tailwind to next.js",
+    "tailwind content configuration",
+    "tailwind not generating classes",
+    "extend tailwind theme",
+    "create tailwind.config.js"
+  ],
+  "body": "# Tailwind CSS Configuration\n\nTailwind CSS has two configuration eras: v3 (JavaScript config) and v4 (CSS-first config). This skill covers both since agents encounter both in the wild.\n\n## v4 Installation (Recommended)\n\n### Vite Plugin (fastest)\n\n```bash\nnpm install tailwindcss @tailwindcss/vite\n```\n\n```typescript\n// vite.config.ts\nimport { defineConfig } from \"vite\";\nimport tailwindcss from \"@tailwindcss/vite\";\n\nexport default defineConfig({\n  plugins: [tailwindcss()],\n});\n```\n\n```css\n/* app.css */\n@import \"tailwindcss\";\n```\n\n### PostCSS Plugin\n\n```bash\nnpm install tailwindcss @tailwindcss/postcss\n```\n\n```javascript\n// postcss.config.js\nexport default {\n  plugins: [\"@tailwindcss/postcss\"],\n};\n```\n\n```css\n/* app.css */\n@import \"tailwindcss\";\n```\n\n### CDN (prototyping only)\n\n```html\n<script src=\"https://cdn.tailwindcss.com\"></script>\n```\n\n## v4 Theme Customization (@theme)\n\nAll customization happens in CSS via the `@theme` directive:\n\n```css\n@import \"tailwindcss\";\n\n@theme {\n  /* Add custom colors — generates bg-brand, text-brand, border-brand etc. */\n  --color-brand: oklch(0.6 0.2 260);\n  --color-brand-light: oklch(0.8 0.15 260);\n  --color-brand-dark: oklch(0.4 0.25 260);\n\n  /* Custom font */\n  --font-display: \"Cal Sans\", sans-serif;\n\n  /* Custom breakpoint */\n  --breakpoint-3xl: 120rem;\n\n  /* Custom spacing */\n  --spacing: 0.25rem;\n\n  /* Custom border radius */\n  --radius-pill: 9999px;\n\n  /* Custom animation */\n  --animate-fade-in: fade-in 0.3s ease-out;\n  @keyframes fade-in {\n    from { opacity: 0; }\n    to { opacity: 1; }\n  }\n}\n```\n\n### Theme Variable Namespaces\n\n| Namespace | Generated Utilities |\n|-----------|--------------------|\n| `--color-*` | `bg-`, `text-`, `border-`, `ring-`, `fill-`, `stroke-` |\n| `--font-*` | `font-sans`, `font-serif`, custom families |\n| `--text-*` | `text-xs` through `text-9xl` |\n| `--font-weight-*` | `font-thin` through `font-black` |\n| `--tracking-*` | `tracking-tight`, `tracking-wide` |\n| `--leading-*` | `leading-tight`, `leading-relaxed` |\n| `--breakpoint-*` | `sm:`, `md:`, `lg:`, `xl:`, `2xl:` |\n| `--spacing` | `p-4`, `m-8`, `gap-6`, `w-64` |\n| `--radius-*` | `rounded-sm`, `rounded-xl` |\n| `--shadow-*` | `shadow-md`, `shadow-lg` |\n| `--blur-*` | `blur-md`, `blur-xl` |\n| `--ease-*` | `ease-in`, `ease-out` |\n| `--animate-*` | `animate-spin`, `animate-bounce` |\n\n### Replace vs Extend\n\n```css\n@theme {\n  /* EXTEND: adds to existing palette */\n  --color-brand: oklch(0.6 0.2 260);\n\n  /* REPLACE: removes all default colors, adds only these */\n  --color-*: initial;\n  --color-white: #fff;\n  --color-black: #000;\n  --color-primary: oklch(0.6 0.2 260);\n}\n```\n\n## v4 Content Detection\n\nv4 auto-detects source files — no `content` array needed. It respects `.gitignore` and skips binaries. Override with `@source`:\n\n```css\n@import \"tailwindcss\";\n\n/* Add files not auto-detected */\n@source \"../node_modules/@my-company/ui-lib\";\n```\n\n## v3 Configuration (Legacy)\n\nv3 projects use `tailwind.config.js`:\n\n```bash\nnpm install -D tailwindcss postcss autoprefixer\nnpx tailwindcss init -p\n```\n\n```javascript\n// tailwind.config.js\n/** @type {import('tailwindcss').Config} */\nmodule.exports = {\n  content: [\n    \"./src/**/*.{js,ts,jsx,tsx,html}\",\n    \"./index.html\",\n  ],\n  theme: {\n    extend: {\n      colors: {\n        brand: \"#4f46e5\",\n      },\n      fontFamily: {\n        display: [\"Cal Sans\", \"sans-serif\"],\n      },\n    },\n  },\n  plugins: [\n    require(\"@tailwindcss/typography\"),\n    require(\"@tailwindcss/forms\"),\n  ],\n};\n```\n\n```css\n/* v3 CSS entry */\n@tailwind base;\n@tailwind components;\n@tailwind utilities;\n```\n\n## Debugging: Classes Not Generating\n\n1. **Content paths wrong** (v3): Ensure `content` array matches your source files\n2. **Not imported**: Verify CSS file is imported in your app entry point\n3. **Dynamic classes**: Tailwind scans statically — `bg-${color}-500` won't work. Use complete strings: `bg-red-500`\n4. **Gitignored files** (v4): Use `@source` to include ignored directories\n5. **Build not running**: Ensure PostCSS/Vite plugin is configured and dev server is running\n\n## Framework-Specific Setup\n\n### Next.js\n```bash\nnpm install tailwindcss @tailwindcss/postcss\n```\n```javascript\n// postcss.config.mjs\nconst config = { plugins: [\"@tailwindcss/postcss\"] };\nexport default config;\n```\nImport in `app/layout.tsx`: `import \"./globals.css\";`\n\n### SvelteKit / Nuxt / SolidJS\nUse the Vite plugin — these frameworks are Vite-based.\n\n## Environment Variables\n\n| Variable | Purpose |\n|----------|----------|\n| `NODE_ENV` | Set to `production` for minified output with purged CSS |\n",
+  "sections": [
+    {
+      "id": "install-v4",
+      "title": "v4 installation",
+      "body": "Install with `npm install tailwindcss @tailwindcss/vite` (Vite) or `npm install tailwindcss @tailwindcss/postcss` (PostCSS). Add the plugin to your build config. Create a CSS file with `@import \"tailwindcss\";`. No config file needed — customization happens in CSS via `@theme`. Content detection is automatic.",
+      "tags": ["install", "v4", "vite", "postcss", "setup"]
+    },
+    {
+      "id": "theme-customization",
+      "title": "Theme customization with @theme",
+      "body": "The `@theme` directive defines design tokens as CSS variables that generate utility classes. Add `--color-brand: oklch(0.6 0.2 260);` to get `bg-brand`, `text-brand`, etc. Each namespace (`--color-*`, `--font-*`, `--breakpoint-*`, `--spacing`, `--radius-*`, `--shadow-*`, `--ease-*`, `--animate-*`) maps to specific utility prefixes. Use `--namespace-*: initial;` to remove all defaults in that namespace before adding custom values.",
+      "tags": ["theme", "customization", "colors", "fonts", "spacing", "design-tokens"]
+    },
+    {
+      "id": "content-detection",
+      "title": "Content source detection",
+      "body": "v4 auto-scans source files respecting `.gitignore`. Use `@source \"../path\"` to add directories not auto-detected (e.g. external UI libraries in node_modules). v3 requires a `content` array in `tailwind.config.js` listing glob patterns for all files containing Tailwind classes. Dynamic class construction (`bg-${var}`) breaks scanning — always use complete class strings.",
+      "tags": ["content", "detection", "scanning", "source", "glob"]
+    },
+    {
+      "id": "v3-config",
+      "title": "v3 JavaScript configuration",
+      "body": "v3 uses `tailwind.config.js` with `content`, `theme`, and `plugins` fields. Run `npx tailwindcss init -p` to scaffold. Customize via `theme.extend` to add values without removing defaults, or `theme` directly to replace. CSS entry uses `@tailwind base; @tailwind components; @tailwind utilities;`. See [[tailwind/v4]] for migration to CSS-first config.",
+      "tags": ["v3", "config", "javascript", "tailwind-config", "legacy"]
+    },
+    {
+      "id": "debugging",
+      "title": "Debugging missing classes",
+      "body": "Classes not appearing in output: (1) check content paths match source files, (2) verify CSS import in app entry, (3) never construct class names dynamically — use complete strings, (4) use `@source` for gitignored directories in v4, (5) confirm build tool (PostCSS or Vite) is configured and running. Browser devtools: search for the expected class in the generated stylesheet to confirm it exists.",
+      "tags": ["debug", "troubleshooting", "missing-classes", "not-generating"]
+    }
+  ],
+  "links": [
+    { "uri": "tailwind/classes", "context": "Available utility classes generated from theme configuration" },
+    { "uri": "tailwind/plugins", "context": "Add plugins in config for typography, forms, containers" },
+    { "uri": "tailwind/v4", "context": "v4 replaces tailwind.config.js with CSS-first @theme" },
+    { "uri": "tailwind/responsive", "context": "Breakpoints defined in theme drive responsive prefixes" },
+    { "uri": "tailwind/dark-mode", "context": "Dark mode strategy configured via @custom-variant" }
+  ],
+  "related": [
+    { "uri": "tailwind/classes", "relation": "see-also", "note": "Configuration determines which utility classes are available" },
+    { "uri": "tailwind/v4", "relation": "see-also", "note": "v4 replaced JS config with CSS-first @theme directive" },
+    { "uri": "tailwind/plugins", "relation": "see-also", "note": "Plugins are registered in config (v3) or via @plugin directive (v4)" }
+  ],
+  "scripts": [
+    {
+      "id": "init-tailwind",
+      "name": "Initialize Tailwind CSS",
+      "description": "Detect project type and set up Tailwind CSS with the appropriate installation method",
+      "lang": "bash",
+      "runtime": "bash",
+      "entry": "./scripts/init-tailwind.sh",
+      "env": {
+        "TAILWIND_VERSION": { "required": false, "default": "4", "description": "Tailwind major version: 3 or 4" },
+        "BUILD_TOOL": { "required": false, "default": "auto", "description": "Build tool: vite, postcss, or auto (detect)" }
+      }
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "version": { "type": "string", "enum": ["3", "4"], "default": "4", "description": "Tailwind major version" },
+        "buildTool": { "type": "string", "enum": ["vite", "postcss", "auto"], "default": "auto", "description": "Build tool to integrate with" },
+        "customColors": { "type": "object", "additionalProperties": { "type": "string" }, "description": "Custom color definitions (name: value)" },
+        "customFonts": { "type": "object", "additionalProperties": { "type": "string" }, "description": "Custom font family definitions" }
+      }
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "configFile": { "type": "string", "description": "Path to generated config file (v3) or CSS file (v4)" },
+        "cssEntry": { "type": "string", "description": "Path to CSS entry point" },
+        "installedPackages": { "type": "array", "items": { "type": "string" }, "description": "npm packages installed" }
+      }
+    }
+  },
+  "depends": [],
+  "more": {
+    "docs": "https://tailwindcss.com/docs/installation",
+    "repo": "https://github.com/tailwindlabs/tailwindcss",
+    "examples": "https://tailwindcss.com/docs/theme"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "frontend developers, AI agents",
+    "estimated_reading_time": "5 min",
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

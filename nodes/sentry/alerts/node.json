@@ -1,0 +1,100 @@
+{
+  "name": "alerts",
+  "version": "1.0.0",
+  "uri": "sentry/alerts",
+  "type": "context",
+  "content_type": "reference",
+  "context": "Configure Sentry alert rules for issue frequency, metric thresholds, uptime monitoring, and notification routing",
+  "info": "Sentry alerts notify teams when error patterns cross thresholds. There are four alert types: issue alerts trigger on new issues, regressions, or frequency spikes; metric alerts fire when aggregate metrics (error count, latency p95, failure rate, crash-free rate) breach configured thresholds over time windows; uptime monitoring alerts fire when HTTP checks fail; and cron monitor alerts trigger on missed or failed scheduled jobs. Alerts route to email, Slack, PagerDuty, Opsgenie, Microsoft Teams, or generic webhooks. Configure alerts in Sentry's UI at Settings → Alerts or programmatically via the Alerts API. Agents use this node to understand alert types, configure thresholds, and set up notification routing for production applications. See [[sentry/setup]] for getting events into Sentry and [[sentry/capture]] for enriching events with tags that alerts can filter on.",
+  "parent": "sentry",
+  "tags": ["sentry", "alerts", "notifications", "monitoring", "pagerduty", "slack", "uptime", "metric-alerts", "issue-alerts"],
+  "aliases": [
+    "sentry alerts",
+    "sentry alert rules",
+    "sentry notifications",
+    "sentry issue alerts",
+    "sentry metric alerts",
+    "sentry uptime monitoring",
+    "sentry pagerduty",
+    "sentry slack alerts",
+    "sentry webhook alerts",
+    "error alert configuration",
+    "sentry cron monitoring"
+  ],
+  "triggers": [
+    "set up sentry alerts",
+    "configure sentry notifications",
+    "alert me when errors spike",
+    "set up pagerduty with sentry",
+    "create sentry alert rule",
+    "sentry slack integration alerts",
+    "monitor error frequency",
+    "alert on error threshold",
+    "sentry uptime monitoring",
+    "sentry cron job monitoring"
+  ],
+  "body": "# Sentry Alerts\n\nAlerts are how Sentry turns captured events into actionable notifications. Without alerts, errors accumulate silently in the dashboard. Proper alert configuration ensures the right people are notified at the right time.\n\n## Alert Types\n\n### Issue Alerts\n\nTrigger on individual issue lifecycle events:\n\n- **New issue** — first occurrence of a new error pattern\n- **Regression** — a previously resolved issue reappears\n- **Frequency** — an issue occurs N times in a time window\n- **Escalating** — an issue's frequency is increasing\n\n```\nCondition: \"A new issue is created\"\nFilter: \"The issue's tags match environment:production\"\nAction: \"Send a Slack notification to #engineering-alerts\"\n```\n\nIssue alert rules are configured per-project in **Alerts → Create Alert → Issues**.\n\n### Metric Alerts\n\nTrigger on aggregate metrics crossing thresholds over time windows:\n\n| Metric | Description | Example Threshold |\n|--------|-------------|-------------------|\n| `count()` | Total number of events | > 100 in 5 minutes |\n| `count_unique(user)` | Unique affected users | > 50 in 1 hour |\n| `p50()` / `p95()` / `p99()` | Transaction duration percentiles | p95 > 2000ms |\n| `failure_rate()` | Percentage of failed transactions | > 5% in 10 minutes |\n| `crash_free_rate()` | Percentage of crash-free sessions | < 99% in 1 hour |\n| `apdex()` | Application Performance Index | < 0.7 in 15 minutes |\n\nMetric alerts have two thresholds:\n- **Warning** — early signal, lower severity notification\n- **Critical** — immediate action required, pages oncall\n\n```\nMetric: count() of errors\nThreshold: Critical when > 500 in 5 minutes, Warning when > 100 in 5 minutes\nFilter: environment:production AND level:error\nAction: Critical → PagerDuty, Warning → Slack\n```\n\n### Uptime Monitoring Alerts\n\nSentry sends HTTP requests to your endpoints at configured intervals:\n\n- Configure URL, method, headers, and expected status code\n- Set failure threshold (e.g., 3 consecutive failures)\n- Alert fires when uptime check fails\n\n### Cron Monitor Alerts\n\nTrack scheduled jobs (cron, background workers, queues):\n\n- **Missed check-in** — job didn't start on schedule\n- **Exceeded runtime** — job running longer than expected\n- **Failed check-in** — job reported failure\n\n## Notification Actions\n\nAlerts can route to multiple destinations simultaneously:\n\n| Action | Setup |\n|--------|-------|\n| **Email** | Built-in, configured per-user notification preferences |\n| **Slack** | Install Sentry Slack app, select channel per alert rule |\n| **PagerDuty** | Configure integration in Settings → Integrations |\n| **Opsgenie** | Configure integration, map severity to priority |\n| **Microsoft Teams** | Install Sentry Teams app |\n| **Webhooks** | POST to custom URL with event payload |\n\n## Alert Rule Configuration via UI\n\n1. Navigate to **Alerts → Create Alert Rule**\n2. Select alert type (Issue, Metric, Uptime, Cron)\n3. Define conditions and filters\n4. Configure actions (who gets notified, via which channel)\n5. Set alert frequency (how often to re-alert for ongoing issues)\n6. Name the rule and assign an owner (team or member)\n\n## Alerts API\n\nManage alert rules programmatically:\n\n```bash\n# List alert rules for a project\ncurl -H \"Authorization: Bearer $SENTRY_AUTH_TOKEN\" \\\n  \"https://sentry.io/api/0/projects/$SENTRY_ORG/$SENTRY_PROJECT/rules/\"\n\n# Create an issue alert rule\ncurl -X POST \\\n  -H \"Authorization: Bearer $SENTRY_AUTH_TOKEN\" \\\n  -H \"Content-Type: application/json\" \\\n  \"https://sentry.io/api/0/projects/$SENTRY_ORG/$SENTRY_PROJECT/rules/\" \\\n  -d '{\n    \"name\": \"High Error Rate - Production\",\n    \"conditions\": [\n      {\"id\": \"sentry.rules.conditions.event_frequency.EventFrequencyCondition\", \"value\": 100, \"interval\": \"1h\"}\n    ],\n    \"filters\": [\n      {\"id\": \"sentry.rules.filters.tagged_event.TaggedEventFilter\", \"key\": \"environment\", \"match\": \"eq\", \"value\": \"production\"}\n    ],\n    \"actions\": [\n      {\"id\": \"sentry.integrations.slack.notify_action.SlackNotifyServiceAction\", \"channel\": \"#alerts\", \"workspace\": 12345}\n    ],\n    \"frequency\": 60,\n    \"actionMatch\": \"all\"\n  }'\n```\n\n## Best Practices\n\n- **Start with a new-issue alert** for production — catch regressions immediately\n- **Use metric alerts for SLO monitoring** — error budget, latency p95, crash-free rate\n- **Route by severity** — warnings to Slack, critical to PagerDuty\n- **Filter by environment** — don't alert on staging errors\n- **Use tags from [[sentry/capture]]** to filter alerts to specific services or features\n- **Set alert frequency** to avoid notification fatigue (e.g., alert once per hour, not per event)\n- **Mute during deploys** — temporarily mute alerts during known-risky deployments\n- **Assign owners** — every alert rule should have a team owner for accountability\n\n## Environment Variables\n\n| Variable | Purpose |\n|----------|----------|\n| `SENTRY_AUTH_TOKEN` | API token for programmatic alert management |\n| `SENTRY_ORG` | Organization slug |\n| `SENTRY_PROJECT` | Project slug |\n",
+  "sections": [
+    {
+      "id": "issue-alerts",
+      "title": "Issue alerts",
+      "body": "Issue alerts trigger on individual issue lifecycle events: new issues, regressions (resolved issues reoccurring), frequency thresholds (e.g., > 100 events in 1 hour), and escalation patterns. Conditions are combined with AND/OR logic. Filters narrow by environment, tags, issue level, and assignee. Each alert rule belongs to a single project. Set alert frequency to control re-notification intervals. Issue alerts are ideal for catching new production errors and regressions immediately.",
+      "tags": ["issue-alerts", "new-issue", "regression", "frequency", "escalation"]
+    },
+    {
+      "id": "metric-alerts",
+      "title": "Metric alerts",
+      "body": "Metric alerts fire when aggregate metrics breach thresholds over configurable time windows (1 minute to 24 hours). Available metrics: `count()` (event count), `count_unique(user)` (affected users), `p50()/p75()/p95()/p99()` (transaction duration percentiles), `failure_rate()` (transaction failure percentage), `crash_free_rate()` (session crash-free percentage), and `apdex()` (Application Performance Index). Each metric alert has Warning and Critical thresholds with independent actions. Metric alerts automatically create associated issues in Sentry for tracking.",
+      "tags": ["metric-alerts", "threshold", "latency", "error-rate", "crash-free", "apdex"]
+    },
+    {
+      "id": "notification-routing",
+      "title": "Notification routing and integrations",
+      "body": "Alert actions route notifications to: email (built-in), Slack (via Sentry Slack app — select workspace and channel), PagerDuty (via integration — map alert severity to PD urgency), Opsgenie (via integration — map to priority levels), Microsoft Teams (via Sentry Teams app), and generic webhooks (POST to any URL with the event payload as JSON). Multiple actions can trigger for a single alert. Configure integrations in Settings → Integrations before referencing them in alert rules.",
+      "tags": ["slack", "pagerduty", "opsgenie", "teams", "webhook", "email", "notification"]
+    },
+    {
+      "id": "uptime-cron",
+      "title": "Uptime and cron monitoring",
+      "body": "Uptime monitoring sends periodic HTTP requests to your endpoints and alerts on consecutive failures. Configure the URL, HTTP method, expected status code, check interval, and failure threshold. Cron monitoring tracks scheduled jobs: alert on missed check-ins (job didn't start), exceeded runtime (job running too long), and failed check-ins (job reported failure). Instrument cron jobs by calling the Sentry check-in API at job start and completion.",
+      "tags": ["uptime", "cron", "health-check", "scheduled-jobs", "check-in"]
+    },
+    {
+      "id": "api",
+      "title": "Alerts API",
+      "body": "Manage alert rules programmatically via the Sentry REST API. List rules: `GET /api/0/projects/{org}/{project}/rules/`. Create rules: `POST /api/0/projects/{org}/{project}/rules/` with JSON body containing `name`, `conditions`, `filters`, `actions`, `frequency`, and `actionMatch`. Update rules: `PUT /api/0/projects/{org}/{project}/rules/{rule_id}/`. Delete rules: `DELETE /api/0/projects/{org}/{project}/rules/{rule_id}/`. Requires an auth token with Project:Write scope.",
+      "tags": ["api", "rest", "programmatic", "automation"]
+    }
+  ],
+  "links": [
+    { "uri": "sentry/setup", "context": "Events must reach Sentry before alerts can fire" },
+    { "uri": "sentry/capture", "context": "Tags added via setTag are available for alert filtering" },
+    { "uri": "sentry/config", "context": "sampleRate affects how many events reach alert evaluation" }
+  ],
+  "related": [
+    { "uri": "sentry/setup", "relation": "prerequisite", "note": "Sentry must be receiving events before alerts are useful" },
+    { "uri": "sentry/capture", "relation": "see-also", "note": "Tags set via Sentry.setTag() can be used in alert filters" },
+    { "uri": "sentry/config", "relation": "see-also", "note": "Sample rates affect how many events reach alert thresholds" }
+  ],
+  "more": {
+    "docs": "https://docs.sentry.io/product/alerts/",
+    "api": "https://docs.sentry.io/api/alerts/",
+    "integrations": "https://docs.sentry.io/organization/integrations/",
+    "best-practices": "https://docs.sentry.io/product/alerts/best-practices/"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, DevOps engineers, SREs, AI agents",
+    "estimated_reading_time": "6 min",
+    "prerequisites": ["sentry/setup"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

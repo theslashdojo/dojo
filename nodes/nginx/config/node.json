@@ -1,0 +1,143 @@
+{
+  "name": "config",
+  "version": "1.0.0",
+  "uri": "nginx/config",
+  "type": "skill",
+  "context": "Write, validate, and reload nginx configuration files — server blocks, locations, and directives",
+  "info": "This skill covers the nginx configuration language: writing server blocks, location matching, directive syntax, and config management. Agents use this to create virtual host configurations, set up static file serving, define location routing rules, configure logging, and manage the config reload lifecycle. Config files live in /etc/nginx/ and use a hierarchical context model (main → http → server → location). Always validate with `nginx -t` before reloading. The skill includes creating new site configs in conf.d/ or sites-available/, enabling/disabling sites, and understanding directive inheritance between contexts. See [[nginx/reverse-proxy]] for proxy_pass setup and [[nginx/ssl]] for HTTPS configuration.",
+  "parent": "nginx",
+  "tags": ["nginx", "config", "configuration", "server-block", "location", "directives", "virtual-host", "vhost"],
+  "aliases": [
+    "nginx config",
+    "nginx configuration",
+    "nginx conf",
+    "nginx.conf",
+    "server block",
+    "virtual host",
+    "vhost",
+    "nginx site config",
+    "nginx location",
+    "nginx directives",
+    "configure nginx"
+  ],
+  "triggers": [
+    "configure nginx",
+    "write nginx config",
+    "create nginx server block",
+    "set up nginx virtual host",
+    "nginx location routing",
+    "validate nginx config",
+    "reload nginx",
+    "nginx conf.d",
+    "add a site to nginx",
+    "edit nginx configuration",
+    "nginx config syntax"
+  ],
+  "body": "# Nginx Configuration\n\nNginx configuration is a declarative language using nested blocks of directives. Every change requires a syntax check (`nginx -t`) and reload (`nginx -s reload`) to take effect.\n\n## Config File Locations\n\n```bash\n# Main config\n/etc/nginx/nginx.conf\n\n# Drop-in configs (recommended for per-site configs)\n/etc/nginx/conf.d/*.conf\n\n# Debian/Ubuntu sites model\n/etc/nginx/sites-available/   # all configs\n/etc/nginx/sites-enabled/     # symlinks to active configs\n```\n\n## Configuration Structure\n\n```nginx\n# Main context — global settings\nworker_processes auto;\nerror_log /var/log/nginx/error.log warn;\npid /var/run/nginx.pid;\n\nevents {\n    worker_connections 1024;\n}\n\nhttp {\n    include /etc/nginx/mime.types;\n    default_type application/octet-stream;\n\n    # Logging\n    log_format main '$remote_addr - $remote_user [$time_local] '\n                    '\"$request\" $status $body_bytes_sent '\n                    '\"$http_referer\" \"$http_user_agent\"';\n    access_log /var/log/nginx/access.log main;\n\n    # Performance\n    sendfile on;\n    tcp_nopush on;\n    keepalive_timeout 65;\n    gzip on;\n\n    # Include site configs\n    include /etc/nginx/conf.d/*.conf;\n}\n```\n\n## Server Blocks\n\nEach `server` block defines a virtual host:\n\n```nginx\nserver {\n    listen 80;\n    listen [::]:80;           # IPv6\n    server_name example.com www.example.com;\n\n    root /var/www/example.com;\n    index index.html;\n\n    # Static files\n    location / {\n        try_files $uri $uri/ =404;\n    }\n\n    # API proxy\n    location /api/ {\n        proxy_pass http://127.0.0.1:3000;\n    }\n\n    # Static assets with caching\n    location ~* \\.(css|js|png|jpg|jpeg|gif|ico|svg|woff2)$ {\n        expires 30d;\n        add_header Cache-Control \"public, immutable\";\n    }\n\n    # Deny dotfiles\n    location ~ /\\. {\n        deny all;\n    }\n}\n```\n\n## Location Matching Priority\n\n| Modifier | Type | Priority | Behavior |\n|----------|------|----------|----------|\n| `=`      | Exact | 1 (highest) | Exact URI match, stops search |\n| `^~`     | Prefix | 2 | Longest prefix, skips regex |\n| `~`      | Regex | 3 | Case-sensitive regex, first match |\n| `~*`     | Regex | 3 | Case-insensitive regex, first match |\n| (none)   | Prefix | 4 (lowest) | Longest prefix match |\n\n## Directive Inheritance\n\nDirectives set at a higher context apply to all nested contexts unless overridden:\n\n```nginx\nhttp {\n    gzip on;                    # applies to all servers\n\n    server {\n        gzip off;               # overrides for this server\n\n        location /api/ {\n            gzip on;            # overrides again for this location\n        }\n    }\n}\n```\n\n## Config Management Commands\n\n```bash\n# Test config syntax\nnginx -t\n\n# Test and dump resolved config\nnginx -T\n\n# Reload config (graceful — no downtime)\nnginx -s reload\n\n# Check which config file is in use\nnginx -V 2>&1 | grep 'conf-path'\n\n# Enable a site (Debian/Ubuntu)\nln -s /etc/nginx/sites-available/mysite /etc/nginx/sites-enabled/\nnginx -t && nginx -s reload\n\n# Disable a site\nrm /etc/nginx/sites-enabled/mysite\nnginx -t && nginx -s reload\n```\n\n## Common Directives Reference\n\n| Directive | Context | Purpose |\n|-----------|---------|----------|\n| `listen` | server | Port and address to bind |\n| `server_name` | server | Hostname matching |\n| `root` | http, server, location | Document root |\n| `index` | http, server, location | Default index files |\n| `try_files` | server, location | Check files in order |\n| `error_page` | http, server, location | Custom error pages |\n| `return` | server, location | Return status code or redirect |\n| `rewrite` | server, location | URL rewriting |\n| `include` | any | Include other config files |\n| `deny` / `allow` | http, server, location | IP-based access control |\n| `client_max_body_size` | http, server, location | Max upload size (default 1m) |\n| `sendfile` | http, server, location | Efficient file transfer |\n| `gzip` | http, server, location | Response compression |\n",
+  "sections": [
+    {
+      "id": "server-blocks",
+      "title": "Server blocks and virtual hosts",
+      "body": "Each `server` block defines a virtual host identified by `listen` (port) and `server_name` (hostname). Nginx selects the matching server block by: 1) matching the listen address:port, then 2) matching the Host header against server_name values. If no server_name matches, the `default_server` block handles the request. Use `server_name _` as a catch-all. Multiple server_name values are space-separated; wildcards (`*.example.com`) and regex (`~^(?<sub>.+)\\.example\\.com$`) are supported.",
+      "tags": ["server", "virtual-host", "server-name", "listen", "default-server"]
+    },
+    {
+      "id": "location-blocks",
+      "title": "Location blocks and URI matching",
+      "body": "Location blocks route requests by URI. Matching order: exact (`=`) → prefix with `^~` → regex (`~` / `~*`) → longest prefix. Inside locations, `try_files` checks paths in order: `try_files $uri $uri/ /index.html` tries the exact file, then a directory, then falls back to index.html (common for SPAs). Use `internal` to make a location only accessible from nginx itself (error_page, X-Accel-Redirect). Nested locations inherit the parent's context.",
+      "tags": ["location", "try-files", "matching", "internal", "nested"]
+    },
+    {
+      "id": "logging",
+      "title": "Access and error logging",
+      "body": "Configure logging with `access_log` and `error_log`. Define custom formats with `log_format` using variables like `$remote_addr`, `$request`, `$status`, `$body_bytes_sent`, `$http_referer`, `$http_user_agent`, `$upstream_response_time`. Error log levels: `debug`, `info`, `notice`, `warn`, `error`, `crit`, `alert`, `emerg`. Disable access logging per-location with `access_log off`. For JSON logs: `log_format json escape=json '{\"remote_addr\":\"$remote_addr\",...}'`.",
+      "tags": ["logging", "access-log", "error-log", "log-format", "json-logs"]
+    },
+    {
+      "id": "performance",
+      "title": "Performance tuning directives",
+      "body": "Key performance directives:\n- `worker_processes auto` — one worker per CPU core\n- `worker_connections 1024` — max connections per worker (total = workers × connections)\n- `sendfile on` — kernel-level file transfer (avoids user-space copy)\n- `tcp_nopush on` — send headers and file in one packet\n- `tcp_nodelay on` — disable Nagle's algorithm for keepalive\n- `keepalive_timeout 65` — how long idle connections stay open\n- `gzip on` + `gzip_types text/plain application/json ...` — compress responses\n- `client_max_body_size 10m` — max upload body size (default 1m)\n- `open_file_cache max=1000 inactive=20s` — cache file descriptors",
+      "tags": ["performance", "worker", "sendfile", "gzip", "keepalive", "tuning"]
+    },
+    {
+      "id": "includes-and-snippets",
+      "title": "Includes and config snippets",
+      "body": "Use `include` to split config into manageable files:\n- `include /etc/nginx/conf.d/*.conf` — all .conf files in directory\n- `include /etc/nginx/snippets/ssl-params.conf` — reusable SSL config\n- `include /etc/nginx/mime.types` — MIME type mappings\n\nCreate reusable snippets for proxy headers, SSL settings, and security headers. Include them in server blocks to avoid duplication. Globs are supported: `include /etc/nginx/conf.d/*.conf` loads all matching files in alphabetical order.",
+      "tags": ["include", "snippets", "modular", "mime-types", "reusable"]
+    }
+  ],
+  "links": [
+    { "uri": "nginx", "context": "Nginx ecosystem overview and architecture" },
+    { "uri": "nginx/reverse-proxy", "context": "Proxy traffic to backends after configuring server blocks" },
+    { "uri": "nginx/ssl", "context": "Add HTTPS to server blocks" },
+    { "uri": "nginx/troubleshooting", "context": "Debug config errors and runtime issues" }
+  ],
+  "related": [
+    { "uri": "nginx/reverse-proxy", "relation": "see-also", "note": "Proxy directives are used inside location blocks defined here" },
+    { "uri": "nginx/ssl", "relation": "see-also", "note": "SSL directives extend server blocks with HTTPS capability" },
+    { "uri": "nginx/troubleshooting", "relation": "see-also", "note": "Config validation errors are the most common nginx issue" }
+  ],
+  "scripts": [
+    {
+      "id": "manage-config",
+      "name": "Manage Nginx Config",
+      "description": "Create, validate, enable, and reload nginx site configurations",
+      "lang": "bash",
+      "runtime": "bash>=4",
+      "entry": "./scripts/manage-config.sh",
+      "env": {
+        "NGINX_CONF_DIR": { "required": false, "default": "/etc/nginx", "description": "Nginx configuration root directory" },
+        "SITE_NAME": { "required": true, "description": "Site name for the configuration file (e.g., myapp)" },
+        "SERVER_NAME": { "required": true, "description": "Server hostname (e.g., example.com)" },
+        "LISTEN_PORT": { "required": false, "default": "80", "description": "Port to listen on" },
+        "BACKEND_URL": { "required": false, "description": "Backend URL for proxy_pass (e.g., http://127.0.0.1:3000)" },
+        "ROOT_DIR": { "required": false, "description": "Document root for static file serving" }
+      }
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "site_name": { "type": "string", "description": "Configuration file name (without .conf extension)" },
+        "server_name": { "type": "string", "description": "Server hostname for server_name directive" },
+        "listen_port": { "type": "integer", "default": 80, "description": "Port to listen on" },
+        "backend_url": { "type": "string", "description": "Backend URL for reverse proxy (omit for static sites)" },
+        "root_dir": { "type": "string", "description": "Document root for static file serving" },
+        "action": { "type": "string", "enum": ["create", "enable", "disable", "validate", "reload"], "description": "Config management action" }
+      },
+      "required": ["site_name", "server_name"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "config_path": { "type": "string", "description": "Path to the generated config file" },
+        "valid": { "type": "boolean", "description": "Whether nginx -t passed" },
+        "reloaded": { "type": "boolean", "description": "Whether nginx was successfully reloaded" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "shell/bash", "reason": "Nginx config management uses shell commands for file creation and nginx CLI" }
+  ],
+  "more": {
+    "docs": "https://nginx.org/en/docs/",
+    "examples": "https://nginx.org/en/docs/beginners_guide.html",
+    "wiki": "https://www.nginx.com/resources/wiki/start/"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, devops, AI agents",
+    "estimated_reading_time": "5 min",
+    "prerequisites": [],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

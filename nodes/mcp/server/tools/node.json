@@ -3,129 +3,122 @@
   "version": "1.0.0",
   "uri": "mcp/server/tools",
   "type": "sub",
-  "context": "Define and expose executable MCP tools — functions that AI models discover via tools/list and invoke via tools/call",
-  "info": "MCP tools are model-controlled executable functions that servers expose to AI applications. Tools let agents perform actions: query databases, call APIs, manipulate files, run computations. Each tool has a name, description (used by the LLM for selection), and an inputSchema (JSON Schema defining parameters). Tools are discovered via `tools/list` and invoked via `tools/call`. Tool results return content arrays (text, images, audio, resource links) with an optional `isError` flag. Tools may also define an outputSchema for structured responses. The server declares the `tools` capability during initialization, optionally with `listChanged: true` to notify clients when tools are added or removed at runtime.",
+  "context": "Define MCP tools — executable functions that LLMs discover and invoke to perform actions like API calls, computations, and queries",
+  "info": "This sub-skill covers MCP tools — the model-controlled primitive. Tools are executable functions exposed by MCP servers that language models can discover via tools/list and invoke via tools/call. Each tool has a name, description, and JSON Schema inputSchema. Tools return content arrays (text, images, resources). The LLM decides when to call tools based on context. Python: use @mcp.tool() decorator with type hints. TypeScript: use server.tool() with Zod schemas. Tools support structured output via outputSchema, error reporting via isError flag, and annotations for trust/safety metadata.",
   "parent": "mcp/server",
-  "tags": ["mcp-tools", "tools", "tool-use", "function-calling", "json-schema", "tools-list", "tools-call"],
+  "tags": ["tools", "functions", "invoke", "call", "input-schema", "output", "model-controlled"],
   "aliases": [
     "mcp tools",
-    "MCP tools",
-    "mcp tool",
-    "tool definition",
-    "tool schema",
+    "mcp server tools",
+    "mcp tool definition",
+    "mcp functions",
     "tools/list",
     "tools/call",
-    "mcp function",
-    "server tools",
-    "expose tools"
+    "mcp tool schema",
+    "define mcp tool",
+    "mcp callable functions"
   ],
   "triggers": [
-    "define an MCP tool",
-    "add a tool to my MCP server",
-    "expose a function via MCP",
-    "create an MCP tool with input schema",
-    "how do MCP tools work",
-    "list available tools",
-    "call an MCP tool",
-    "tool input validation"
+    "define an mcp tool",
+    "create mcp tools",
+    "add a tool to mcp server",
+    "tools/list and tools/call",
+    "expose a function via mcp",
+    "mcp tool input schema",
+    "handle tool errors in mcp",
+    "mcp structured tool output"
   ],
-  "body": "# MCP Tools\n\nTools are model-controlled executable functions exposed by MCP servers. When an LLM needs to perform an action — query a database, call an API, run a computation — it selects and invokes a tool. The server validates the input, executes the function, and returns results.\n\n## Tool Definition\n\nEach tool is defined by:\n- **`name`** — Unique identifier (e.g., `get_weather`, `query_db`)\n- **`title`** — Human-readable display name\n- **`description`** — What the tool does (LLMs use this for selection)\n- **`inputSchema`** — JSON Schema defining expected parameters\n- **`outputSchema`** — Optional JSON Schema for structured results\n- **`annotations`** — Optional hints about tool behavior\n\n## Python (FastMCP)\n\n```python\nfrom mcp.server.fastmcp import FastMCP\n\nmcp = FastMCP(\"tools-example\")\n\n@mcp.tool()\nasync def get_weather(city: str, units: str = \"metric\") -> str:\n    \"\"\"Get current weather for a city.\n    \n    Args:\n        city: City name or zip code\n        units: Temperature units — metric, imperial, or kelvin\n    \"\"\"\n    async with httpx.AsyncClient() as client:\n        resp = await client.get(f\"https://api.weather.com/{city}?units={units}\")\n        return resp.text\n\n@mcp.tool()\nasync def calculate(expression: str) -> str:\n    \"\"\"Evaluate a mathematical expression safely.\"\"\"\n    try:\n        # Use ast.literal_eval for safe evaluation\n        import ast\n        result = eval(compile(ast.parse(expression, mode='eval'), '<string>', 'eval'))\n        return str(result)\n    except Exception as e:\n        return f\"Error: {e}\"\n```\n\nFastMCP auto-generates the `inputSchema` from Python type hints and the description from the docstring.\n\n## TypeScript (McpServer)\n\n```typescript\nimport { McpServer } from \"@modelcontextprotocol/sdk/server/mcp.js\";\nimport { z } from \"zod\";\n\nconst server = new McpServer({ name: \"tools-example\", version: \"1.0.0\" });\n\nserver.tool(\n  \"get_weather\",\n  \"Get current weather for a city\",\n  {\n    city: z.string().describe(\"City name or zip code\"),\n    units: z.enum([\"metric\", \"imperial\", \"kelvin\"]).default(\"metric\")\n  },\n  async ({ city, units }) => ({\n    content: [{ type: \"text\", text: await fetchWeather(city, units) }]\n  })\n);\n```\n\n## Protocol Messages\n\n### Discovery: `tools/list`\n\n```json\n// Request\n{\"jsonrpc\": \"2.0\", \"id\": 1, \"method\": \"tools/list\"}\n\n// Response\n{\n  \"jsonrpc\": \"2.0\", \"id\": 1,\n  \"result\": {\n    \"tools\": [{\n      \"name\": \"get_weather\",\n      \"description\": \"Get current weather for a city\",\n      \"inputSchema\": {\n        \"type\": \"object\",\n        \"properties\": {\n          \"city\": {\"type\": \"string\"},\n          \"units\": {\"type\": \"string\", \"enum\": [\"metric\", \"imperial\", \"kelvin\"]}\n        },\n        \"required\": [\"city\"]\n      }\n    }]\n  }\n}\n```\n\n### Invocation: `tools/call`\n\n```json\n// Request\n{\n  \"jsonrpc\": \"2.0\", \"id\": 2,\n  \"method\": \"tools/call\",\n  \"params\": {\n    \"name\": \"get_weather\",\n    \"arguments\": {\"city\": \"San Francisco\", \"units\": \"imperial\"}\n  }\n}\n\n// Response\n{\n  \"jsonrpc\": \"2.0\", \"id\": 2,\n  \"result\": {\n    \"content\": [{\"type\": \"text\", \"text\": \"72°F, partly cloudy\"}],\n    \"isError\": false\n  }\n}\n```\n\n### List Changed Notification\n\n```json\n{\"jsonrpc\": \"2.0\", \"method\": \"notifications/tools/list_changed\"}\n```\n\n## Tool Result Content Types\n\nTool results return a `content` array that can contain:\n\n| Type | Fields | Use Case |\n|------|--------|----------|\n| `text` | `text` | Plain text responses |\n| `image` | `data` (base64), `mimeType` | Screenshots, charts |\n| `audio` | `data` (base64), `mimeType` | Audio responses |\n| `resource_link` | `uri`, `name`, `mimeType` | Links to server resources |\n| `resource` | `resource.uri`, `resource.text` | Embedded resource content |\n\n## Structured Output\n\nTools can define an `outputSchema` to return validated structured data in `structuredContent`:\n\n```json\n{\n  \"content\": [{\"type\": \"text\", \"text\": \"{\\\"temp\\\": 72}\"}],\n  \"structuredContent\": {\"temp\": 72}\n}\n```\n\n## Error Handling\n\n- **Protocol errors** (unknown tool, invalid args): JSON-RPC error with code `-32602`\n- **Execution errors** (API failure, bad input): Return result with `isError: true`\n\n```json\n{\"content\": [{\"type\": \"text\", \"text\": \"API rate limit exceeded\"}], \"isError\": true}\n```\n\n## Security\n\n1. Validate all tool inputs against the schema\n2. Implement rate limiting for tool invocations\n3. Sanitize tool outputs before returning\n4. Log tool usage for audit purposes\n5. Always have a human in the loop for sensitive operations\n",
+  "body": "# MCP Tools\n\nTools are **model-controlled** primitives — the LLM discovers them and decides when to invoke them. They are the primary way agents take actions through MCP.\n\n## Defining Tools in Python\n\n```python\nfrom mcp.server.fastmcp import FastMCP\n\nmcp = FastMCP(\"my-server\")\n\n@mcp.tool()\ndef calculate(expression: str) -> str:\n    \"\"\"Evaluate a mathematical expression.\"\"\"\n    try:\n        result = eval(expression)  # Use a safe evaluator in production\n        return str(result)\n    except Exception as e:\n        return f\"Error: {e}\"\n\n@mcp.tool()\nasync def search_web(query: str, max_results: int = 5) -> str:\n    \"\"\"Search the web and return results.\"\"\"\n    results = await web_search(query, limit=max_results)\n    return json.dumps(results)\n\n@mcp.tool()\ndef read_file(path: str) -> str:\n    \"\"\"Read a file from the filesystem.\"\"\"\n    with open(path) as f:\n        return f.read()\n```\n\nFastMCP generates the tool definition automatically from:\n- Function name becomes tool `name`\n- Docstring becomes `description`\n- Type hints become `inputSchema` properties\n- Default values become schema defaults\n\n## Defining Tools in TypeScript\n\n```typescript\nimport { McpServer } from \"@modelcontextprotocol/sdk/server/mcp.js\";\nimport { z } from \"zod\";\n\nconst server = new McpServer({ name: \"my-server\", version: \"1.0.0\" });\n\nserver.tool(\n  \"calculate\",\n  \"Evaluate a mathematical expression\",\n  { expression: z.string().describe(\"Math expression to evaluate\") },\n  async ({ expression }) => ({\n    content: [{ type: \"text\", text: String(eval(expression)) }]\n  })\n);\n\nserver.tool(\n  \"search_web\",\n  \"Search the web and return results\",\n  {\n    query: z.string().describe(\"Search query\"),\n    max_results: z.number().default(5).describe(\"Maximum results\")\n  },\n  async ({ query, max_results }) => ({\n    content: [{ type: \"text\", text: JSON.stringify(await webSearch(query, max_results)) }]\n  })\n);\n```\n\n## Protocol Messages\n\n### tools/list — Discovery\n\n```json\n// Request\n{\"jsonrpc\": \"2.0\", \"id\": 1, \"method\": \"tools/list\"}\n\n// Response\n{\n  \"jsonrpc\": \"2.0\", \"id\": 1,\n  \"result\": {\n    \"tools\": [{\n      \"name\": \"calculate\",\n      \"description\": \"Evaluate a mathematical expression\",\n      \"inputSchema\": {\n        \"type\": \"object\",\n        \"properties\": {\n          \"expression\": { \"type\": \"string\", \"description\": \"Math expression\" }\n        },\n        \"required\": [\"expression\"]\n      }\n    }]\n  }\n}\n```\n\n### tools/call — Invocation\n\n```json\n// Request\n{\n  \"jsonrpc\": \"2.0\", \"id\": 2,\n  \"method\": \"tools/call\",\n  \"params\": {\n    \"name\": \"calculate\",\n    \"arguments\": { \"expression\": \"2 + 3 * 4\" }\n  }\n}\n\n// Response\n{\n  \"jsonrpc\": \"2.0\", \"id\": 2,\n  \"result\": {\n    \"content\": [{ \"type\": \"text\", \"text\": \"14\" }],\n    \"isError\": false\n  }\n}\n```\n\n## Tool Response Content Types\n\nTools can return multiple content types:\n\n```json\n{\n  \"content\": [\n    { \"type\": \"text\", \"text\": \"Analysis complete\" },\n    { \"type\": \"image\", \"data\": \"base64...\", \"mimeType\": \"image/png\" },\n    { \"type\": \"resource\", \"resource\": { \"uri\": \"file:///output.csv\", \"text\": \"...\" } }\n  ]\n}\n```\n\n## Structured Output\n\nTools can declare an `outputSchema` for validated structured responses:\n\n```json\n{\n  \"name\": \"get_weather\",\n  \"outputSchema\": {\n    \"type\": \"object\",\n    \"properties\": {\n      \"temperature\": { \"type\": \"number\" },\n      \"conditions\": { \"type\": \"string\" }\n    },\n    \"required\": [\"temperature\", \"conditions\"]\n  }\n}\n```\n\nThe response includes both `content` (for backwards compat) and `structuredContent`:\n\n```json\n{\n  \"content\": [{ \"type\": \"text\", \"text\": \"{\\\"temperature\\\": 72, \\\"conditions\\\": \\\"sunny\\\"}\" }],\n  \"structuredContent\": { \"temperature\": 72, \"conditions\": \"sunny\" }\n}\n```\n\n## Error Handling\n\nTwo error mechanisms:\n\n1. **Protocol errors** — JSON-RPC errors for unknown tools, invalid params:\n```json\n{ \"error\": { \"code\": -32602, \"message\": \"Unknown tool: bad_name\" } }\n```\n\n2. **Tool execution errors** — Business logic failures via `isError: true`:\n```json\n{\n  \"content\": [{ \"type\": \"text\", \"text\": \"API rate limit exceeded\" }],\n  \"isError\": true\n}\n```\n\n## Tool Annotations\n\nAnnotations provide metadata about tool behavior for trust and safety:\n\n```json\n{\n  \"name\": \"delete_file\",\n  \"annotations\": {\n    \"destructive\": true,\n    \"requiresConfirmation\": true\n  }\n}\n```\n\n## Server Capability\n\nDeclare tool support during initialization:\n\n```json\n{ \"capabilities\": { \"tools\": { \"listChanged\": true } } }\n```\n\n`listChanged: true` means the server will send `notifications/tools/list_changed` when tools are added, removed, or modified.\n\n## Security\n\n- Validate all tool inputs on the server side\n- Implement access controls for sensitive tools\n- Rate limit tool invocations\n- Sanitize tool outputs before returning to clients\n- Clients should show tool inputs to users before executing\n- Clients should prompt for confirmation on destructive operations\n",
   "sections": [
     {
-      "id": "definition",
-      "title": "Tool definition schema",
-      "body": "Each tool requires `name` (unique identifier), `description` (used by LLMs for selection), and `inputSchema` (JSON Schema for parameters). Optional fields: `title` (display name), `outputSchema` (structured result validation), and `annotations` (behavior hints). In Python FastMCP, these are auto-generated from type hints and docstrings. In TypeScript, use Zod schemas passed to `server.tool()`.",
-      "tags": ["schema", "definition", "input-schema", "output-schema"]
+      "id": "defining",
+      "title": "Defining tools",
+      "body": "Python: `@mcp.tool()` decorator with typed parameters and docstring. TypeScript: `server.tool(name, description, zodSchema, handler)`. Both auto-generate JSON Schema inputSchema from type annotations. Tools can be sync or async. Names must be unique within the server.",
+      "tags": ["define", "decorator", "zod", "schema", "type-hints"]
     },
     {
-      "id": "discovery",
-      "title": "Tool discovery via tools/list",
-      "body": "Clients discover available tools by sending a `tools/list` request. The response contains a `tools` array with each tool's name, description, and inputSchema. Supports pagination via `cursor`/`nextCursor`. Servers that declare `listChanged: true` in capabilities will send `notifications/tools/list_changed` when tools are added, removed, or modified, prompting clients to re-fetch.",
-      "tags": ["discovery", "tools-list", "pagination", "list-changed"]
+      "id": "protocol",
+      "title": "Protocol messages",
+      "body": "`tools/list` returns array of tool definitions with name, description, inputSchema, optional outputSchema and annotations. `tools/call` takes name and arguments, returns content array with optional isError flag. `notifications/tools/list_changed` signals tool list updates. Supports pagination via cursor.",
+      "tags": ["protocol", "list", "call", "json-rpc", "pagination"]
     },
     {
-      "id": "invocation",
-      "title": "Tool invocation via tools/call",
-      "body": "Clients invoke tools by sending a `tools/call` request with `name` and `arguments`. The server validates arguments against the inputSchema, executes the tool, and returns a result with a `content` array. Content items can be text, images, audio, resource links, or embedded resources. Set `isError: true` for execution failures. Use `structuredContent` alongside `content` for machine-readable results when an `outputSchema` is defined.",
-      "tags": ["invocation", "tools-call", "execution", "results"]
+      "id": "responses",
+      "title": "Tool responses and content types",
+      "body": "Tool results contain a `content` array with typed items: text (plain text), image (base64 + mimeType), audio (base64 + mimeType), resource (embedded resource with URI), resource_link (URI reference). Multiple items can be combined. Structured output adds `structuredContent` alongside content for validated JSON responses.",
+      "tags": ["response", "content", "text", "image", "resource", "structured"]
     },
     {
-      "id": "error-handling",
-      "title": "Error handling patterns",
-      "body": "Two error mechanisms: (1) **Protocol errors** use JSON-RPC error responses for invalid tool names (`-32602`) or server errors (`-32603`). (2) **Execution errors** return a normal result with `isError: true` and an error message in the content array. Protocol errors mean the request was malformed; execution errors mean the tool ran but failed. Always return meaningful error messages to help the LLM recover.",
-      "tags": ["errors", "protocol-errors", "execution-errors", "error-codes"]
-    },
-    {
-      "id": "annotations",
-      "title": "Tool annotations",
-      "body": "Tool annotations provide optional metadata about tool behavior. Clients MUST treat annotations as untrusted unless from trusted servers. Annotations help clients make decisions about confirmation prompts, display, and safety. Content items also support annotations with `audience` (user/assistant), `priority` (0.0-1.0), and `lastModified` (ISO 8601 timestamp).",
-      "tags": ["annotations", "metadata", "audience", "priority"]
+      "id": "errors",
+      "title": "Error handling",
+      "body": "Protocol errors use JSON-RPC error codes: -32602 for unknown tools or invalid params, -32603 for internal errors. Tool execution errors set `isError: true` in the result with descriptive text content. Clients should handle both error types. Protocol errors indicate bugs; execution errors are expected runtime failures.",
+      "tags": ["errors", "protocol-error", "execution-error", "isError", "json-rpc"]
     }
   ],
   "links": [
-    { "uri": "mcp/server", "context": "Parent skill for building MCP servers" },
-    { "uri": "mcp/server/resources", "context": "Tools can return resource links and embedded resources" },
-    { "uri": "mcp/server/prompts", "context": "Prompts can reference tools for structured workflows" },
+    { "uri": "mcp/server", "context": "Parent skill — building MCP servers" },
+    { "uri": "mcp/server/resources", "context": "Resources provide data context alongside tools" },
+    { "uri": "mcp/server/prompts", "context": "Prompts provide interaction templates" },
     { "uri": "mcp/client", "context": "Clients discover and invoke tools" },
-    { "uri": "mcp/architecture", "context": "Protocol architecture and message flow" }
+    { "uri": "mcp/architecture", "context": "Tools are model-controlled primitives in the architecture" }
   ],
   "related": [
-    { "uri": "mcp/server", "relation": "extends", "note": "Tools are one of three primitives servers can expose" },
-    { "uri": "mcp/server/resources", "relation": "see-also", "note": "Tool results can reference resources" },
-    { "uri": "anthropic/tool-use", "relation": "see-also", "note": "Claude's tool use maps directly to MCP tools" }
+    { "uri": "mcp/server", "relation": "extends", "note": "Tools are the primary server primitive" },
+    { "uri": "mcp/server/resources", "relation": "see-also", "note": "Resources complement tools by providing data context" },
+    { "uri": "mcp/client", "relation": "see-also", "note": "Clients are the consumers of tools" }
   ],
   "scripts": [
     {
-      "id": "tool-server",
-      "name": "MCP Tool Server Example",
-      "description": "Create and run an MCP server with example tools demonstrating all tool features",
+      "id": "add-tool-python",
+      "name": "Add Tool to Python Server",
+      "description": "Add a new tool definition to an existing FastMCP server",
       "lang": "python",
       "runtime": "python>=3.10",
-      "entry": "./scripts/tool-server.py",
-      "env": {},
-      "packages": ["mcp[cli]", "httpx"]
+      "entry": "./scripts/add-tool.py",
+      "inline": "# Example: Adding a tool to a FastMCP server\nfrom mcp.server.fastmcp import FastMCP\n\nmcp = FastMCP(\"example\")\n\n@mcp.tool()\ndef greet(name: str, language: str = \"en\") -> str:\n    \"\"\"Greet someone in a specified language.\"\"\"\n    greetings = {\"en\": \"Hello\", \"es\": \"Hola\", \"fr\": \"Bonjour\", \"de\": \"Hallo\"}\n    greeting = greetings.get(language, \"Hello\")\n    return f\"{greeting}, {name}!\"\n\nif __name__ == \"__main__\":\n    mcp.run()",
+      "packages": ["mcp[cli]"]
     }
   ],
   "schema": {
     "input": {
       "type": "object",
       "properties": {
-        "name": { "type": "string", "description": "Tool name (unique identifier)" },
+        "name": { "type": "string", "description": "Unique tool name" },
         "description": { "type": "string", "description": "What the tool does" },
         "inputSchema": { "type": "object", "description": "JSON Schema for tool parameters" },
-        "outputSchema": { "type": "object", "description": "Optional JSON Schema for structured results" }
+        "outputSchema": { "type": "object", "description": "Optional JSON Schema for structured output" }
       },
-      "required": ["name", "description", "inputSchema"]
+      "required": ["name", "inputSchema"]
     },
     "output": {
       "type": "object",
       "properties": {
-        "content": { "type": "array", "description": "Array of content items (text, image, audio, resource)" },
-        "structuredContent": { "type": "object", "description": "Optional structured result matching outputSchema" },
+        "content": { "type": "array", "description": "Array of content items (text, image, resource)" },
+        "structuredContent": { "type": "object", "description": "Validated structured output" },
         "isError": { "type": "boolean", "description": "Whether the tool execution failed" }
       }
     }
   },
   "depends": [
-    { "uri": "mcp/server", "reason": "Tools are a primitive of MCP servers" }
+    { "uri": "mcp/server", "reason": "Tools are defined within an MCP server" }
   ],
   "more": {
     "docs": "https://modelcontextprotocol.io/docs/concepts/tools",
-    "spec": "https://spec.modelcontextprotocol.io/specification/2025-06-18/server/tools"
+    "spec": "https://modelcontextprotocol.io/specification/2025-06-18/server/tools"
   },
   "frontmatter": {
-    "created": "2026-04-10",
-    "updated": "2026-04-10",
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
     "author": "dojo-community",
     "audience": "developers, AI agents",
-    "estimated_reading_time": "5 min",
+    "estimated_reading_time": "7 min",
     "prerequisites": ["mcp/server"],
     "status": "living",
     "confidence": "high"
   },
   "author": "dojo-community",
   "license": "MIT",
-  "created": "2026-04-10T00:00:00Z",
-  "updated": "2026-04-10T00:00:00Z",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
   "status": "published"
 }

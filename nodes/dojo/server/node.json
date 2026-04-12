@@ -1,0 +1,125 @@
+{
+  "name": "server",
+  "version": "1.0.0",
+  "uri": "dojo/server",
+  "type": "skill",
+  "context": "Run and configure the Dojo registry server that serves the API, search, and graph endpoints",
+  "info": "The Dojo server is a Node.js Express application that loads the node tree from the filesystem, builds the search index and graph, and serves the REST API. It reads all node.json files from the nodes/ directory at startup, constructs the parent-child hierarchy, indexes aliases and triggers for search, computes backlinks for the graph, and exposes endpoints for discovery, knowledge, skills, and publishing. The server supports hot-reload in development mode — changes to node.json files are picked up without restart. Configuration is via environment variables. See [[dojo/api]] for the API contract the server implements.",
+  "parent": "dojo",
+  "tags": ["server", "runtime", "api", "express", "node", "http", "startup"],
+  "aliases": [
+    "dojo server",
+    "start dojo",
+    "run dojo",
+    "dojo api server",
+    "registry server",
+    "dojo runtime",
+    "boot dojo"
+  ],
+  "triggers": [
+    "start the dojo server",
+    "run the dojo api",
+    "boot the dojo registry",
+    "how to start dojo locally",
+    "configure the dojo server",
+    "dojo server setup"
+  ],
+  "body": "# Dojo Server\n\nThe server is the runtime that brings the node tree to life. It loads manifests from disk, builds indexes, and serves the API that agents query.\n\n## Quick Start\n\n```bash\n# From the dojo repository root\ncd server\nnpm install\nnpm run dev\n# Server starts on http://localhost:3000\n```\n\n## Startup Sequence\n\n1. **Load nodes** — Recursively scan `nodes/` for all `node.json` files\n2. **Build tree** — Construct parent-child hierarchy from `parent` fields\n3. **Index search** — Index `name`, `context`, `info`, `body`, `aliases`, `triggers`, `tags` fields\n4. **Build graph** — Parse `links[]`, `related[]`, and `[[wiki-links]]` to build the edge graph\n5. **Compute backlinks** — Reverse all forward edges to create backlink index\n6. **Start HTTP** — Listen on `PORT` (default 3000)\n\n## Configuration\n\n| Variable | Default | Description |\n|----------|---------|-------------|\n| `PORT` | `3000` | HTTP port |\n| `DOJO_NODES_DIR` | `../nodes` | Path to nodes directory |\n| `DOJO_ENV` | `development` | Environment (development/production) |\n| `DOJO_LOG_LEVEL` | `info` | Log level (debug/info/warn/error) |\n| `DOJO_CORS_ORIGIN` | `*` | CORS allowed origins |\n| `DOJO_AUTH_SECRET` | _(none)_ | JWT secret for publish endpoints |\n\n## Development Mode\n\nIn development mode (`DOJO_ENV=development`), the server watches the `nodes/` directory for changes and hot-reloads modified nodes without restart:\n\n```bash\nDOJO_ENV=development npm run dev\n# Modify any node.json → changes reflect immediately\n```\n\n## Production Mode\n\n```bash\nDOJO_ENV=production npm start\n# No hot-reload, optimized for throughput\n```\n\n## Project Structure\n\n```\nserver/\n├── src/\n│   ├── server.js        # Express app setup and startup\n│   ├── loader.js        # Node tree loader from filesystem\n│   ├── search.js        # Search index and query engine\n│   ├── graph.js         # Graph builder and traversal\n│   ├── routes/\n│   │   ├── discovery.js # /v1/search, /v1/alias, /v1/tree\n│   │   ├── skills.js    # /v1/skills/:uri\n│   │   ├── knowledge.js # /v1/learn, /v1/graph\n│   │   └── publish.js   # /v1/skills (POST)\n│   └── middleware/\n│       ├── auth.js      # JWT authentication\n│       └── errors.js    # Error handling\n├── package.json\n└── tests/\n```\n\n## Health Check\n\n```bash\ncurl http://localhost:3000/health\n# → { \"status\": \"ok\", \"nodes\": 450, \"uptime\": 3600 }\n```\n\n## API Surface\n\nThe server implements the full [[dojo/api]] contract:\n- **Discovery** — `GET /v1/search`, `GET /v1/alias/:alias`, `GET /v1/tree`\n- **Skills** — `GET /v1/skills/:uri`, `GET /v1/skills/:uri/bundle`\n- **Knowledge** — `GET /v1/learn/:uri`, `GET /v1/graph/:uri`\n- **Publish** — `POST /v1/skills` (authenticated)\n\nSee [[dojo/api#discovery-routes]] for endpoint details.\n",
+  "sections": [
+    {
+      "id": "quick-start",
+      "title": "Quick start",
+      "body": "Clone the dojo repo, `cd server`, `npm install`, `npm run dev`. The server starts on `http://localhost:3000` and loads all nodes from `../nodes/`. Verify with `curl http://localhost:3000/health`. In development mode, changes to node.json files are hot-reloaded.",
+      "tags": ["quick-start", "setup", "install", "development"]
+    },
+    {
+      "id": "startup-sequence",
+      "title": "Startup sequence",
+      "body": "The server boots in six steps: (1) load all node.json files from the nodes directory, (2) build the parent-child tree from `parent` fields, (3) index all searchable fields (name, context, info, body, aliases, triggers, tags), (4) parse links, related, and wiki-links to build the edge graph, (5) compute backlinks by reversing all forward edges, (6) start the HTTP listener. Steps 1-5 happen synchronously before the server accepts requests.",
+      "tags": ["startup", "boot", "loading", "indexing", "graph-building"]
+    },
+    {
+      "id": "configuration",
+      "title": "Configuration",
+      "body": "All configuration is via environment variables: `PORT` (default 3000), `DOJO_NODES_DIR` (path to nodes, default ../nodes), `DOJO_ENV` (development/production), `DOJO_LOG_LEVEL` (debug/info/warn/error), `DOJO_CORS_ORIGIN` (CORS origins, default *), `DOJO_AUTH_SECRET` (JWT secret for publish endpoints). No config files — everything is environment-driven for container compatibility.",
+      "tags": ["config", "env-vars", "port", "cors", "auth", "logging"]
+    },
+    {
+      "id": "project-structure",
+      "title": "Project structure",
+      "body": "The server lives in `server/src/`. Key files: `server.js` (Express setup), `loader.js` (filesystem scanner), `search.js` (index and query), `graph.js` (edge graph and traversal). Routes are split by concern: `routes/discovery.js`, `routes/skills.js`, `routes/knowledge.js`, `routes/publish.js`. Middleware handles auth and errors. Tests live in `server/tests/`.",
+      "tags": ["structure", "files", "express", "routes", "middleware"]
+    }
+  ],
+  "links": [
+    { "uri": "dojo/api", "context": "API contract the server implements" },
+    { "uri": "dojo/api#discovery-routes", "context": "Search and discovery endpoints" },
+    { "uri": "dojo/api#knowledge-routes", "context": "Knowledge and graph endpoints" },
+    { "uri": "dojo/search", "context": "Search engine running inside the server" },
+    { "uri": "dojo/graph", "context": "Graph built and served by the server" },
+    { "uri": "dojo/cli", "context": "CLI tool that talks to the server" },
+    { "uri": "dojo/publish", "context": "Publish workflow that POSTs to the server" }
+  ],
+  "related": [
+    { "uri": "dojo/api", "relation": "implements", "note": "The server implements the API contract" },
+    { "uri": "dojo/architecture", "relation": "see-also", "note": "Architecture explains the runtime model the server embodies" },
+    { "uri": "dojo/search", "relation": "see-also", "note": "The search engine runs inside the server process" },
+    { "uri": "dojo/graph", "relation": "see-also", "note": "The graph is built at server startup" }
+  ],
+  "scripts": [
+    {
+      "id": "start-server",
+      "name": "Start Server",
+      "description": "Start the Dojo registry server in development or production mode",
+      "lang": "bash",
+      "runtime": "node>=18",
+      "entry": "./scripts/start-server.sh",
+      "env": {
+        "PORT": { "required": false, "default": "3000", "description": "HTTP port" },
+        "DOJO_NODES_DIR": { "required": false, "default": "../nodes", "description": "Path to nodes directory" },
+        "DOJO_ENV": { "required": false, "default": "development", "description": "Environment mode" }
+      },
+      "packages": ["express", "cors", "chokidar"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "mode": { "type": "string", "enum": ["development", "production"], "description": "Server mode" },
+        "port": { "type": "integer", "default": 3000, "description": "HTTP port" }
+      }
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "url": { "type": "string", "description": "Server URL" },
+        "nodeCount": { "type": "integer", "description": "Number of loaded nodes" },
+        "status": { "type": "string", "enum": ["running", "error"], "description": "Server status" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "dojo/api", "reason": "The server implements the API contract" }
+  ],
+  "more": {
+    "docs": "https://github.com/theslashdojo/dojo/blob/main/server/README.md",
+    "repo": "https://github.com/theslashdojo/dojo/tree/main/server"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, operators, self-hosters",
+    "estimated_reading_time": "4 min",
+    "prerequisites": ["dojo/api"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://github.com/theslashdojo/dojo",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

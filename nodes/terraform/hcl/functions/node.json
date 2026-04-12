@@ -1,0 +1,130 @@
+{
+  "name": "functions",
+  "version": "1.0.0",
+  "uri": "terraform/hcl/functions",
+  "type": "skill",
+  "context": "Terraform built-in functions — string, numeric, collection, encoding, filesystem, date, hash, IP, and type conversion",
+  "info": "Terraform provides a rich library of built-in functions callable from any HCL expression. Functions are organized into categories: string manipulation (format, join, split, replace, trim, regex, upper, lower, substr), numeric operations (min, max, ceil, floor, abs, parseint, pow), collection transforms (length, lookup, merge, keys, values, flatten, zipmap, concat, distinct, sort, contains, element, slice), encoding (jsonencode, jsondecode, yamlencode, yamldecode, base64encode, base64decode, csvdecode), filesystem (file, fileexists, templatefile, fileset, filebase64), date/time (timestamp, formatdate, timeadd, timecmp), hash/crypto (md5, sha1, sha256, sha512, bcrypt, uuid), IP networking (cidrsubnet, cidrhost, cidrnetmask), and type conversion (tostring, tonumber, tobool, tolist, toset, tomap, try, can). Functions are called with standard syntax: `function_name(arg1, arg2, ...)`. Terraform does not support user-defined functions. See [[terraform/hcl/expressions]] for how functions compose within expressions.",
+  "parent": "terraform/hcl",
+  "tags": ["functions", "terraform", "hcl", "string", "numeric", "collection", "encoding", "filesystem", "date-time", "hash", "crypto", "ip-network", "type-conversion", "built-in"],
+  "aliases": [
+    "terraform functions",
+    "hcl functions",
+    "terraform built-in functions",
+    "terraform string functions",
+    "terraform collection functions",
+    "terraform encoding functions",
+    "terraform file functions",
+    "terraform cidr functions",
+    "terraform type conversion",
+    "terraform jsonencode",
+    "terraform templatefile",
+    "terraform merge",
+    "terraform lookup",
+    "terraform flatten",
+    "terraform formatdate"
+  ],
+  "triggers": [
+    "terraform string functions",
+    "terraform join list to string",
+    "terraform merge maps",
+    "terraform flatten nested list",
+    "terraform encode json",
+    "terraform decode yaml",
+    "terraform read file",
+    "terraform cidr subnet calculation",
+    "terraform convert type",
+    "terraform format date",
+    "terraform hash a value",
+    "terraform lookup map value",
+    "terraform check if key exists",
+    "terraform generate uuid"
+  ],
+  "body": "# Terraform Built-in Functions\n\nTerraform includes a comprehensive library of built-in functions that you call from any expression. The syntax is `function_name(arg1, arg2, ...)`. Terraform does not support user-defined functions — all available functions are built in.\n\nTest functions interactively with `terraform console`:\n\n```bash\n$ terraform console\n> upper(\"hello\")\n\"HELLO\"\n> cidrsubnet(\"10.0.0.0/16\", 8, 1)\n\"10.0.1.0/24\"\n> jsonencode({name = \"web\", port = 8080})\n\"{\\\"name\\\":\\\"web\\\",\\\"port\\\":8080}\"\n```\n\n## String Functions\n\nManipulate and format strings:\n\n```hcl\nlocals {\n  # format — printf-style string formatting\n  formatted = format(\"Hello, %s! You have %d items.\", var.name, var.count)\n  padded_id = format(\"%05d\", var.id)  # \"00042\"\n\n  # join / split\n  csv_list   = join(\",\", [\"a\", \"b\", \"c\"])         # \"a,b,c\"\n  parts      = split(\",\", \"a,b,c\")                 # [\"a\", \"b\", \"c\"]\n  subnet_ids = join(\",\", aws_subnet.private[*].id)\n\n  # replace\n  sanitized = replace(var.name, \"/[^a-zA-Z0-9-]/\", \"-\")\n  no_spaces = replace(\"hello world\", \" \", \"_\")\n\n  # trim functions\n  trimmed      = trim(\"  hello  \", \" \")        # \"hello\"\n  trim_prefix  = trimprefix(\"helloworld\", \"hello\")  # \"world\"\n  trim_suffix  = trimsuffix(\"hello.tf\", \".tf\")      # \"hello\"\n  trimmed_s    = trimspace(\"  hello  \\n\")           # \"hello\"\n\n  # Case conversion\n  upper_name = upper(\"hello\")      # \"HELLO\"\n  lower_name = lower(\"HELLO\")      # \"hello\"\n  title_name = title(\"hello world\") # \"Hello World\"\n\n  # Substring and length\n  sub  = substr(\"hello world\", 0, 5)  # \"hello\"\n  len  = strlen(\"hello\")               # 5\n\n  # Regex\n  match   = regex(\"^([a-z]+)-([0-9]+)$\", \"web-42\")         # [\"web\", \"42\"]\n  matches = regexall(\"[a-z]+\", \"abc 123 def 456\")            # [\"abc\", \"def\"]\n  is_valid = can(regex(\"^t[23]\\\\.\", var.instance_type))      # true/false\n\n  # Other\n  indented = indent(4, \"line1\\nline2\\nline3\")\n  chomp_nl = chomp(\"hello\\n\")  # \"hello\"\n}\n```\n\n## Numeric Functions\n\nPerform mathematical operations:\n\n```hcl\nlocals {\n  min_val   = min(5, 12, 3)          # 3\n  max_val   = max(5, 12, 3)          # 12\n  ceiling   = ceil(4.3)              # 5\n  floor_val = floor(4.7)             # 4\n  absolute  = abs(-42)               # 42\n  parsed    = parseint(\"FF\", 16)     # 255\n  power     = pow(2, 10)             # 1024\n  sign_val  = signum(-5)             # -1\n  log_val   = log(100, 10)           # 2\n\n  # Common patterns\n  az_index       = count.index % length(var.availability_zones)\n  storage_gib    = ceil(var.storage_bytes / pow(1024, 3))\n  half_instances = floor(var.instance_count / 2)\n}\n```\n\n## Collection Functions\n\nTransform lists, maps, and sets:\n\n```hcl\nlocals {\n  # length — works on lists, maps, and strings\n  count = length(var.subnet_ids)       # 3\n\n  # lookup — get a map value with a default\n  ami = lookup(var.ami_map, var.region, \"ami-default\")\n\n  # merge — combine maps (last wins on conflicts)\n  all_tags = merge(local.common_tags, {\n    Name = \"${var.project}-web\"\n  })\n\n  # keys / values — extract from a map\n  tag_keys   = keys(local.common_tags)     # [\"Environment\", \"ManagedBy\", \"Project\"]\n  tag_values = values(local.common_tags)   # [\"prod\", \"terraform\", \"myapp\"]\n\n  # flatten — collapse nested lists\n  all_subnets = flatten([\n    module.vpc.public_subnets,\n    module.vpc.private_subnets,\n  ])\n\n  # zipmap — create a map from parallel lists\n  instance_map = zipmap(\n    aws_instance.web[*].tags[\"Name\"],\n    aws_instance.web[*].id\n  )\n\n  # concat — join lists\n  all_cidrs = concat(var.public_cidrs, var.private_cidrs)\n\n  # distinct — remove duplicates\n  unique_azs = distinct(var.availability_zones)\n\n  # sort — alphabetical sort\n  sorted_names = sort(var.names)\n\n  # contains — check membership\n  is_prod = contains([\"prod\", \"production\"], var.environment)\n\n  # element — index into a list (wraps around)\n  subnet = element(var.subnet_ids, count.index)\n\n  # slice — extract a sub-list\n  first_two = slice(var.list, 0, 2)\n\n  # chunklist — split into fixed-size sub-lists\n  batches = chunklist(var.instances, 3)\n\n  # setproduct — cartesian product\n  az_subnet_pairs = setproduct(var.azs, var.subnet_tiers)\n\n  # setunion, setintersection, setsubtract\n  all_groups    = setunion(var.admin_groups, var.dev_groups)\n  common_groups = setintersection(var.admin_groups, var.dev_groups)\n  only_admins   = setsubtract(var.admin_groups, var.dev_groups)\n\n  # coalesce — first non-null, non-empty value\n  name = coalesce(var.custom_name, \"${var.project}-default\")\n\n  # coalescelist — first non-empty list\n  subnets = coalescelist(var.custom_subnets, data.aws_subnets.default.ids)\n\n  # one — extract single element or null\n  instance = one(aws_instance.special[*].id)\n\n  # compact — remove empty strings from a list\n  clean_list = compact([\"a\", \"\", \"b\", \"\", \"c\"])  # [\"a\", \"b\", \"c\"]\n\n  # range — generate sequence\n  indices = range(0, 5)      # [0, 1, 2, 3, 4]\n  evens   = range(0, 10, 2)  # [0, 2, 4, 6, 8]\n}\n```\n\n## Encoding Functions\n\nSerialize and deserialize structured data:\n\n```hcl\nlocals {\n  # JSON\n  json_str  = jsonencode({\n    name    = var.project\n    port    = 8080\n    enabled = true\n    tags    = [\"web\", \"api\"]\n  })\n  json_obj  = jsondecode(file(\"${path.module}/config.json\"))\n\n  # YAML\n  yaml_str  = yamlencode({\n    apiVersion = \"v1\"\n    kind       = \"ConfigMap\"\n    metadata   = { name = var.name }\n    data       = { key = \"value\" }\n  })\n  yaml_obj  = yamldecode(file(\"${path.module}/values.yaml\"))\n\n  # Base64\n  encoded   = base64encode(\"Hello, World!\")\n  decoded   = base64decode(\"SGVsbG8sIFdvcmxkIQ==\")\n\n  # CSV\n  csv_data  = csvdecode(file(\"${path.module}/users.csv\"))\n  # Returns list of maps: [{name = \"alice\", role = \"admin\"}, ...]\n\n  # URL encoding\n  url_safe  = urlencode(\"hello world&foo=bar\")\n\n  # Common patterns — IAM policy as JSON\n  policy_json = jsonencode({\n    Version = \"2012-10-17\"\n    Statement = [{\n      Effect   = \"Allow\"\n      Action   = [\"s3:GetObject\", \"s3:ListBucket\"]\n      Resource = [\n        aws_s3_bucket.data.arn,\n        \"${aws_s3_bucket.data.arn}/*\",\n      ]\n    }]\n  })\n}\n\nresource \"aws_iam_policy\" \"s3_read\" {\n  name   = \"${var.project}-s3-read\"\n  policy = local.policy_json\n}\n```\n\n## Filesystem Functions\n\nRead files from disk at plan time:\n\n```hcl\nlocals {\n  # file — read a file as a string\n  public_key = file(\"${path.module}/keys/id_rsa.pub\")\n\n  # fileexists — check if a file exists\n  has_config = fileexists(\"${path.module}/custom.conf\")\n\n  # templatefile — render a template with variables\n  user_data = templatefile(\"${path.module}/scripts/init.sh.tpl\", {\n    environment = var.environment\n    db_host     = aws_db_instance.main.endpoint\n    db_port     = 5432\n    app_version = var.app_version\n  })\n\n  # fileset — glob for matching files\n  config_files = fileset(path.module, \"configs/*.json\")\n\n  # filebase64 — read file as base64\n  lambda_zip = filebase64(\"${path.module}/dist/function.zip\")\n\n  # Common pattern: upload all config files\n  configs = { for f in local.config_files : f => file(\"${path.module}/${f}\") }\n}\n\nresource \"aws_key_pair\" \"deployer\" {\n  key_name   = \"${var.project}-deployer\"\n  public_key = local.public_key\n}\n\nresource \"aws_instance\" \"web\" {\n  ami           = data.aws_ami.ubuntu.id\n  instance_type = var.instance_type\n  user_data     = local.user_data\n}\n```\n\nTemplate files support `%{ if }` and `%{ for }` directives:\n\n```bash\n# init.sh.tpl\n#!/bin/bash\nset -euo pipefail\n\nexport ENVIRONMENT=\"${environment}\"\nexport DB_HOST=\"${db_host}\"\nexport DB_PORT=\"${db_port}\"\n\n%{ if environment == \"prod\" }\nexport LOG_LEVEL=\"warn\"\n%{ else }\nexport LOG_LEVEL=\"debug\"\n%{ endif }\n\n%{ for pkg in packages }\napt-get install -y ${pkg}\n%{ endfor }\n```\n\n## Date and Time Functions\n\nWork with timestamps:\n\n```hcl\nlocals {\n  # timestamp — current UTC time in RFC3339\n  now = timestamp()  # \"2026-04-11T14:30:00Z\"\n\n  # formatdate — format a timestamp\n  date_only = formatdate(\"YYYY-MM-DD\", timestamp())        # \"2026-04-11\"\n  readable  = formatdate(\"DD MMM YYYY hh:mm ZZZ\", timestamp())  # \"11 Apr 2026 14:30 UTC\"\n  file_safe = formatdate(\"YYYYMMDD-hhmmss\", timestamp())   # \"20260411-143000\"\n\n  # timeadd — add a duration to a timestamp\n  expires_at  = timeadd(timestamp(), \"720h\")    # 30 days from now\n  next_hour   = timeadd(timestamp(), \"1h\")\n  ten_min_ago = timeadd(timestamp(), \"-10m\")\n\n  # timecmp — compare timestamps: -1, 0, or 1\n  is_expired = timecmp(var.cert_expiry, timestamp()) < 0\n}\n\nresource \"aws_iam_access_key\" \"deploy\" {\n  user = aws_iam_user.deploy.name\n}\n\nresource \"null_resource\" \"rotate_key\" {\n  triggers = {\n    # Force rotation every 30 days\n    rotation_date = formatdate(\"YYYY-MM\", timestamp())\n  }\n}\n```\n\n## Hash and Crypto Functions\n\nGenerate hashes and unique identifiers:\n\n```hcl\nlocals {\n  # Hash functions\n  md5_hash    = md5(\"hello\")                  # \"5d41402abc4b2a76b9719d911017c592\"\n  sha1_hash   = sha1(\"hello\")                 # \"aaf4c61ddcc5e8a2dabede0f3b482cd9aea9434d\"\n  sha256_hash = sha256(\"hello\")               # \"2cf24dba5fb0a30e...\"\n  sha512_hash = sha512(\"hello\")               # \"9b71d224bd62f378...\"\n\n  # bcrypt — password hashing\n  hashed_pw = bcrypt(var.password)             # \"$2a$10$...\"\n  custom_pw = bcrypt(var.password, 12)         # cost factor 12\n\n  # uuid — generate a random UUID\n  unique_id = uuid()                           # \"a1b2c3d4-e5f6-...\"\n\n  # filemd5 / filesha256 / filesha512 — hash file contents\n  lambda_hash = filesha256(\"${path.module}/dist/function.zip\")\n\n  # Common patterns\n  config_hash   = sha256(jsonencode(var.config))  # Detect config changes\n  resource_name = \"${var.project}-${substr(md5(var.unique_input), 0, 8)}\"\n}\n\nresource \"aws_lambda_function\" \"api\" {\n  filename         = \"${path.module}/dist/function.zip\"\n  source_code_hash = local.lambda_hash  # Triggers redeployment on code change\n  function_name    = \"${var.project}-api\"\n  handler          = \"index.handler\"\n  runtime          = \"nodejs20.x\"\n  role             = aws_iam_role.lambda.arn\n}\n```\n\n## IP Network Functions\n\nCalculate CIDR addresses and subnets:\n\n```hcl\nlocals {\n  # cidrsubnet — calculate a subnet CIDR within a network\n  # cidrsubnet(prefix, newbits, netnum)\n  public_subnet_1  = cidrsubnet(\"10.0.0.0/16\", 8, 0)   # \"10.0.0.0/24\"\n  public_subnet_2  = cidrsubnet(\"10.0.0.0/16\", 8, 1)   # \"10.0.1.0/24\"\n  private_subnet_1 = cidrsubnet(\"10.0.0.0/16\", 8, 100) # \"10.0.100.0/24\"\n  private_subnet_2 = cidrsubnet(\"10.0.0.0/16\", 8, 101) # \"10.0.101.0/24\"\n\n  # cidrhost — calculate a host IP within a network\n  gateway_ip  = cidrhost(\"10.0.1.0/24\", 1)    # \"10.0.1.1\"\n  dns_server  = cidrhost(\"10.0.0.0/16\", 2)    # \"10.0.0.2\" (AWS VPC DNS)\n\n  # cidrnetmask — get the netmask for a CIDR\n  netmask = cidrnetmask(\"10.0.0.0/16\")         # \"255.255.0.0\"\n\n  # cidrcontains — check if IP is in a CIDR (Terraform 1.8+)\n  # is_internal = cidrcontains(\"10.0.0.0/8\", var.ip_address)\n\n  # Common pattern — generate subnets for all AZs\n  public_subnets = [\n    for i, az in var.availability_zones :\n    cidrsubnet(var.vpc_cidr, 8, i)\n  ]\n  private_subnets = [\n    for i, az in var.availability_zones :\n    cidrsubnet(var.vpc_cidr, 8, i + 100)\n  ]\n}\n\nresource \"aws_subnet\" \"public\" {\n  count             = length(var.availability_zones)\n  vpc_id            = aws_vpc.main.id\n  cidr_block        = local.public_subnets[count.index]\n  availability_zone = var.availability_zones[count.index]\n\n  tags = merge(local.common_tags, {\n    Name = \"${var.project}-public-${count.index + 1}\"\n    Tier = \"public\"\n  })\n}\n```\n\n## Type Conversion Functions\n\nConvert between types and handle errors:\n\n```hcl\nlocals {\n  # Explicit type conversion\n  str_val  = tostring(42)              # \"42\"\n  num_val  = tonumber(\"42\")            # 42\n  bool_val = tobool(\"true\")            # true\n\n  # Collection conversions\n  list_val = tolist([\"a\", \"b\", \"c\"])   # list(string)\n  set_val  = toset([\"a\", \"b\", \"a\"])    # set(string): {\"a\", \"b\"}\n  map_val  = tomap({ a = 1, b = 2 })   # map(number)\n\n  # try — return first expression that doesn't error\n  port = try(var.config.port, var.default_port, 8080)\n  db   = try(\n    data.aws_db_instance.existing.endpoint,\n    \"localhost:5432\"\n  )\n\n  # can — test if an expression succeeds (returns bool)\n  has_port   = can(var.config.port)\n  valid_cidr = can(cidrnetmask(var.cidr))\n  valid_json = can(jsondecode(var.json_string))\n\n  # Practical pattern — safe optional attribute access\n  bucket_name = try(var.overrides.bucket_name, \"${var.project}-default\")\n\n  # nonsensitive — remove sensitive marking (use carefully)\n  debug_id = nonsensitive(var.secret_id)  # Only for debugging!\n\n  # sensitive — mark a value as sensitive\n  conn_string = sensitive(\"postgres://${var.user}:${var.pass}@${var.host}/db\")\n\n  # type — inspect type at console (debugging only)\n  # > type(var.config)\n  # object({ port = number, host = string })\n}\n```\n\n`try` and `can` are especially useful in module development where inputs may be optional or structurally variable. Use `can()` in [[terraform/hcl/variables]] validation blocks to test complex conditions.\n",
+  "sections": [
+    {
+      "id": "string-functions",
+      "title": "String functions",
+      "body": "Key functions: `format(spec, vals...)` for printf-style formatting, `join(sep, list)` and `split(sep, string)` for joining/splitting, `replace(string, search, replace)` with regex support, `trim` / `trimprefix` / `trimsuffix` / `trimspace` for whitespace/prefix/suffix removal, `upper` / `lower` / `title` for case, `substr(string, offset, length)` for substrings, `strlen` for length, `regex(pattern, string)` / `regexall` for pattern matching, `indent(spaces, string)` for indentation, `chomp` to remove trailing newline.",
+      "tags": ["string", "format", "join", "split", "replace", "trim", "upper", "lower", "regex", "substr"]
+    },
+    {
+      "id": "numeric-functions",
+      "title": "Numeric functions",
+      "body": "Key functions: `min(nums...)` / `max(nums...)` for min/max from a set, `ceil` / `floor` for rounding, `abs` for absolute value, `parseint(string, base)` for base conversion (e.g. hex), `pow(base, exp)` for exponentiation, `signum` for sign, `log(val, base)` for logarithm. Arithmetic operators (`+`, `-`, `*`, `/`, `%`) are part of expressions, not functions.",
+      "tags": ["numeric", "min", "max", "ceil", "floor", "abs", "parseint", "pow", "math"]
+    },
+    {
+      "id": "collection-functions",
+      "title": "Collection functions",
+      "body": "Key functions: `length` for size, `lookup(map, key, default)` for safe map access, `merge(maps...)` for combining maps, `keys` / `values` for extracting map parts, `flatten` for collapsing nested lists, `zipmap(keys, values)` for building maps from parallel lists, `concat(lists...)` for joining lists, `distinct` for deduplication, `sort` for alphabetical ordering, `contains(list, value)` for membership, `element(list, index)` for wrapped indexing, `slice(list, start, end)` for sub-lists, `compact` to remove empty strings, `coalesce` for first non-null, `range` for number sequences, `setunion` / `setintersection` / `setsubtract` for set operations, `chunklist` for batching, `one` for extracting single elements.",
+      "tags": ["collection", "length", "lookup", "merge", "keys", "values", "flatten", "zipmap", "concat", "distinct", "sort", "contains", "element", "coalesce"]
+    },
+    {
+      "id": "encoding-functions",
+      "title": "Encoding functions",
+      "body": "Key functions: `jsonencode` / `jsondecode` for JSON serialization (essential for IAM policies, API configs), `yamlencode` / `yamldecode` for YAML (Kubernetes manifests, Helm values), `base64encode` / `base64decode` for Base64, `csvdecode` to parse CSV files into list-of-maps, `urlencode` for URL-safe strings. `jsonencode` is the most commonly used — produces compact JSON from HCL structures.",
+      "tags": ["encoding", "json", "yaml", "base64", "csv", "url", "jsonencode", "jsondecode", "yamlencode", "yamldecode"]
+    },
+    {
+      "id": "filesystem-functions",
+      "title": "Filesystem functions",
+      "body": "Key functions: `file(path)` reads a file as UTF-8 string, `fileexists(path)` checks existence, `templatefile(path, vars)` renders a template with variable substitution and `%{ if }` / `%{ for }` directives, `fileset(base, pattern)` globs for matching files, `filebase64(path)` reads as Base64. `filemd5` / `filesha256` / `filesha512` hash file contents (used for Lambda source_code_hash). All paths should use `path.module` or `path.root` for portability.",
+      "tags": ["filesystem", "file", "templatefile", "fileset", "fileexists", "filebase64", "template", "path"]
+    },
+    {
+      "id": "date-time-functions",
+      "title": "Date and time functions",
+      "body": "Key functions: `timestamp()` returns current UTC time in RFC3339 format, `formatdate(spec, timestamp)` formats with specifiers (YYYY, MM, DD, hh, mm, ss, ZZZ), `timeadd(timestamp, duration)` adds a Go-style duration (e.g. \"720h\", \"30m\", \"-1h\"), `timecmp(a, b)` compares two timestamps returning -1, 0, or 1. Note: `timestamp()` changes every plan, so using it in resource attributes forces replacement — use `ignore_changes` or `triggers` to control this.",
+      "tags": ["date", "time", "timestamp", "formatdate", "timeadd", "timecmp", "duration", "rfc3339"]
+    },
+    {
+      "id": "hash-crypto-functions",
+      "title": "Hash and crypto functions",
+      "body": "Key functions: `md5`, `sha1`, `sha256`, `sha512` produce hex-encoded hashes of strings, `filemd5` / `filesha256` / `filesha512` hash file contents, `bcrypt(string, cost)` produces bcrypt password hashes, `uuid()` generates a random v4 UUID. `sha256` + `jsonencode` is a common pattern for change detection triggers. `filesha256` is essential for Lambda `source_code_hash` to trigger redeployment on code changes.",
+      "tags": ["hash", "crypto", "md5", "sha1", "sha256", "sha512", "bcrypt", "uuid", "filesha256"]
+    },
+    {
+      "id": "ip-network-functions",
+      "title": "IP network functions",
+      "body": "Key functions: `cidrsubnet(prefix, newbits, netnum)` calculates a subnet within a CIDR (e.g. `cidrsubnet(\"10.0.0.0/16\", 8, 1)` yields `\"10.0.1.0/24\"`), `cidrhost(prefix, hostnum)` computes a specific host IP, `cidrnetmask(prefix)` returns the dotted-decimal netmask. These are essential for VPC and subnet planning in AWS, GCP, and Azure. Combine with `for` expressions and `count` to generate subnets across availability zones programmatically.",
+      "tags": ["ip", "network", "cidr", "cidrsubnet", "cidrhost", "cidrnetmask", "vpc", "subnet"]
+    },
+    {
+      "id": "type-conversion-functions",
+      "title": "Type conversion functions",
+      "body": "Key functions: `tostring`, `tonumber`, `tobool` for primitive conversion, `tolist`, `toset`, `tomap` for collection conversion, `try(expr1, expr2, ...)` returns the first expression that doesn't error, `can(expr)` returns bool indicating whether an expression evaluates successfully. `try` and `can` are essential for defensive module code — safely accessing optional attributes, providing fallback values, and writing [[terraform/hcl/variables]] validation conditions. `sensitive` / `nonsensitive` control value redaction in output.",
+      "tags": ["type", "conversion", "tostring", "tonumber", "tolist", "toset", "tomap", "try", "can", "sensitive"]
+    }
+  ],
+  "links": [
+    { "uri": "terraform/hcl", "context": "Parent HCL syntax and block structure" },
+    { "uri": "terraform/hcl/expressions", "context": "Expressions where functions are called" },
+    { "uri": "terraform/hcl/variables", "context": "Variable validation blocks use can() and regex()" }
+  ],
+  "related": [
+    { "uri": "terraform/hcl/expressions", "relation": "extends", "note": "Functions are called within expressions to transform and compute values" },
+    { "uri": "terraform/hcl/variables", "relation": "see-also", "note": "Validation blocks use can() and regex() to enforce variable constraints" },
+    { "uri": "terraform/hcl", "relation": "see-also", "note": "Functions operate on HCL value types defined by the language" }
+  ],
+  "more": {
+    "docs": "https://developer.hashicorp.com/terraform/language/functions",
+    "spec": "https://developer.hashicorp.com/terraform/language/functions",
+    "examples": "https://developer.hashicorp.com/terraform/tutorials/configuration-language"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, AI agents, DevOps engineers, SREs",
+    "estimated_reading_time": "10 min",
+    "prerequisites": ["terraform/hcl", "terraform/hcl/expressions"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

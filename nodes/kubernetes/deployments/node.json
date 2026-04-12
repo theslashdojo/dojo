@@ -1,0 +1,147 @@
+{
+  "name": "deployments",
+  "version": "1.0.0",
+  "uri": "kubernetes/deployments",
+  "type": "skill",
+  "context": "Create, scale, update, and rollback Kubernetes Deployments — the standard way to run stateless applications",
+  "info": "Deployments are the primary workload controller in Kubernetes for stateless applications. A Deployment declares a desired state (image, replicas, update strategy) and the Deployment controller ensures the cluster matches it by managing ReplicaSets. Agents use Deployments to deploy applications, scale replicas up/down, perform rolling updates with zero downtime, and rollback to previous versions when releases fail. This skill covers Deployment manifests, rollout strategies (RollingUpdate, Recreate), scaling, rollback, and the relationship between Deployments, ReplicaSets, and Pods.",
+  "parent": "kubernetes",
+  "tags": ["deployments", "replicas", "rollout", "rollback", "scaling", "replicaset", "rolling-update", "strategy"],
+  "aliases": [
+    "kubernetes deployments",
+    "k8s deployments",
+    "deployment",
+    "deploy",
+    "kubectl deployment",
+    "rolling update",
+    "rollback deployment",
+    "scale deployment",
+    "replicaset"
+  ],
+  "triggers": [
+    "create a kubernetes deployment",
+    "deploy an application to kubernetes",
+    "scale a deployment",
+    "rollback a deployment",
+    "update a deployment image",
+    "check rollout status",
+    "set replicas for deployment",
+    "deployment is not rolling out"
+  ],
+  "body": "# Deployments\n\nA Deployment provides declarative updates for [[kubernetes/pods]]. You describe a desired state, and the Deployment controller changes the actual state to match. Deployments manage ReplicaSets, which in turn manage Pods.\n\n## Deployment Manifest\n\n```yaml\napiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: web-app\n  namespace: production\n  labels:\n    app: web-app\nspec:\n  replicas: 3\n  selector:\n    matchLabels:\n      app: web-app\n  strategy:\n    type: RollingUpdate\n    rollingUpdate:\n      maxSurge: 1\n      maxUnavailable: 0\n  template:\n    metadata:\n      labels:\n        app: web-app\n    spec:\n      containers:\n        - name: web\n          image: myregistry/web-app:v1.2.0\n          ports:\n            - containerPort: 8080\n          resources:\n            requests:\n              cpu: 200m\n              memory: 256Mi\n            limits:\n              cpu: 1000m\n              memory: 1Gi\n          livenessProbe:\n            httpGet:\n              path: /healthz\n              port: 8080\n            initialDelaySeconds: 10\n            periodSeconds: 15\n          readinessProbe:\n            httpGet:\n              path: /ready\n              port: 8080\n            initialDelaySeconds: 5\n            periodSeconds: 10\n          envFrom:\n            - configMapRef:\n                name: web-app-config\n            - secretRef:\n                name: web-app-secrets\n```\n\n## kubectl Deployment Commands\n\n```bash\n# Create / update deployment\nkubectl apply -f deployment.yaml\n\n# Quick create without a manifest\nkubectl create deployment web-app --image=myregistry/web-app:v1.2.0 --replicas=3\n\n# List deployments\nkubectl get deployments -n production\nkubectl get deploy -o wide\n\n# Describe\nkubectl describe deployment web-app\n\n# Scale replicas\nkubectl scale deployment web-app --replicas=5\n\n# Update image (triggers rolling update)\nkubectl set image deployment/web-app web=myregistry/web-app:v1.3.0\n\n# Check rollout status\nkubectl rollout status deployment/web-app\n\n# View rollout history\nkubectl rollout history deployment/web-app\n\n# Rollback to previous revision\nkubectl rollout undo deployment/web-app\n\n# Rollback to specific revision\nkubectl rollout undo deployment/web-app --to-revision=3\n\n# Pause and resume rollout (for canary-style partial rollouts)\nkubectl rollout pause deployment/web-app\nkubectl rollout resume deployment/web-app\n\n# Restart all pods (rolling restart)\nkubectl rollout restart deployment/web-app\n```\n\n## Update Strategies\n\n### RollingUpdate (default)\n\nGradually replaces old Pods with new ones:\n\n```yaml\nstrategy:\n  type: RollingUpdate\n  rollingUpdate:\n    maxSurge: 1        # max pods above desired count during update\n    maxUnavailable: 0  # max pods unavailable during update (0 = zero downtime)\n```\n\n- `maxSurge: 1, maxUnavailable: 0` — safest: create new Pod, wait for ready, then terminate old\n- `maxSurge: 25%, maxUnavailable: 25%` — faster: allows 25% over and 25% under simultaneously\n\n### Recreate\n\nKills all existing Pods before creating new ones. Use when the app cannot run two versions simultaneously (e.g., database schema conflicts):\n\n```yaml\nstrategy:\n  type: Recreate\n```\n\n## Deployment → ReplicaSet → Pod Hierarchy\n\n```\nDeployment (web-app)\n  └── ReplicaSet (web-app-6d9f8b7c5d)  ← current\n       ├── Pod (web-app-6d9f8b7c5d-abc12)\n       ├── Pod (web-app-6d9f8b7c5d-def34)\n       └── Pod (web-app-6d9f8b7c5d-ghi56)\n  └── ReplicaSet (web-app-4a8e2c1b3f)  ← previous (scaled to 0)\n```\n\nDeployments create a new ReplicaSet for each unique Pod template. During a rolling update, the new ReplicaSet scales up while the old scales down. Old ReplicaSets are kept (scaled to 0) to enable rollback.\n\n## Environment Variables\n\n| Variable | Purpose |\n|----------|----------|\n| `KUBECONFIG` | Path to kubeconfig file |\n| `KUBE_NAMESPACE` | Default namespace |\n",
+  "sections": [
+    {
+      "id": "rollout",
+      "title": "Rolling updates and rollout",
+      "body": "A rolling update replaces Pods incrementally. Trigger by changing the Pod template (image, env, resources). Use `kubectl rollout status deployment/<name>` to watch progress. The rollout succeeds when all new Pods are Ready and all old Pods are terminated. If a new Pod fails to become Ready, the rollout stalls — use `kubectl rollout undo` to rollback. Set `maxSurge` and `maxUnavailable` to control speed vs availability tradeoff. Use `minReadySeconds` to add a delay before marking new Pods as available.",
+      "tags": ["rollout", "rolling-update", "maxsurge", "maxunavailable", "minreadyseconds"]
+    },
+    {
+      "id": "rollback",
+      "title": "Rollback",
+      "body": "Kubernetes stores rollout history as ReplicaSet revisions. Use `kubectl rollout history deployment/<name>` to list revisions. Use `kubectl rollout undo deployment/<name>` to rollback to the previous revision, or `--to-revision=N` for a specific one. Rollbacks are instant because the old ReplicaSet already exists — Kubernetes just scales it up and scales the current one down. Set `revisionHistoryLimit` (default 10) to control how many old ReplicaSets are retained.",
+      "tags": ["rollback", "undo", "revision", "history", "revisionhistorylimit"]
+    },
+    {
+      "id": "scaling",
+      "title": "Scaling replicas",
+      "body": "Scale manually with `kubectl scale deployment/<name> --replicas=N` or by editing the manifest. For automatic scaling, use [[kubernetes/hpa]] to scale based on CPU, memory, or custom metrics. The scheduler distributes Pods across nodes for availability. Use `topologySpreadConstraints` or pod anti-affinity to ensure Pods spread across zones and nodes.",
+      "tags": ["scaling", "replicas", "scale", "hpa", "topology-spread", "anti-affinity"]
+    },
+    {
+      "id": "strategies",
+      "title": "Update strategies",
+      "body": "Two built-in strategies: **RollingUpdate** (default) — gradual replacement with maxSurge and maxUnavailable controls. **Recreate** — kill all old Pods first, then create new ones. Use Recreate when the app cannot tolerate two versions running simultaneously (database migrations, protocol changes). For canary deployments, use `kubectl rollout pause/resume` or dedicated tools like Argo Rollouts or Flagger.",
+      "tags": ["strategy", "rolling-update", "recreate", "canary", "blue-green"]
+    }
+  ],
+  "links": [
+    { "uri": "kubernetes/pods", "context": "Deployments manage Pods through ReplicaSets" },
+    { "uri": "kubernetes/services", "context": "Services expose Deployments to network traffic" },
+    { "uri": "kubernetes/hpa", "context": "HPA auto-scales Deployment replicas" },
+    { "uri": "kubernetes/configmaps", "context": "Inject configuration into Deployment Pod templates" },
+    { "uri": "kubernetes/namespaces", "context": "Deployments are namespaced resources" },
+    { "uri": "kubernetes/helm", "context": "Helm charts template Deployment manifests" },
+    { "uri": "kubernetes/troubleshooting", "context": "Debug failed rollouts and pod issues" }
+  ],
+  "related": [
+    { "uri": "kubernetes/pods", "relation": "see-also", "note": "Deployments manage Pod lifecycle through ReplicaSets" },
+    { "uri": "kubernetes/hpa", "relation": "see-also", "note": "HPA automatically scales Deployment replicas based on metrics" },
+    { "uri": "kubernetes/jobs", "relation": "alternative", "note": "Use Jobs instead of Deployments for batch workloads that run to completion" }
+  ],
+  "scripts": [
+    {
+      "id": "deploy-app",
+      "name": "Deploy Application",
+      "description": "Create or update a Deployment and wait for rollout to complete",
+      "lang": "bash",
+      "runtime": "kubectl",
+      "entry": "./scripts/deploy-app.sh",
+      "inline": "#!/bin/bash\nset -euo pipefail\nNAME=${1:?Usage: deploy-app.sh <name> <image> [replicas]}\nIMAGE=${2:?Usage: deploy-app.sh <name> <image> [replicas]}\nREPLICAS=${3:-3}\nNS=${KUBE_NAMESPACE:-default}\n\necho \"Deploying $NAME with image $IMAGE ($REPLICAS replicas) to namespace $NS\"\n\nkubectl create deployment \"$NAME\" \\\n  --image=\"$IMAGE\" \\\n  --replicas=\"$REPLICAS\" \\\n  -n \"$NS\" \\\n  --dry-run=client -o yaml | kubectl apply -f -\n\necho \"Waiting for rollout...\"\nkubectl rollout status deployment/\"$NAME\" -n \"$NS\" --timeout=300s\n\necho \"Deployment complete:\"\nkubectl get deployment \"$NAME\" -n \"$NS\" -o wide",
+      "env": {
+        "KUBECONFIG": { "required": false, "secret": false, "default": "~/.kube/config", "description": "Path to kubeconfig file" },
+        "KUBE_NAMESPACE": { "required": false, "secret": false, "default": "default", "description": "Target namespace" }
+      },
+      "packages": []
+    },
+    {
+      "id": "rollout-status",
+      "name": "Check Rollout Status",
+      "description": "Show deployment status, replica counts, and rollout history",
+      "lang": "bash",
+      "runtime": "kubectl",
+      "entry": "./scripts/rollout-status.sh",
+      "inline": "#!/bin/bash\nset -euo pipefail\nNAME=${1:?Usage: rollout-status.sh <deployment-name>}\nNS=${KUBE_NAMESPACE:-default}\n\necho \"=== Deployment Status ===\"\nkubectl get deployment \"$NAME\" -n \"$NS\" -o wide\necho \"\"\necho \"=== Rollout Status ===\"\nkubectl rollout status deployment/\"$NAME\" -n \"$NS\" 2>&1 || true\necho \"\"\necho \"=== Rollout History ===\"\nkubectl rollout history deployment/\"$NAME\" -n \"$NS\"\necho \"\"\necho \"=== ReplicaSets ===\"\nkubectl get replicasets -n \"$NS\" -l app=\"$NAME\" -o wide",
+      "env": {
+        "KUBECONFIG": { "required": false, "secret": false, "default": "~/.kube/config", "description": "Path to kubeconfig file" },
+        "KUBE_NAMESPACE": { "required": false, "secret": false, "default": "default", "description": "Target namespace" }
+      },
+      "packages": []
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "description": "Deployment name" },
+        "namespace": { "type": "string", "default": "default", "description": "Target namespace" },
+        "image": { "type": "string", "description": "Container image (e.g., nginx:1.25)" },
+        "replicas": { "type": "integer", "default": 3, "description": "Number of Pod replicas" },
+        "strategy": { "type": "string", "enum": ["RollingUpdate", "Recreate"], "default": "RollingUpdate", "description": "Update strategy" }
+      },
+      "required": ["name", "image"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "deploymentName": { "type": "string", "description": "Name of the deployment" },
+        "replicas": { "type": "integer", "description": "Desired replica count" },
+        "readyReplicas": { "type": "integer", "description": "Number of ready replicas" },
+        "currentRevision": { "type": "integer", "description": "Current rollout revision number" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "kubernetes/pods", "reason": "Deployments create and manage Pods through ReplicaSets" }
+  ],
+  "more": {
+    "docs": "https://kubernetes.io/docs/concepts/workloads/controllers/deployment/",
+    "api": "https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.31/#deployment-v1-apps",
+    "spec": "https://kubernetes.io/docs/reference/kubernetes-api/workload-resources/deployment-v1/"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, DevOps engineers, SREs, AI agents",
+    "estimated_reading_time": "5 min",
+    "prerequisites": ["kubernetes/pods"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}

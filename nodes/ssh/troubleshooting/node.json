@@ -1,0 +1,81 @@
+{
+  "name": "troubleshooting",
+  "version": "1.0.0",
+  "uri": "ssh/troubleshooting",
+  "type": "context",
+  "content_type": "faq",
+  "context": "Debug SSH auth failures, host-key mismatches, config surprises, and unstable tunnels",
+  "info": "SSH failures are often opaque unless you know which layer to inspect: configuration expansion, key selection, host-key trust, remote policy, or network reachability. This node gives the minimum reliable debug workflow for OpenSSH clients, including verbose logging with `-v` through `-vvv`, config inspection with `ssh -G`, key permission fixes, host-key cleanup, and transfer-specific diagnostics for `scp` and `sftp`. Agents should load this node before weakening security controls or retrying blindly.",
+  "parent": "ssh",
+  "tags": ["ssh", "troubleshooting", "debug", "permission-denied", "host-key", "ssh-g", "verbose"],
+  "aliases": [
+    "ssh troubleshooting",
+    "ssh debug",
+    "permission denied publickey",
+    "host key verification failed",
+    "remote host identification has changed",
+    "ssh not connecting"
+  ],
+  "triggers": [
+    "debug ssh auth failure",
+    "fix permission denied publickey",
+    "fix host key verification failed",
+    "inspect effective ssh config",
+    "debug scp failure",
+    "debug sftp failure"
+  ],
+  "body": "# SSH Troubleshooting\n\nStart with the client side. OpenSSH already exposes enough detail to tell whether the failure is config resolution, key loading, host verification, or plain connectivity.\n\n## Minimum Debug Sequence\n\n```bash\nssh -vvv host.example.com\nssh -G host.example.com\nscp -v local.txt host.example.com:/tmp/\nsftp -vvv host.example.com\n```\n\n- `-v`, `-vv`, and `-vvv` raise log detail.\n- `ssh -G host` prints the fully evaluated client config and exits.\n- `scp -v` and `sftp -vvv` show the same transport details for transfers.\n\n## Common Fixes\n\n```bash\nchmod 700 ~/.ssh\nchmod 600 ~/.ssh/id_ed25519\nchmod 600 ~/.ssh/config\nssh-keygen -R host.example.com\nssh-keygen -F host.example.com\n```\n\nBad file permissions can make OpenSSH ignore keys. A stale `known_hosts` entry causes host-key mismatch errors. Incorrect `IdentityFile`, `IdentitiesOnly`, `ProxyJump`, or `User` settings usually show up immediately in `ssh -G` or verbose output.\n\n## Failure Patterns\n\n- `Permission denied (publickey)` means the server rejected every offered key or the client did not offer the expected one. Check [[ssh/keys]], agent state, and `IdentityFile`.\n- `Host key verification failed` means the presented server key is unknown or no longer trusted. Load [[ssh/known-hosts]].\n- `Connection refused` means you reached the host but nothing is listening on that port.\n- `Operation timed out` usually means routing, firewall, security group, or bastion path issues.\n- A background tunnel exiting immediately usually means forwarding failed before authentication completed. Use `ExitOnForwardFailure yes` and run foreground first. See [[ssh/tunnel]].\n",
+  "sections": [
+    {
+      "id": "auth-failures",
+      "title": "Permission denied (publickey)",
+      "body": "This message means the server did not accept any key the client offered. Common causes: wrong username, wrong `IdentityFile`, agent not loaded, private key unreadable because of permissions, public key missing from remote `authorized_keys`, or `IdentitiesOnly yes` filtering out the wrong set of keys. Use `ssh -vvv` to see which identities were tried and load [[ssh/keys]] or [[ssh/agent]] as needed.",
+      "tags": ["publickey", "permissions", "identityfile", "authorized-keys", "agent"]
+    },
+    {
+      "id": "host-key-errors",
+      "title": "Host-key verification errors",
+      "body": "`Host key verification failed` and `REMOTE HOST IDENTIFICATION HAS CHANGED` are trust failures, not transport failures. Confirm the correct fingerprint out-of-band, inspect with `ssh-keygen -F host`, remove stale entries with `ssh-keygen -R host`, then reconnect. See [[ssh/known-hosts]].",
+      "tags": ["known-hosts", "fingerprint", "mitm", "ssh-keygen-r"]
+    },
+    {
+      "id": "config-debugging",
+      "title": "Config and connection debugging",
+      "body": "Use `ssh -G host` to print the effective config after `Host` and `Match` processing. Check whether `User`, `Port`, `IdentityFile`, `ProxyJump`, `ControlPath`, and `StrictHostKeyChecking` are what you expected. Use `scp -v` or `sftp -vvv` for transfer problems, and run tunnels in the foreground before backgrounding them. See [[ssh/config]] and [[ssh/tunnel]].",
+      "tags": ["ssh-g", "config", "proxyjump", "scp-v", "foreground"]
+    }
+  ],
+  "links": [
+    { "uri": "ssh/connect", "context": "Retry interactive or batch SSH commands after narrowing the failure" },
+    { "uri": "ssh/keys", "context": "Fix ignored or missing client identity keys" },
+    { "uri": "ssh/agent", "context": "Inspect whether the expected key is loaded in the agent" },
+    { "uri": "ssh/config", "context": "Check evaluated config and host-specific settings" },
+    { "uri": "ssh/known-hosts", "context": "Resolve host-key mismatch and trust failures" },
+    { "uri": "ssh/tunnel", "context": "Diagnose forwarding setup and backgrounding issues" }
+  ],
+  "related": [
+    { "uri": "ssh/keys", "relation": "see-also", "note": "Most auth failures are identity selection or permission problems" },
+    { "uri": "ssh/known-hosts", "relation": "see-also", "note": "Host-key failures should be repaired, not bypassed" },
+    { "uri": "ssh/config", "relation": "see-also", "note": "ssh -G reveals whether config expansion matches intent" }
+  ],
+  "more": {
+    "docs": "https://man.openbsd.org/ssh",
+    "scp": "https://man.openbsd.org/scp",
+    "sftp": "https://man.openbsd.org/sftp"
+  },
+  "frontmatter": {
+    "created": "2026-04-11",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "developers, SREs, AI agents",
+    "estimated_reading_time": "4 min",
+    "prerequisites": [],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-11T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "published"
+}
