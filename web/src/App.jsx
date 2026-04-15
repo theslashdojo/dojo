@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import ReactMarkdown from 'react-markdown'
-import { ChevronRight, ChevronDown, Search, Link as LinkIcon, Code, ArrowUpRight, BookOpen, Zap, Box, Globe, Layers, FileText, Copy, Check, ExternalLink, Terminal, Sparkles, ArrowRight } from 'lucide-react'
+import { ChevronRight, ChevronDown, Search, Link as LinkIcon, Code, ArrowUpRight, BookOpen, Zap, Box, Globe, Layers, FileText, Copy, Check, ExternalLink, Terminal, Sparkles, ArrowRight, Moon, Sun } from 'lucide-react'
 
 const DEFAULT_ECOSYSTEMS = [
   'dojo',
@@ -35,8 +35,37 @@ const TYPE_META = {
   sub:       { color: '#6EE7B7', icon: Box, label: 'sub' },
 }
 
+const APP_SHELL_CLASS = 'dojo-explorer'
+const THEME_STORAGE_KEY = 'dojo-explorer-theme'
 const ACCENT = '#A78BFA'
-const TEXT_PRIMARY = 'rgba(255,255,255,0.8)'
+const SUCCESS = '#34D399'
+const APP_BG = 'var(--app-bg)'
+const PANEL_BG = 'var(--panel-bg)'
+const CODE_BG = 'var(--code-bg)'
+const TONE_02 = 'var(--tone-02)'
+const TONE_03 = 'var(--tone-03)'
+const TONE_04 = 'var(--tone-04)'
+const TONE_05 = 'var(--tone-05)'
+const TONE_06 = 'var(--tone-06)'
+const TONE_07 = 'var(--tone-07)'
+const TONE_08 = 'var(--tone-08)'
+const TONE_10 = 'var(--tone-10)'
+const TONE_12 = 'var(--tone-12)'
+const TONE_15 = 'var(--tone-15)'
+const TONE_20 = 'var(--tone-20)'
+const TONE_25 = 'var(--tone-25)'
+const TONE_30 = 'var(--tone-30)'
+const TONE_35 = 'var(--tone-35)'
+const TEXT_PRIMARY = 'var(--tone-80)'
+
+function getPreferredTheme() {
+  if (typeof window === 'undefined') return 'dark'
+
+  const savedTheme = window.localStorage?.getItem(THEME_STORAGE_KEY)
+  if (savedTheme === 'light' || savedTheme === 'dark') return savedTheme
+
+  return window.matchMedia?.('(prefers-color-scheme: light)').matches ? 'light' : 'dark'
+}
 
 function splitTargetUri(uri = '') {
   const value = String(uri || '').trim()
@@ -115,6 +144,70 @@ function transformWikiLinks(markdown = '') {
 const STYLES = `
 @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Fraunces:opsz,wght,SOFT@9..144,300..900,0..100&family=Satoshi:wght@300;400;500;700&display=swap');
 
+.${APP_SHELL_CLASS},
+.${APP_SHELL_CLASS}[data-theme="dark"] {
+  color-scheme: dark;
+  --app-bg: #0C0C0F;
+  --panel-bg: rgba(12,12,15,0.82);
+  --code-bg: rgba(0,0,0,0.25);
+  --tone-02: rgba(255,255,255,0.02);
+  --tone-03: rgba(255,255,255,0.03);
+  --tone-04: rgba(255,255,255,0.04);
+  --tone-05: rgba(255,255,255,0.05);
+  --tone-06: rgba(255,255,255,0.06);
+  --tone-07: rgba(255,255,255,0.07);
+  --tone-08: rgba(255,255,255,0.08);
+  --tone-10: rgba(255,255,255,0.10);
+  --tone-12: rgba(255,255,255,0.12);
+  --tone-15: rgba(255,255,255,0.15);
+  --tone-20: rgba(255,255,255,0.20);
+  --tone-25: rgba(255,255,255,0.25);
+  --tone-30: rgba(255,255,255,0.30);
+  --tone-35: rgba(255,255,255,0.35);
+  --tone-80: rgba(255,255,255,0.82);
+  --selection-bg: rgba(167,139,250,0.28);
+  --selection-text: #fff;
+}
+
+.${APP_SHELL_CLASS}[data-theme="light"] {
+  color-scheme: light;
+  --app-bg: #F5F1EA;
+  --panel-bg: rgba(255,255,255,0.62);
+  --panel-bg-strong: rgba(255,255,255,0.78);
+  --code-bg: rgba(0,0,0,0.04);
+  --glass-border: rgba(15,15,15,0.08);
+  --glass-highlight: rgba(255,255,255,0.7);
+  --tone-02: rgba(20,15,8,0.02);
+  --tone-03: rgba(20,15,8,0.03);
+  --tone-04: rgba(20,15,8,0.04);
+  --tone-05: rgba(20,15,8,0.05);
+  --tone-06: rgba(20,15,8,0.06);
+  --tone-07: rgba(20,15,8,0.07);
+  --tone-08: rgba(20,15,8,0.09);
+  --tone-10: rgba(20,15,8,0.11);
+  --tone-12: rgba(20,15,8,0.14);
+  --tone-15: rgba(20,15,8,0.18);
+  --tone-20: rgba(20,15,8,0.24);
+  --tone-25: rgba(20,15,8,0.30);
+  --tone-30: rgba(20,15,8,0.36);
+  --tone-35: rgba(20,15,8,0.42);
+  --tone-80: rgba(20,12,4,0.88);
+  --selection-bg: rgba(167,139,250,0.22);
+  --selection-text: #1a0f04;
+  --accent: #7C3AED;
+  --accent-2: #2563EB;
+  --success: #059669;
+}
+
+.${APP_SHELL_CLASS} {
+  background: var(--app-bg);
+  color: var(--tone-80);
+}
+
+.${APP_SHELL_CLASS} * {
+  box-sizing: border-box;
+}
+
 @keyframes fadeUp {
   from { opacity: 0; transform: translateY(12px); }
   to { opacity: 1; transform: translateY(0); }
@@ -140,13 +233,13 @@ const STYLES = `
   90% { transform: translate(-1%,7%); }
 }
 
-::-webkit-scrollbar { width: 5px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.06); border-radius: 10px; }
-::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.12); }
+.${APP_SHELL_CLASS} ::-webkit-scrollbar { width: 5px; }
+.${APP_SHELL_CLASS} ::-webkit-scrollbar-track { background: transparent; }
+.${APP_SHELL_CLASS} ::-webkit-scrollbar-thumb { background: ${TONE_06}; border-radius: 10px; }
+.${APP_SHELL_CLASS} ::-webkit-scrollbar-thumb:hover { background: ${TONE_12}; }
 
-::selection { background: rgba(167,139,250,0.3); color: #fff; }
-input::placeholder { color: ${TEXT_PRIMARY}; opacity: 0.5; }
+.${APP_SHELL_CLASS} ::selection { background: var(--selection-bg); color: var(--selection-text); }
+.${APP_SHELL_CLASS} input::placeholder { color: ${TEXT_PRIMARY}; opacity: 0.5; }
 `
 
 function TypeBadge({ type, size = 'sm' }) {
@@ -179,17 +272,56 @@ function CopyButton({ text }) {
   return (
     <button onClick={copy} tabIndex={0} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); copy(); } }} style={{
       display: 'flex', alignItems: 'center', gap: 5, padding: '5px 10px',
-      borderRadius: 6, border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.04)',
-      color: copied ? '#34D399' : TEXT_PRIMARY, fontSize: 11, cursor: 'pointer',
+      borderRadius: 6, border: `1px solid ${TONE_08}`, background: TONE_04,
+      color: copied ? SUCCESS : TEXT_PRIMARY, fontSize: 11, cursor: 'pointer',
       fontFamily: "'DM Mono', monospace", transition: 'all 0.2s ease',
       outline: 'none',
     }}
-      onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.08)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)' }}
-      onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)' }}
-      onFocus={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.08)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)' }}
-      onBlur={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)' }}
+      onMouseEnter={e => { e.currentTarget.style.background = TONE_08; e.currentTarget.style.borderColor = TONE_15 }}
+      onMouseLeave={e => { e.currentTarget.style.background = TONE_04; e.currentTarget.style.borderColor = TONE_08 }}
+      onFocus={e => { e.currentTarget.style.background = TONE_08; e.currentTarget.style.borderColor = TONE_15 }}
+      onBlur={e => { e.currentTarget.style.background = TONE_04; e.currentTarget.style.borderColor = TONE_08 }}
     >
       {copied ? <><Check style={{ width: 12, height: 12 }} /> copied</> : <><Copy style={{ width: 12, height: 12 }} /> copy</>}
+    </button>
+  )
+}
+
+function ThemeToggle({ theme, onToggle }) {
+  const isLight = theme === 'light'
+  const Icon = isLight ? Moon : Sun
+
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-label={`Switch to ${isLight ? 'dark' : 'light'} mode`}
+      title={`Switch to ${isLight ? 'dark' : 'light'} mode`}
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 6,
+        borderRadius: 999,
+        border: `1px solid ${TONE_08}`,
+        background: TONE_03,
+        color: TEXT_PRIMARY,
+        cursor: 'pointer',
+        fontSize: 11,
+        fontFamily: "'DM Mono', monospace",
+        letterSpacing: '0.03em',
+        transition: 'all 0.2s ease',
+        outline: 'none',
+        width: 32,
+        height: 32,
+      }}
+      onMouseEnter={e => { e.currentTarget.style.background = TONE_08; e.currentTarget.style.borderColor = TONE_15 }}
+      onMouseLeave={e => { e.currentTarget.style.background = TONE_03; e.currentTarget.style.borderColor = TONE_08 }}
+      onFocus={e => { e.currentTarget.style.background = TONE_08; e.currentTarget.style.borderColor = TONE_15 }}
+      onBlur={e => { e.currentTarget.style.background = TONE_03; e.currentTarget.style.borderColor = TONE_08 }}
+    >
+      <Icon style={{ width: 13, height: 13, color: ACCENT }} />
+      {isLight ? '' : ''}
     </button>
   )
 }
@@ -337,7 +469,7 @@ function MarkdownBlock({ children, accentColor = ACCENT, dense = false, onNaviga
               >
                 <code
                   style={{
-                    padding: '0.12em 0.38em',
+                    padding: '',
                     borderRadius: 6,
                     background: accentColor + '14',
                     color: accentColor,
@@ -359,7 +491,7 @@ function MarkdownBlock({ children, accentColor = ACCENT, dense = false, onNaviga
               style={{
                 padding: '0.12em 0.38em',
                 borderRadius: 6,
-                background: 'rgba(255,255,255,0.06)',
+                background: TONE_06,
                 color: TEXT_PRIMARY,
                 fontFamily: "'DM Mono', monospace",
                 fontSize: '0.92em',
@@ -380,8 +512,8 @@ function MarkdownBlock({ children, accentColor = ACCENT, dense = false, onNaviga
               margin: '16px 0',
               padding: '16px 18px',
               borderRadius: 12,
-              border: '1px solid rgba(255,255,255,0.06)',
-              background: 'rgba(0,0,0,0.25)',
+              border: `1px solid ${TONE_06}`,
+              background: CODE_BG,
               overflowX: 'auto',
             }}
             {...props}
@@ -432,9 +564,9 @@ function TreeNode({ node, depth, expandedNodes, toggleNode, selectedSkill, handl
           marginBottom: 1,
           outline: 'none',
         }}
-        onMouseEnter={e => { if (!isSelected) e.currentTarget.style.background = 'rgba(255,255,255,0.04)' }}
+        onMouseEnter={e => { if (!isSelected) e.currentTarget.style.background = TONE_04 }}
         onMouseLeave={e => { e.currentTarget.style.background = isSelected ? m.color + '18' : 'transparent' }}
-        onFocus={e => { if (!isSelected) e.currentTarget.style.background = 'rgba(255,255,255,0.08)' }}
+        onFocus={e => { if (!isSelected) e.currentTarget.style.background = TONE_08 }}
         onBlur={e => { e.currentTarget.style.background = isSelected ? m.color + '18' : 'transparent' }}
       >
         {isSelected && (
@@ -461,14 +593,14 @@ function TreeNode({ node, depth, expandedNodes, toggleNode, selectedSkill, handl
             transition: 'background 0.15s',
             outline: 'none',
           }}
-          onMouseEnter={e => { if (hasChildren) e.currentTarget.style.background = 'rgba(255,255,255,0.08)' }}
+          onMouseEnter={e => { if (hasChildren) e.currentTarget.style.background = TONE_08 }}
           onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
-          onFocus={e => { if (hasChildren) e.currentTarget.style.background = 'rgba(255,255,255,0.12)' }}
+          onFocus={e => { if (hasChildren) e.currentTarget.style.background = TONE_12 }}
           onBlur={e => { e.currentTarget.style.background = 'transparent' }}
         >
           {hasChildren ? (isExpanded
-            ? <ChevronDown style={{ width: 13, height: 13, color: 'rgba(255,255,255,0.35)' }} />
-            : <ChevronRight style={{ width: 13, height: 13, color: 'rgba(255,255,255,0.25)' }} />
+            ? <ChevronDown style={{ width: 13, height: 13, color: TONE_35 }} />
+            : <ChevronRight style={{ width: 13, height: 13, color: TONE_25 }} />
           ) : <span style={{ width: 4, height: 4, borderRadius: '50%', background: m.color, opacity: 0.5 }} />}
         </span>
 
@@ -494,7 +626,7 @@ function TreeNode({ node, depth, expandedNodes, toggleNode, selectedSkill, handl
         <div style={{ position: 'relative' }}>
           <div style={{
             position: 'absolute', left: 22 + depth * 18, top: 0, bottom: 8,
-            width: 1, background: 'rgba(255,255,255,0.06)',
+            width: 1, background: TONE_06,
           }} />
           {node.skills.map((child, i) => (
             <TreeNode key={child.uri || Math.random()} node={child} depth={depth + 1}
@@ -539,9 +671,9 @@ function DetailView({ skill, backlinks, onNavigate, focusedSectionId }) {
     }}>
       <div style={{
         width: 64, height: 64, borderRadius: 20, display: 'flex', alignItems: 'center', justifyContent: 'center',
-        background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)',
+        background: TONE_03, border: `1px solid ${TONE_06}`,
       }}>
-        <Sparkles style={{ width: 28, height: 28, color: 'rgba(255,255,255,0.12)' }} />
+        <Sparkles style={{ width: 28, height: 28, color: TONE_12 }} />
       </div>
       <span style={{ fontSize: 15, color: TEXT_PRIMARY, fontWeight: 300, fontFamily: "'Satoshi', sans-serif" }}>
         Select a node to explore
@@ -552,7 +684,7 @@ function DetailView({ skill, backlinks, onNavigate, focusedSectionId }) {
   const m = TYPE_META[skill.type] || TYPE_META.skill
   const mono = "'DM Mono', monospace"
   const parts = (skill.uri || '').split('/')
-  const isCtx = skill.type === 'context'
+  const isCtx = skill.type !== ''
   const selectedUri = focusedSectionId ? `${skill.uri}#${focusedSectionId}` : skill.uri
 
   const toggleSection = id => {
@@ -562,12 +694,12 @@ function DetailView({ skill, backlinks, onNavigate, focusedSectionId }) {
   const Section = ({ label, icon: Icon, children, delay = 0 }) => (
     <div style={{ marginBottom: 32, animation: `fadeUp 0.4s ease ${delay}s both` }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
-        {Icon && <Icon style={{ width: 13, height: 13, color: 'rgba(255,255,255,0.25)' }} />}
+        {Icon && <Icon style={{ width: 13, height: 13, color: TONE_25 }} />}
         <span style={{
-          fontSize: 10, fontWeight: 500, color: 'rgba(255,255,255,0.3)',
+          fontSize: 10, fontWeight: 500, color: TONE_30,
           letterSpacing: '0.14em', fontFamily: mono, textTransform: 'uppercase',
         }}>{label}</span>
-        <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.05)', marginLeft: 8 }} />
+        <div style={{ flex: 1, height: 1, background: TONE_05, marginLeft: 8 }} />
       </div>
       {children}
     </div>
@@ -582,7 +714,7 @@ function DetailView({ skill, backlinks, onNavigate, focusedSectionId }) {
       }}>
           {parts.map((part, i) => (
             <span key={i} style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-              {i > 0 && <ChevronRight style={{ width: 11, height: 11, color: 'rgba(255,255,255,0.15)', margin: '0 2px' }} />}
+              {i > 0 && <ChevronRight style={{ width: 11, height: 11, color: TONE_15, margin: '0 2px' }} />}
               <span
                 tabIndex={i < parts.length - 1 ? 0 : -1}
                 onClick={() => i < parts.length - 1 && onNavigate({ uri: parts.slice(0, i + 1).join('/') })}
@@ -594,23 +726,23 @@ function DetailView({ skill, backlinks, onNavigate, focusedSectionId }) {
                 }}
                 style={{
                   fontSize: 12, fontFamily: mono,
-                  color: i === parts.length - 1 ? m.color : 'rgba(255,255,255,0.3)',
+                  color: i === parts.length - 1 ? m.color : TONE_30,
                   fontWeight: i === parts.length - 1 ? 500 : 400,
                   cursor: i < parts.length - 1 ? 'pointer' : 'default',
                   padding: '2px 6px', borderRadius: 4,
                   transition: 'all 0.15s',
                   outline: 'none',
                 }}
-                onMouseEnter={e => { if (i < parts.length - 1) e.currentTarget.style.background = 'rgba(255,255,255,0.06)' }}
+                onMouseEnter={e => { if (i < parts.length - 1) e.currentTarget.style.background = TONE_06 }}
                 onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
-                onFocus={e => { if (i < parts.length - 1) e.currentTarget.style.background = 'rgba(255,255,255,0.1)' }}
+                onFocus={e => { if (i < parts.length - 1) e.currentTarget.style.background = TONE_10 }}
                 onBlur={e => { e.currentTarget.style.background = 'transparent' }}
               >{part}</span>
             </span>
           ))}
           {focusedSectionId && (
             <span style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-              <ChevronRight style={{ width: 11, height: 11, color: 'rgba(255,255,255,0.15)', margin: '0 2px' }} />
+              <ChevronRight style={{ width: 11, height: 11, color: TONE_15, margin: '0 2px' }} />
               <span style={{
                 fontSize: 12, fontFamily: mono,
                 color: m.color, fontWeight: 500,
@@ -631,9 +763,9 @@ function DetailView({ skill, backlinks, onNavigate, focusedSectionId }) {
             {skill.name || parts[parts.length - 1]}
           </h1>
           <span style={{
-            fontSize: 11, color: 'rgba(255,255,255,0.3)', fontFamily: mono,
-            padding: '5px 10px', background: 'rgba(255,255,255,0.04)',
-            borderRadius: 6, border: '1px solid rgba(255,255,255,0.06)',
+            fontSize: 11, color: TONE_30, fontFamily: mono,
+            padding: '5px 10px', background: TONE_04,
+            borderRadius: 6, border: `1px solid ${TONE_06}`,
             flexShrink: 0, marginTop: 8,
           }}>
             v{skill.version || '0.0.0'}
@@ -646,8 +778,8 @@ function DetailView({ skill, backlinks, onNavigate, focusedSectionId }) {
           {skill.content_type && (
             <span style={{
               fontSize: 11, padding: '4px 10px', borderRadius: 6,
-              background: 'rgba(255,255,255,0.04)', color: 'rgba(255,255,255,0.35)',
-              border: '1px solid rgba(255,255,255,0.06)', fontFamily: mono,
+              background: TONE_04, color: TONE_35,
+              border: `1px solid ${TONE_06}`, fontFamily: mono,
             }}>{skill.content_type}</span>
           )}
         </div>
@@ -666,8 +798,8 @@ function DetailView({ skill, backlinks, onNavigate, focusedSectionId }) {
               {skill.sections?.find(section => section.id === focusedSectionId)?.title || focusedSectionId}
             </span>
             <span style={{
-              fontSize: 10, color: 'rgba(255,255,255,0.3)', fontFamily: mono,
-              padding: '2px 6px', borderRadius: 4, background: 'rgba(255,255,255,0.04)',
+              fontSize: 10, color: TONE_30, fontFamily: mono,
+              padding: '2px 6px', borderRadius: 4, background: TONE_04,
             }}>
               {focusedSectionId}
             </span>
@@ -688,7 +820,7 @@ function DetailView({ skill, backlinks, onNavigate, focusedSectionId }) {
             background: `linear-gradient(180deg, ${m.color}, ${m.color}30)`,
           }} />
           <p style={{
-            fontSize: 16, color: 'rgba(255,255,255,0.8)', lineHeight: 1.65, fontWeight: 300,
+            fontSize: 16, color: TEXT_PRIMARY, lineHeight: 1.65, fontWeight: 300,
             margin: 0, fontFamily: "'Satoshi', sans-serif",
           }}>{skill.context}</p>
         </div>
@@ -700,8 +832,8 @@ function DetailView({ skill, backlinks, onNavigate, focusedSectionId }) {
           {skill.tags.map(tag => (
             <span key={tag} style={{
               fontSize: 11, padding: '4px 11px', borderRadius: 20,
-              background: 'rgba(255,255,255,0.04)', color: TEXT_PRIMARY,
-              border: '1px solid rgba(255,255,255,0.07)',
+              background: TONE_04, color: TEXT_PRIMARY,
+              border: `1px solid ${TONE_07}`,
               fontFamily: "'Satoshi', sans-serif", fontWeight: 400,
             }}>
               {tag}
@@ -747,30 +879,30 @@ function DetailView({ skill, backlinks, onNavigate, focusedSectionId }) {
                       onClick={() => toggleSection(s.id)}
                       onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleSection(s.id); } }}
                       style={{
-                        background: isFocused ? m.color + '14' : (isOpen ? 'rgba(255,255,255,0.03)' : 'transparent'),
+                        background: isFocused ? m.color + '14' : (isOpen ? TONE_03 : 'transparent'),
                         display: 'flex', alignItems: 'center', gap: 10, padding: '13px 18px',
                         cursor: 'pointer',
                         transition: 'background 0.15s',
                         outline: 'none',
                       }}
                       onMouseEnter={e => {
-                        e.currentTarget.style.background = isFocused ? m.color + '18' : 'rgba(255,255,255,0.04)'
+                        e.currentTarget.style.background = isFocused ? m.color + '18' : TONE_04
                       }}
                       onMouseLeave={e => {
-                        e.currentTarget.style.background = isFocused ? m.color + '14' : (isOpen ? 'rgba(255,255,255,0.03)' : 'transparent')
+                        e.currentTarget.style.background = isFocused ? m.color + '14' : (isOpen ? TONE_03 : 'transparent')
                       }}
                       onFocus={e => {
-                        e.currentTarget.style.background = isFocused ? m.color + '1C' : 'rgba(255,255,255,0.06)'
+                        e.currentTarget.style.background = isFocused ? m.color + '1C' : TONE_06
                       }}
                       onBlur={e => {
-                        e.currentTarget.style.background = isFocused ? m.color + '14' : (isOpen ? 'rgba(255,255,255,0.03)' : 'transparent')
+                        e.currentTarget.style.background = isFocused ? m.color + '14' : (isOpen ? TONE_03 : 'transparent')
                       }}
                     >
                     <span style={{ fontSize: 14, color: isFocused ? m.color : TYPE_META.context.color, fontFamily: mono, fontWeight: 500 }}>#</span>
-                    <span style={{ fontSize: 14, color: 'rgba(255,255,255,0.8)', fontWeight: isFocused ? 500 : 400, flex: 1, fontFamily: "'Satoshi', sans-serif" }}>{s.title}</span>
-                    <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.2)', fontFamily: mono }}>{s.id}</span>
+                    <span style={{ fontSize: 14, color: TEXT_PRIMARY, fontWeight: isFocused ? 500 : 400, flex: 1, fontFamily: "'Satoshi', sans-serif" }}>{s.title}</span>
+                    <span style={{ fontSize: 10, color: TONE_20, fontFamily: mono }}>{s.id}</span>
                     <ChevronDown style={{
-                      width: 14, height: 14, color: isFocused ? m.color : 'rgba(255,255,255,0.25)',
+                      width: 14, height: 14, color: isFocused ? m.color : TONE_25,
                       transform: isOpen ? 'rotate(0)' : 'rotate(-90deg)',
                       transition: 'transform 0.25s cubic-bezier(0.4,0,0.2,1)',
                     }} />
@@ -799,12 +931,12 @@ function DetailView({ skill, backlinks, onNavigate, focusedSectionId }) {
           <div style={{
             display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
             padding: '14px 18px', borderRadius: 12,
-            background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)',
+            background: TONE_02, border: `1px solid ${TONE_06}`,
           }}>
             <code style={{ fontSize: 13, fontFamily: mono, color: TEXT_PRIMARY }}>
               <span style={{ color: m.color }}>$</span>
-              <span style={{ color: 'rgba(255,255,255,0.25)', margin: '0 8px' }}>dojo</span>
-              <span style={{ color: '#34D399' }}>{isCtx ? 'learn' : 'install'}</span>
+              <span style={{ color: TONE_25, margin: '0 8px' }}>dojo</span>
+              <span style={{ color: SUCCESS }}>{isCtx ? 'learn' : 'install'}</span>
               <span style={{ color: TEXT_PRIMARY, marginLeft: 8 }}>{isCtx ? selectedUri : skill.uri}</span>
             </code>
             <CopyButton text={`dojo ${isCtx ? 'learn' : 'install'} ${isCtx ? selectedUri : skill.uri}`} />
@@ -818,21 +950,21 @@ function DetailView({ skill, backlinks, onNavigate, focusedSectionId }) {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {skill.scripts.map(script => (
               <div key={script.id || script} style={{
-                borderRadius: 12, border: '1px solid rgba(255,255,255,0.06)', overflow: 'hidden',
+                borderRadius: 12, border: `1px solid ${TONE_06}`, overflow: 'hidden',
               }}>
                 <div style={{
                   display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                  padding: '12px 18px', background: 'rgba(255,255,255,0.03)',
-                  borderBottom: (script.inline || script.description) ? '1px solid rgba(255,255,255,0.05)' : 'none',
+                  padding: '12px 18px', background: TONE_03,
+                  borderBottom: (script.inline || script.description) ? `1px solid ${TONE_05}` : 'none',
                 }}>
                   <span style={{ fontFamily: mono, fontSize: 13, fontWeight: 500, color: TYPE_META.skill.color }}>
                     {script.id || script}
                   </span>
                   {script.lang && (
                     <span style={{
-                      fontSize: 10, fontFamily: mono, color: 'rgba(255,255,255,0.3)',
-                      padding: '2px 8px', background: 'rgba(255,255,255,0.04)', borderRadius: 5,
-                      border: '1px solid rgba(255,255,255,0.06)',
+                      fontSize: 10, fontFamily: mono, color: TONE_30,
+                      padding: '2px 8px', background: TONE_04, borderRadius: 5,
+                      border: `1px solid ${TONE_06}`,
                     }}>{script.lang}</span>
                   )}
                 </div>
@@ -844,7 +976,7 @@ function DetailView({ skill, backlinks, onNavigate, focusedSectionId }) {
                 {script.inline && (
                   <pre style={{
                     margin: 0, padding: '16px 20px', fontSize: 12, fontFamily: mono,
-                    color: TEXT_PRIMARY, background: 'rgba(0,0,0,0.25)',
+                    color: TEXT_PRIMARY, background: CODE_BG,
                     overflowX: 'auto', lineHeight: 1.7, maxHeight: 260, overflowY: 'auto',
                   }}><code>{script.inline}</code></pre>
                 )}
@@ -865,28 +997,28 @@ function DetailView({ skill, backlinks, onNavigate, focusedSectionId }) {
                   onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onNavigate({ uri: dep.uri }); } }}
                   style={{
                     display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px',
-                    borderRadius: 10, cursor: 'pointer', border: '1px solid rgba(255,255,255,0.06)',
+                    borderRadius: 10, cursor: 'pointer', border: `1px solid ${TONE_06}`,
                     transition: 'all 0.15s ease', background: 'transparent',
                     outline: 'none',
                   }}
                   onMouseEnter={e => {
-                    e.currentTarget.style.background = 'rgba(255,255,255,0.03)'
+                    e.currentTarget.style.background = TONE_03
                     e.currentTarget.style.borderColor = TYPE_META.skill.color + '40'
                     e.currentTarget.style.transform = 'translateX(4px)'
                   }}
                   onMouseLeave={e => {
                     e.currentTarget.style.background = 'transparent'
-                    e.currentTarget.style.borderColor = 'rgba(255,255,255,0.06)'
+                    e.currentTarget.style.borderColor = TONE_06
                     e.currentTarget.style.transform = 'translateX(0)'
                   }}
                   onFocus={e => {
-                    e.currentTarget.style.background = 'rgba(255,255,255,0.06)'
+                    e.currentTarget.style.background = TONE_06
                     e.currentTarget.style.borderColor = TYPE_META.skill.color + '60'
                     e.currentTarget.style.transform = 'translateX(4px)'
                   }}
                   onBlur={e => {
                     e.currentTarget.style.background = 'transparent'
-                    e.currentTarget.style.borderColor = 'rgba(255,255,255,0.06)'
+                    e.currentTarget.style.borderColor = TONE_06
                     e.currentTarget.style.transform = 'translateX(0)'
                   }}
                 >
@@ -895,12 +1027,12 @@ function DetailView({ skill, backlinks, onNavigate, focusedSectionId }) {
                 {dep.optional && (
                   <span style={{
                     fontSize: 9, padding: '2px 6px', borderRadius: 4,
-                    border: '1px solid rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.3)',
+                    border: `1px solid ${TONE_08}`, color: TONE_30,
                     fontFamily: mono, textTransform: 'uppercase', letterSpacing: '0.05em',
                   }}>opt</span>
                 )}
                 {dep.reason && (
-                  <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.25)', fontWeight: 300, marginLeft: 'auto' }}>
+                  <span style={{ fontSize: 12, color: TONE_25, fontWeight: 300, marginLeft: 'auto' }}>
                     {dep.reason}
                   </span>
                 )}
@@ -916,11 +1048,11 @@ function DetailView({ skill, backlinks, onNavigate, focusedSectionId }) {
           <div style={{ display: 'flex', gap: 14 }}>
             {['input', 'output'].filter(k => skill.schema[k]).map(k => (
               <div key={k} style={{
-                flex: 1, padding: 16, borderRadius: 12, background: 'rgba(255,255,255,0.02)',
-                border: '1px solid rgba(255,255,255,0.06)',
+                flex: 1, padding: 16, borderRadius: 12, background: TONE_02,
+                border: `1px solid ${TONE_06}`,
               }}>
                 <div style={{
-                  fontSize: 10, fontFamily: mono, color: k === 'input' ? ACCENT : '#34D399',
+                  fontSize: 10, fontFamily: mono, color: k === 'input' ? ACCENT : SUCCESS,
                   marginBottom: 10, fontWeight: 500, letterSpacing: '0.1em', textTransform: 'uppercase',
                 }}>{k}</div>
                 <pre style={{
@@ -952,9 +1084,9 @@ function ConnectionsPanel({ skill, backlinks, onNavigate }) {
       display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', borderRadius: 7,
       cursor: 'pointer', transition: 'all 0.15s', fontSize: 11, outline: 'none',
     }}
-      onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; e.currentTarget.style.transform = 'translateX(2px)' }}
+      onMouseEnter={e => { e.currentTarget.style.background = TONE_04; e.currentTarget.style.transform = 'translateX(2px)' }}
       onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.transform = 'translateX(0)' }}
-      onFocus={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; e.currentTarget.style.transform = 'translateX(2px)' }}
+      onFocus={e => { e.currentTarget.style.background = TONE_06; e.currentTarget.style.transform = 'translateX(2px)' }}
       onBlur={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.transform = 'translateX(0)' }}
     >
       <span style={{ width: 5, height: 5, borderRadius: '50%', background: color, flexShrink: 0, boxShadow: `0 0 6px ${color}40` }} />
@@ -964,8 +1096,8 @@ function ConnectionsPanel({ skill, backlinks, onNavigate }) {
       }}>{uri}</span>
       {label && (
         <span style={{
-          fontSize: 9, color: 'rgba(255,255,255,0.2)', fontFamily: "'DM Mono', monospace",
-          flexShrink: 0, padding: '1px 5px', background: 'rgba(255,255,255,0.04)', borderRadius: 3,
+          fontSize: 9, color: TONE_20, fontFamily: "'DM Mono', monospace",
+          flexShrink: 0, padding: '1px 5px', background: TONE_04, borderRadius: 3,
         }}>{label}</span>
       )}
     </div>
@@ -974,14 +1106,14 @@ function ConnectionsPanel({ skill, backlinks, onNavigate }) {
   const Group = ({ title, icon: Icon, children, empty }) => (
     <div style={{ marginBottom: 20 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '0 10px', marginBottom: 8 }}>
-        <Icon style={{ width: 11, height: 11, color: 'rgba(255,255,255,0.2)' }} />
+        <Icon style={{ width: 11, height: 11, color: TONE_20 }} />
         <span style={{
-          fontSize: 9, fontWeight: 500, color: 'rgba(255,255,255,0.25)',
+          fontSize: 9, fontWeight: 500, color: TONE_25,
           letterSpacing: '0.12em', fontFamily: "'DM Mono', monospace", textTransform: 'uppercase',
         }}>{title}</span>
       </div>
       {children || (
-        <div style={{ padding: '6px 10px', fontSize: 11, color: 'rgba(255,255,255,0.15)', fontWeight: 300, fontStyle: 'italic' }}>
+        <div style={{ padding: '6px 10px', fontSize: 11, color: TONE_15, fontWeight: 300, fontStyle: 'italic' }}>
           {empty}
         </div>
       )}
@@ -1030,6 +1162,7 @@ export default function App() {
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [searchFocused, setSearchFocused] = useState(false)
+  const [theme, setTheme] = useState(getPreferredTheme)
 
   useEffect(() => {
     const s = document.createElement('style')
@@ -1037,6 +1170,10 @@ export default function App() {
     document.head.appendChild(s)
     return () => document.head.removeChild(s)
   }, [])
+
+  useEffect(() => {
+    window.localStorage?.setItem(THEME_STORAGE_KEY, theme)
+  }, [theme])
 
   useEffect(() => {
     const fetchAll = async () => {
@@ -1146,24 +1283,24 @@ export default function App() {
   }, [searchQuery, trees, ecosystems]);
 
   return (
-    <div style={{
+    <div className={APP_SHELL_CLASS} data-theme={theme} style={{
       display: 'flex', height: '100vh', width: '100vw',
       fontFamily: "'Satoshi', sans-serif",
-      color: TEXT_PRIMARY, background: '#0C0C0F', overflow: 'hidden',
+      color: TEXT_PRIMARY, background: APP_BG, overflow: 'hidden',
       position: 'relative',
     }}>
       {/* Sidebar */}
       <div style={{
         width: 272, flexShrink: 0, display: 'flex', flexDirection: 'column',
-        borderRight: '1px solid rgba(255,255,255,0.06)',
-        background: 'rgba(12,12,15,0.8)',
+        borderRight: `1px solid ${TONE_06}`,
+        background: PANEL_BG,
         backdropFilter: 'blur(20px)',
         zIndex: 1,
       }}>
         {/* Logo */}
         <div style={{
-          padding: '16px 18px', display: 'flex', alignItems: 'center', gap: 12,
-          borderBottom: '1px solid rgba(255,255,255,0.06)',
+          padding: '16px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
+          borderBottom: `1px solid ${TONE_06}`,
         }}>
           <div style={{ display: 'flex', flexDirection: 'column' }}>
             <span style={{ fontFamily: "'Fraunces', serif", fontSize: 17, fontWeight: 400, color: TEXT_PRIMARY, lineHeight: 1 }}>
@@ -1173,10 +1310,11 @@ export default function App() {
 the agent knowledge layer
             </span>
           </div>
+          <ThemeToggle theme={theme} onToggle={() => setTheme(currentTheme => currentTheme === 'dark' ? 'light' : 'dark')} />
         </div>
 
         {/* Search */}
-        <div style={{ padding: '12px 14px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+        <div style={{ padding: '12px 14px', borderBottom: `1px solid ${TONE_06}` }}>
           <div style={{
             position: 'relative',
             borderRadius: 8,
@@ -1185,7 +1323,7 @@ the agent knowledge layer
           }}>
             <Search style={{
               width: 14, height: 14, position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)',
-              color: searchFocused ? ACCENT : 'rgba(255,255,255,0.2)', transition: 'color 0.2s',
+              color: searchFocused ? ACCENT : TONE_20, transition: 'color 0.2s',
             }} />
             <input type="text" placeholder="Search nodes..." value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
@@ -1193,7 +1331,7 @@ the agent knowledge layer
               onBlur={() => setSearchFocused(false)}
               style={{
                 width: '100%', padding: '8px 12px 8px 34px', fontSize: 13, borderRadius: 8, boxSizing: 'border-box',
-                border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.03)',
+                border: `1px solid ${TONE_08}`, background: TONE_03,
                 color: TEXT_PRIMARY, outline: 'none', fontFamily: "'Satoshi', sans-serif",
                 transition: 'border-color 0.2s',
               }}
@@ -1226,7 +1364,7 @@ the agent knowledge layer
 
         {/* Legend */}
         <div style={{
-          padding: '12px 16px', borderTop: '1px solid rgba(255,255,255,0.06)',
+          padding: '12px 16px', borderTop: `1px solid ${TONE_06}`,
           display: 'flex', flexWrap: 'wrap', gap: 10,
         }}>
           {Object.entries(TYPE_META).map(([type, m]) => (
@@ -1246,16 +1384,16 @@ the agent knowledge layer
       {/* Right panel */}
       <div style={{
         width: 228, flexShrink: 0,
-        borderLeft: '1px solid rgba(255,255,255,0.06)',
-        background: 'rgba(12,12,15,0.8)',
+        borderLeft: `1px solid ${TONE_06}`,
+        background: PANEL_BG,
         backdropFilter: 'blur(20px)',
         overflowY: 'auto', zIndex: 1,
       }}>
         <div style={{
-          padding: '16px 16px', borderBottom: '1px solid rgba(255,255,255,0.06)',
+          padding: '16px 16px', borderBottom: `1px solid ${TONE_06}`,
           display: 'flex', alignItems: 'center', gap: 7,
         }}>
-          <LinkIcon style={{ width: 13, height: 13, color: 'rgba(255,255,255,0.25)' }} />
+          <LinkIcon style={{ width: 13, height: 13, color: TONE_25 }} />
           <span style={{ fontSize: 12, fontWeight: 500, color: TEXT_PRIMARY }}>Connections</span>
         </div>
         <ConnectionsPanel skill={selectedSkill} backlinks={backlinks} onNavigate={handleSelect} />

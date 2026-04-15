@@ -1,0 +1,127 @@
+{
+  "name": "openapi",
+  "version": "1.0.0",
+  "uri": "openapi",
+  "type": "ecosystem",
+  "context": "Design, validate, mock, test, diff, and generate code from OpenAPI descriptions for HTTP APIs.",
+  "info": "OpenAPI is the contract ecosystem for HTTP APIs. It defines machine-readable API descriptions that agents can use to understand endpoints, parameters, request bodies, responses, authentication, examples, and schemas before writing code. The execution surface spans authoring YAML or JSON descriptions, linting and bundling them with Redocly CLI, generating clients or server stubs with OpenAPI Generator, mocking APIs with Prism, testing live services with Schemathesis, and detecting breaking changes with oasdiff. This matters for autonomous agents because it turns ambiguous API integration work into a concrete contract: agents can discover operations, generate typed SDKs, verify server behavior, create reproducible mocks, and block incompatible API changes in CI.",
+  "parent": null,
+  "tags": ["openapi", "oas", "swagger", "api-contracts", "http-api", "rest", "schema", "sdk-generation", "mock-server", "contract-testing"],
+  "aliases": [
+    "openapi",
+    "open api",
+    "oas",
+    "oas3",
+    "openapi 3",
+    "openapi 3.1",
+    "openapi 3.2",
+    "swagger",
+    "swagger spec",
+    "api spec",
+    "api contract",
+    "swagger yaml",
+    "openapi yaml",
+    "openapi json",
+    "open api spec"
+  ],
+  "triggers": [
+    "create an openapi spec",
+    "validate this swagger file",
+    "generate a client from openapi",
+    "mock this api from openapi",
+    "test the api against the spec",
+    "diff two openapi specs",
+    "detect breaking api changes",
+    "document this rest api",
+    "turn swagger into typescript client",
+    "bundle a multi file openapi description"
+  ],
+  "body": "# OpenAPI Ecosystem\n\nOpenAPI descriptions are executable contracts for HTTP APIs. Use this ecosystem when an agent needs to design an API before implementation, consume an unknown API, generate clients, create mock servers, validate documentation, fuzz a live service, or review a pull request for breaking API changes.\n\n## Tree\n\n- [[openapi/spec]] - OpenAPI object model: root document, paths, operations, schemas, components, refs, servers, and security.\n- [[openapi/author]] - Author a high-quality contract with stable operation IDs, reusable components, examples, and predictable errors.\n- [[openapi/validate]] - Lint, validate, and bundle OpenAPI YAML or JSON with Redocly CLI.\n- [[openapi/generate]] - Generate SDKs, clients, server stubs, and typed models with OpenAPI Generator.\n- [[openapi/mock]] - Run local or CI mock servers from an API contract with Prism.\n- [[openapi/contract-test]] - Exercise a live API against its contract with Schemathesis.\n- [[openapi/diff]] - Detect breaking API changes with oasdiff before merge or release.\n\n## Fast Path\n\n```bash\n# Scaffold a minimal contract\nnodes/openapi/scripts/scaffold-openapi.mjs --out openapi.yaml --title Payments --server http://localhost:3000\n\n# Validate and bundle\nnodes/openapi/scripts/validate-openapi.sh openapi.yaml dist/openapi.bundle.yaml\n\n# Generate a TypeScript fetch client\nnodes/openapi/scripts/generate-openapi.sh dist/openapi.bundle.yaml typescript-fetch generated/payments-client\n\n# Start a mock API\nnodes/openapi/scripts/mock-openapi.sh dist/openapi.bundle.yaml 4010\n\n# Test a real API implementation\nnodes/openapi/scripts/contract-test-openapi.sh dist/openapi.bundle.yaml http://localhost:3000 --checks all --max-examples 50\n\n# Check compatibility in a PR\nnodes/openapi/scripts/diff-openapi.sh main-openapi.yaml pr-openapi.yaml\n```\n\n## Minimal Contract Shape\n\n```yaml\nopenapi: 3.1.0\ninfo:\n  title: Payments API\n  version: 1.0.0\nservers:\n  - url: https://api.example.com\npaths:\n  /payments:\n    get:\n      operationId: listPayments\n      responses:\n        '200':\n          description: Payment list\n          content:\n            application/json:\n              schema:\n                type: array\n                items:\n                  $ref: '#/components/schemas/Payment'\ncomponents:\n  schemas:\n    Payment:\n      type: object\n      required: [id, amount, currency]\n      properties:\n        id: { type: string }\n        amount: { type: integer, minimum: 0 }\n        currency: { type: string, minLength: 3, maxLength: 3 }\n```\n\nOpenAPI 3.2.0 is the latest specification line, while many production generators and gateways still center on 3.0 and 3.1. When tool compatibility matters, validate the exact target toolchain before adopting 3.2-only features.",
+  "sections": [
+    {
+      "id": "agent-workflow",
+      "title": "Agent workflow",
+      "body": "Start by finding the source contract: a committed `openapi.yaml`, generated `/openapi.json`, service docs page, or upstream package. Validate it with [[openapi/validate]]. If it is multi-file, bundle it before sending it to generators, mocks, and contract tests. Use [[openapi/generate]] for SDK work, [[openapi/mock]] for frontend or integration development without a backend, [[openapi/contract-test]] for live service verification, and [[openapi/diff]] for release compatibility review.",
+      "tags": ["workflow", "agents", "contract-first"]
+    },
+    {
+      "id": "document-shape",
+      "title": "Document shape",
+      "body": "A practical OpenAPI document has `openapi`, `info`, `servers`, `paths`, and `components`. Paths contain operations such as `get`, `post`, and `delete`. Operations define `operationId`, parameters, request bodies, responses, examples, tags, and security overrides. Components hold reusable schemas, parameters, responses, examples, headers, request bodies, links, callbacks, and security schemes. See [[openapi/spec]] for object-level details.",
+      "tags": ["paths", "operations", "components", "schemas"]
+    },
+    {
+      "id": "execution-surface",
+      "title": "Execution surface",
+      "body": "This ecosystem uses local files, remote schema URLs, Node CLIs, Python CLIs, and CI pipelines. Redocly CLI handles linting and bundling, OpenAPI Generator produces clients and servers, Prism serves mocks and validation proxies, Schemathesis fuzzes live services from the schema, and oasdiff compares old and new contracts. Scripts in `nodes/openapi/scripts` wrap these tools with consistent arguments.",
+      "tags": ["cli", "scripts", "redocly", "generator", "prism", "schemathesis", "oasdiff"]
+    },
+    {
+      "id": "tool-compatibility",
+      "title": "Tool compatibility",
+      "body": "OpenAPI 3.2.0 is the latest spec, but interoperability often depends on target tools. Gateways, generators, validators, and documentation renderers may lag behind the newest spec. For production pipelines, prefer the newest version that every required tool supports. OpenAPI 3.1 aligns schemas with JSON Schema 2020-12 and is usually the best modern default when tool support is available.",
+      "tags": ["openapi-3-2", "openapi-3-1", "compatibility", "json-schema"]
+    },
+    {
+      "id": "ci-contract-gates",
+      "title": "CI contract gates",
+      "body": "A strong CI gate validates the spec, bundles it, generates clients or docs if those are committed artifacts, tests live preview deployments with Schemathesis, and runs oasdiff against the last released spec. This catches invalid YAML, broken refs, undocumented responses, incompatible schema changes, and server behavior that no longer matches the contract.",
+      "tags": ["ci", "contract-testing", "breaking-changes", "quality-gate"]
+    }
+  ],
+  "sub": [
+    "openapi/spec",
+    "openapi/author",
+    "openapi/validate",
+    "openapi/generate",
+    "openapi/mock",
+    "openapi/contract-test",
+    "openapi/diff"
+  ],
+  "links": [
+    { "uri": "openapi/spec", "context": "Specification model, object structure, references, schemas, and security" },
+    { "uri": "openapi/author", "context": "Write and maintain a high-quality OpenAPI contract" },
+    { "uri": "openapi/validate", "context": "Validate, lint, and bundle OpenAPI documents" },
+    { "uri": "openapi/generate", "context": "Generate SDKs, clients, server stubs, and models" },
+    { "uri": "openapi/mock", "context": "Run mock servers from OpenAPI descriptions" },
+    { "uri": "openapi/contract-test", "context": "Test a live API implementation against the contract" },
+    { "uri": "openapi/diff", "context": "Detect breaking API changes between spec versions" },
+    { "uri": "curl", "context": "Call and inspect HTTP endpoints described by OpenAPI" },
+    { "uri": "node/npm", "context": "Run Node-based OpenAPI tools with npx or package scripts" },
+    { "uri": "python", "context": "Run Python-based Schemathesis contract tests" },
+    { "uri": "github/actions", "context": "Automate validation, diffing, generation, and contract tests in CI" }
+  ],
+  "related": [
+    { "uri": "curl", "relation": "see-also", "note": "curl exercises operations documented in an OpenAPI contract" },
+    { "uri": "zod", "relation": "see-also", "note": "Zod schemas are often converted to or from OpenAPI schemas in TypeScript projects" },
+    { "uri": "typescript", "relation": "see-also", "note": "Generated OpenAPI clients are commonly TypeScript packages" },
+    { "uri": "testing/ci", "relation": "see-also", "note": "OpenAPI validation and contract testing belong in CI" },
+    { "uri": "mcp", "relation": "see-also", "note": "OpenAPI contracts can be converted into agent tools or MCP server surfaces" }
+  ],
+  "more": {
+    "docs": "https://learn.openapis.org/",
+    "spec": "https://spec.openapis.org/oas/latest.html",
+    "redocly": "https://redocly.com/docs/cli/",
+    "generator": "https://openapi-generator.tech/docs/installation/",
+    "prism": "https://github.com/stoplightio/prism",
+    "schemathesis": "https://schemathesis.readthedocs.io/en/stable/reference/cli/",
+    "oasdiff": "https://www.oasdiff.com/",
+    "skills": "https://github.com/agentskills/agentskills"
+  },
+  "frontmatter": {
+    "created": "2026-04-15",
+    "updated": "2026-04-15",
+    "author": "dojo-community",
+    "audience": "developers, platform engineers, API designers, AI agents",
+    "estimated_reading_time": "7 min",
+    "prerequisites": ["curl", "node/npm"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://github.com/OAI/OpenAPI-Specification",
+  "created": "2026-04-15T00:00:00Z",
+  "updated": "2026-04-15T00:00:00Z",
+  "status": "published"
+}

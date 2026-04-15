@@ -1,0 +1,294 @@
+{
+  "version": "1.0.0",
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://github.com/jqlang/jq",
+  "created": "2026-04-12T00:00:00Z",
+  "updated": "2026-04-12T00:00:00Z",
+  "status": "published",
+  "name": "streaming",
+  "uri": "jq/streaming",
+  "type": "skill",
+  "context": "Process large JSON inputs incrementally with --stream, reducers, JSON seq, and unbuffered output",
+  "info": "This skill covers jq when document size or stream shape matters more than convenient random access. It uses `--stream` to emit path/value events, `reduce` and `foreach` to aggregate incrementally, `truncate_stream`, `fromstream`, and `tostream` to reconstruct or trim streamed data, and `--seq` or `--stream-errors` when the input is a stream of JSON texts or partially invalid records. Agents use this node for large logs, API exports, long-running event streams, and memory-conscious summarization.",
+  "parent": "jq",
+  "tags": [
+    "jq",
+    "streaming",
+    "stream",
+    "reduce",
+    "foreach",
+    "json-seq",
+    "large-files",
+    "logs",
+    "unbuffered",
+    "memory"
+  ],
+  "aliases": [
+    "jq streaming",
+    "jq stream mode",
+    "jq large json",
+    "jq reduce inputs",
+    "jq json seq",
+    "jq stream errors",
+    "jq foreach",
+    "jq tostream"
+  ],
+  "triggers": [
+    "process a large json file with jq",
+    "stream json with jq",
+    "reduce stream events in jq",
+    "handle json seq with jq",
+    "parse huge logs incrementally",
+    "use jq stream errors",
+    "reconstruct json from a stream"
+  ],
+  "body": "# jq Streaming\n\nLoad this skill when the input is large enough that whole-document jq filters are awkward or memory-heavy, or when the source is a stream of JSON texts.\n\n## Stream Shape\n\nWith `--stream`, jq emits arrays that describe paths and leaf values. Leaf events look like `[path, value]`, while closing events look like `[path]`.\n\n~~~bash\njq --stream \".\" big.json | head\n~~~\n\n## Incremental Reduction\n\nUse `reduce inputs as $item (...)` when you want one final summary from a stream.\n\n~~~bash\njq -n --stream \"reduce inputs as $item (0; if ($item | length == 2 and $item[0][-1] == \\\"duration_ms\\\") then . + $item[1] else . end)\" metrics.json\n~~~\n\n## Intermediate Outputs\n\nUse `foreach` when the reducer should emit intermediate states, not just a final answer.\n\n~~~bash\njq \"foreach .[] as $item (0; . + $item; {current: $item, total: .})\" numbers.json\n~~~\n\n## Reconstructing Streamed Data\n\n`tostream` converts a value into stream events, `truncate_stream` strips leading path components, and `fromstream` rebuilds JSON values from stream events.\n\n~~~bash\njq \". as $doc | fromstream($doc | tostream)\" sample.json\n~~~\n\n## Sequenced Inputs and Errors\n\nUse `--seq` for `application/json-seq` sources and `--stream-errors` when malformed records should be surfaced as data instead of aborting the entire command.\n\nFor reusable reducers stored in files, continue to [[jq/modules]].",
+  "sections": [
+    {
+      "id": "stream-shape",
+      "title": "Understanding stream events",
+      "body": "In `--stream` mode, jq emits arrays of path metadata and values instead of materializing the whole JSON document. Events with two elements represent scalar or empty-container leaf values, and events with one element represent the end of an array or object. Knowing this shape is the key to writing correct reducers.",
+      "tags": [
+        "stream",
+        "paths",
+        "leaf-events",
+        "shape"
+      ]
+    },
+    {
+      "id": "incremental-reduce",
+      "title": "Incremental reductions",
+      "body": "Use `reduce inputs as $item (INIT; UPDATE)` when a large input should collapse into one count, sum, index, or summary object. This pattern keeps memory use predictable because each streamed event is processed and discarded.",
+      "tags": [
+        "reduce",
+        "inputs",
+        "aggregate",
+        "memory"
+      ]
+    },
+    {
+      "id": "json-seq",
+      "title": "JSON sequence and long-lived streams",
+      "body": "Use `--seq` when the input or output is `application/json-seq`. Add `--unbuffered` when downstream consumers should see each result immediately. This is useful for long-running command pipelines where waiting for process completion is undesirable.",
+      "tags": [
+        "json-seq",
+        "seq",
+        "unbuffered",
+        "pipelines"
+      ]
+    },
+    {
+      "id": "rebuild",
+      "title": "Rebuilding values from streams",
+      "body": "`tostream`, `truncate_stream`, and `fromstream` let you turn structured JSON into stream events and reconstruct a whole value or subtree later. This is the pattern to use when only part of a huge document should be preserved as a normal JSON value.",
+      "tags": [
+        "tostream",
+        "fromstream",
+        "truncate-stream",
+        "reconstruct"
+      ]
+    }
+  ],
+  "links": [
+    {
+      "uri": "jq/cli",
+      "context": "Input modes such as --stream, --seq, and --unbuffered"
+    },
+    {
+      "uri": "jq/modules",
+      "context": "Store complex reducers in files instead of inline shell strings"
+    },
+    {
+      "uri": "shell/pipes",
+      "context": "Stream-oriented jq commands are usually part of larger pipelines"
+    },
+    {
+      "uri": "shell/processes",
+      "context": "Long-running jq streams often run as monitored processes"
+    },
+    {
+      "uri": "jq/query",
+      "context": "Switch back to query mode when the input size is manageable"
+    }
+  ],
+  "related": [
+    {
+      "uri": "jq/cli",
+      "relation": "prerequisite",
+      "note": "Streaming depends on correct input flags and buffering behavior"
+    },
+    {
+      "uri": "shell/pipes",
+      "relation": "prerequisite",
+      "note": "Streaming jq commands are most useful inside pipelines"
+    },
+    {
+      "uri": "jq/modules",
+      "relation": "extends",
+      "note": "Large reducers are easier to maintain as jq program files"
+    }
+  ],
+  "scripts": [
+    {
+      "id": "stream-reduce",
+      "name": "Stream Reduce",
+      "description": "Run jq in --stream mode against stdin, a file, or inline input with optional JSON-seq and stream-errors flags",
+      "lang": "bash",
+      "runtime": "bash>=4.0, jq>=1.7",
+      "entry": "./scripts/stream-reduce.sh",
+      "env": {
+        "JQ_FILTER": {
+          "required": true,
+          "description": "jq filter to execute in stream mode"
+        },
+        "JQ_FILE": {
+          "required": false,
+          "description": "Input JSON file path"
+        },
+        "JQ_INPUT": {
+          "required": false,
+          "description": "Inline JSON input"
+        },
+        "JQ_FILTER_FILE": {
+          "required": false,
+          "description": "Optional jq program file to use with -f instead of JQ_FILTER"
+        },
+        "JQ_STREAM_ERRORS": {
+          "required": false,
+          "default": "false",
+          "description": "Use --stream-errors to surface malformed input as data"
+        },
+        "JQ_SEQ": {
+          "required": false,
+          "default": "false",
+          "description": "Use --seq for application/json-seq input and output"
+        },
+        "JQ_UNBUFFERED": {
+          "required": false,
+          "default": "false",
+          "description": "Flush after each output value with --unbuffered"
+        },
+        "JQ_RAW_OUTPUT": {
+          "required": false,
+          "default": "false",
+          "description": "Write strings without JSON quotes via -r"
+        },
+        "JQ_COMPACT_OUTPUT": {
+          "required": false,
+          "default": "false",
+          "description": "Emit compact JSON via -c"
+        },
+        "JQ_SORT_KEYS": {
+          "required": false,
+          "default": "false",
+          "description": "Sort output object keys via -S"
+        },
+        "JQ_VARS_JSON": {
+          "required": false,
+          "description": "JSON object whose keys become jq variables through --argjson"
+        }
+      }
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "filter": {
+          "type": "string",
+          "description": "jq streaming filter"
+        },
+        "filterFile": {
+          "type": "string",
+          "description": "Optional jq program file path"
+        },
+        "file": {
+          "type": "string",
+          "description": "Input JSON file path"
+        },
+        "input": {
+          "type": "string",
+          "description": "Inline JSON input"
+        },
+        "streamErrors": {
+          "type": "boolean",
+          "default": false
+        },
+        "seq": {
+          "type": "boolean",
+          "default": false
+        },
+        "unbuffered": {
+          "type": "boolean",
+          "default": false
+        },
+        "rawOutput": {
+          "type": "boolean",
+          "default": false
+        },
+        "compactOutput": {
+          "type": "boolean",
+          "default": false
+        },
+        "sortKeys": {
+          "type": "boolean",
+          "default": false
+        },
+        "variables": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "Named jq variables exposed through --argjson"
+        }
+      },
+      "required": [
+        "filter"
+      ]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "stdout": {
+          "type": "string",
+          "description": "Streaming jq output"
+        },
+        "exitCode": {
+          "type": "integer",
+          "description": "Process exit code from jq"
+        }
+      }
+    }
+  },
+  "depends": [
+    {
+      "uri": "jq/cli",
+      "reason": "Streaming uses specialized jq flags such as --stream, --seq, and --unbuffered"
+    },
+    {
+      "uri": "shell/bash",
+      "reason": "The packaged wrapper runs in Bash"
+    },
+    {
+      "uri": "shell/pipes",
+      "reason": "Streaming jq is typically chained with other processes"
+    }
+  ],
+  "more": {
+    "docs": "https://jqlang.org/manual/v1.8/",
+    "playground": "https://play.jqlang.org/"
+  },
+  "frontmatter": {
+    "created": "2026-04-12",
+    "updated": "2026-04-12",
+    "author": "dojo-community",
+    "audience": "AI agents, developers",
+    "estimated_reading_time": "5 min",
+    "status": "living",
+    "confidence": "high",
+    "prerequisites": [
+      "jq/cli",
+      "shell/bash",
+      "shell/pipes"
+    ]
+  }
+}

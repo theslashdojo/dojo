@@ -1,0 +1,113 @@
+{
+  "name": "python",
+  "version": "1.0.0",
+  "uri": "duckdb/python",
+  "type": "context",
+  "content_type": "guide",
+  "context": "Use DuckDB from Python with DB-API connections, parameters, relations, DataFrames, Arrow, and file readers",
+  "info": "DuckDB's Python package embeds the engine in a Python process and exposes both DB-API style connections and a relational API. It can query Pandas, Polars, NumPy, Arrow, DuckDB relations, CSV, Parquet, JSON, and persistent `.duckdb` files without moving data through an external server. Agents use this node when analysis needs parameterized SQL, notebook-friendly DataFrame output, programmatic control, integration with Python data tools, or safer execution than shell string interpolation. Use [[duckdb/cli]] when a pure shell command is enough and [[duckdb/files]] for file-reader details shared by both surfaces.",
+  "parent": "duckdb",
+  "tags": [
+    "duckdb",
+    "python",
+    "dbapi",
+    "pandas",
+    "polars",
+    "arrow",
+    "dataframes",
+    "parameters",
+    "relations"
+  ],
+  "aliases": [
+    "duckdb python",
+    "python duckdb",
+    "duckdb py",
+    "duckdb dbapi",
+    "duckdb dataframe",
+    "duckdb pandas",
+    "duckdb polars",
+    "duckdb arrow",
+    "duckdb relation",
+    "duckdb replacement scans"
+  ],
+  "triggers": [
+    "use duckdb in python",
+    "query pandas with duckdb",
+    "query a dataframe using sql",
+    "fetch duckdb results as dataframe",
+    "parameterized duckdb query",
+    "read parquet in python with duckdb",
+    "register a dataframe in duckdb",
+    "use duckdb with arrow",
+    "create a duckdb database from python",
+    "run analytics in a notebook"
+  ],
+  "body": "# DuckDB Python\n\nInstall the Python package and import it in scripts, notebooks, or applications.\n\n```bash\npython -m pip install duckdb\n```\n\n```python\nimport duckdb\n\ncon = duckdb.connect(\"analysis.duckdb\")  # use ':memory:' or omit for in-memory\ncon.execute(\"CREATE TABLE IF NOT EXISTS runs (id INTEGER, status VARCHAR)\")\ncon.execute(\"INSERT INTO runs VALUES (?, ?)\", [1, \"ok\"])\nprint(con.execute(\"SELECT * FROM runs WHERE id = ?\", [1]).fetchall())\n```\n\n## Query Files\n\n```python\nimport duckdb\n\ncon = duckdb.connect()\nresult = con.sql(\"\"\"\n    SELECT status, count() AS n\n    FROM read_parquet('events/*.parquet')\n    GROUP BY ALL\n    ORDER BY n DESC\n\"\"\")\nprint(result.df())\n```\n\n## DataFrames and Replacement Scans\n\nDuckDB can query certain Python variables directly by name when they are visible at the call site. Register explicitly when the object is stored in a dictionary, class field, or another scope.\n\n```python\nimport duckdb\nimport pandas as pd\n\nusers = pd.DataFrame({\"id\": [1, 2], \"email\": [\"a@example.com\", \"b@example.com\"]})\nprint(duckdb.sql(\"SELECT id, lower(email) AS email FROM users\").df())\n\ncon = duckdb.connect()\ncon.register(\"users_view\", users)\nprint(con.sql(\"SELECT count() FROM users_view\").fetchall())\n```\n\n## Result Fetching\n\n```python\nrel = con.sql(\"SELECT * FROM read_csv('events.csv') LIMIT 100\")\nrows = rel.fetchall()\ndf = rel.df()\narrow_table = rel.arrow()\n\n# Streaming batches for larger results\nfor batch in con.execute(\"SELECT * FROM events\").fetch_record_batch(rows_per_batch=10000):\n    process(batch)\n```\n\n## Parameters and Safety\n\nUse parameters for values. Do not interpolate user-controlled values into SQL strings.\n\n```python\nstatus = \"paid\"\nlimit = 100\nrows = con.execute(\n    \"SELECT * FROM events WHERE status = ? ORDER BY created_at DESC LIMIT ?\",\n    [status, limit],\n).fetchall()\n```\n\nIdentifiers such as column names cannot be parameterized. Use a whitelist for dynamic identifiers.\n\n```python\nallowed = {\"created_at\", \"amount\", \"status\"}\norder_col = user_input if user_input in allowed else \"created_at\"\nquery = f\"SELECT * FROM events ORDER BY {order_col} LIMIT ?\"\nrows = con.execute(query, [100]).fetchall()\n```\n\n## Persistent Tables From DataFrames\n\n```python\ncon.execute(\"CREATE OR REPLACE TABLE users AS SELECT * FROM users_view\")\ncon.execute(\"COPY users TO 'users.parquet' (FORMAT parquet)\")\n```\n\nFor file format options, continue to [[duckdb/files]]. For query syntax, continue to [[duckdb/sql]].",
+  "sections": [
+    {
+      "id": "connections",
+      "title": "Connections and databases",
+      "body": "`duckdb.connect()` opens an in-memory database by default; pass a path like `analysis.duckdb` for persistence. Keep one connection per focused workflow unless the application needs isolation. Use read-only connections for untrusted database files where supported by the API version.",
+      "tags": ["connect", "database-file", "memory", "persistence"]
+    },
+    {
+      "id": "parameters",
+      "title": "Parameterized execution",
+      "body": "Use `con.execute(sql, params)` with `?` placeholders for values. This avoids SQL injection and quoting bugs. Identifiers cannot be bound as parameters; validate identifiers against a whitelist before string formatting them into SQL.",
+      "tags": ["parameters", "dbapi", "security", "sql-injection"]
+    },
+    {
+      "id": "dataframes",
+      "title": "DataFrames and Arrow",
+      "body": "DuckDB can query Pandas, Polars, NumPy, Arrow, and relation objects through replacement scans or explicit registration. Use `.df()` for Pandas, `.pl()` where available for Polars, `.arrow()` for Arrow tables, and record batches for streaming larger outputs.",
+      "tags": ["pandas", "polars", "arrow", "replacement-scans", "register"]
+    },
+    {
+      "id": "file-ingestion",
+      "title": "File ingestion from Python",
+      "body": "Use `duckdb.read_csv`, `duckdb.read_parquet`, `duckdb.read_json`, or SQL table functions like `read_csv`, `read_parquet`, and `read_json_auto`. Direct SQL strings such as `SELECT * FROM 'example.parquet'` are concise for Parquet and CSV. Use [[duckdb/files]] for schema drift, globs, COPY, and remote file details.",
+      "tags": ["csv", "parquet", "json", "readers", "ingestion"]
+    },
+    {
+      "id": "result-shapes",
+      "title": "Result shapes",
+      "body": "Choose the output shape deliberately: `.fetchall()` for small tuples, `.fetchone()` for scalar checks, `.df()` for Pandas, `.arrow()` for Arrow interoperability, and batch APIs for large result streams. Avoid materializing unbounded query results into Python memory.",
+      "tags": ["fetch", "dataframe", "arrow", "streaming", "memory"]
+    }
+  ],
+  "links": [
+    { "uri": "duckdb/sql", "context": "Write the SQL executed from Python" },
+    { "uri": "duckdb/files", "context": "Read and write CSV, Parquet, JSON from Python" },
+    { "uri": "duckdb/performance", "context": "Tune memory, threads, and large result handling" },
+    { "uri": "python/pip", "context": "Install the Python `duckdb` package" },
+    { "uri": "python/venv", "context": "Isolate DuckDB and data stack dependencies" },
+    { "uri": "python/testing", "context": "Test Python data transformations using DuckDB" }
+  ],
+  "related": [
+    { "uri": "duckdb/cli", "relation": "alternative", "note": "The CLI is simpler for pure shell automation and file inspection" },
+    { "uri": "python", "relation": "see-also", "note": "DuckDB is commonly embedded in Python scripts and notebooks" },
+    { "uri": "database/sql", "relation": "prerequisite", "note": "SQL fundamentals are required for effective DuckDB Python use" }
+  ],
+  "more": {
+    "docs": "https://duckdb.org/docs/stable/clients/python/overview",
+    "dbapi": "https://duckdb.org/docs/stable/clients/python/dbapi",
+    "data-ingestion": "https://duckdb.org/docs/stable/clients/python/data_ingestion",
+    "conversion": "https://duckdb.org/docs/stable/clients/python/conversion",
+    "relational-api": "https://duckdb.org/docs/stable/clients/python/relational_api"
+  },
+  "frontmatter": {
+    "created": "2026-04-15",
+    "updated": "2026-04-15",
+    "author": "dojo-community",
+    "audience": "AI agents, Python developers, data scientists",
+    "estimated_reading_time": "6 min",
+    "prerequisites": ["duckdb", "python"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-15T00:00:00Z",
+  "updated": "2026-04-15T00:00:00Z",
+  "status": "published"
+}

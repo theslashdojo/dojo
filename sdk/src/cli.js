@@ -7,11 +7,12 @@
  */
 
 import { Dojo } from './index.js';
-import { readFileSync, writeFileSync, mkdirSync, rmSync, existsSync, readdirSync, statSync } from 'fs';
-import { join, resolve, basename, dirname, relative } from 'path';
+import { readFileSync, writeFileSync, mkdirSync, rmSync, existsSync, readdirSync, statSync, chmodSync } from 'fs';
+import { join, resolve, basename, dirname, extname } from 'path';
 import { homedir } from 'os';
 import { execSync, spawn } from 'child_process';
 import { createHash } from 'crypto';
+import { fileURLToPath } from 'url';
 
 // ─── ANSI helpers ────────────────────────────────────────
 const C = process.env.NO_COLOR
@@ -79,6 +80,15 @@ function makeClient() {
 function parseArgs(argv) {
   const args = [];
   const flags = {};
+  const setFlag = (key, value) => {
+    if (flags[key] === undefined) {
+      flags[key] = value;
+    } else if (Array.isArray(flags[key])) {
+      flags[key].push(value);
+    } else {
+      flags[key] = [flags[key], value];
+    }
+  };
   let i = 0;
   while (i < argv.length) {
     const a = argv[i];
@@ -86,18 +96,18 @@ function parseArgs(argv) {
       const key = a.slice(2);
       const eq = key.indexOf('=');
       if (eq >= 0) {
-        flags[key.slice(0, eq)] = key.slice(eq + 1);
+        setFlag(key.slice(0, eq), key.slice(eq + 1));
       } else if (i + 1 < argv.length && !argv[i + 1].startsWith('-')) {
-        flags[key] = argv[++i];
+        setFlag(key, argv[++i]);
       } else {
-        flags[key] = true;
+        setFlag(key, true);
       }
     } else if (a.startsWith('-') && a.length === 2) {
       const key = a.slice(1);
       if (i + 1 < argv.length && !argv[i + 1].startsWith('-')) {
-        flags[key] = argv[++i];
+        setFlag(key, argv[++i]);
       } else {
-        flags[key] = true;
+        setFlag(key, true);
       }
     } else {
       args.push(a);
@@ -129,6 +139,305 @@ function skillLine(s, score) {
   const tag = s.type ? `${C.dim}[${s.type}]${C.reset} ` : '';
   const sc = score != null ? ` ${C.dim}(${(score * 100).toFixed(0)}%)${C.reset}` : '';
   console.log(`  ${C.c}${s.uri}${C.reset} ${tag}${s.context || ''}${sc}`);
+}
+
+// ─── Bundle helpers ─────────────────────────────────────
+
+const BUNDLE_INCLUDE_DIRS = new Set(['agents', 'references', 'scripts', 'tests']);
+const BUNDLE_INCLUDE_FILES = new Set(['node.json', 'skill.json', 'SKILL.md', 'README.md']);
+const BUNDLE_TEXT_EXTENSIONS = new Set(['.json', '.md', '.js', '.cjs', '.mjs', '.yaml', '.yml', '.sh', '.txt']);
+const MAX_BUNDLE_FILE_BYTES = 128 * 1024;
+
+function dedupe(values = []) {
+  return Array.from(new Set(values.filter(Boolean)));
+}
+
+function expandHomePath(value) {
+  const raw = String(value || '.');
+  if (raw === '~') return homedir();
+  if (raw.startsWith('~/')) return join(homedir(), raw.slice(2));
+  return resolve(raw);
+}
+
+function uriParts(uri) {
+  const parts = String(uri || '').split('/').filter(Boolean);
+  if (!parts.length || parts.some(part => part === '.' || part === '..' || part.includes('\\'))) {
+    die(`invalid uri: ${uri}`);
+  }
+  return parts;
+}
+
+function bundleDirectoryName(uri, flags = {}) {
+  const name = flags.name || uriParts(uri).join('-');
+  return name.replace(/[^a-zA-Z0-9._-]+/g, '-').replace(/^-+|-+$/g, '') || 'skill';
+}
+
+function safeBundlePath(value) {
+  const normalized = String(value || '').replace(/\\/g, '/').replace(/^\.\//, '');
+  const parts = normalized.split('/').filter(Boolean);
+  if (!normalized || normalized.startsWith('/') || parts.includes('..')) {
+    die(`unsafe bundle path: ${value}`);
+  }
+  return parts.join('/');
+}
+
+function bundleRouteMap(uri) {
+  return {
+    skill: `/v1/skills/${uri}`,
+    learn: `/v1/learn/${uri}`,
+    graph: `/v1/graph/${uri}`,
+    backlinks: `/v1/backlinks/${uri}`,
+    bundle: `/v1/bundle/${uri}`
+  };
+}
+
+function bundleExecutionSummary(skill) {
+  const scripts = Array.isArray(skill?.scripts) ? skill.scripts : [];
+  const requiredEnv = [];
+  const optionalEnv = [];
+
+  for (const script of scripts) {
+    for (const [key, meta] of Object.entries(script.env || {})) {
+      if (meta?.required) requiredEnv.push(key);
+      else optionalEnv.push(key);
+    }
+  }
+
+  return {
+    can_execute: scripts.length > 0,
+    script_count: scripts.length,
+    script_ids: scripts.map(script => script.id).filter(Boolean),
+    langs: dedupe(scripts.map(script => script.lang)),
+    runtimes: dedupe(scripts.map(script => script.runtime)),
+    packages: dedupe(scripts.flatMap(script => script.packages || [])),
+    required_env: dedupe(requiredEnv),
+    optional_env: dedupe(optionalEnv),
+    required_input_fields: dedupe(skill?.schema?.input?.required || [])
+  };
+}
+
+function bundleKnowledgeSummary(skill) {
+  const sections = Array.isArray(skill?.sections) ? skill.sections : [];
+  return {
+    has_body: Boolean(skill?.body),
+    section_count: sections.length,
+    has_sections: sections.length > 0,
+    has_aliases: Array.isArray(skill?.aliases) && skill.aliases.length > 0
+  };
+}
+
+function classifyBundleFile(relativePath) {
+  if (relativePath === 'node.json' || relativePath === 'skill.json') return 'manifest';
+  if (relativePath === 'SKILL.md') return 'skill';
+  if (relativePath === 'README.md') return 'doc';
+  if (relativePath.startsWith('agents/')) return 'agent';
+  if (relativePath.startsWith('references/')) return 'reference';
+  if (relativePath.startsWith('scripts/')) return 'script';
+  if (relativePath.startsWith('tests/')) return 'test';
+  return 'file';
+}
+
+function shouldTraverseBundleDir(relativePath) {
+  const topLevel = relativePath.split('/')[0];
+  return BUNDLE_INCLUDE_DIRS.has(topLevel);
+}
+
+function shouldIncludeBundleFile(relativePath) {
+  if (BUNDLE_INCLUDE_FILES.has(relativePath)) return true;
+  const [topLevel] = relativePath.split('/');
+  if (!BUNDLE_INCLUDE_DIRS.has(topLevel)) return false;
+  return BUNDLE_TEXT_EXTENSIONS.has(extname(relativePath).toLowerCase());
+}
+
+function collectLocalBundleFiles(sourceDir, relativeDir = '') {
+  const files = [];
+  const entries = readdirSync(sourceDir, { withFileTypes: true });
+
+  for (const entry of entries) {
+    const fullPath = join(sourceDir, entry.name);
+    const nextRelative = relativeDir ? `${relativeDir}/${entry.name}` : entry.name;
+
+    if (entry.isDirectory()) {
+      if (!shouldTraverseBundleDir(nextRelative)) continue;
+      files.push(...collectLocalBundleFiles(fullPath, nextRelative));
+      continue;
+    }
+
+    if (!shouldIncludeBundleFile(nextRelative)) continue;
+
+    const stats = statSync(fullPath);
+    const file = {
+      path: nextRelative,
+      kind: classifyBundleFile(nextRelative),
+      size: stats.size
+    };
+
+    if (stats.size <= MAX_BUNDLE_FILE_BYTES) {
+      file.content = readFileSync(fullPath, 'utf-8');
+    } else {
+      file.truncated = true;
+    }
+
+    files.push(file);
+  }
+
+  return files.sort((left, right) => left.path.localeCompare(right.path));
+}
+
+function addCandidateDir(candidates, dir) {
+  if (!dir) return;
+  const resolved = resolve(dir);
+  if (!candidates.includes(resolved)) candidates.push(resolved);
+}
+
+function candidateNodeRoots(flags = {}) {
+  const candidates = [];
+
+  const addList = (value) => {
+    if (!value) return;
+    for (const entry of String(value).split(',')) {
+      if (entry.trim()) addCandidateDir(candidates, entry.trim());
+    }
+  };
+
+  if (flags.nodes) addList(flags.nodes);
+  if (flags.root) addCandidateDir(candidates, join(expandHomePath(flags.root), 'nodes'));
+  if (process.env.DOJO_ROOT) addCandidateDir(candidates, join(expandHomePath(process.env.DOJO_ROOT), 'nodes'));
+  addList(process.env.DOJO_NODES || process.env.NODES_DIR || process.env.SKILLS_DIR);
+
+  let dir = process.cwd();
+  while (true) {
+    addCandidateDir(candidates, join(dir, 'nodes'));
+    addCandidateDir(candidates, join(dir, 'dojo', 'nodes'));
+    const parent = dirname(dir);
+    if (parent === dir) break;
+    dir = parent;
+  }
+
+  addCandidateDir(candidates, fileURLToPath(new URL('../../nodes', import.meta.url)));
+  return candidates;
+}
+
+function findLocalNodeSource(uri, flags = {}) {
+  const parts = uriParts(uri);
+  for (const root of candidateNodeRoots(flags)) {
+    const dir = join(root, ...parts);
+    if (!existsSync(dir) || !statSync(dir).isDirectory()) continue;
+    const manifestFile = existsSync(join(dir, 'node.json'))
+      ? 'node.json'
+      : existsSync(join(dir, 'skill.json'))
+        ? 'skill.json'
+        : null;
+    if (manifestFile) return { root, dir, manifestFile };
+  }
+  return null;
+}
+
+function buildLocalBundle(uri, flags = {}) {
+  const source = findLocalNodeSource(uri, flags);
+  if (!source) return null;
+
+  const manifest = JSON.parse(readFileSync(join(source.dir, source.manifestFile), 'utf-8'));
+  const files = collectLocalBundleFiles(source.dir);
+  const envelope = {
+    ...manifest,
+    execution: bundleExecutionSummary(manifest),
+    knowledge: bundleKnowledgeSummary(manifest),
+    routes: bundleRouteMap(manifest.uri || uri)
+  };
+
+  return {
+    uri: manifest.uri || uri,
+    routes: bundleRouteMap(manifest.uri || uri),
+    manifest: envelope,
+    source: {
+      source_path: uri,
+      manifest_file: source.manifestFile,
+      origin: 'local',
+      root: source.root
+    },
+    entrypoints: {
+      manifest: source.manifestFile,
+      skill_md: files.find(file => file.path === 'SKILL.md')?.path || null,
+      agents: files.filter(file => file.kind === 'agent').map(file => file.path),
+      references: files.filter(file => file.kind === 'reference').map(file => file.path),
+      scripts: files.filter(file => file.kind === 'script').map(file => file.path),
+      tests: files.filter(file => file.kind === 'test').map(file => file.path),
+      docs: files.filter(file => file.kind === 'doc').map(file => file.path)
+    },
+    files
+  };
+}
+
+function bundleTargetDir(uri, flags) {
+  const rawLoc = flags.loc || flags.location || flags.out || flags.output || flags.dir;
+  if (!rawLoc) return null;
+
+  const base = expandHomePath(rawLoc);
+  const skillName = bundleDirectoryName(uri, flags);
+  const destinationRoot = basename(base) === '.codex'
+    ? join(base, 'skills')
+    : base;
+
+  return join(destinationRoot, skillName);
+}
+
+function writeBundleFiles(bundle, targetDir) {
+  mkdirSync(targetDir, { recursive: true });
+  let fileCount = 0;
+  let wroteManifest = false;
+
+  for (const file of bundle.files || []) {
+    if (file.content == null) continue;
+    const relativePath = safeBundlePath(file.path);
+    const target = join(targetDir, relativePath);
+    mkdirSync(dirname(target), { recursive: true });
+    writeFileSync(target, file.content);
+    if (relativePath === 'node.json' || relativePath === 'skill.json') wroteManifest = true;
+    if (relativePath.startsWith('scripts/') || file.content.startsWith('#!')) {
+      try { chmodSync(target, 0o755); } catch {}
+    }
+    fileCount++;
+  }
+
+  if (!wroteManifest && bundle.manifest) {
+    writeFileSync(join(targetDir, 'node.json'), JSON.stringify(bundle.manifest, null, 2) + '\n');
+    fileCount++;
+  }
+
+  return fileCount;
+}
+
+async function fetchBundle(uri, version, flags) {
+  const canUseLocal = !version && !flags.chain;
+  const preferLocal = flags.local || (canUseLocal && !flags.remote && !flags.registry);
+
+  if (preferLocal) {
+    const localBundle = buildLocalBundle(uri, flags);
+    if (localBundle) return localBundle;
+    if (flags.local) die(`local node not found: ${uri}`);
+  }
+
+  const client = makeClient();
+  if (flags.registry) {
+    client.registry = flags.registry;
+    client.registryCandidates = [flags.registry];
+  }
+
+  const params = new URLSearchParams();
+  if (version) params.set('version', version);
+  if (flags.chain) params.set('chain', flags.chain);
+  const qs = params.toString();
+
+  try {
+    return await client._fetch(`/v1/bundle/${uri}${qs ? '?' + qs : ''}`);
+  } catch (error) {
+    if (canUseLocal && !preferLocal) {
+      const localBundle = buildLocalBundle(uri, flags);
+      if (localBundle) return localBundle;
+    }
+    throw error;
+  }
 }
 
 // ─── Commands ───────────────────────────────────────────
@@ -447,6 +756,51 @@ async function cmdOutdated(_args, flags) {
   }
 }
 
+async function cmdBundle(args, flags) {
+  if (!args.length) die('usage: dojo bundle <uri> [--loc <dir>] [--version <version>] [--dry-run]');
+
+  let uri = args[0];
+  let version = flags.version;
+  const atIdx = uri.lastIndexOf('@');
+  if (atIdx > 0) {
+    version = version || uri.slice(atIdx + 1);
+    uri = uri.slice(0, atIdx);
+  }
+
+  const bundle = await fetchBundle(uri, version, flags);
+  const targetDir = bundleTargetDir(bundle.uri || uri, flags);
+
+  if (!targetDir) {
+    return json(bundle);
+  }
+
+  const summary = {
+    uri: bundle.uri || uri,
+    destination: targetDir,
+    files: bundle.files?.length || 0,
+    source: bundle.source?.origin || bundle.source?.source_path || 'registry'
+  };
+
+  if (flags['dry-run']) {
+    if (flags.json) return json(summary);
+    heading('Dry run - would bundle:');
+    row('uri', summary.uri);
+    row('destination', summary.destination);
+    row('files', `${summary.files} file(s)`);
+    for (const file of bundle.files || []) {
+      console.log(`    ${C.dim}${file.kind}${C.reset}  ${file.path} (${file.size || 0} bytes)`);
+    }
+    return;
+  }
+
+  const fileCount = writeBundleFiles(bundle, targetDir);
+  summary.written = fileCount;
+
+  if (flags.json) return json(summary);
+
+  console.log(`${C.g}✓${C.reset} Bundled ${C.c}${summary.uri}${C.reset} to ${C.c}${targetDir}${C.reset} (${fileCount} file${fileCount === 1 ? '' : 's'})`);
+}
+
 // ── Execution ───────────────────────────────────────────
 
 async function cmdRun(args, flags) {
@@ -551,16 +905,20 @@ TODO: describe this skill.
 }
 
 function cmdValidate(args, _flags) {
-  const dir = resolve(args[0] || '.');
+  const target = resolve(args[0] || '.');
+  const targetIsFile = existsSync(target) && statSync(target).isFile();
+  const dir = targetIsFile ? dirname(target) : target;
   const errors = [];
   const warnings = [];
 
   // Check manifest
-  const manifestPath = existsSync(join(dir, 'node.json'))
-    ? join(dir, 'node.json')
-    : existsSync(join(dir, 'skill.json'))
-      ? join(dir, 'skill.json')
-      : null;
+  const manifestPath = targetIsFile
+    ? target
+    : existsSync(join(dir, 'node.json'))
+      ? join(dir, 'node.json')
+      : existsSync(join(dir, 'skill.json'))
+        ? join(dir, 'skill.json')
+        : null;
 
   if (!manifestPath) {
     die('No node.json or skill.json found');
@@ -902,7 +1260,7 @@ function cmdCompletions(args, _flags) {
   const commands = [
     'search', 'resolve', 'tree', 'info',
     'learn', 'backlinks', 'graph', 'alias',
-    'install', 'uninstall', 'update', 'list', 'outdated',
+    'install', 'bundle', 'uninstall', 'update', 'list', 'outdated',
     'run',
     'init', 'validate', 'test', 'pack',
     'publish', 'yank', 'deprecate',
@@ -954,6 +1312,7 @@ ${C.bold}Knowledge${C.reset}
 
 ${C.bold}Installation${C.reset}
   install <uri>[@version]    Install a skill
+  bundle <uri>               Export a portable skill bundle
   uninstall <uri>            Remove an installed skill
   update <uri>|--all         Update skills
   list                       List installed skills
@@ -1012,6 +1371,7 @@ const COMMANDS = {
   alias: cmdAlias,
   // Installation
   install: cmdInstall,
+  bundle: cmdBundle,
   uninstall: cmdUninstall,
   update: cmdUpdate,
   list: cmdList,

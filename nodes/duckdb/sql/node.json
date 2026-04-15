@@ -1,0 +1,114 @@
+{
+  "name": "sql",
+  "version": "1.0.0",
+  "uri": "duckdb/sql",
+  "type": "standard",
+  "content_type": "guide",
+  "context": "DuckDB SQL dialect for analytical queries, friendly SQL features, macros, joins, aggregation, and deterministic reports",
+  "info": "DuckDB SQL is close to PostgreSQL-style SQL with analytical extensions and convenience syntax designed for fast exploration: direct file references, `GROUP BY ALL`, `ORDER BY ALL`, `SELECT * EXCLUDE`, `SELECT * REPLACE`, `UNION BY NAME`, `PIVOT`, `UNPIVOT`, list/struct types, powerful aggregate functions, macros, and window functions. Agents use this node when writing queries for [[duckdb/cli]] or [[duckdb/python]], especially when transforming files from [[duckdb/files]], producing reproducible reports, or replacing application-side data wrangling with SQL.",
+  "parent": "duckdb",
+  "tags": [
+    "duckdb",
+    "sql",
+    "olap",
+    "analytics",
+    "friendly-sql",
+    "group-by-all",
+    "window-functions",
+    "macros",
+    "pivot"
+  ],
+  "aliases": [
+    "duckdb sql",
+    "duckdb dialect",
+    "duck sql",
+    "friendly sql",
+    "group by all",
+    "order by all",
+    "select exclude",
+    "select replace",
+    "union by name",
+    "duckdb macros",
+    "duckdb query syntax"
+  ],
+  "triggers": [
+    "write a duckdb query",
+    "use group by all",
+    "exclude columns in duckdb",
+    "replace a column in select star",
+    "union files by name",
+    "pivot data in duckdb",
+    "write an analytical sql query",
+    "make a deterministic duckdb report",
+    "create a duckdb macro",
+    "query nested data with duckdb"
+  ],
+  "body": "# DuckDB SQL\n\nDuckDB's SQL dialect is built for analytical work. It keeps familiar SQL syntax while adding features that reduce boilerplate when exploring wide files, building reports, and reshaping data.\n\n## Direct Sources\n\nDuckDB can scan files directly from SQL. This is part of why [[duckdb/files]] and [[duckdb/cli]] are so effective for agents.\n\n```sql\nSELECT * FROM 'events.parquet' LIMIT 10;\nSELECT * FROM read_csv('users.csv', union_by_name = true);\nSELECT * FROM read_json_auto('logs.ndjson');\n```\n\n## Friendly SQL\n\n```sql\n-- Group by every non-aggregate selected column\nSELECT status, country, count() AS n\nFROM events\nGROUP BY ALL\nORDER BY ALL;\n\n-- Drop noisy columns from a wide file\nSELECT * EXCLUDE (raw_payload, debug_blob)\nFROM read_parquet('events/*.parquet');\n\n-- Replace a column while keeping the rest\nSELECT * REPLACE (lower(email) AS email)\nFROM users;\n\n-- Align columns by name instead of position\nSELECT * FROM january\nUNION BY NAME\nSELECT * FROM february;\n```\n\n## Analytics Patterns\n\n```sql\n-- Daily metrics\nSELECT\n  date_trunc('day', created_at) AS day,\n  count() AS orders,\n  sum(amount) AS revenue,\n  avg(amount) AS avg_order\nFROM orders\nWHERE status = 'paid'\nGROUP BY ALL\nORDER BY day;\n\n-- Top-N within each group\nSELECT\n  region,\n  max_by(customer_id, revenue, 5) AS top_customers\nFROM customer_revenue\nGROUP BY region;\n\n-- Windowed running total\nSELECT\n  day,\n  revenue,\n  sum(revenue) OVER (ORDER BY day ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS running_revenue\nFROM daily_revenue\nORDER BY day;\n```\n\n## Reshaping\n\n```sql\n-- Long to wide\nPIVOT sales\nON month\nUSING sum(amount)\nGROUP BY product;\n\n-- Wide to long\nUNPIVOT monthly_sales\nON jan, feb, mar\nINTO NAME month VALUE amount;\n```\n\n## Macros\n\nMacros make repeated analysis safer than copy-paste SQL.\n\n```sql\nCREATE OR REPLACE MACRO pct(part, total) AS\n  CASE WHEN total = 0 THEN NULL ELSE round(100.0 * part / total, 2) END;\n\nSELECT status, count() AS n, pct(count(), sum(count()) OVER ()) AS pct_total\nFROM events\nGROUP BY ALL\nORDER BY n DESC;\n```\n\n## Determinism\n\nDuckDB is free to reorder unordered results. Add `ORDER BY` for reports, tests, and snapshots. Use `ORDER BY ALL` for quick deterministic sorting by all selected columns, and prefer explicit columns when the result is user-facing.\n",
+  "sections": [
+    {
+      "id": "friendly-sql",
+      "title": "Friendly SQL features",
+      "body": "`GROUP BY ALL`, `ORDER BY ALL`, `SELECT * EXCLUDE`, `SELECT * REPLACE`, `UNION BY NAME`, reusable aliases, `COLUMNS()`, list comprehensions, trailing commas, and direct file references reduce repetitive SQL. These are most valuable during exploratory file analytics and when schema drift makes positional SQL brittle.",
+      "tags": ["friendly-sql", "group-by-all", "order-by-all", "select-exclude", "union-by-name"]
+    },
+    {
+      "id": "aggregation",
+      "title": "Analytical aggregation",
+      "body": "DuckDB includes standard aggregates plus analytical helpers such as `count()` shorthand, `FILTER`, grouping sets, `ROLLUP`, `CUBE`, and top-N aggregates like `max(arg, n)`, `arg_max(arg, val, n)`, and `max_by(arg, val, n)`. Use these to avoid application-side grouping loops.",
+      "tags": ["aggregation", "filter", "rollup", "cube", "top-n"]
+    },
+    {
+      "id": "windows",
+      "title": "Window functions",
+      "body": "Use `OVER (PARTITION BY ... ORDER BY ...)` for ranks, running totals, lags, leads, and percentiles without collapsing rows. Window functions are often the cleanest way to compare each row with group-level context before filtering or exporting.",
+      "tags": ["window-functions", "rank", "lag", "running-total"]
+    },
+    {
+      "id": "macros",
+      "title": "Macros",
+      "body": "Use `CREATE MACRO` for reusable expressions and table macros. Store macros in a persistent `.duckdb` file or a SQL bootstrap file used by [[duckdb/cli]]. Macros are useful for metric definitions, normalization rules, and repeated parsing logic.",
+      "tags": ["macros", "reuse", "metrics", "sql-files"]
+    },
+    {
+      "id": "deterministic-reports",
+      "title": "Deterministic reports",
+      "body": "Add `ORDER BY` to every report, test fixture, or agent-facing result. Do not rely on scan order from files or tables. Use `LIMIT` only after ordering unless the task is an arbitrary sample. For stable diffs, output JSON or CSV with a fixed selected column order.",
+      "tags": ["determinism", "order-by", "reports", "tests"]
+    }
+  ],
+  "links": [
+    { "uri": "duckdb/cli", "context": "Execute DuckDB SQL from shell scripts" },
+    { "uri": "duckdb/python", "context": "Execute DuckDB SQL from Python with parameters and DataFrames" },
+    { "uri": "duckdb/files", "context": "Use file readers as SQL table functions" },
+    { "uri": "duckdb/performance#explain", "context": "Inspect and profile query plans" },
+    { "uri": "database/sql", "context": "General SQL concepts and database-neutral patterns" },
+    { "uri": "postgres/queries", "context": "PostgreSQL query patterns that overlap with DuckDB syntax" }
+  ],
+  "related": [
+    { "uri": "database/sql", "relation": "implements", "note": "DuckDB implements SQL with analytical extensions and PostgreSQL-like conventions" },
+    { "uri": "postgres/queries", "relation": "similar", "note": "Many SELECT, CTE, window, and aggregate concepts transfer from PostgreSQL" },
+    { "uri": "duckdb/files", "relation": "extends", "note": "Direct file table functions are a major part of the SQL dialect in practice" }
+  ],
+  "more": {
+    "docs": "https://duckdb.org/docs/stable/sql/introduction",
+    "friendly-sql": "https://duckdb.org/docs/stable/sql/dialect/friendly_sql",
+    "select": "https://duckdb.org/docs/stable/sql/query_syntax/select",
+    "aggregates": "https://duckdb.org/docs/stable/sql/functions/aggregates",
+    "window-functions": "https://duckdb.org/docs/stable/sql/functions/window_functions"
+  },
+  "frontmatter": {
+    "created": "2026-04-15",
+    "updated": "2026-04-15",
+    "author": "dojo-community",
+    "audience": "AI agents, analysts, data engineers",
+    "estimated_reading_time": "6 min",
+    "prerequisites": ["database/sql", "duckdb"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-15T00:00:00Z",
+  "updated": "2026-04-15T00:00:00Z",
+  "status": "published"
+}

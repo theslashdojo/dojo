@@ -1,0 +1,143 @@
+{
+  "name": "transform",
+  "version": "1.0.0",
+  "uri": "pandas/workflows/transform",
+  "type": "sub",
+  "context": "Transform pandas DataFrames with filters, selection, assign, rename, sort, reshape, pivot, melt, explode, map, and method chains",
+  "info": "Transformation turns a cleaned DataFrame into the shape required for analysis, joins, tests, or export. Agents use this node for row filtering, column selection, renaming, vectorized computed columns, sorting, deduplication, reshaping between wide and long formats, exploding list-like cells, and building readable method chains. It emphasizes `.loc`, `.assign`, `.pipe`, vectorized `.str` and `.dt` accessors, and safe CLI transforms through the shared [[pandas/workflows]] script.",
+  "parent": "pandas/workflows",
+  "tags": [
+    "pandas",
+    "transform",
+    "assign",
+    "query",
+    "filter",
+    "rename",
+    "sort-values",
+    "melt",
+    "pivot",
+    "explode",
+    "method-chain"
+  ],
+  "aliases": [
+    "pandas transform",
+    "dataframe transform",
+    "pandas assign",
+    "pandas query",
+    "pandas melt",
+    "pandas pivot",
+    "pandas explode",
+    "method chaining",
+    "reshape dataframe"
+  ],
+  "triggers": [
+    "filter dataframe rows",
+    "select dataframe columns",
+    "rename pandas columns",
+    "create a computed pandas column",
+    "reshape dataframe long to wide",
+    "melt this dataframe",
+    "sort and deduplicate a csv",
+    "write a pandas method chain"
+  ],
+  "body": "# DataFrame Transformation\n\nTransform after basic cleaning and before aggregation or export. Prefer readable method chains with vectorized operations.\n\n## Method-chain example\n\n```python\nresult = (\n    df\n    .rename(columns=str.lower)\n    .loc[lambda d: d['amount'].gt(0)]\n    .assign(\n        domain=lambda d: d['email'].str.split('@').str[-1].str.lower(),\n        month=lambda d: d['created_at'].dt.to_period('M').dt.to_timestamp(),\n    )\n    .sort_values(['month', 'amount'], ascending=[True, False])\n)\n```\n\n## Reshaping\n\n```python\nlong = wide.melt(id_vars=['account_id'], var_name='month', value_name='revenue')\nwide_again = long.pivot(index='account_id', columns='month', values='revenue').reset_index()\nexploded = df.explode('tags')\n```\n\n## CLI transform\n\n```bash\npython nodes/pandas/workflows/scripts/transform_dataset.py raw.csv clean.parquet --select order_id,amount,status --query 'amount > 0' --drop-duplicates\n```\n",
+  "sections": [
+    {
+      "id": "filter-select",
+      "title": "Filter and select",
+      "body": "Use boolean masks with `.loc` for explicit filtering: `df.loc[df['status'].eq('paid'), columns]`. `DataFrame.query()` is concise for simple expressions but should not receive untrusted user input. Use `filter`, `select_dtypes`, and column lists to constrain output shape.",
+      "tags": ["filter", "loc", "query", "select"]
+    },
+    {
+      "id": "assign-compute",
+      "title": "Assign computed columns",
+      "body": "Use `.assign(new=lambda d: ...)` inside chains so each computed column is visible to later lambdas. Prefer vectorized arithmetic, `.str`, `.dt`, `map`, `replace`, `where`, and `mask`. Avoid `axis=1` apply unless the dataset is small or the logic cannot be vectorized.",
+      "tags": ["assign", "computed-columns", "vectorization", "apply"]
+    },
+    {
+      "id": "reshape",
+      "title": "Reshape",
+      "body": "`melt` converts wide columns into long rows. `pivot` and `pivot_table` convert long rows into wide tables. `stack` and `unstack` reshape MultiIndex objects. `explode` turns list-like cells into multiple rows. Choose shape based on the next operation: groupby often prefers long data; presentation often prefers wide data.",
+      "tags": ["melt", "pivot", "stack", "unstack", "explode"]
+    },
+    {
+      "id": "pipe",
+      "title": "Pipe reusable functions",
+      "body": "Use `.pipe(function, **kwargs)` to keep pipelines readable while moving domain logic into named functions. This makes cleaning and transformation code testable with [[testing]] and easier for agents to modify without breaking the sequence.",
+      "tags": ["pipe", "functions", "testing", "method-chain"]
+    }
+  ],
+  "links": [
+    { "uri": "pandas/workflows/transform#assign-compute", "context": "Section on computed columns and vectorized assignment" },
+    { "uri": "pandas/dataframe", "context": "Selection, assignment, and vectorization fundamentals" },
+    { "uri": "pandas/workflows/clean", "context": "Clean and type data before transforming it" },
+    { "uri": "pandas/workflows/groupby", "context": "Aggregate transformed data" },
+    { "uri": "pandas/workflows/io", "context": "Write transformed outputs" },
+    { "uri": "testing", "context": "Test reusable transformation functions" }
+  ],
+  "related": [
+    { "uri": "pandas/workflows/clean", "relation": "see-also", "note": "Transformation usually follows cleaning in a pipeline" },
+    { "uri": "pandas/workflows/groupby", "relation": "see-also", "note": "Aggregations consume transformed columns and shapes" },
+    { "uri": "testing", "relation": "see-also", "note": "Pipeline functions should have fixture-based tests" }
+  ],
+  "scripts": [
+    {
+      "id": "transform-dataset",
+      "name": "Transform Dataset",
+      "description": "Select, drop, rename, query, deduplicate, sort, and write a transformed dataset",
+      "lang": "python",
+      "runtime": "python>=3.10",
+      "entry": "../scripts/transform_dataset.py",
+      "packages": ["pandas", "pyarrow", "openpyxl"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "input_path": { "type": "string" },
+        "output_path": { "type": "string" },
+        "select": { "type": "array", "items": { "type": "string" } },
+        "rename": { "type": "object" },
+        "query": { "type": "string" },
+        "sort_by": { "type": "array", "items": { "type": "string" } }
+      },
+      "required": ["input_path", "output_path"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "input_rows": { "type": "integer" },
+        "output_rows": { "type": "integer" },
+        "output_columns": { "type": "integer" },
+        "output_path": { "type": "string" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "pandas/workflows", "reason": "Uses the shared transformation script" },
+    { "uri": "pandas/dataframe", "reason": "Requires DataFrame selection and assignment semantics" }
+  ],
+  "more": {
+    "assign": "https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.assign.html",
+    "query": "https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.query.html",
+    "melt": "https://pandas.pydata.org/docs/reference/api/pandas.melt.html",
+    "pivot": "https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.pivot.html"
+  },
+  "frontmatter": {
+    "created": "2026-04-15",
+    "updated": "2026-04-15",
+    "author": "dojo-community",
+    "audience": "AI agents, data engineers",
+    "estimated_reading_time": "5 min",
+    "prerequisites": ["pandas/dataframe", "pandas/workflows/clean"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://github.com/pandas-dev/pandas",
+  "created": "2026-04-15T00:00:00Z",
+  "updated": "2026-04-15T00:00:00Z",
+  "status": "published"
+}

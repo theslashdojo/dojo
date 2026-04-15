@@ -1,0 +1,115 @@
+{
+  "name": "store",
+  "version": "1.0.0",
+  "uri": "pnpm/store",
+  "type": "context",
+  "content_type": "explainer",
+  "context": "Understand pnpm's content-addressable store, virtual node_modules layout, and store maintenance commands",
+  "info": "pnpm's performance and disk-efficiency come from its global content-addressable store and the virtual store inside `node_modules/.pnpm`. This node explains how packages are hard linked or symlinked into projects, what `pnpm store status`, `path`, and `prune` actually do, and why the store is the right cache target for CI and Docker. Agents need this context whenever install behavior, workspace linking, or disk cleanup matters.",
+  "parent": "pnpm",
+  "tags": [
+    "store",
+    "content-addressable",
+    "node-modules",
+    "virtual-store",
+    "cache",
+    "hard-links",
+    "symlinks"
+  ],
+  "aliases": [
+    "pnpm store",
+    "pnpm cache",
+    "pnpm store path",
+    "pnpm store prune",
+    "virtual store",
+    "node_modules.pnpm"
+  ],
+  "triggers": [
+    "where does pnpm store packages",
+    "clean the pnpm store",
+    "find the pnpm store path",
+    "understand pnpm node_modules layout",
+    "cache pnpm correctly in CI"
+  ],
+  "body": "# pnpm Store Model\n\npnpm keeps package contents in a global content-addressable store and then links those contents into projects. The visible `node_modules` tree is a projection of that store, not a full copy of every package for every repo.\n\n## Why it matters\n\n- Disk use stays low across many repositories\n- `pnpm fetch` can warm the store without building project `node_modules`\n- CI caches should target the store, not random workspace directories\n- Linker and hoist settings from [[pnpm/config]] change what appears in `node_modules`\n",
+  "sections": [
+    {
+      "id": "layout",
+      "title": "Store and virtual node_modules layout",
+      "body": "Packages live in the global store and are linked into `node_modules/.pnpm`, then exposed through symlinks or hoisted aliases depending on linker settings. Workspace dependencies may be linked from source or copied into the virtual store when `dependenciesMeta.*.injected` is enabled. This explains why pnpm installations are usually faster on repeat runs and why the repo-local node_modules tree can look different from npm's flattened layout.",
+      "tags": [
+        "layout",
+        "virtual-store",
+        "injected",
+        "linker"
+      ]
+    },
+    {
+      "id": "store-commands",
+      "title": "Store commands",
+      "body": "`pnpm store path` returns the active store directory. `pnpm store status` checks whether store contents changed since unpacking. `pnpm store prune` removes unreferenced packages from the store and is safe for projects, although aggressive pruning can force re-downloads later. The official docs explicitly note that pruning is best done occasionally rather than constantly, and it is blocked while a store server is running.",
+      "tags": [
+        "store-path",
+        "status",
+        "prune",
+        "maintenance"
+      ]
+    },
+    {
+      "id": "caching-in-ci",
+      "title": "Caching in CI and Docker",
+      "body": "Official CI examples cache the pnpm store and pair it with a lockfile key. In Docker, `pnpm fetch` can populate the store from `pnpm-lock.yaml`, then `pnpm install --offline --frozen-lockfile` uses that store without network access. This pattern is usually more reliable than caching `node_modules` directly because the store is reusable across workspaces and install modes.",
+      "tags": [
+        "ci",
+        "docker",
+        "fetch",
+        "offline",
+        "cache"
+      ]
+    }
+  ],
+  "links": [
+    {
+      "uri": "pnpm/install#fetch-and-offline",
+      "context": "Fetch and offline install workflows are store-driven"
+    },
+    {
+      "uri": "pnpm/config#workspace-settings",
+      "context": "Linker and hoist settings shape what the store exposes into node_modules"
+    },
+    {
+      "uri": "pnpm/deploy#docker-and-ci",
+      "context": "Deploy pipelines often pre-warm the store before copying output"
+    },
+    {
+      "uri": "docker",
+      "context": "Container builds benefit from store-aware caching patterns"
+    }
+  ],
+  "related": [
+    {
+      "uri": "pnpm/install",
+      "relation": "see-also",
+      "note": "Install, fetch, and update commands are the main producers and consumers of store state"
+    },
+    {
+      "uri": "docker",
+      "relation": "see-also",
+      "note": "Caching the pnpm store is a common Docker optimization"
+    }
+  ],
+  "frontmatter": {
+    "created": "2026-04-12",
+    "updated": "2026-04-12",
+    "author": "dojo-community",
+    "audience": "developers, AI agents, CI engineers",
+    "estimated_reading_time": "4 min",
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-12T00:00:00Z",
+  "updated": "2026-04-12T00:00:00Z",
+  "status": "published"
+}

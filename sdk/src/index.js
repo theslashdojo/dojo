@@ -1,18 +1,41 @@
 /**
- * @dojo/sdk — Agent-facing client for the Dojo registry.
+ * slashdojo — Agent-facing client for the Dojo registry.
  *
  * Usage:
- *   import { Dojo } from '@dojo/sdk';
+ *   import { Dojo } from 'slashdojo';
  *   const hub = new Dojo();
  *   const skill = await hub.need('deploy a contract to Base');
  *   const result = await hub.run(skill, { contract_source: '...', chain: 'base' });
  */
 
-const DEFAULT_REGISTRY = 'https://api.dojo.dev';
+const DEFAULT_REGISTRY = 'https://slashdojo.com';
 const LOCAL_FALLBACK_REGISTRY = 'http://localhost:3000';
 
 function dedupe(values = []) {
   return Array.from(new Set(values.filter(Boolean)));
+}
+
+function toKebabCase(value) {
+  return String(value).replace(/_/g, '-');
+}
+
+function safeRelativePath(value) {
+  const normalized = String(value || '').replace(/\\/g, '/').replace(/^\.\//, '');
+  if (!normalized || normalized.startsWith('/') || normalized.split('/').includes('..')) {
+    throw new Error(`Unsafe bundle path: ${value}`);
+  }
+  return normalized;
+}
+
+function scalarEnv(input = {}) {
+  const env = {};
+  for (const [key, value] of Object.entries(input)) {
+    if (['args', 'argv'].includes(key)) continue;
+    if (['string', 'number', 'boolean'].includes(typeof value)) {
+      env[key] = String(value);
+    }
+  }
+  return env;
 }
 
 export class Dojo {
@@ -164,7 +187,7 @@ export class Dojo {
     }
 
     // Execute based on language
-    return this._execute(script, input);
+    return this._execute(script, input, { skill });
   }
 
   /**
@@ -307,11 +330,11 @@ export class Dojo {
       .map(([key]) => key);
   }
 
-  async _execute(script, input) {
+  async _execute(script, input, context = {}) {
     if (script.lang === 'bash' && script.inline) {
       const { execSync } = await import('child_process');
       const result = execSync(script.inline, {
-        env: { ...process.env, ...input },
+        env: { ...process.env, ...scalarEnv(input) },
         encoding: 'utf-8',
         timeout: 30000
       });
@@ -342,7 +365,184 @@ export class Dojo {
       }
     }
 
+    if (script.entry) {
+      return this._executeEntry(script, input, context.skill);
+    }
+
     throw new Error(`Execution not supported for lang: ${script.lang}`);
+  }
+
+  async _executeEntry(script, input = {}, skill) {
+    if (!skill?.uri) {
+      throw new Error(`Entry script ${script.id} requires a skill uri`);
+    }
+
+    const bundles = await this._fetchBundleChain(skill.uri);
+    const { activeDir, cleanup } = await this._materializeBundles(bundles);
+
+    try {
+      const { join } = await import('path');
+      const entryPath = join(activeDir, safeRelativePath(script.entry));
+      const { existsSync } = await import('fs');
+      if (!existsSync(entryPath)) {
+        throw new Error(`Entry file not found in bundle: ${script.entry}`);
+      }
+
+      const command = this._entryCommand(script.lang);
+      const args = this._entryArgs(script, input, skill);
+      const output = await this._spawn(command, [entryPath, ...args], {
+        cwd: activeDir,
+        input,
+        env: {
+          ...process.env,
+          ...scalarEnv(input),
+          DOJO_INPUT: JSON.stringify(input)
+        }
+      });
+
+      return this._parseExecutionOutput(output);
+    } finally {
+      cleanup();
+    }
+  }
+
+  async _fetchBundleChain(uri) {
+    const parts = uri.split('/').filter(Boolean);
+    const candidates = [];
+
+    for (let index = 2; index <= parts.length; index += 1) {
+      candidates.push(parts.slice(0, index).join('/'));
+    }
+
+    const bundles = [];
+    for (const candidate of candidates) {
+      try {
+        bundles.push(await this._fetch(`/v1/bundle/${candidate}`));
+      } catch (error) {
+        if (candidate === uri) throw error;
+      }
+    }
+
+    return bundles;
+  }
+
+  async _materializeBundles(bundles) {
+    const { chmodSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } = await import('fs');
+    const { dirname, join } = await import('path');
+    const { tmpdir } = await import('os');
+
+    const root = mkdtempSync(join(tmpdir(), 'dojo-skill-'));
+    let activeDir = root;
+
+    try {
+      for (const bundle of bundles) {
+        const sourcePath = bundle.source?.source_path && bundle.source.source_path !== '.'
+          ? safeRelativePath(bundle.source.source_path)
+          : '';
+        const bundleRoot = sourcePath ? join(root, sourcePath) : root;
+        activeDir = bundleRoot;
+
+        for (const file of bundle.files || []) {
+          if (file.content == null) continue;
+
+          const relativePath = safeRelativePath(file.path);
+          const target = join(bundleRoot, relativePath);
+          mkdirSync(dirname(target), { recursive: true });
+          writeFileSync(target, file.content);
+
+          if (relativePath.startsWith('scripts/') || file.content.startsWith('#!')) {
+            try { chmodSync(target, 0o755); } catch {}
+          }
+        }
+      }
+    } catch (error) {
+      rmSync(root, { recursive: true, force: true });
+      throw error;
+    }
+
+    return {
+      root,
+      activeDir,
+      cleanup: () => rmSync(root, { recursive: true, force: true })
+    };
+  }
+
+  _entryCommand(lang) {
+    if (lang === 'bash') return 'bash';
+    if (['javascript', 'typescript'].includes(lang)) return process.execPath;
+    if (lang === 'python') return process.env.PYTHON || 'python3';
+    throw new Error(`Execution not supported for lang: ${lang}`);
+  }
+
+  _entryArgs(script, input = {}, skill = {}) {
+    if (Array.isArray(input.argv)) return input.argv.map(String);
+    if (Array.isArray(input.args)) return input.args.map(String);
+
+    if (['javascript', 'typescript', 'python'].includes(script.lang)) {
+      return ['--json', JSON.stringify(input)];
+    }
+
+    const args = [];
+    const required = Array.isArray(skill.schema?.input?.required)
+      ? skill.schema.input.required
+      : [];
+    const positional = required.find(key => input[key] != null);
+
+    if (positional) args.push(String(input[positional]));
+
+    for (const [key, value] of Object.entries(input)) {
+      if (value == null || ['args', 'argv', positional].includes(key)) continue;
+      const flag = key === 'tags' ? 'tag' : toKebabCase(key);
+
+      if (value === true) {
+        args.push(`--${flag}`);
+      } else if (Array.isArray(value)) {
+        args.push(`--${flag}`, value.join(','));
+      } else if (value !== false) {
+        args.push(`--${flag}`, String(value));
+      }
+    }
+
+    return args;
+  }
+
+  async _spawn(command, args, { cwd, input, env }) {
+    const { spawn } = await import('child_process');
+
+    return new Promise((resolve, reject) => {
+      const child = spawn(command, args, {
+        cwd,
+        env,
+        stdio: ['pipe', 'pipe', 'pipe']
+      });
+      let stdout = '';
+      let stderr = '';
+
+      child.stdout.setEncoding('utf8');
+      child.stderr.setEncoding('utf8');
+      child.stdout.on('data', chunk => { stdout += chunk; });
+      child.stderr.on('data', chunk => { stderr += chunk; });
+      child.on('error', reject);
+      child.on('close', code => {
+        if (code === 0) return resolve(stdout);
+        reject(new Error((stderr || stdout || `${command} exited with code ${code}`).trim()));
+      });
+      child.stdin.on('error', error => {
+        if (error.code !== 'EPIPE') reject(error);
+      });
+
+      child.stdin.end(`${JSON.stringify(input || {})}\n`);
+    });
+  }
+
+  _parseExecutionOutput(output) {
+    const text = String(output || '').trim();
+    if (!text) return '';
+    try {
+      return JSON.parse(text);
+    } catch {
+      return output;
+    }
   }
 }
 

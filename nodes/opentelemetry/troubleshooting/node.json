@@ -1,0 +1,163 @@
+{
+  "name": "troubleshooting",
+  "version": "1.0.0",
+  "uri": "opentelemetry/troubleshooting",
+  "type": "context",
+  "context": "Debug missing spans, metrics, logs, propagation, OTLP endpoints, Collector pipelines, and sampling mistakes.",
+  "info": "OpenTelemetry failures are usually configuration or pipeline failures: the SDK starts too late, the service name is missing, the exporter points at the wrong endpoint, HTTP paths are wrong, gRPC is blocked, context propagation is not crossing a boundary, Collector pipelines omit a signal, processors drop data, or sampling removes the trace. Agents use this node as the operational checklist before rewriting instrumentation or blaming the backend.",
+  "parent": "opentelemetry",
+  "tags": [
+    "troubleshooting",
+    "debugging",
+    "missing-spans",
+    "otlp",
+    "collector",
+    "propagation",
+    "sampling",
+    "service-name"
+  ],
+  "aliases": [
+    "otel troubleshooting",
+    "opentelemetry debugging",
+    "missing spans",
+    "spans not showing up",
+    "metrics missing",
+    "collector not receiving",
+    "traceparent not working",
+    "otlp connection refused",
+    "no service name"
+  ],
+  "triggers": [
+    "why are spans missing",
+    "opentelemetry not sending data",
+    "collector receives nothing",
+    "metrics are not visible",
+    "traces are split",
+    "trace propagation broken",
+    "otlp 404",
+    "grpc unavailable",
+    "service appears as unknown_service"
+  ],
+  "content_type": "faq",
+  "body": "# OpenTelemetry Troubleshooting\n\nUse this checklist in order. Most issues are found before application code needs to change.\n\n## One-Minute Checks\n\n```bash\n# Service identity\nprintf '%s\\n' \"$OTEL_SERVICE_NAME\" \"$OTEL_RESOURCE_ATTRIBUTES\"\n\n# Endpoint and protocol\nprintf '%s\\n' \"$OTEL_EXPORTER_OTLP_ENDPOINT\" \"$OTEL_EXPORTER_OTLP_PROTOCOL\"\n\n# Collector health and internal metrics\ncurl -fsS http://localhost:13133/ || true\ncurl -fsS http://localhost:8888/metrics | head || true\n```\n\n## Common Failure Modes\n\n| Symptom | Likely cause | Fix |\n| --- | --- | --- |\n| `unknown_service` | Missing `service.name` | Set `OTEL_SERVICE_NAME` or resource attributes |\n| No spans at all | SDK not initialized before app imports | Start Node with `node --import ./instrumentation.mjs app.js` |\n| OTLP/HTTP 404 | Wrong endpoint path | Use base `OTEL_EXPORTER_OTLP_ENDPOINT=http://host:4318` or signal URL with `/v1/traces` |\n| gRPC unavailable | Proxy or network blocks HTTP/2 | Switch to `OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf` and port `4318` |\n| Split traces | Context not propagated | Check `traceparent` headers or queue metadata propagation |\n| Only root spans | Auto-instrumentation loaded too late | Register instrumentation before loading HTTP, DB, or framework modules |\n| Errors missing | Span status not set or sampling drops trace | Record exceptions and review [[opentelemetry/sampling]] |\n| Metrics explode | High-cardinality attributes | Remove IDs, UUIDs, emails, full URLs, raw SQL |\n\n## Collector Debug Exporter\n\nAdd a debug exporter while verifying pipeline shape:\n\n```yaml\nexporters:\n  debug:\n    verbosity: detailed\nservice:\n  pipelines:\n    traces:\n      receivers: [otlp]\n      processors: [batch]\n      exporters: [debug]\n```\n\nIf the debug exporter prints data, the SDK and receiver work. If the backend still shows nothing, inspect exporter auth, endpoint, TLS, and vendor-specific limits.",
+  "sections": [
+    {
+      "id": "sdk-startup",
+      "title": "SDK startup order",
+      "body": "Auto-instrumentation must register before instrumented modules are imported. In Node.js, prefer `node --import ./instrumentation.mjs app.js` for ESM startup. If the app imports Express, HTTP, database clients, or queue clients before the SDK starts, spans may be missing or incomplete. See [[opentelemetry/nodejs#startup-order]].",
+      "tags": [
+        "nodejs",
+        "startup",
+        "auto-instrumentation",
+        "imports"
+      ]
+    },
+    {
+      "id": "endpoint-protocol",
+      "title": "Endpoint and protocol",
+      "body": "Check port and transport first. `4317` is usually OTLP/gRPC, and `4318` is usually OTLP/HTTP. For general HTTP endpoint variables, SDKs append `/v1/traces`, `/v1/metrics`, or `/v1/logs`; signal-specific endpoint variables are used as-is. See [[opentelemetry/otlp#ports-and-paths]].",
+      "tags": [
+        "otlp",
+        "grpc",
+        "http",
+        "endpoint",
+        "ports"
+      ]
+    },
+    {
+      "id": "collector-pipelines",
+      "title": "Collector pipelines",
+      "body": "A Collector component is inert until referenced from `service.pipelines` or `service.extensions`. Make sure each signal has a pipeline and that the pipeline references the intended receivers, processors, and exporters. Check collector logs and `otelcol_*` internal metrics for dropped data or exporter failures.",
+      "tags": [
+        "collector",
+        "pipelines",
+        "receivers",
+        "exporters",
+        "internal-metrics"
+      ]
+    },
+    {
+      "id": "propagation",
+      "title": "Propagation",
+      "body": "For HTTP, inspect the inbound and outbound `traceparent` header. For queues and custom protocols, make sure context is injected into metadata on publish and extracted on consume. Be careful with public or untrusted boundaries: sanitize or ignore incoming context when needed, and never propagate secrets through baggage.",
+      "tags": [
+        "propagation",
+        "traceparent",
+        "queues",
+        "baggage",
+        "security"
+      ]
+    }
+  ],
+  "links": [
+    {
+      "uri": "opentelemetry/nodejs",
+      "context": "Fix Node.js startup order and SDK setup"
+    },
+    {
+      "uri": "opentelemetry/collector",
+      "context": "Inspect collector pipelines, logs, health, and debug exporter"
+    },
+    {
+      "uri": "opentelemetry/otlp",
+      "context": "Verify endpoints, ports, paths, protocol, headers, and TLS"
+    },
+    {
+      "uri": "opentelemetry/sampling",
+      "context": "Sampling can intentionally remove traces"
+    },
+    {
+      "uri": "opentelemetry/semantic-conventions",
+      "context": "Fix missing or unstable service and span attributes"
+    },
+    {
+      "uri": "curl/debugging",
+      "context": "Use curl to inspect health endpoints and HTTP collector responses"
+    },
+    {
+      "uri": "jq/query",
+      "context": "Post-process collector or backend JSON responses"
+    }
+  ],
+  "related": [
+    {
+      "uri": "opentelemetry/otlp",
+      "relation": "prerequisite",
+      "note": "Endpoint and protocol errors are among the most common OTLP failures"
+    },
+    {
+      "uri": "opentelemetry/collector",
+      "relation": "see-also",
+      "note": "The collector exposes logs, health endpoints, and internal metrics for diagnosis"
+    },
+    {
+      "uri": "curl/debugging",
+      "relation": "see-also",
+      "note": "HTTP checks are often the fastest way to isolate endpoint issues"
+    }
+  ],
+  "more": {
+    "docs": "https://opentelemetry.io/docs/collector/troubleshooting/",
+    "collector-management": "https://opentelemetry.io/docs/collector/management/",
+    "propagation": "https://opentelemetry.io/docs/concepts/context-propagation/",
+    "sdk-env": "https://opentelemetry.io/docs/specs/otel/configuration/sdk-environment-variables/"
+  },
+  "frontmatter": {
+    "created": "2026-04-15",
+    "updated": "2026-04-15",
+    "author": "dojo-community",
+    "audience": "ai-agents, sre, backend-engineers",
+    "estimated_reading_time": "6 min",
+    "prerequisites": [
+      "opentelemetry/otlp",
+      "opentelemetry/collector"
+    ],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-15T00:00:00Z",
+  "updated": "2026-04-15T00:00:00Z",
+  "status": "published"
+}

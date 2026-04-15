@@ -1,0 +1,116 @@
+{
+  "name": "security",
+  "version": "1.0.0",
+  "uri": "pnpm/security",
+  "type": "context",
+  "content_type": "guide",
+  "context": "Control dependency build scripts, release-age trust, and supply-chain risk in pnpm installs",
+  "info": "pnpm exposes more supply-chain controls than most Node package managers, including explicit approval of dependency build scripts, release-age delays, trust policies, and exotic-source blocking. This node matters when an agent must install packages in CI, review postinstall behavior, or harden a repository against compromised releases. It also covers the newer `allowBuilds` model and the relationship between `approve-builds`, ignored builds, and patching.",
+  "parent": "pnpm",
+  "tags": [
+    "security",
+    "approve-builds",
+    "allow-builds",
+    "minimum-release-age",
+    "trust-policy",
+    "ignore-scripts",
+    "supply-chain"
+  ],
+  "aliases": [
+    "pnpm security",
+    "pnpm approve-builds",
+    "pnpm trusted deps",
+    "pnpm build scripts",
+    "minimumReleaseAge",
+    "allowBuilds",
+    "ignoredBuiltDependencies"
+  ],
+  "triggers": [
+    "review pnpm postinstall scripts",
+    "approve dependency builds in pnpm",
+    "block unsafe pnpm install scripts",
+    "delay new package releases in pnpm",
+    "harden pnpm against supply chain attacks",
+    "see which builds pnpm ignored"
+  ],
+  "body": "# pnpm Security Controls\n\npnpm lets you move beyond a binary choice of \"run all dependency scripts\" or \"run none\". Recent releases add explicit approval flows and trust settings so an agent can install dependencies without silently accepting every postinstall script in the graph.\n\n## Main controls\n\n- `ignoreScripts` disables all scripts from the project and dependencies\n- `ignoreDepScripts` disables dependency scripts while still allowing project scripts\n- `strictDepBuilds` fails install when unreviewed dependency build scripts are present\n- `allowBuilds` is the newer source of truth for explicit build-script permissions\n- `minimumReleaseAge` delays freshly published versions before pnpm will install them\n- `trustPolicy` and `blockExoticSubdeps` reduce supply-chain exposure further\n\nWhen a package truly needs local modification rather than approval, use [[pnpm/patch]].\n",
+  "sections": [
+    {
+      "id": "build-script-review",
+      "title": "Build-script review and approval",
+      "body": "The official `pnpm approve-builds` command records approved packages for install-time scripts. Its docs say approved dependencies are written to `onlyBuiltDependencies` and rejected ones to `ignoredBuiltDependencies`, while newer settings docs introduce `allowBuilds` as the replacement single source of truth. `strictDepBuilds` upgrades warnings into install failures, and `dangerouslyAllowAllBuilds` is the escape hatch you should avoid unless you trust the entire dependency graph.",
+      "tags": [
+        "approve-builds",
+        "allow-builds",
+        "strict-dep-builds",
+        "postinstall"
+      ]
+    },
+    {
+      "id": "release-age-and-trust",
+      "title": "Release age and publisher trust",
+      "body": "`minimumReleaseAge` delays installs of newly published versions, including transitives, for a configurable number of minutes. `minimumReleaseAgeExclude` can exempt selected packages or versions. `trustPolicy` can fail installs when a package's trust evidence weakens over time, and `trustPolicyExclude` or `trustPolicyIgnoreAfter` carve out exceptions. These settings are useful when an autonomous system installs dependencies continuously and should resist supply-chain spikes.",
+      "tags": [
+        "minimum-release-age",
+        "trust-policy",
+        "release-trust",
+        "transitives"
+      ]
+    },
+    {
+      "id": "hard-blocks",
+      "title": "Hard blocking and source restrictions",
+      "body": "`neverBuiltDependencies` permanently blocks selected packages from running install scripts, while `ignoredBuiltDependencies` suppresses both execution and noise for packages you intentionally do not need. `blockExoticSubdeps` prevents transitive dependencies from pulling code from git URLs or arbitrary tarballs unless the source is trusted. Combine these with [[pnpm/config#workspace-settings]] and [[pnpm/install]] for a default-deny install posture.",
+      "tags": [
+        "never-built-dependencies",
+        "ignored-built-dependencies",
+        "block-exotic-subdeps",
+        "default-deny"
+      ]
+    }
+  ],
+  "links": [
+    {
+      "uri": "pnpm/install",
+      "context": "Install and add commands are where these controls are enforced"
+    },
+    {
+      "uri": "pnpm/patch",
+      "context": "Patch when the package contents are wrong, not just its trust policy"
+    },
+    {
+      "uri": "pnpm/config#workspace-settings",
+      "context": "Security settings live in pnpm-workspace.yaml and package config"
+    },
+    {
+      "uri": "pnpm/scripts",
+      "context": "Runtime script execution may also be guarded by dependency verification settings"
+    }
+  ],
+  "related": [
+    {
+      "uri": "pnpm/install",
+      "relation": "see-also",
+      "note": "Security settings are most visible during install, add, and dlx workflows"
+    },
+    {
+      "uri": "pnpm/patch",
+      "relation": "see-also",
+      "note": "Patching is often the follow-up when a package is trusted but broken"
+    }
+  ],
+  "frontmatter": {
+    "created": "2026-04-12",
+    "updated": "2026-04-12",
+    "author": "dojo-community",
+    "audience": "developers, AI agents, security-minded build engineers",
+    "estimated_reading_time": "5 min",
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-12T00:00:00Z",
+  "updated": "2026-04-12T00:00:00Z",
+  "status": "published"
+}

@@ -1,0 +1,211 @@
+{
+  "name": "repair",
+  "version": "1.0.0",
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://salsa.debian.org/apt-team/apt",
+  "created": "2026-04-12T00:00:00Z",
+  "updated": "2026-04-12T00:00:00Z",
+  "status": "published",
+  "uri": "apt/repair",
+  "type": "skill",
+  "parent": "apt",
+  "context": "Repair broken dependency state, pending dpkg configuration, and APT lock contention on Debian and Ubuntu hosts",
+  "info": "This skill handles the failure modes agents hit after interrupted package operations, incomplete local deb installs, conflicting repositories, or concurrent package managers. It centers on `apt-get check`, `apt-get install -f`, `dpkg --configure -a`, and lock inspection rather than ad hoc file deletion. Use it whenever APT reports broken dependencies, `dpkg` is left half-configured, or package changes are blocked by another process or timer.",
+  "tags": [
+    "apt",
+    "repair",
+    "fix-broken",
+    "dpkg",
+    "locks",
+    "dependencies",
+    "troubleshooting",
+    "ubuntu",
+    "debian"
+  ],
+  "aliases": [
+    "fix apt",
+    "apt-get install -f",
+    "broken dependencies",
+    "dpkg configure a",
+    "apt lock file",
+    "repair package manager"
+  ],
+  "triggers": [
+    "fix broken apt dependencies",
+    "run dpkg configure a",
+    "find what holds the apt lock",
+    "repair interrupted package install",
+    "apt says packages are broken",
+    "check package manager health"
+  ],
+  "sections": [
+    {
+      "id": "check",
+      "title": "Check dependency health",
+      "body": "`apt-get check` is the first pass for repair because it refreshes the cache and then validates dependency consistency. Pair it with `apt-cache unmet` when you need a faster summary of the unresolved relationships APT sees.",
+      "tags": [
+        "check",
+        "diagnostics",
+        "unmet"
+      ]
+    },
+    {
+      "id": "configure-pending",
+      "title": "Finish pending dpkg configuration",
+      "body": "`dpkg --configure -a` repairs the state where packages have been unpacked but not configured. This is the usual fix after interrupted installs, failed maintainer scripts, or a reboot during package work.",
+      "tags": [
+        "dpkg",
+        "configure",
+        "interrupted"
+      ]
+    },
+    {
+      "id": "fix-broken",
+      "title": "Use apt-get install -f carefully",
+      "body": "`apt-get install -f` asks the solver to correct broken dependencies. It is the standard recovery path after a failed local deb install or a partial transaction. If the dependency graph is severely corrupted, Debian notes that manual removal of an offending package may still be required.",
+      "tags": [
+        "fix-broken",
+        "solver",
+        "dependencies"
+      ]
+    },
+    {
+      "id": "locks",
+      "title": "Inspect lock contention first",
+      "body": "APT and `dpkg` use lock files to serialize package operations. A present lock file is not itself the problem; an active owner is. Identify the owning process with `lsof` or `fuser`, decide whether it is a legitimate package operation, and only then retry or stop it intentionally.",
+      "tags": [
+        "locks",
+        "lsof",
+        "fuser",
+        "contention"
+      ]
+    }
+  ],
+  "links": [
+    {
+      "uri": "apt/troubleshooting",
+      "context": "See the broader failure taxonomy and log locations"
+    },
+    {
+      "uri": "apt/search#policy",
+      "context": "Inspect repository policy if breakage follows a source change"
+    },
+    {
+      "uri": "apt/repositories",
+      "context": "Audit third-party repositories if signatures or conflicting packages are involved"
+    },
+    {
+      "uri": "apt/install",
+      "context": "Resume or repeat the intended install once package state is healthy again"
+    }
+  ],
+  "related": [
+    {
+      "uri": "apt/troubleshooting",
+      "relation": "see-also",
+      "note": "Troubleshooting helps classify whether the issue is broken state, lock contention, or repository trust"
+    }
+  ],
+  "scripts": [
+    {
+      "id": "repair-apt",
+      "name": "Repair APT and dpkg state",
+      "description": "Check package health, finish pending config, fix broken deps, or inspect lock holders",
+      "lang": "bash",
+      "runtime": "bash, apt>=2",
+      "entry": "./scripts/repair-apt.sh",
+      "env": {
+        "APT_REPAIR_ACTION": {
+          "required": true,
+          "description": "Repair action: check, configure-pending, fix-broken, fix-missing, or locks"
+        },
+        "APT_PACKAGES": {
+          "required": false,
+          "description": "Package specs used only with fix-missing"
+        },
+        "APT_ASSUME_YES": {
+          "required": false,
+          "default": "true",
+          "description": "Set to true to pass -y to apt-get where supported"
+        },
+        "APT_SIMULATE": {
+          "required": false,
+          "default": "false",
+          "description": "Set to true to simulate apt-get actions with -s"
+        },
+        "DEBIAN_FRONTEND": {
+          "required": false,
+          "default": "noninteractive",
+          "description": "Frontend for package configuration prompts"
+        }
+      },
+      "packages": [
+        "apt",
+        "dpkg",
+        "sudo",
+        "lsof"
+      ]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "action": {
+          "type": "string",
+          "enum": [
+            "check",
+            "configure-pending",
+            "fix-broken",
+            "fix-missing",
+            "locks"
+          ],
+          "description": "Repair action to execute"
+        },
+        "packages": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Package specs to use with fix-missing"
+        },
+        "simulate": {
+          "type": "boolean",
+          "description": "Simulate apt-get-based repair actions"
+        }
+      },
+      "required": [
+        "action"
+      ]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "action": {
+          "type": "string",
+          "description": "Repair action that ran"
+        },
+        "exitCode": {
+          "type": "integer",
+          "description": "Process exit code"
+        }
+      }
+    }
+  },
+  "more": {
+    "docs": "https://manpages.debian.org/testing/apt/apt-get.8.en.html",
+    "ubuntu": "https://ubuntu.com/server/docs/how-to/software/package-management/"
+  },
+  "frontmatter": {
+    "created": "2026-04-12",
+    "updated": "2026-04-12",
+    "author": "dojo-community",
+    "status": "living",
+    "confidence": "high",
+    "audience": "developers, sre, ai agents",
+    "estimated_reading_time": "6 min",
+    "prerequisites": []
+  },
+  "body": "# Repairing Package State\n\nUse this node when package operations have already gone wrong. Start with diagnostics and the least destructive repair path.\n\n## Diagnostics\n\n```bash\nsudo apt-get check\napt-cache unmet\n```\n\n`apt-get check` updates the cache and verifies dependency consistency. `apt-cache unmet` gives a quick summary of unresolved dependencies visible from the metadata.\n\n## Reconfigure pending packages\n\n```bash\nsudo dpkg --configure -a\n```\n\nRun this after interrupted package installation, reboot during package configuration, or a failed post-install script. It asks `dpkg` to finish configuring unpacked but incomplete packages.\n\n## Fix broken dependencies\n\n```bash\nsudo apt-get install -f\n```\n\n`-f` asks APT to deduce a likely solution for broken dependencies. Debian warns that highly corrupt dependency structures may still need manual intervention, usually by removing an offending package with `dpkg`.\n\n## Lock contention\n\n```bash\nsudo lsof /var/lib/dpkg/lock-frontend /var/lib/dpkg/lock \\\n  /var/lib/apt/lists/lock /var/cache/apt/archives/lock\n```\n\nDo not delete lock files blindly. Identify the owning process first. Common owners include another `apt-get`, unattended package timers, cloud-init, or package installation hooks running through a different terminal.\n\n## Missing package downloads\n\nIf package files fail to download, `apt-get --fix-missing install ...` can hold back the failed package and continue with the rest. Use it deliberately with explicit packages, then investigate network or repository integrity separately."
+}

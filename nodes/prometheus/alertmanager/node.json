@@ -1,0 +1,279 @@
+{
+  "name": "alertmanager",
+  "version": "1.0.0",
+  "uri": "prometheus/alertmanager",
+  "type": "skill",
+  "context": "Inspect Alertmanager status, validate routes, and manage silences and grouped alerts.",
+  "info": "Alertmanager receives alert state from Prometheus, groups alerts, suppresses duplicates, applies silences and inhibition, and sends notifications to receivers. This skill covers the operational actions agents actually perform: validate config with `amtool`, inspect route trees, query API v2 status and alert groups, create narrowly scoped silences, and expire them safely when maintenance windows end.",
+  "parent": "prometheus",
+  "tags": [
+    "alertmanager",
+    "silences",
+    "routes",
+    "receivers",
+    "notifications",
+    "amtool",
+    "api-v2",
+    "alerts",
+    "grouping"
+  ],
+  "aliases": [
+    "alertmanager",
+    "prometheus alertmanager",
+    "amtool",
+    "manage silences",
+    "alertmanager routes",
+    "alertmanager api"
+  ],
+  "triggers": [
+    "silence a prometheus alert",
+    "check alertmanager status",
+    "list active silences",
+    "expire a silence",
+    "validate alertmanager config",
+    "see how alertmanager routes alerts"
+  ],
+  "body": "# Alertmanager Operations\n\nAlertmanager handles grouping, silencing, inhibition, and receiver delivery after [[prometheus/rules]] create alert state. The official docs recommend letting Prometheus send alerts based on rules rather than posting primary alerts directly to the Alerts API.\n\n```yaml\nroute:\n  receiver: default\n  group_by: ['alertname', 'cluster']\n  routes:\n    - matchers:\n        - severity=\"page\"\n      receiver: pager\nreceivers:\n  - name: default\n  - name: pager\n```\n\n```bash\namtool check-config alertmanager.yml\namtool config routes --config.file=alertmanager.yml\namtool silence add alertname=InstanceDown\namtool silence query\namtool silence expire <silence-id>\n```\n\nThe API surface is also useful for automation:\n\n- `GET /api/v2/status`\n- `GET /api/v2/silences`\n- `POST /api/v2/silences`\n- `DELETE /api/v2/silence/{silenceID}`\n- `GET /api/v2/alerts`\n- `GET /api/v2/alerts/groups`\n\nUse silences narrowly. Match on the smallest safe scope and always add a comment that explains the maintenance or incident reason.",
+  "sections": [
+    {
+      "id": "routes",
+      "title": "Routes and receivers",
+      "body": "Alertmanager routes are a tree rooted at the top-level `route`. Grouping keys, matchers, and receiver names determine where an alert lands. `amtool config routes` is the fastest way to visualize that tree or test how labels would route, which is far safer than reasoning about nested YAML in your head during an incident.",
+      "tags": [
+        "routes",
+        "receivers",
+        "group-by",
+        "amtool"
+      ]
+    },
+    {
+      "id": "silences",
+      "title": "Silence lifecycle",
+      "body": "API v2 exposes silence listing, creation, retrieval, and deletion. A silence contains matchers, `startsAt`, `endsAt`, `createdBy`, and a required comment. Matchers support exact, regex, and negative forms. Agents should prefer the narrowest matcher set that covers the maintenance window and expire the silence as soon as it is no longer needed.",
+      "tags": [
+        "silences",
+        "matchers",
+        "maintenance",
+        "api-v2"
+      ]
+    },
+    {
+      "id": "api-surface",
+      "title": "Operational API surface",
+      "body": "Use `/api/v2/status` to inspect cluster and config state, `/api/v2/alerts` to inspect alert instances, and `/api/v2/alerts/groups` to see grouped delivery state. The official Alerts API docs note that Prometheus should usually send alerts, and the raw alerts POST endpoint is best kept for testing or controlled integrations rather than the main alert pipeline.",
+      "tags": [
+        "status",
+        "alerts",
+        "groups",
+        "delivery",
+        "api-v2"
+      ]
+    }
+  ],
+  "links": [
+    {
+      "uri": "prometheus/rules",
+      "context": "Prometheus alerting rules are the normal source of Alertmanager input"
+    },
+    {
+      "uri": "prometheus/auth",
+      "context": "Protect Alertmanager APIs and route inspection endpoints with auth or a proxy"
+    },
+    {
+      "uri": "prometheus/config",
+      "context": "Prometheus must know where Alertmanager is before alerts will flow"
+    },
+    {
+      "uri": "slack/webhooks",
+      "context": "Slack is a common receiver target downstream of Alertmanager routes"
+    },
+    {
+      "uri": "twilio/sms",
+      "context": "SMS paging can sit behind a webhook or custom receiver integration"
+    }
+  ],
+  "related": [
+    {
+      "uri": "prometheus/rules",
+      "relation": "prerequisite",
+      "note": "Alertmanager normally receives alert state from Prometheus alerting rules"
+    },
+    {
+      "uri": "prometheus/auth",
+      "relation": "prerequisite",
+      "note": "Protected route and silence endpoints require auth or trusted network access"
+    },
+    {
+      "uri": "slack/webhooks",
+      "relation": "see-also",
+      "note": "Slack is a frequent downstream integration for receiver delivery"
+    }
+  ],
+  "scripts": [
+    {
+      "id": "manage-alertmanager",
+      "name": "Manage Alertmanager Status and Silences",
+      "description": "Inspect Alertmanager status and alerts, create or expire silences, and validate config with amtool",
+      "lang": "python",
+      "runtime": "python>=3.11",
+      "entry": "./scripts/manage-alertmanager.py",
+      "env": {
+        "ALERTMANAGER_URL": {
+          "required": false,
+          "default": "http://localhost:9093",
+          "description": "Alertmanager base URL"
+        },
+        "ALERTMANAGER_BEARER_TOKEN": {
+          "required": false,
+          "secret": true,
+          "description": "Bearer token for protected endpoints"
+        },
+        "ALERTMANAGER_BASIC_AUTH_USERNAME": {
+          "required": false,
+          "description": "Basic auth username for protected endpoints"
+        },
+        "ALERTMANAGER_BASIC_AUTH_PASSWORD": {
+          "required": false,
+          "secret": true,
+          "description": "Basic auth password for protected endpoints"
+        },
+        "ALERTMANAGER_CA_BUNDLE": {
+          "required": false,
+          "description": "Custom CA bundle for HTTPS endpoints"
+        },
+        "ALERTMANAGER_INSECURE_SKIP_VERIFY": {
+          "required": false,
+          "default": "false",
+          "description": "Skip TLS verification for debugging only"
+        },
+        "AMTOOL_BIN": {
+          "required": false,
+          "default": "amtool",
+          "description": "amtool binary for config validation and route rendering"
+        }
+      }
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "action": {
+          "type": "string",
+          "enum": [
+            "status",
+            "list-silences",
+            "create-silence",
+            "expire-silence",
+            "alerts",
+            "groups",
+            "validate-config",
+            "routes"
+          ]
+        },
+        "filters": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Matcher expressions for alert or silence filtering"
+        },
+        "receiver": {
+          "type": "string",
+          "description": "Receiver regex for alerts or groups actions"
+        },
+        "silenceId": {
+          "type": "string",
+          "description": "Silence UUID for expire-silence"
+        },
+        "matchers": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Silence matchers such as alertname=InstanceDown"
+        },
+        "comment": {
+          "type": "string",
+          "description": "Required silence comment"
+        },
+        "createdBy": {
+          "type": "string",
+          "description": "Silence author"
+        },
+        "duration": {
+          "type": "string",
+          "description": "Silence duration such as 2h"
+        },
+        "start": {
+          "type": "string",
+          "description": "Silence start time in RFC3339"
+        },
+        "end": {
+          "type": "string",
+          "description": "Silence end time in RFC3339"
+        },
+        "configFile": {
+          "type": "string",
+          "description": "Alertmanager config file for validate-config or routes"
+        }
+      },
+      "required": [
+        "action"
+      ]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "type": "string"
+        },
+        "silenceID": {
+          "type": "string"
+        },
+        "expired": {
+          "type": "string"
+        },
+        "response": {
+          "type": "object"
+        }
+      }
+    }
+  },
+  "depends": [
+    {
+      "uri": "prometheus/rules",
+      "reason": "Prometheus alerting rules are the standard upstream source of alerts"
+    },
+    {
+      "uri": "prometheus/auth",
+      "optional": true,
+      "reason": "Protected Alertmanager endpoints require auth or trusted network access"
+    }
+  ],
+  "more": {
+    "overview": "https://prometheus.io/docs/alerting/latest/overview/",
+    "configuration": "https://prometheus.io/docs/alerting/latest/configuration/",
+    "alerts-api": "https://prometheus.io/docs/alerting/latest/alerts_api/",
+    "openapi": "https://raw.githubusercontent.com/prometheus/alertmanager/main/api/v2/openapi.yaml",
+    "repo": "https://github.com/prometheus/alertmanager"
+  },
+  "frontmatter": {
+    "created": "2026-04-12",
+    "updated": "2026-04-12",
+    "author": "dojo-community",
+    "audience": "ai-agents, sre, incident-responders",
+    "estimated_reading_time": "6 min",
+    "prerequisites": [
+      "prometheus/rules"
+    ],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://github.com/prometheus/alertmanager",
+  "created": "2026-04-12T00:00:00Z",
+  "updated": "2026-04-12T00:00:00Z",
+  "status": "published"
+}

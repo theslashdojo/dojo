@@ -1,0 +1,73 @@
+{
+  "name": "network",
+  "version": "1.0.0",
+  "uri": "playwright/network",
+  "type": "context",
+  "context": "Inspect, wait for, mock, modify, block, and assert browser network traffic in Playwright tests and automation scripts.",
+  "info": "Playwright network control lets agents observe requests and responses, wait for specific API calls, stub backend behavior, modify upstream responses, block resource classes, and validate that UI actions produce the expected HTTP traffic. This context covers page and context routes, route.fulfill, route.fetch, route.abort, waitForRequest, waitForResponse, HAR recording concepts, service worker caveats, and safe logging. Agents use it when isolating frontend behavior, reproducing backend errors, speeding up browser research, or debugging why a dynamic page did not load expected data.",
+  "parent": "playwright",
+  "content_type": "guide",
+  "tags": ["playwright", "network", "route", "mock-api", "intercept", "waitforresponse", "har", "service-workers", "xhr", "fetch"],
+  "aliases": ["playwright network", "page.route", "route.fulfill", "route.fetch", "route.abort", "waitForResponse", "mock api playwright", "intercept request playwright"],
+  "triggers": ["mock api in playwright", "wait for network response", "block analytics playwright", "modify response playwright", "inspect xhr requests", "route requests in playwright", "simulate backend error", "network logs playwright"],
+  "body": "# Playwright Network\n\nUse network control when the page behavior depends on API calls or third-party resources.\n\n```typescript\nawait page.route('**/api/products', async route => {\n  await route.fulfill({\n    status: 200,\n    contentType: 'application/json',\n    body: JSON.stringify([{ id: 'p1', name: 'Widget' }])\n  });\n});\n\nconst responsePromise = page.waitForResponse('**/api/products');\nawait page.getByRole('button', { name: 'Refresh' }).click();\nconst response = await responsePromise;\nexpect(response.status()).toBe(200);\n```\n\nRoutes are evaluated before matching requests are sent. Register routes before navigating or before the action that triggers the request.",
+  "sections": [
+    {
+      "id": "mocking",
+      "title": "Mock responses",
+      "body": "Use `page.route(pattern, handler)` or `context.route(pattern, handler)` to intercept requests. `route.fulfill({ status, headers, contentType, body })` returns a mock response. Register mocks before `page.goto()` if the page loads data during initial render. Scope mocks narrowly so unrelated requests continue to exercise the real stack.",
+      "tags": ["route", "fulfill", "mock", "context-route"]
+    },
+    {
+      "id": "modify-upstream",
+      "title": "Modify upstream responses",
+      "body": "Use `const response = await route.fetch()` to make the real request, then inspect or mutate the response before calling `route.fulfill({ response, body })`. This is useful for changing one field while preserving realistic headers, status, and most body content.",
+      "tags": ["route-fetch", "modify", "upstream", "proxy"]
+    },
+    {
+      "id": "waiting",
+      "title": "Wait for traffic",
+      "body": "Create wait promises before the action: `const p = page.waitForResponse(r => r.url().endsWith('/api/me') && r.status() === 200); await page.click(...); await p;`. This avoids missing fast responses. Use predicates when URL globs are too broad or when status/method matters.",
+      "tags": ["waitForResponse", "waitForRequest", "predicate", "race"]
+    },
+    {
+      "id": "caveats",
+      "title": "Caveats",
+      "body": "Service workers can intercept requests before Playwright routes see them; disable service workers in the context when needed. Do not log authorization headers or cookies in CI. Blocking images and fonts speeds research, but do not use that mode for visual tests. Use [[playwright/api-testing]] for direct API checks that do not need a browser.",
+      "tags": ["service-workers", "secrets", "blocking", "api-testing"]
+    }
+  ],
+  "links": [
+    { "uri": "playwright/browser-automation", "context": "Use network routes in standalone browser scripts" },
+    { "uri": "playwright/api-testing", "context": "Call APIs directly without a browser when UI is irrelevant" },
+    { "uri": "testing/mocking", "context": "Broader mocking strategy across test layers" },
+    { "uri": "curl/request", "context": "Inspect an API outside the browser" },
+    { "uri": "openapi", "context": "Use API contracts to shape realistic mocked responses" }
+  ],
+  "related": [
+    { "uri": "testing/mocking", "relation": "implements", "note": "Playwright request routing is a browser-level mocking mechanism." },
+    { "uri": "curl/request", "relation": "alternative", "note": "curl is simpler for direct API calls when browser context is unnecessary." },
+    { "uri": "playwright/api-testing", "relation": "see-also", "note": "API request contexts complement browser network interception." }
+  ],
+  "more": {
+    "docs": "https://playwright.dev/docs/network",
+    "mock-apis": "https://playwright.dev/docs/mock",
+    "api-testing": "https://playwright.dev/docs/api-testing",
+    "service-workers": "https://playwright.dev/docs/service-workers"
+  },
+  "frontmatter": {
+    "created": "2026-04-15",
+    "updated": "2026-04-15",
+    "author": "dojo-community",
+    "audience": "developers, QA engineers, AI agents",
+    "estimated_reading_time": "8 min",
+    "prerequisites": ["playwright/locators"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-15T00:00:00Z",
+  "updated": "2026-04-15T00:00:00Z",
+  "status": "published"
+}

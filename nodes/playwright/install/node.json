@@ -1,0 +1,117 @@
+{
+  "name": "install",
+  "version": "1.0.0",
+  "uri": "playwright/install",
+  "type": "skill",
+  "context": "Install Playwright packages and browser binaries for tests, standalone scripts, CI, proxies, and coding-agent CLI use.",
+  "info": "This skill covers Playwright installation for the three common surfaces: @playwright/test for application test suites, playwright for standalone browser automation scripts, and @playwright/cli for coding-agent controlled sessions. It includes browser binary installation, Linux dependencies through --with-deps, package-manager detection, proxy and internal artifact mirrors, browser cache placement, and skip-download workflows for locked-down environments. Agents use it before writing tests, taking screenshots, running trace debugging, or automating a page in CI.",
+  "parent": "playwright",
+  "tags": ["playwright", "install", "browsers", "chromium", "firefox", "webkit", "npm", "pnpm", "ci", "proxy", "agent-cli"],
+  "aliases": ["install playwright", "npm init playwright", "npx playwright install", "playwright install browsers", "install chromium playwright", "install @playwright/test", "playwright with deps", "playwright browser binaries"],
+  "triggers": ["set up playwright", "install playwright browsers", "playwright missing executable", "install chromium for playwright", "playwright in ci cannot find browser", "use playwright behind proxy", "skip browser download", "install playwright cli"],
+  "body": "# Playwright Install\n\nInstall has two parts: the npm package and the browser binaries. A project can have `@playwright/test` installed but still fail at runtime if `npx playwright install` has not downloaded Chromium, Firefox, or WebKit.\n\n## Quick Commands\n\n```bash\n# Test runner with all supported browsers\nnodes/playwright/scripts/install-playwright.sh test chromium firefox webkit\n\n# Standalone automation library with Chromium only\nnodes/playwright/scripts/install-playwright.sh library chromium\n\n# Coding-agent CLI\nnodes/playwright/scripts/install-playwright.sh agent-cli\n```\n\nManual equivalents:\n\n```bash\nnpm init playwright@latest\nnpm install -D @playwright/test\nnpx playwright install --with-deps chromium firefox webkit\n\nnpm install -D playwright\nnpx playwright install chromium\n\nnpm install -g @playwright/cli@latest\n```\n\n## Environment\n\n```bash\nexport HTTPS_PROXY=http://proxy.internal:8080\nexport PLAYWRIGHT_DOWNLOAD_HOST=https://artifacts.example.com/playwright\nexport PLAYWRIGHT_BROWSERS_PATH=.cache/ms-playwright\nexport PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1\n```\n\nUse `--with-deps` on Linux CI runners so OS packages required by browsers are installed alongside binaries. Use `PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1` only when browser binaries are managed by an image, cache, or artifact repository.",
+  "sections": [
+    {
+      "id": "package-choice",
+      "title": "Choose package",
+      "body": "Use `@playwright/test` for test suites because it includes the runner, fixtures, assertions, reports, projects, retries, and traces. Use `playwright` when writing plain Node scripts that launch a browser directly. Use `@playwright/cli` when a coding agent needs command-by-command browser control and page snapshots. Do not install all three by default; choose the surface the task needs.",
+      "tags": ["package", "test-runner", "library", "agent-cli"]
+    },
+    {
+      "id": "browser-binaries",
+      "title": "Browser binaries",
+      "body": "Playwright downloads patched browser builds separately from npm packages. Run `npx playwright install` after dependency install, or specify a subset such as `npx playwright install chromium`. In CI and containers, prefer `npx playwright install --with-deps` so Linux system dependencies are present. Cache `PLAYWRIGHT_BROWSERS_PATH` when CI cache policy allows it.",
+      "tags": ["browsers", "chromium", "firefox", "webkit", "with-deps"]
+    },
+    {
+      "id": "restricted-networks",
+      "title": "Restricted networks",
+      "body": "For proxies, set `HTTPS_PROXY` before `npx playwright install`. For internal mirrors, set `PLAYWRIGHT_DOWNLOAD_HOST` to the artifact host. For pre-baked Docker images, set `PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1` during package install and ensure `PLAYWRIGHT_BROWSERS_PATH` points at the installed binaries. If downloads fail, verify the package version and browser revision match.",
+      "tags": ["proxy", "mirror", "download-host", "skip-download", "cache"]
+    },
+    {
+      "id": "verification",
+      "title": "Verify installation",
+      "body": "Run `npx playwright --version`, then `npx playwright test --list` for test projects or a minimal `node -e \"import('playwright').then(async ({ chromium }) => { const b = await chromium.launch(); await b.close(); })\"` for library projects. Browser launch failures usually mean missing binaries, missing Linux dependencies, a sandbox constraint, or a package/browser revision mismatch.",
+      "tags": ["verify", "version", "launch", "troubleshooting"]
+    }
+  ],
+  "links": [
+    { "uri": "playwright", "context": "Parent ecosystem overview and node map" },
+    { "uri": "playwright/ci", "context": "Install browsers correctly in CI runners" },
+    { "uri": "playwright/browser-automation", "context": "Use the installed library for standalone browser scripts" },
+    { "uri": "playwright/agent-cli", "context": "Install the coding-agent command-line browser controller" },
+    { "uri": "node/npm/install", "context": "General npm dependency installation behavior" },
+    { "uri": "pnpm/install", "context": "Install packages in pnpm projects" }
+  ],
+  "related": [
+    { "uri": "node/npm/install", "relation": "prerequisite", "note": "Playwright packages are installed through Node package managers." },
+    { "uri": "playwright/ci", "relation": "see-also", "note": "CI runners need browser binaries and OS dependencies." },
+    { "uri": "docker/images", "relation": "see-also", "note": "Docker images often preinstall browser dependencies and cache browser binaries." }
+  ],
+  "scripts": [
+    {
+      "id": "install-playwright",
+      "name": "Install Playwright",
+      "description": "Install @playwright/test, playwright, or @playwright/cli and optionally install browser binaries with --with-deps.",
+      "lang": "bash",
+      "runtime": "node>=18 bash",
+      "entry": "../scripts/install-playwright.sh",
+      "env": {
+        "PLAYWRIGHT_PACKAGE_MANAGER": { "required": false, "description": "Override package manager: npm, pnpm, yarn, or bun." },
+        "PLAYWRIGHT_WITH_DEPS": { "required": false, "default": "1", "description": "Pass --with-deps when installing browser binaries." },
+        "PLAYWRIGHT_SKIP_PACKAGE": { "required": false, "default": "0", "description": "Skip npm package installation and only install browser binaries." },
+        "PLAYWRIGHT_SKIP_BROWSERS": { "required": false, "default": "0", "description": "Skip browser binary installation." },
+        "HTTPS_PROXY": { "required": false, "description": "Proxy used when downloading browser binaries." },
+        "PLAYWRIGHT_DOWNLOAD_HOST": { "required": false, "description": "Internal browser binary mirror." },
+        "PLAYWRIGHT_BROWSERS_PATH": { "required": false, "description": "Custom path for browser binaries and CI caches." },
+        "PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD": { "required": false, "description": "Skip browser download during package installation." }
+      },
+      "packages": ["@playwright/test", "playwright", "@playwright/cli"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "mode": { "type": "string", "enum": ["test", "library", "agent-cli"], "description": "Install surface to prepare." },
+        "browsers": { "type": "array", "items": { "type": "string", "enum": ["chromium", "firefox", "webkit"] }, "description": "Browser binaries to install." },
+        "packageManager": { "type": "string", "enum": ["npm", "pnpm", "yarn", "bun"], "description": "Package manager override." },
+        "withDeps": { "type": "boolean", "description": "Install Linux system dependencies with browser binaries." }
+      },
+      "required": ["mode"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "packageInstalled": { "type": "string", "description": "Package selected for installation." },
+        "browsersInstalled": { "type": "array", "items": { "type": "string" } },
+        "packageManager": { "type": "string" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "node/npm", "reason": "Playwright package installation and npx commands require Node package tooling." }
+  ],
+  "more": {
+    "docs": "https://playwright.dev/docs/intro",
+    "library": "https://playwright.dev/docs/library",
+    "browsers": "https://playwright.dev/docs/browsers",
+    "agent-cli": "https://playwright.dev/docs/getting-started-cli"
+  },
+  "frontmatter": {
+    "created": "2026-04-15",
+    "updated": "2026-04-15",
+    "author": "dojo-community",
+    "audience": "developers, CI maintainers, AI agents",
+    "estimated_reading_time": "6 min",
+    "prerequisites": ["node/npm"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-15T00:00:00Z",
+  "updated": "2026-04-15T00:00:00Z",
+  "status": "published"
+}

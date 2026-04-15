@@ -1,0 +1,142 @@
+{
+  "name": "config",
+  "version": "1.0.0",
+  "uri": "pnpm/config",
+  "type": "context",
+  "content_type": "reference",
+  "context": "Configure pnpm version pinning, workspace settings, catalogs, runtime policy, and package-manager behavior",
+  "info": "This node covers pnpm configuration surfaces that change agent behavior before any command runs: `packageManager` pinning through Corepack, `pnpm-workspace.yaml` settings, runtime selection through `useNodeVersion` and `devEngines.runtime`, workspace catalogs, and strictness controls such as `packageManagerStrict` and `managePackageManagerVersions`. It matters because pnpm configuration determines what version of pnpm and Node are used, how dependencies are linked, whether catalogs are enforced, and how workspace-wide commands behave.",
+  "parent": "pnpm",
+  "tags": [
+    "pnpm-config",
+    "package-manager",
+    "catalogs",
+    "workspace-settings",
+    "corepack",
+    "runtime",
+    "package-json",
+    "pnpm-workspace"
+  ],
+  "aliases": [
+    "pnpm config",
+    "pnpm workspace config",
+    "pnpm-workspace-yaml",
+    "packagemanager field",
+    "pnpm catalogs",
+    "pnpm runtime config",
+    "packageManagerStrict"
+  ],
+  "triggers": [
+    "configure pnpm for this repo",
+    "pin the pnpm version",
+    "set packageManager to pnpm",
+    "configure catalogs in pnpm",
+    "manage pnpm workspace settings",
+    "pin node with pnpm",
+    "enable strict package manager checks"
+  ],
+  "body": "# pnpm Configuration\n\npnpm spreads configuration across `package.json`, `pnpm-workspace.yaml`, and registry settings that are compatible with `.npmrc`. An agent should load this node before changing install behavior, workspace linking, or runtime pinning.\n\n## Version pinning\n\nThe installation docs recommend using Corepack to pin pnpm in `package.json`:\n\n```json\n{\n  \"packageManager\": \"pnpm@10.23.0\"\n}\n```\n\nWith Corepack, `corepack use pnpm@latest-10` updates that field for the project. pnpm also checks `engines.pnpm` locally and can warn or fail depending on `engineStrict` and related settings.\n\n## Workspace settings\n\n`pnpm-workspace.yaml` controls package globs, catalogs, lockfile behavior, script execution, runtime pinning, and many install-time rules. Registry and auth details still live in the npm-compatible config surface documented in [[node/npm#npmrc]].\n",
+  "sections": [
+    {
+      "id": "package-manager-pin",
+      "title": "Pin pnpm and Node versions",
+      "body": "Use the `packageManager` field to pin the pnpm CLI version when working through Corepack. In `package.json`, pnpm also supports `engines.pnpm` and `engines.runtime` or `devEngines.runtime` so the runtime version is resolved and stored in the lockfile. In `pnpm-workspace.yaml`, `useNodeVersion` and `nodeVersion` can force a workspace-wide Node version policy.",
+      "tags": [
+        "package-manager",
+        "corepack",
+        "engines",
+        "use-node-version"
+      ]
+    },
+    {
+      "id": "workspace-settings",
+      "title": "Workspace-wide settings",
+      "body": "Important workspace settings include `packageManagerStrict`, `managePackageManagerVersions`, `recursiveInstall`, `scriptShell`, `shellEmulator`, `requiredScripts`, and linker-related options such as `nodeLinker`, `hoist`, and `publicHoistPattern`. These settings change whether commands are allowed to run, which shell executes scripts, and how dependencies appear on disk. Load [[pnpm/store]] if a task depends on the exact node_modules layout.",
+      "tags": [
+        "workspace-settings",
+        "node-linker",
+        "shell-emulator",
+        "strictness"
+      ]
+    },
+    {
+      "id": "catalogs-and-overrides",
+      "title": "Catalogs, overrides, and workspace metadata",
+      "body": "Catalogs are reusable version constants defined in `pnpm-workspace.yaml` and referenced with `catalog:` or `catalog:name`. `catalogMode` controls whether `pnpm add` must prefer or strictly obey those entries, and `cleanupUnusedCatalogs` removes dead catalog entries during install. In package manifests, `dependenciesMeta.*.injected` changes whether a workspace dependency is symlinked from source or copied into the virtual store to satisfy differing peer environments. Use catalogs for consistent versions across a monorepo; use metadata only when the peer model requires it.",
+      "tags": [
+        "catalogs",
+        "catalog-mode",
+        "dependencies-meta",
+        "injected"
+      ]
+    },
+    {
+      "id": "runtime-management",
+      "title": "Runtime management",
+      "body": "pnpm can manage runtime versions directly. `devEngines.runtime` in `package.json` resolves a runtime version during install, stores the exact version in the lockfile, and makes scripts use that local runtime. `useNodeVersion` in `pnpm-workspace.yaml` pins the workspace runtime, while `executionEnv.nodeVersion` can pin per-project execution. This is useful when an agent must run scripts with the repo's intended Node version instead of the machine default.",
+      "tags": [
+        "runtime",
+        "devengines",
+        "executionenv",
+        "node-version"
+      ]
+    }
+  ],
+  "links": [
+    {
+      "uri": "pnpm/install",
+      "context": "Most config fields affect install, add, and update behavior"
+    },
+    {
+      "uri": "pnpm/workspace",
+      "context": "Workspace protocol, filters, and recursive commands depend on workspace settings"
+    },
+    {
+      "uri": "pnpm/security",
+      "context": "Build-script approval, trust settings, and release-age controls live in pnpm settings"
+    },
+    {
+      "uri": "pnpm/store",
+      "context": "Linker and hoist settings shape the virtual store and node_modules layout"
+    },
+    {
+      "uri": "node/npm#npmrc",
+      "context": "Registry and auth configuration still uses the npm-compatible config surface"
+    },
+    {
+      "uri": "turbo/workspaces",
+      "context": "Monorepo task runners depend on correct workspace configuration"
+    }
+  ],
+  "related": [
+    {
+      "uri": "pnpm",
+      "relation": "prerequisite",
+      "note": "This node explains the cross-cutting configuration surface for the pnpm ecosystem"
+    },
+    {
+      "uri": "node/npm",
+      "relation": "see-also",
+      "note": "Registry and auth settings remain compatible with npm's broader configuration model"
+    },
+    {
+      "uri": "turbo/workspaces",
+      "relation": "see-also",
+      "note": "Turborepo workspaces often rely on pnpm-workspace.yaml and packageManager pinning"
+    }
+  ],
+  "frontmatter": {
+    "created": "2026-04-12",
+    "updated": "2026-04-12",
+    "author": "dojo-community",
+    "audience": "developers, AI agents, build engineers",
+    "estimated_reading_time": "5 min",
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-12T00:00:00Z",
+  "updated": "2026-04-12T00:00:00Z",
+  "status": "published"
+}

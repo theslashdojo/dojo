@@ -1,0 +1,111 @@
+{
+  "name": "screenshots",
+  "version": "1.0.0",
+  "uri": "playwright/screenshots",
+  "type": "skill",
+  "context": "Capture full-page, viewport, element, and visual-regression screenshots with stable viewport, masks, traces, and artifact paths.",
+  "info": "Playwright screenshots are both an automation artifact and a test assertion surface. This skill covers page screenshots, element screenshots, full-page capture, deterministic viewport setup, masking dynamic content, visual comparison with toHaveScreenshot, artifact organization, and when to use screenshots for research versus CI gates. Agents use it to inspect rendered pages, document UI state, verify generated frontend changes, compare visual output, or attach evidence to debugging reports.",
+  "parent": "playwright",
+  "tags": ["playwright", "screenshots", "visual-regression", "artifacts", "full-page", "element-screenshot", "mask", "snapshot"],
+  "aliases": ["playwright screenshot", "page screenshot", "full page screenshot", "element screenshot", "toHaveScreenshot", "visual comparison", "visual regression"],
+  "triggers": ["take a screenshot", "capture full page with playwright", "screenshot a selector", "visual regression playwright", "compare page screenshot", "save rendered page image", "mask dynamic content"],
+  "body": "# Playwright Screenshots\n\nUse screenshots as evidence for browser research and as assertions for visual regression tests.\n\n```bash\nnodes/playwright/scripts/browser-capture.mjs https://example.com \\\n  --screenshot artifacts/example.png \\\n  --viewport 1440x900 \\\n  --full-page\n\nnodes/playwright/scripts/browser-capture.mjs https://example.com \\\n  --selector \"main\" \\\n  --screenshot artifacts/main.png\n```\n\n```typescript\nawait page.screenshot({ path: 'artifacts/page.png', fullPage: true });\nawait page.locator('[data-testid=chart]').screenshot({ path: 'artifacts/chart.png' });\nawait expect(page).toHaveScreenshot('dashboard.png', {\n  fullPage: true,\n  mask: [page.locator('[data-testid=clock]')]\n});\n```\n\nKeep viewport, browser, locale, timezone, color scheme, and fonts stable when screenshot diffs matter.",
+  "sections": [
+    {
+      "id": "capture-modes",
+      "title": "Capture modes",
+      "body": "`page.screenshot()` captures the viewport by default and the full scrollable document with `{ fullPage: true }`. `locator.screenshot()` captures one element. The helper script writes a screenshot and optional HTML/text summary so an agent can inspect both pixels and page content.",
+      "tags": ["page", "locator", "fullPage", "artifacts"]
+    },
+    {
+      "id": "visual-assertions",
+      "title": "Visual assertions",
+      "body": "Use `expect(page).toHaveScreenshot(name)` or `expect(locator).toHaveScreenshot(name)` in `@playwright/test`. First run creates snapshots; later runs compare pixels. Use `--update-snapshots` only when the change is intentional. Store snapshots in git if they are part of the UI contract.",
+      "tags": ["toHaveScreenshot", "snapshots", "update-snapshots", "git"]
+    },
+    {
+      "id": "stabilization",
+      "title": "Stabilization",
+      "body": "Fix viewport and browser project, wait for the real ready condition, mask clocks or avatars, disable animations when the app supports it, seed test data, and avoid screenshots while network activity is still mutating the page. For research captures, save HTML and text alongside the image so the screenshot can be interpreted later.",
+      "tags": ["viewport", "mask", "animations", "determinism", "research"]
+    },
+    {
+      "id": "artifact-policy",
+      "title": "Artifact policy",
+      "body": "Screenshots of authenticated or private pages can contain secrets and personal data. Store them under an ignored `artifacts/` or CI artifact retention policy. Before attaching to issues or pull requests, review the image and any paired HTML for tokens, user data, or internal URLs.",
+      "tags": ["security", "artifacts", "privacy", "ci"]
+    }
+  ],
+  "links": [
+    { "uri": "playwright/browser-automation", "context": "Use browser-capture for research screenshots" },
+    { "uri": "playwright/trace-debugging", "context": "Use traces and videos when screenshots are not enough" },
+    { "uri": "playwright/locators", "context": "Target elements for element screenshots" },
+    { "uri": "testing/playwright", "context": "Use visual assertions in test suites" },
+    { "uri": "frontend/css", "context": "CSS and layout changes often need visual verification" }
+  ],
+  "related": [
+    { "uri": "playwright/browser-automation", "relation": "implements", "note": "The browser capture script uses Playwright screenshot APIs." },
+    { "uri": "testing/playwright", "relation": "see-also", "note": "Visual assertions are part of Playwright test suites." },
+    { "uri": "playwright/trace-debugging", "relation": "see-also", "note": "Traces include screenshots and DOM snapshots around actions." }
+  ],
+  "scripts": [
+    {
+      "id": "browser-capture-screenshot",
+      "name": "Capture Screenshot",
+      "description": "Open a page and save a full-page, viewport, or selector screenshot with optional HTML and text artifacts.",
+      "lang": "javascript",
+      "runtime": "node>=18",
+      "entry": "../scripts/browser-capture.mjs",
+      "env": {
+        "PLAYWRIGHT_BROWSERS_PATH": { "required": false, "description": "Custom browser binary cache path." }
+      },
+      "packages": ["playwright"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "url": { "type": "string", "format": "uri" },
+        "screenshot": { "type": "string" },
+        "selector": { "type": "string" },
+        "fullPage": { "type": "boolean", "default": true },
+        "viewport": { "type": "string", "default": "1280x720" },
+        "browser": { "type": "string", "enum": ["chromium", "firefox", "webkit"], "default": "chromium" }
+      },
+      "required": ["url", "screenshot"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "screenshot": { "type": "string" },
+        "finalUrl": { "type": "string" },
+        "title": { "type": "string" },
+        "status": { "type": ["integer", "null"] }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "playwright/install", "reason": "Screenshot capture requires installed browser binaries." }
+  ],
+  "more": {
+    "docs": "https://playwright.dev/docs/screenshots",
+    "visual-comparisons": "https://playwright.dev/docs/test-snapshots",
+    "api": "https://playwright.dev/docs/api/class-page#page-screenshot"
+  },
+  "frontmatter": {
+    "created": "2026-04-15",
+    "updated": "2026-04-15",
+    "author": "dojo-community",
+    "audience": "frontend developers, QA engineers, AI agents",
+    "estimated_reading_time": "6 min",
+    "prerequisites": ["playwright/browser-automation"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-15T00:00:00Z",
+  "updated": "2026-04-15T00:00:00Z",
+  "status": "published"
+}

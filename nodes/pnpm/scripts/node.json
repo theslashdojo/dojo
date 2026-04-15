@@ -1,0 +1,201 @@
+{
+  "name": "scripts",
+  "version": "1.0.0",
+  "uri": "pnpm/scripts",
+  "type": "skill",
+  "context": "Run package scripts, local binaries, and temporary CLIs in pnpm with run, exec, dlx, and recursive filters",
+  "info": "This skill covers pnpm's execution surface rather than dependency mutation: `pnpm run` for package scripts, `pnpm exec` for binaries available to the project, and `pnpm dlx` for one-off tools fetched from the registry. It matters because recursive execution, `--parallel`, `--resume-from`, `--shell-mode`, `PNPM_PACKAGE_NAME`, and report summaries all change how an autonomous agent should run tasks in a workspace.",
+  "parent": "pnpm",
+  "tags": [
+    "pnpm-run",
+    "pnpm-exec",
+    "pnpm-dlx",
+    "recursive",
+    "shell-mode",
+    "parallel",
+    "report-summary"
+  ],
+  "aliases": [
+    "pnpm run",
+    "pnpm exec",
+    "pnpm dlx",
+    "pnpx",
+    "pnpm recursive scripts",
+    "pnpm shell mode"
+  ],
+  "triggers": [
+    "run a script with pnpm",
+    "execute a local binary with pnpm",
+    "use pnpm dlx for a one off cli",
+    "run pnpm scripts across workspaces",
+    "resume a pnpm exec from one package"
+  ],
+  "body": "# pnpm Script and Command Execution\n\npnpm has three distinct execution surfaces:\n\n- `pnpm run <script>` for package.json scripts\n- `pnpm exec <command>` for binaries already available to the project\n- `pnpm dlx <package>` for temporary tools fetched on demand\n\n```bash\npnpm run build\npnpm exec tsc --noEmit\npnpm -rc exec 'echo $PNPM_PACKAGE_NAME'\npnpm dlx create-vue my-app\n```\n\nUse recursive flags only when a task should fan out across a workspace. Otherwise prefer a single filtered package or current-directory execution.\n",
+  "sections": [
+    {
+      "id": "run-vs-exec-vs-dlx",
+      "title": "run vs exec vs dlx",
+      "body": "`run` knows about package scripts and their pre/post hooks. `exec` runs a command with the project's binary resolution and, in recursive mode, exposes `PNPM_PACKAGE_NAME`. `dlx` fetches a package from the registry without adding it to dependencies and hot-loads its default binary. The official `dlx` docs also support `--package` for extra helper packages and note that `pnpx` is an alias.",
+      "tags": [
+        "run",
+        "exec",
+        "dlx",
+        "pnpx"
+      ]
+    },
+    {
+      "id": "recursive-execution",
+      "title": "Recursive execution",
+      "body": "With `-r`, pnpm executes across workspace projects. The `exec` docs say `--parallel` ignores concurrency and topological sorting, which is appropriate for long-running independent tasks but not for dependency-ordered builds. `--resume-from <package>` lets a large workspace restart from a named package after failure. Always pair recursion with [[pnpm/workspace#filters]] unless the whole workspace is intended.",
+      "tags": [
+        "recursive",
+        "parallel",
+        "resume-from",
+        "filters"
+      ]
+    },
+    {
+      "id": "shell-and-summary",
+      "title": "Shell mode and reporting",
+      "body": "Use `--shell-mode` or `-c` when the command needs pipes, env expansion, or shell syntax. On UNIX pnpm uses `/bin/sh`, and on Windows it uses `cmd.exe`. `--report-summary` is useful when a higher-level agent wants machine-readable run metadata instead of only streamed logs. For dependency freshness checks before execution, combine this node with `verifyDepsBeforeRun` from [[pnpm/config#workspace-settings]].",
+      "tags": [
+        "shell-mode",
+        "report-summary",
+        "verify-deps-before-run"
+      ]
+    }
+  ],
+  "links": [
+    {
+      "uri": "pnpm/workspace#recursive-execution",
+      "context": "Workspace selectors and recursive semantics are shared across pnpm commands"
+    },
+    {
+      "uri": "pnpm/install",
+      "context": "Install dependencies before relying on local binaries or package scripts"
+    },
+    {
+      "uri": "pnpm/security#build-script-review",
+      "context": "Temporary tools fetched by dlx may also need build-script review"
+    }
+  ],
+  "related": [
+    {
+      "uri": "pnpm/workspace",
+      "relation": "see-also",
+      "note": "Recursive script execution depends on workspace selectors and package boundaries"
+    },
+    {
+      "uri": "pnpm/install",
+      "relation": "prerequisite",
+      "note": "Local binaries and scripts generally require an up-to-date install"
+    }
+  ],
+  "scripts": [
+    {
+      "id": "run-command",
+      "name": "Run Command",
+      "description": "Dispatch pnpm run, exec, or dlx with recursive, filtered, and shell-aware options",
+      "lang": "bash",
+      "runtime": "bash>=4",
+      "entry": "./scripts/run-command.sh",
+      "env": {
+        "CI": {
+          "required": false,
+          "description": "Affects some script behavior when tools branch on CI detection"
+        },
+        "PNPM_HOME": {
+          "required": false,
+          "description": "Optional pnpm home directory if the binary is not on the default PATH"
+        }
+      },
+      "packages": []
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": ["run", "exec", "dlx"],
+          "description": "Execution surface to use"
+        },
+        "target": {
+          "type": "string",
+          "description": "Script name, command name, or package name"
+        },
+        "filters": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "pnpm filter selectors"
+        },
+        "recursive": {
+          "type": "boolean",
+          "description": "Run across the workspace with -r",
+          "default": false
+        },
+        "parallel": {
+          "type": "boolean",
+          "description": "Ignore topological ordering for recursive runs",
+          "default": false
+        },
+        "shellMode": {
+          "type": "boolean",
+          "description": "Run inside a shell with -c",
+          "default": false
+        },
+        "args": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Arguments forwarded after the target"
+        }
+      },
+      "required": ["mode", "target"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "mode": {
+          "type": "string",
+          "description": "Execution mode that was used"
+        },
+        "command": {
+          "type": "string",
+          "description": "Rendered pnpm command line"
+        }
+      }
+    }
+  },
+  "depends": [
+    {
+      "uri": "pnpm/install",
+      "reason": "Most run and exec workflows need dependencies installed first"
+    },
+    {
+      "uri": "pnpm/workspace",
+      "reason": "Recursive execution should be paired with explicit workspace selectors"
+    }
+  ],
+  "more": {
+    "run": "https://pnpm.io/cli/run",
+    "exec": "https://pnpm.io/cli/exec",
+    "dlx": "https://pnpm.io/cli/dlx"
+  },
+  "frontmatter": {
+    "created": "2026-04-12",
+    "updated": "2026-04-12",
+    "author": "dojo-community",
+    "audience": "developers, AI agents, monorepo maintainers",
+    "estimated_reading_time": "4 min",
+    "prerequisites": ["pnpm/install", "pnpm/workspace"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://github.com/pnpm/pnpm",
+  "created": "2026-04-12T00:00:00Z",
+  "updated": "2026-04-12T00:00:00Z",
+  "status": "published"
+}

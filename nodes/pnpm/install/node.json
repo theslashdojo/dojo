@@ -1,0 +1,251 @@
+{
+  "name": "install",
+  "version": "1.0.0",
+  "uri": "pnpm/install",
+  "type": "skill",
+  "context": "Install, add, update, remove, fetch, and inspect pnpm dependencies with lockfile-aware workspace scoping",
+  "info": "This skill covers the dependency lifecycle for pnpm projects: reproducible installs with `pnpm install --frozen-lockfile`, workspace-aware `pnpm add` and `pnpm remove`, recursive updates, `pnpm outdated`, and `pnpm fetch` for Docker or offline workflows. It matters because pnpm's workspace filters, build-script approvals, and store-backed fetch behavior are materially different from npm and affect how an autonomous agent should mutate or hydrate a repository.",
+  "parent": "pnpm",
+  "tags": [
+    "pnpm-install",
+    "dependencies",
+    "lockfile",
+    "fetch",
+    "offline",
+    "outdated",
+    "workspace-root",
+    "filter"
+  ],
+  "aliases": [
+    "pnpm install",
+    "pnpm add",
+    "pnpm remove",
+    "pnpm update",
+    "pnpm fetch",
+    "pnpm outdated",
+    "install dependencies with pnpm",
+    "lockfile install"
+  ],
+  "triggers": [
+    "install packages with pnpm",
+    "add a dependency in a pnpm project",
+    "update pnpm dependencies",
+    "prefetch pnpm packages for docker",
+    "check outdated pnpm packages",
+    "run a frozen pnpm install in CI"
+  ],
+  "body": "# pnpm Install and Dependency Mutation\n\nUse pnpm's install surface when the dependency graph itself must change or be materialized. The safest default in automation is a lockfile-driven install; the safest default in monorepos is a filtered install or add.\n\n```bash\npnpm install --frozen-lockfile\npnpm add -D typescript vitest\npnpm add react --filter @acme/web\npnpm update -r\npnpm outdated -r\npnpm fetch --prod\n```\n\nBecause pnpm reuses a global store, `fetch` can pre-populate artifacts from `pnpm-lock.yaml` without writing project `node_modules`. That pattern is especially useful before an offline install or Docker build. For build-script approval, combine this node with [[pnpm/security]].\n",
+  "sections": [
+    {
+      "id": "reproducible-installs",
+      "title": "Reproducible installs",
+      "body": "Use `pnpm install --frozen-lockfile` in CI or any automation that should not rewrite the dependency graph. This fails if `package.json` and `pnpm-lock.yaml` disagree. The installation docs and CI examples consistently pair lockfile installs with a pinned pnpm version from Corepack or another official installer. For package-manager pinning, load [[pnpm/config#package-manager-pin]].",
+      "tags": [
+        "frozen-lockfile",
+        "ci",
+        "reproducible",
+        "lockfile"
+      ]
+    },
+    {
+      "id": "workspace-targeting",
+      "title": "Add, remove, and update in a workspace",
+      "body": "Use `--filter <selector>` to change one package or part of the graph instead of mutating the entire workspace. `pnpm add --workspace` only succeeds when the dependency exists locally in the workspace, and `-w` or `--workspace-root` explicitly targets the repo root package. This is the correct default when a monorepo root contains tooling but applications live below it. See [[pnpm/workspace#filters]].",
+      "tags": [
+        "add",
+        "remove",
+        "update",
+        "workspace-root",
+        "filter"
+      ]
+    },
+    {
+      "id": "fetch-and-offline",
+      "title": "Fetch and offline workflows",
+      "body": "The official `pnpm fetch` docs emphasize that it only needs `pnpm-lock.yaml` and fills the store without creating `node_modules`. A common pipeline is `pnpm fetch`, then `pnpm install --offline --frozen-lockfile`. This is ideal for Docker layers or CI runners where network access should happen once and installs should later reuse the cached store. See [[pnpm/store#caching-in-ci]] and [[pnpm/deploy#docker-and-ci]].",
+      "tags": [
+        "fetch",
+        "offline",
+        "docker",
+        "store"
+      ]
+    },
+    {
+      "id": "updates-and-outdated",
+      "title": "Updating and inspecting stale dependencies",
+      "body": "Use `pnpm update` to refresh dependencies, optionally with `-r` for recursive workspaces, and `pnpm outdated` to inspect drift before mutating manifests. When a package should not be updated automatically, prefer config-based ignore lists or catalogs instead of ad hoc shell logic. Load [[pnpm/config#catalogs-and-overrides]] when a workspace wants a single declared version source.",
+      "tags": [
+        "update",
+        "outdated",
+        "catalogs",
+        "drift"
+      ]
+    }
+  ],
+  "links": [
+    {
+      "uri": "pnpm/workspace#workspace-protocol",
+      "context": "Workspace protocol and filter selectors determine safe mutation scope"
+    },
+    {
+      "uri": "pnpm/security#build-script-review",
+      "context": "Build-script approvals matter during add, install, and dlx"
+    },
+    {
+      "uri": "pnpm/store#caching-in-ci",
+      "context": "Fetch and offline installs are store-backed workflows"
+    },
+    {
+      "uri": "pnpm/config#package-manager-pin",
+      "context": "Pin the pnpm version before relying on lockfile behavior"
+    },
+    {
+      "uri": "pnpm/scripts",
+      "context": "Run workspace scripts after the dependency graph is ready"
+    },
+    {
+      "uri": "docker",
+      "context": "Use fetch and offline installs to optimize Docker layers"
+    }
+  ],
+  "related": [
+    {
+      "uri": "pnpm/workspace",
+      "relation": "see-also",
+      "note": "Workspace filters and the workspace protocol control where install mutations land"
+    },
+    {
+      "uri": "pnpm/security",
+      "relation": "see-also",
+      "note": "Dependency installs are where build-script and trust policies are enforced"
+    },
+    {
+      "uri": "node",
+      "relation": "prerequisite",
+      "note": "Standard pnpm installs depend on a supported Node.js runtime"
+    }
+  ],
+  "scripts": [
+    {
+      "id": "manage-dependencies",
+      "name": "Manage Dependencies",
+      "description": "Run pnpm install, add, remove, update, fetch, or outdated with workspace-aware flags",
+      "lang": "bash",
+      "runtime": "bash>=4",
+      "entry": "./scripts/manage-deps.sh",
+      "env": {
+        "CI": {
+          "required": false,
+          "description": "Lets pnpm know it is running in CI when not auto-detected"
+        },
+        "PNPM_HOME": {
+          "required": false,
+          "description": "Optional pnpm home directory if the binary is not on the default PATH"
+        },
+        "NPM_CONFIG_REGISTRY": {
+          "required": false,
+          "description": "Override the package registry for install or fetch operations"
+        }
+      },
+      "packages": []
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "action": {
+          "type": "string",
+          "enum": ["install", "add", "remove", "update", "fetch", "outdated"],
+          "description": "Dependency action to run"
+        },
+        "packages": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Package specs for add, remove, or targeted update"
+        },
+        "filters": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "pnpm filter selectors used to scope the command"
+        },
+        "workspaceRoot": {
+          "type": "boolean",
+          "description": "Target the workspace root with -w when supported",
+          "default": false
+        },
+        "recursive": {
+          "type": "boolean",
+          "description": "Run recursively across the workspace",
+          "default": false
+        },
+        "dev": {
+          "type": "boolean",
+          "description": "Use -D for devDependencies",
+          "default": false
+        },
+        "prod": {
+          "type": "boolean",
+          "description": "Use -P or runtime-only install behavior",
+          "default": false
+        },
+        "offline": {
+          "type": "boolean",
+          "description": "Require the local pnpm store with no network access",
+          "default": false
+        },
+        "frozenLockfile": {
+          "type": "boolean",
+          "description": "Fail instead of changing the lockfile",
+          "default": false
+        }
+      },
+      "required": ["action"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "action": {
+          "type": "string",
+          "description": "Action that was executed"
+        },
+        "command": {
+          "type": "string",
+          "description": "Rendered pnpm command line"
+        }
+      }
+    }
+  },
+  "depends": [
+    {
+      "uri": "pnpm/config",
+      "reason": "Pinned pnpm versions, linker settings, and runtime policy shape install behavior"
+    },
+    {
+      "uri": "pnpm/store",
+      "reason": "Fetch, offline, and cache-aware installs depend on the pnpm store model"
+    }
+  ],
+  "more": {
+    "docs": "https://pnpm.io/cli/install",
+    "add": "https://pnpm.io/cli/add",
+    "fetch": "https://pnpm.io/cli/fetch",
+    "outdated": "https://pnpm.io/cli/outdated"
+  },
+  "frontmatter": {
+    "created": "2026-04-12",
+    "updated": "2026-04-12",
+    "author": "dojo-community",
+    "audience": "developers, AI agents, CI engineers",
+    "estimated_reading_time": "5 min",
+    "prerequisites": ["pnpm/config", "pnpm/store"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://github.com/pnpm/pnpm",
+  "created": "2026-04-12T00:00:00Z",
+  "updated": "2026-04-12T00:00:00Z",
+  "status": "published"
+}

@@ -1,0 +1,131 @@
+{
+  "name": "troubleshooting",
+  "version": "1.0.0",
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://salsa.debian.org/apt-team/apt",
+  "created": "2026-04-12T00:00:00Z",
+  "updated": "2026-04-12T00:00:00Z",
+  "status": "published",
+  "uri": "apt/troubleshooting",
+  "type": "context",
+  "content_type": "guide",
+  "parent": "apt",
+  "context": "Diagnose stale indexes, held-back packages, repository trust failures, broken state, and APT lock contention",
+  "info": "This guide groups the most common real-world APT failure modes into actionable categories: stale metadata, dependency breakage, repository authentication errors, packages kept back, and lock contention from concurrent package operations. It points agents toward the right node rather than encouraging blind retries or lock-file deletion. Use it when package work fails with confusing solver output, when a repository stops authenticating, or when a host behaves differently than the source definitions suggest.",
+  "tags": [
+    "apt",
+    "troubleshooting",
+    "locks",
+    "held-back",
+    "signed-by",
+    "broken-dependencies",
+    "dpkg",
+    "logs"
+  ],
+  "aliases": [
+    "apt troubleshooting",
+    "apt errors",
+    "package manager is broken",
+    "apt lock issue",
+    "repository not signed",
+    "packages kept back"
+  ],
+  "triggers": [
+    "apt is failing",
+    "what holds the apt lock",
+    "packages are kept back",
+    "repository is not signed",
+    "apt update error",
+    "package install left dpkg broken"
+  ],
+  "sections": [
+    {
+      "id": "stale-index",
+      "title": "Stale or missing indexes",
+      "body": "If package discovery or version selection looks wrong, refresh indexes first. APT cache inspection is only as current as the last successful `apt-get update`.",
+      "tags": [
+        "update",
+        "stale",
+        "indexes"
+      ]
+    },
+    {
+      "id": "kept-back",
+      "title": "Kept-back packages",
+      "body": "Packages kept back during `apt upgrade` are often normal on Ubuntu because of phased updates. Security updates are not phased. Use `apt policy <package>` and [[apt/upgrade#held-back]] before treating kept-back output as a repair issue.",
+      "tags": [
+        "kept-back",
+        "phased-updates",
+        "policy"
+      ]
+    },
+    {
+      "id": "repo-auth",
+      "title": "Repository authentication failures",
+      "body": "Unsigned archives, missing Release files, or incorrect `Signed-By` paths break repository trust. The right fix is to correct the source definition or keyring, not to disable security checks globally. See [[apt/repositories#keyrings]].",
+      "tags": [
+        "signed-by",
+        "unsigned",
+        "release-file",
+        "security"
+      ]
+    },
+    {
+      "id": "locks",
+      "title": "Lock contention",
+      "body": "Lock errors mean another package operation may still be running. Identify the owner with `lsof` or `fuser`, determine whether it is expected, and retry only after the competing process exits or is intentionally stopped.",
+      "tags": [
+        "locks",
+        "concurrency",
+        "lsof",
+        "fuser"
+      ]
+    }
+  ],
+  "links": [
+    {
+      "uri": "apt/repair",
+      "context": "Repair broken dependencies and inspect lock owners"
+    },
+    {
+      "uri": "apt/upgrade#held-back",
+      "context": "Understand upgrade behavior that is not actually a failure"
+    },
+    {
+      "uri": "apt/repositories#keyrings",
+      "context": "Correct Signed-By and keyring mistakes"
+    },
+    {
+      "uri": "apt/search#policy",
+      "context": "Explain source precedence and candidate selection"
+    },
+    {
+      "uri": "apt/pinning",
+      "context": "Investigate preference rules that may be holding a version back"
+    }
+  ],
+  "related": [
+    {
+      "uri": "apt/repair",
+      "relation": "see-also",
+      "note": "Repair is the executable follow-up for broken package state and lock inspection"
+    }
+  ],
+  "more": {
+    "ubuntu": "https://ubuntu.com/server/docs/how-to/software/package-management/",
+    "phased": "https://ubuntu.com/server/docs/explanation/software/about-apt-upgrade-and-phased-updates/",
+    "secure": "https://manpages.debian.org/testing/apt/apt-secure.8.en.html"
+  },
+  "frontmatter": {
+    "created": "2026-04-12",
+    "updated": "2026-04-12",
+    "author": "dojo-community",
+    "status": "living",
+    "confidence": "high",
+    "audience": "developers, sre, ai agents",
+    "estimated_reading_time": "5 min",
+    "prerequisites": []
+  },
+  "body": "# Troubleshooting APT Failures\n\nTreat APT failures as one of a few categories instead of a single generic problem.\n\n## 1. Stale or missing metadata\n\n- Symptom: package not found, old version table, or candidate does not match expected repositories.\n- First action: `sudo apt-get update`\n- Next action: inspect with [[apt/search#policy]]\n\nAPT answers inspection questions from the local cache, not directly from the network. Many \"wrong version\" problems are simply stale indexes.\n\n## 2. Packages kept back\n\nOn Ubuntu, kept-back packages during `apt upgrade` are often the result of phased updates and do not require repair. Check [[apt/upgrade#held-back]] before forcing a package install. If the package is not merely phased, inspect source precedence in [[apt/pinning]].\n\n## 3. Broken package state\n\n- Symptom: unmet dependencies, half-configured packages, interrupted install\n- First action: `sudo apt-get check`\n- Follow-up: [[apt/repair#configure-pending]] and [[apt/repair#fix-broken]]\n\n## 4. Repository authentication failures\n\n- Symptom: unsigned repository, missing `Release` file, `Signed-By` mismatch\n- First action: audit the source definition and keyring path in [[apt/repositories#keyrings]]\n- Important note: Debian documents insecure repositories as strongly discouraged and likely to lose compatibility over time\n\n## 5. Lock contention\n\n- Symptom: `Could not get lock /var/lib/dpkg/lock-frontend`\n- First action: inspect the owning process via [[apt/repair#locks]]\n- Do not: delete lock files blindly while another package operation is active\n\n## Logs\n\nUbuntu documents package installation and removal activity in `/var/log/dpkg.log`. Use it to confirm what happened before you try to replay or undo a failed transaction."
+}

@@ -1,0 +1,131 @@
+{
+  "name": "contract-test",
+  "version": "1.0.0",
+  "uri": "openapi/contract-test",
+  "type": "skill",
+  "context": "Test a live HTTP API against its OpenAPI contract with schema-driven requests and response validation.",
+  "info": "OpenAPI contract testing verifies that a running service actually behaves like its API description. The primary execution surface is Schemathesis, a property-based testing tool that reads an OpenAPI schema, generates requests, sends them to a target base URL, and validates responses against the contract. Agents use this skill when a backend is available and the task is to catch undocumented status codes, schema mismatches, server errors from valid inputs, invalid response bodies, missing auth behavior, or drift between framework-generated docs and runtime behavior. Contract tests complement mocks: mocks prove a contract is consumable, while contract tests prove an implementation respects it.",
+  "parent": "openapi",
+  "tags": ["openapi-contract-test", "schemathesis", "api-testing", "property-based-testing", "fuzzing", "schema-validation", "ci", "http"],
+  "aliases": [
+    "openapi contract testing",
+    "schemathesis",
+    "api fuzzing",
+    "schema driven api tests",
+    "test api against swagger",
+    "test implementation against openapi",
+    "openapi property based tests",
+    "contract tests"
+  ],
+  "triggers": [
+    "test the api against the openapi spec",
+    "run schemathesis",
+    "fuzz this api from openapi",
+    "validate live responses against schema",
+    "check if backend matches swagger",
+    "add contract tests to ci",
+    "find undocumented api behavior",
+    "test generated openapi endpoint",
+    "verify api schema compliance"
+  ],
+  "body": "# OpenAPI Contract Testing\n\nContract tests exercise a real API implementation using the OpenAPI description as the test plan. They generate valid and edge-case requests, send them to a base URL, and validate that responses match documented status codes, media types, and schemas.\n\n## Run Against a Local Service\n\n```bash\n# Terminal 1: start the app\nnpm run dev\n\n# Terminal 2: validate the spec, then test the implementation\nnodes/openapi/scripts/validate-openapi.sh openapi.yaml dist/openapi.yaml\nnodes/openapi/scripts/contract-test-openapi.sh dist/openapi.yaml http://localhost:3000 --checks all --max-examples 50\n```\n\nThe wrapper uses `schemathesis`, `st`, or `uvx schemathesis` if available. Extra arguments are passed through to Schemathesis.\n\n## Authenticated APIs\n\n```bash\nAPI_TOKEN=$TOKEN nodes/openapi/scripts/contract-test-openapi.sh openapi.yaml https://api.example.com --checks all\n```\n\nThe wrapper sends `Authorization: Bearer $API_TOKEN` when `API_TOKEN` is set. For more complex auth, pass Schemathesis header or config options as extra args.\n\n## What It Catches\n\n- A documented 200 response returns a different schema.\n- A valid request crashes the server with 500.\n- An operation accepts undocumented parameters or rejects documented ones.\n- Status codes are missing from `responses`.\n- Error bodies differ from the shared error envelope.\n- Content-Type differs from documented media types.\n\n## CI Pattern\n\nRun contract tests after deploying a preview environment or starting the service in CI. Keep generated examples bounded to avoid slow pipelines, and upload reports when failures need debugging.",
+  "sections": [
+    {
+      "id": "workflow",
+      "title": "Contract test workflow",
+      "body": "Start a real service, validate and bundle the OpenAPI description with [[openapi/validate]], run `nodes/openapi/scripts/contract-test-openapi.sh <spec> <base-url>`, inspect failing cases, then fix either the implementation or the contract. If a failure shows undocumented intended behavior, update [[openapi/author]] and rerun validation.",
+      "tags": ["workflow", "service", "schemathesis", "debugging"]
+    },
+    {
+      "id": "auth",
+      "title": "Authentication",
+      "body": "For bearer-token APIs, set `API_TOKEN` and the wrapper will send an Authorization header. For API keys, OAuth flows, mTLS, cookies, or multiple roles, pass Schemathesis header/config options explicitly or run separate test jobs per role. Never hard-code secrets into OpenAPI examples or test scripts.",
+      "tags": ["auth", "bearer", "api-token", "secrets"]
+    },
+    {
+      "id": "checks",
+      "title": "Checks",
+      "body": "Use broad checks during development and tune for CI runtime. Contract testing should at least detect server errors, response schema mismatches, undocumented status codes, missing content types, and invalid headers. Keep `--max-examples` modest in CI and higher during investigation.",
+      "tags": ["checks", "response-schema", "server-errors", "ci"]
+    },
+    {
+      "id": "failure-triage",
+      "title": "Failure triage",
+      "body": "If the generated request is invalid but the spec says it is valid, fix the schema. If the request is valid and the implementation rejects it, fix the server or document the constraint. If the response body is useful but undocumented, update the response schema and examples. If auth prevents useful tests, provide role-specific tokens.",
+      "tags": ["triage", "schema", "implementation", "responses"]
+    }
+  ],
+  "links": [
+    { "uri": "openapi/validate", "context": "Validate and bundle before testing a live service" },
+    { "uri": "openapi/mock", "context": "Mocks simulate an API; contract tests verify the real implementation" },
+    { "uri": "openapi/author", "context": "Fix contract gaps discovered by runtime tests" },
+    { "uri": "testing/ci", "context": "Run contract tests in CI against preview deployments" },
+    { "uri": "curl", "context": "Reproduce individual failing HTTP requests" }
+  ],
+  "related": [
+    { "uri": "openapi/validate", "relation": "prerequisite", "note": "Contract tests should use a valid and bundled spec" },
+    { "uri": "openapi/mock", "relation": "alternative", "note": "Mocks are useful before a service exists; contract tests require a running service" },
+    { "uri": "testing/ci", "relation": "see-also", "note": "Contract tests are most valuable as automated release gates" }
+  ],
+  "scripts": [
+    {
+      "id": "contract-test-openapi",
+      "name": "Run OpenAPI Contract Tests",
+      "description": "Run Schemathesis against a live API using an OpenAPI file or URL",
+      "lang": "bash",
+      "runtime": "python>=3.10",
+      "entry": "../scripts/contract-test-openapi.sh",
+      "env": {
+        "OPENAPI_TEST_URL": { "required": false, "description": "Base URL for the target API when omitted from args" },
+        "SCHEMATHESIS_REPORT": { "required": false, "description": "Optional Schemathesis report output path" },
+        "API_TOKEN": { "required": false, "secret": true, "description": "Bearer token sent as Authorization header" }
+      },
+      "packages": ["schemathesis"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "spec": { "type": "string", "description": "OpenAPI file path or URL" },
+        "baseUrl": { "type": "string", "description": "Running API base URL" },
+        "maxExamples": { "type": "integer", "description": "Maximum generated examples per operation" },
+        "headers": { "type": "object", "description": "Headers to send to the API" }
+      },
+      "required": ["spec", "baseUrl"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "passed": { "type": "boolean", "description": "Whether all contract tests passed" },
+        "failures": { "type": "integer", "description": "Number of failing cases" },
+        "report": { "type": "string", "description": "Report path when configured" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "openapi/validate", "reason": "Contract tests should run against a valid spec" },
+    { "uri": "python", "reason": "Schemathesis is a Python tool" },
+    { "uri": "curl", "optional": true, "reason": "curl helps reproduce failing cases manually" }
+  ],
+  "more": {
+    "schemathesis": "https://schemathesis.readthedocs.io/en/stable/",
+    "cli": "https://schemathesis.readthedocs.io/en/stable/reference/cli/"
+  },
+  "frontmatter": {
+    "created": "2026-04-15",
+    "updated": "2026-04-15",
+    "author": "dojo-community",
+    "audience": "backend engineers, QA engineers, platform engineers, AI agents",
+    "estimated_reading_time": "7 min",
+    "prerequisites": ["openapi/validate", "python"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://github.com/schemathesis/schemathesis",
+  "created": "2026-04-15T00:00:00Z",
+  "updated": "2026-04-15T00:00:00Z",
+  "status": "published"
+}

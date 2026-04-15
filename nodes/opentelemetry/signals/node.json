@@ -1,0 +1,154 @@
+{
+  "name": "signals",
+  "version": "1.0.0",
+  "uri": "opentelemetry/signals",
+  "type": "context",
+  "context": "Understand OpenTelemetry traces, metrics, logs, baggage, and context propagation.",
+  "info": "Signals are the telemetry shapes OpenTelemetry creates and transports. Traces describe causality across spans, metrics describe numeric measurements over time, logs describe timestamped events, and baggage carries small user-defined context across process boundaries. Agents need this node before changing instrumentation because the right signal determines the right API, cardinality rules, backend queries, and sampling strategy.",
+  "parent": "opentelemetry",
+  "tags": [
+    "signals",
+    "traces",
+    "spans",
+    "metrics",
+    "logs",
+    "baggage",
+    "context-propagation",
+    "traceparent"
+  ],
+  "aliases": [
+    "otel signals",
+    "telemetry signals",
+    "traces metrics logs",
+    "span vs metric",
+    "baggage",
+    "context propagation",
+    "trace context",
+    "traceparent header"
+  ],
+  "triggers": [
+    "what signal should i use",
+    "explain traces and spans",
+    "correlate logs with traces",
+    "propagate trace context",
+    "use baggage safely",
+    "choose metric or span",
+    "why are logs not correlated"
+  ],
+  "content_type": "explainer",
+  "body": "# OpenTelemetry Signals\n\nOpenTelemetry currently centers operational telemetry around traces, metrics, logs, and baggage. The job is not to emit every signal everywhere; the job is to choose the signal that answers the production question with bounded cost and stable meaning.\n\n## Signal Selection\n\n| Signal | Use for | Do not use for |\n| --- | --- | --- |\n| Traces | Request flow, dependency latency, error causality, fan-out, retries | Counting every event forever |\n| Metrics | SLOs, rates, saturation, latency distributions, dashboards, alerts | High-cardinality request IDs or user IDs |\n| Logs | Auditable events, detailed failures, rare diagnostics, human-readable context | Request flow reconstruction when spans are available |\n| Baggage | Low-cardinality context that must cross boundaries | Secrets, tokens, PII, or large values |\n\n## Context Propagation\n\nDistributed tracing depends on context propagation. A caller injects context into a carrier, often HTTP headers, and the callee extracts it to create child spans in the same trace. The common W3C header is `traceparent`:\n\n```text\ntraceparent: 00-a0892f3577b34da6a3ce929d0e0e4736-f03067aa0ba902b7-01\n```\n\nInstrumentation libraries usually inject and extract automatically. Agents only need manual propagation when crossing unusual boundaries such as queues, custom RPC frames, batch jobs, or protocols without standard metadata.\n\n## Correlation\n\nA strong setup correlates all signals through shared resource attributes and context. The same service should emit `service.name`, `service.version`, and `deployment.environment.name` on traces, metrics, and logs. Logs should include trace ID and span ID when produced inside a span. Metrics should avoid trace IDs as labels, but may be correlated by resource attributes, exemplars, or backend support.",
+  "sections": [
+    {
+      "id": "traces",
+      "title": "Traces and spans",
+      "body": "A trace is a tree or graph of spans for one logical transaction. A span has a name, start time, end time, attributes, events, status, and parent context. Use spans for work with duration: HTTP handlers, database calls, queue publish/consume, external API calls, expensive functions, and retry loops. See [[opentelemetry/nodejs#manual-instrumentation]] for JavaScript span examples.",
+      "tags": [
+        "traces",
+        "spans",
+        "duration",
+        "causality"
+      ]
+    },
+    {
+      "id": "metrics",
+      "title": "Metrics",
+      "body": "Metrics are numeric measurements aggregated over time. Use counters for monotonic counts, histograms for latency and size distributions, and observable gauges for sampled current values. Keep attributes low-cardinality and stable. Export high-value service metrics to [[prometheus]] or another metrics backend through [[opentelemetry/collector]].",
+      "tags": [
+        "metrics",
+        "counters",
+        "histograms",
+        "cardinality"
+      ]
+    },
+    {
+      "id": "logs",
+      "title": "Logs",
+      "body": "Logs are timestamped event records. Prefer structured logs with stable fields and include trace context when possible. OpenTelemetry logs are useful for correlation, but many systems still collect logs through runtime, file, or platform collectors. Avoid turning every span event into a log record unless a human or compliance workflow needs that event.",
+      "tags": [
+        "logs",
+        "structured-logs",
+        "correlation",
+        "events"
+      ]
+    },
+    {
+      "id": "baggage",
+      "title": "Baggage",
+      "body": "Baggage carries key-value context across service boundaries. It is powerful and risky because it can be propagated to services outside your trust boundary. Use it for small, non-sensitive, low-cardinality routing or experiment context. Never put credentials, raw user identifiers, secrets, or personal data in baggage.",
+      "tags": [
+        "baggage",
+        "propagation",
+        "security",
+        "pii"
+      ]
+    }
+  ],
+  "links": [
+    {
+      "uri": "opentelemetry/nodejs",
+      "context": "Emit traces and metrics from Node.js code"
+    },
+    {
+      "uri": "opentelemetry/collector",
+      "context": "Receive, process, and export all signals"
+    },
+    {
+      "uri": "opentelemetry/semantic-conventions",
+      "context": "Use stable resource and signal attributes"
+    },
+    {
+      "uri": "opentelemetry/sampling",
+      "context": "Control trace volume after choosing what to emit"
+    },
+    {
+      "uri": "prometheus",
+      "context": "Metrics query and alerting backend"
+    },
+    {
+      "uri": "sentry",
+      "context": "Error and performance monitoring backend"
+    }
+  ],
+  "related": [
+    {
+      "uri": "opentelemetry",
+      "relation": "prerequisite",
+      "note": "Signals are the conceptual base for the rest of the OpenTelemetry tree"
+    },
+    {
+      "uri": "opentelemetry/semantic-conventions",
+      "relation": "see-also",
+      "note": "Signals become useful when attributes follow common semantics"
+    },
+    {
+      "uri": "prometheus/promql",
+      "relation": "see-also",
+      "note": "Metrics emitted through OpenTelemetry are often queried with PromQL"
+    }
+  ],
+  "more": {
+    "docs": "https://opentelemetry.io/docs/concepts/signals/",
+    "traces": "https://opentelemetry.io/docs/concepts/signals/traces/",
+    "metrics": "https://opentelemetry.io/docs/concepts/signals/metrics/",
+    "logs": "https://opentelemetry.io/docs/concepts/signals/logs/",
+    "baggage": "https://opentelemetry.io/docs/concepts/signals/baggage/",
+    "propagation": "https://opentelemetry.io/docs/concepts/context-propagation/"
+  },
+  "frontmatter": {
+    "created": "2026-04-15",
+    "updated": "2026-04-15",
+    "author": "dojo-community",
+    "audience": "ai-agents, developers, sre",
+    "estimated_reading_time": "6 min",
+    "prerequisites": [
+      "opentelemetry"
+    ],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-15T00:00:00Z",
+  "updated": "2026-04-15T00:00:00Z",
+  "status": "published"
+}

@@ -1,0 +1,117 @@
+{
+  "name": "pandas",
+  "version": "1.0.0",
+  "uri": "pandas",
+  "type": "ecosystem",
+  "context": "Pandas Python data analysis ecosystem for DataFrames, CSV/Excel/Parquet IO, cleaning, joins, groupby, and time-series workflows",
+  "info": "Pandas is the standard Python library for labeled tabular data: agents use it to inspect CSV, Excel, JSON, SQL, and Parquet data, clean records, enforce dtypes, join tables, produce summaries, and prepare reproducible research artifacts. Its main execution surface is Python code running against `Series` and `DataFrame` objects, with file readers/writers and optional Arrow-backed storage. Use [[pandas/workflows]] for executable local data workflows, [[pandas/dataframe]] for the mental model, [[pandas/workflows/io]] for file ingestion and export, [[pandas/workflows/clean]] for missing data and dtype repair, [[pandas/workflows/join]] for merge/concat operations, [[pandas/workflows/groupby]] for split-apply-combine summaries, and [[pandas/workflows/performance]] when data volume strains memory.",
+  "parent": null,
+  "tags": [
+    "pandas",
+    "python",
+    "dataframe",
+    "data-analysis",
+    "csv",
+    "excel",
+    "parquet",
+    "json",
+    "etl",
+    "data-cleaning",
+    "groupby",
+    "merge",
+    "time-series"
+  ],
+  "aliases": [
+    "pandas",
+    "pydata",
+    "python pandas",
+    "pd",
+    "pandas dataframe",
+    "data frame",
+    "dataframe analysis",
+    "csv analysis",
+    "excel analysis",
+    "tabular data in python",
+    "panda dataframe",
+    "panadas"
+  ],
+  "triggers": [
+    "analyze a csv with python",
+    "clean a spreadsheet",
+    "use pandas",
+    "load excel into a dataframe",
+    "join two csv files",
+    "group data by category",
+    "summarize a dataframe",
+    "convert csv to parquet",
+    "profile missing values",
+    "resample time series data",
+    "fix pandas dtype issues"
+  ],
+  "body": "# Pandas\n\nPandas is the default Python toolkit for local tabular data work. It gives agents a programmable table model for reading messy files, repairing types, joining records, summarizing facts, and exporting repeatable artifacts.\n\n## Fast start\n\n```bash\npython -m pip install 'pandas[performance,excel,parquet]'\npython - <<'PY'\nimport pandas as pd\nprint(pd.__version__)\ndf = pd.read_csv('orders.csv')\nprint(df.info())\nprint(df.head())\nPY\n```\n\n## Mental model\n\nA `DataFrame` is a two-dimensional labeled table, a `Series` is one labeled column, and an `Index` labels rows. Most pandas work is a pipeline: read data, inspect shape and dtypes, clean invalid values, transform columns, combine tables, aggregate or resample, then write a stable output. See [[pandas/dataframe]] before writing complex transformations.\n\n## Choose pandas when\n\n| Need | Fit |\n|---|---|\n| Inspect a CSV, Excel workbook, JSONL export, or Parquet file | Excellent |\n| Clean missing values, strings, dates, categories, and duplicates | Excellent |\n| Join small to medium in-memory tables | Excellent |\n| Produce grouped summaries and research tables | Excellent |\n| Resample timestamped event data | Excellent |\n| Query many large files with SQL | Prefer [[duckdb]] |\n| Serve transactional application data | Prefer [[postgres]] or [[sqlite]] |\n\n## Core nodes\n\n1. [[pandas/dataframe]] - Series, DataFrame, Index, dtypes, selection, vectorization, and assignment.\n2. [[pandas/workflows]] - executable scripts and operating rules for repeatable local data work.\n3. [[pandas/workflows/io]] - CSV, TSV, JSON, JSONL, Excel, Parquet, SQL, and typed exports.\n4. [[pandas/workflows/clean]] - missing data, duplicates, dtype conversion, strings, and validation.\n5. [[pandas/workflows/transform]] - filtering, selecting, assigning, reshaping, exploding, and method chaining.\n6. [[pandas/workflows/join]] - merge, join, concat, cardinality validation, and unmatched-row audits.\n7. [[pandas/workflows/groupby]] - split-apply-combine, named aggregations, transform, rolling, and pivot tables.\n8. [[pandas/workflows/time-series]] - timestamp parsing, time zones, offsets, resampling, rolling windows.\n9. [[pandas/workflows/performance]] - memory use, efficient dtypes, chunking, Parquet, Arrow, and alternatives.\n\n## Environment\n\n| Name | Purpose |\n|---|---|\n| `PYTHONPATH` | Makes local modules importable when running scripts. |\n| `PANDAS_COPY_ON_WRITE` | Enables or disables pandas copy-on-write behavior in supported versions. |\n| `NUMEXPR_MAX_THREADS` | Caps numexpr threads for expression evaluation when installed. |\n| `OPENBLAS_NUM_THREADS` / `MKL_NUM_THREADS` | Caps BLAS threads used by numeric dependencies. |\n\n## Safety rules\n\n- Never overwrite raw data; write cleaned outputs to a new path.\n- Inspect `df.dtypes`, `df.shape`, `df.head()`, and missing counts before transforming.\n- Treat IDs as strings unless arithmetic is required.\n- Use `.loc[row_mask, column] = value` for assignment.\n- Validate joins with `validate=` so row multiplication is intentional.\n- Parse external timestamps with `utc=True`, then convert for display.\n- Use [[duckdb]] or chunked reductions when the dataset is larger than memory.\n",
+  "sections": [
+    {
+      "id": "agent-use-cases",
+      "title": "High-value agent use cases",
+      "body": "Agents use pandas to profile unknown files, create reproducible cleanup scripts, transform spreadsheets into typed data, join exports from different systems, calculate metrics, audit data quality, convert CSV to Parquet, and prepare compact reports. Pandas is especially useful when data is local, fits in memory, and needs Python-level manipulation.",
+      "tags": ["agents", "csv", "excel", "research", "automation"]
+    },
+    {
+      "id": "execution-surface",
+      "title": "Execution surface",
+      "body": "The primary surface is Python code importing `pandas as pd`. In scripts, prefer deterministic inputs and outputs: accept paths, parse schemas explicitly, write JSON summaries, and emit typed artifacts such as Parquet. The shared [[pandas/workflows]] skill packages common file profiling, conversion, join, aggregation, transform, and resampling scripts.",
+      "tags": ["python", "scripts", "automation", "workflow"]
+    },
+    {
+      "id": "boundaries",
+      "title": "Boundaries",
+      "body": "Pandas is in-process and memory-bound. It is not a database server, distributed compute engine, or durable transactional store. If a task is mostly SQL over many large files, use [[duckdb]]. If it needs application persistence and concurrent clients, use [[postgres]] or [[sqlite]].",
+      "tags": ["memory", "sql", "database", "duckdb"]
+    },
+    {
+      "id": "install-extras",
+      "title": "Install extras",
+      "body": "Install optional extras for real workflows: `python -m pip install 'pandas[performance,excel,parquet]'`. The performance extra brings acceleration packages, the excel extra covers common workbook engines, and the parquet extra installs a columnar file engine. Use [[python/uv]] or [[python/pip]] depending on the project package manager.",
+      "tags": ["install", "pip", "uv", "extras", "pyarrow"]
+    }
+  ],
+  "links": [
+    { "uri": "pandas#execution-surface", "context": "Section explaining how agents execute pandas workflows" },
+    { "uri": "pandas/dataframe", "context": "Understand DataFrame, Series, Index, dtypes, and assignment semantics" },
+    { "uri": "pandas/workflows", "context": "Run executable pandas workflow scripts" },
+    { "uri": "pandas/workflows/io", "context": "Read and write tabular files and SQL result sets" },
+    { "uri": "pandas/workflows/clean", "context": "Clean missing values, duplicates, strings, and dtypes" },
+    { "uri": "pandas/workflows/groupby", "context": "Create grouped summaries and pivot-style outputs" },
+    { "uri": "python", "context": "Python runtime, packaging, virtual environments, and testing" },
+    { "uri": "duckdb", "context": "SQL-first local analytics alternative for larger files" }
+  ],
+  "related": [
+    { "uri": "python", "relation": "prerequisite", "note": "Pandas runs inside Python and depends on Python environment management" },
+    { "uri": "python/pip", "relation": "see-also", "note": "Use pip to install pandas and optional extras in simple projects" },
+    { "uri": "python/uv", "relation": "see-also", "note": "Use uv for fast dependency resolution and reproducible Python environments" },
+    { "uri": "duckdb", "relation": "alternative", "note": "DuckDB is often better for SQL over large CSV, Parquet, and JSON file collections" },
+    { "uri": "database/sql", "relation": "see-also", "note": "Many pandas operations map to SQL concepts such as joins, grouping, and filtering" }
+  ],
+  "more": {
+    "docs": "https://pandas.pydata.org/docs/",
+    "getting-started": "https://pandas.pydata.org/docs/getting_started/index.html",
+    "user-guide": "https://pandas.pydata.org/docs/user_guide/index.html",
+    "api": "https://pandas.pydata.org/docs/reference/index.html",
+    "repo": "https://github.com/pandas-dev/pandas"
+  },
+  "frontmatter": {
+    "created": "2026-04-15",
+    "updated": "2026-04-15",
+    "author": "dojo-community",
+    "audience": "AI agents, data engineers, research engineers, software engineers",
+    "estimated_reading_time": "6 min",
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://github.com/pandas-dev/pandas",
+  "created": "2026-04-15T00:00:00Z",
+  "updated": "2026-04-15T00:00:00Z",
+  "status": "published"
+}

@@ -1,0 +1,137 @@
+{
+  "name": "send",
+  "version": "1.0.0",
+  "uri": "ethereum/transactions/send",
+  "type": "skill",
+  "context": "Send native ETH from a private-key wallet through an Ethereum JSON-RPC endpoint",
+  "info": "This skill prepares, signs, broadcasts, and waits for native ETH transfers on EVM-compatible chains. It uses RPC_URL for the target chain and PRIVATE_KEY for the sender wallet, accepts a recipient address and ETH amount, and supports optional chain ID, gas limit, EIP-1559 fee overrides, nonce overrides, and confirmation depth. Use it for simple value transfers; use contract-specific nodes for calldata interactions and [[ethereum/x402/client]] for HTTP-native stablecoin payment flows.",
+  "parent": "ethereum/transactions",
+  "tags": ["ethereum", "eth", "send", "transfer", "transaction", "native", "evm", "wallet", "nonce", "gas"],
+  "aliases": [
+    "send eth",
+    "send ethereum",
+    "send native eth",
+    "ethereum send",
+    "eth transfer",
+    "ethereum transaction send",
+    "native eth transfer"
+  ],
+  "triggers": [
+    "send eth to another address",
+    "send an ethereum transaction",
+    "how do i handle nonce when sending eth",
+    "transfer native eth",
+    "broadcast an eth transfer",
+    "pay someone in eth",
+    "send eth on base",
+    "send eth with ethers"
+  ],
+  "body": "# Send Native ETH\n\nNative ETH transfers move the chain's base asset from one externally owned account to another. The sender signs a transaction containing `to`, `value`, gas parameters, chain ID, and nonce, then submits it to an RPC endpoint. On L2 networks such as Base, Arbitrum, Optimism, and Polygon PoS, the same transaction shape is used for the native gas asset.\n\nThe bundled script uses ethers v6. It reads JSON input from stdin, creates a `JsonRpcProvider` from `RPC_URL`, creates a `Wallet` from `PRIVATE_KEY`, parses `amount_eth` into wei, sends the transaction, waits for the requested confirmations, and emits a JSON summary with the transaction hash and receipt status.\n\n## Minimal Input\n\n```json\n{\n  \"to\": \"0x0000000000000000000000000000000000000000\",\n  \"amount_eth\": \"0.001\"\n}\n```\n\n## Operational Notes\n\nConfirm the recipient, chain, and amount before signing. Use [[ethereum/gas]] to reason about fee overrides, and use [[ethereum/wallets#key-storage]] to avoid committing private keys. For high-value transfers, prefer hardware or custody-backed signers rather than a raw private key in an environment variable.",
+  "sections": [
+    {
+      "id": "required-inputs",
+      "title": "Required inputs",
+      "body": "`RPC_URL` selects the target chain, `PRIVATE_KEY` selects the sender, `to` is the recipient address, and `amount_eth` is the decimal ETH amount. The script validates the recipient with ethers and parses the amount with `parseEther` before sending.",
+      "tags": ["input", "rpc-url", "private-key", "recipient", "amount"]
+    },
+    {
+      "id": "nonce-management",
+      "title": "Nonce management",
+      "body": "By default the provider assigns the next pending nonce for the wallet. If an agent sends multiple ETH transactions concurrently from the same account, coordinate nonces explicitly or serialize sends. A replacement transaction reuses the same nonce with a higher effective fee; an accidental duplicate nonce can replace the earlier transfer.",
+      "tags": ["nonce", "pending", "replacement", "concurrency"]
+    },
+    {
+      "id": "gas-and-fees",
+      "title": "Gas and fees",
+      "body": "Let the provider estimate fees unless the workflow needs explicit control. Optional `gas_limit`, `max_fee_per_gas_gwei`, and `max_priority_fee_per_gas_gwei` inputs let the caller pin EIP-1559 values. See [[ethereum/gas#estimation]] before overriding these fields.",
+      "tags": ["gas", "fees", "eip-1559", "estimate"]
+    },
+    {
+      "id": "confirmations",
+      "title": "Confirmations",
+      "body": "A successful broadcast only proves the network accepted the signed transaction. Wait for the receipt and inspect `status`. Use one confirmation for most low-value L2 transfers, and increase confirmations for higher-risk or mainnet workflows.",
+      "tags": ["confirmation", "receipt", "status"]
+    }
+  ],
+  "links": [
+    { "uri": "ethereum/transactions#nonce-model", "context": "Understand nonce ordering and replacement" },
+    { "uri": "ethereum/gas", "context": "Estimate gas and fee parameters" },
+    { "uri": "ethereum/wallets", "context": "Manage the sender wallet and private key" },
+    { "uri": "ethereum/x402/client", "context": "Use x402 for HTTP-native stablecoin payments instead of native ETH transfers" }
+  ],
+  "related": [
+    { "uri": "ethereum/transactions", "relation": "prerequisite", "note": "The parent transaction node explains nonce and confirmation models" },
+    { "uri": "ethereum/gas", "relation": "prerequisite", "note": "Fee selection affects transaction inclusion and replacement" },
+    { "uri": "ethereum/wallets", "relation": "prerequisite", "note": "A funded signer is required" },
+    { "uri": "ethereum/x402/client", "relation": "alternative", "note": "Use x402 for stablecoin HTTP payments" }
+  ],
+  "scripts": [
+    {
+      "id": "send-eth",
+      "name": "Send ETH",
+      "description": "Send native ETH from PRIVATE_KEY through RPC_URL and wait for a receipt",
+      "lang": "javascript",
+      "runtime": "node>=18",
+      "entry": "./scripts/send-eth.js",
+      "env": {
+        "RPC_URL": { "required": true, "secret": false, "description": "Ethereum JSON-RPC endpoint for the target chain" },
+        "PRIVATE_KEY": { "required": true, "secret": true, "description": "Sender private key with funds for value and gas" }
+      },
+      "packages": ["ethers@^6.0.0"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "to": { "type": "string", "description": "Recipient Ethereum address" },
+        "amount_eth": { "type": "string", "description": "Decimal ETH amount to send, for example 0.001" },
+        "chain_id": { "type": "integer", "description": "Optional chain ID guard; fails if the RPC reports a different chain" },
+        "confirmations": { "type": "integer", "minimum": 0, "default": 1, "description": "Number of confirmations to wait for" },
+        "nonce": { "type": "integer", "minimum": 0, "description": "Optional explicit account nonce" },
+        "gas_limit": { "type": "string", "description": "Optional gas limit in gas units" },
+        "max_fee_per_gas_gwei": { "type": "string", "description": "Optional EIP-1559 max fee in gwei" },
+        "max_priority_fee_per_gas_gwei": { "type": "string", "description": "Optional EIP-1559 priority fee in gwei" }
+      },
+      "required": ["to", "amount_eth"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "hash": { "type": "string", "description": "Transaction hash" },
+        "from": { "type": "string", "description": "Sender address" },
+        "to": { "type": "string", "description": "Recipient address" },
+        "value_wei": { "type": "string", "description": "Transferred value in wei" },
+        "chain_id": { "type": "integer", "description": "Target chain ID" },
+        "status": { "type": ["integer", "null"], "description": "Receipt status when confirmations were requested" },
+        "block_number": { "type": ["integer", "null"], "description": "Receipt block number when available" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "ethereum/transactions", "reason": "Transaction model, nonce behavior, and confirmation semantics" },
+    { "uri": "ethereum/gas", "reason": "Gas and EIP-1559 fee selection" },
+    { "uri": "ethereum/wallets", "reason": "Private-key wallet setup and key-safety practices" }
+  ],
+  "more": {
+    "docs": "https://docs.ethers.org/v6/",
+    "spec": "https://ethereum.org/en/developers/docs/transactions/",
+    "repo": "https://github.com/ethers-io/ethers.js"
+  },
+  "frontmatter": {
+    "created": "2026-04-15",
+    "updated": "2026-04-15",
+    "author": "dojo-community",
+    "audience": "developers and AI agents",
+    "estimated_reading_time": "5 min",
+    "prerequisites": ["ethereum/wallets", "ethereum/gas"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://github.com/ethereum",
+  "created": "2026-04-15T00:00:00Z",
+  "updated": "2026-04-15T00:00:00Z",
+  "status": "published"
+}

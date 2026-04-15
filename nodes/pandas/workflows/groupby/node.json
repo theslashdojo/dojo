@@ -1,0 +1,139 @@
+{
+  "name": "groupby",
+  "version": "1.0.0",
+  "uri": "pandas/workflows/groupby",
+  "type": "sub",
+  "context": "Summarize pandas data with groupby, named aggregations, transform, value_counts, pivot_table, rolling, and split-apply-combine",
+  "info": "Groupby is pandas' split-apply-combine engine for metrics and summaries. Agents use this node to group records by dimensions, aggregate measures, count distinct entities, compute per-group percentages, add per-row group statistics with `transform`, and reshape results into pivot tables. It emphasizes named aggregations, `dropna` behavior, deterministic sorting, and output schemas that downstream systems can consume. The shared `aggregate_dataset.py` script provides a CLI path for common grouped summaries.",
+  "parent": "pandas/workflows",
+  "tags": [
+    "pandas",
+    "groupby",
+    "aggregation",
+    "split-apply-combine",
+    "named-aggregation",
+    "pivot-table",
+    "value-counts",
+    "transform",
+    "metrics"
+  ],
+  "aliases": [
+    "pandas groupby",
+    "DataFrame.groupby",
+    "split apply combine",
+    "pandas aggregation",
+    "named aggregation",
+    "pivot table pandas",
+    "summarize dataframe",
+    "group data by"
+  ],
+  "triggers": [
+    "group by status and sum amount",
+    "summarize dataframe by category",
+    "count rows per group in pandas",
+    "calculate distinct users per day",
+    "make a pivot table in pandas",
+    "add group percentage column",
+    "aggregate this csv",
+    "compute metrics from a spreadsheet"
+  ],
+  "body": "# Groupby and Aggregation\n\nUse groupby for metrics: counts, sums, distinct counts, averages, minima, maxima, and per-group transforms. For SQL equivalents see [[database/sql]]; for larger file aggregations see [[duckdb/sql]].\n\n## Named aggregation\n\n```python\nsummary = (\n    orders\n    .groupby(['region', 'status'], dropna=False)\n    .agg(\n        orders=('order_id', 'nunique'),\n        revenue=('amount', 'sum'),\n        average_order=('amount', 'mean'),\n    )\n    .reset_index()\n    .sort_values(['region', 'revenue'], ascending=[True, False])\n)\n```\n\n## Per-row group values\n\n```python\norders['region_revenue'] = orders.groupby('region')['amount'].transform('sum')\norders['share'] = orders['amount'] / orders['region_revenue']\n```\n\n## CLI aggregation\n\n```bash\npython nodes/pandas/workflows/scripts/aggregate_dataset.py orders.csv by_status.csv --by status --agg amount:sum --agg order_id:nunique\n```\n",
+  "sections": [
+    {
+      "id": "named-aggregation",
+      "title": "Named aggregation",
+      "body": "Prefer named aggregations for stable output columns: `.agg(revenue=('amount', 'sum'), users=('user_id', 'nunique'))`. This avoids MultiIndex columns and makes artifacts easier to read. Use `reset_index()` when the result should be a regular table.",
+      "tags": ["named-aggregation", "agg", "output-schema"]
+    },
+    {
+      "id": "dropna-sort-observed",
+      "title": "dropna, sort, and observed",
+      "body": "`dropna=False` keeps missing group keys as explicit groups. `sort=False` can preserve input group order and improve performance. For categorical groupers, `observed=True` emits only observed category combinations. Set these deliberately so totals and report rows are reproducible.",
+      "tags": ["dropna", "sort", "observed", "categorical"]
+    },
+    {
+      "id": "transform",
+      "title": "Transform",
+      "body": "`groupby().transform()` returns a Series aligned to the original rows, useful for percentages, ranks, and group-level flags. Use it when you need a per-row output instead of a smaller summary table.",
+      "tags": ["transform", "alignment", "percentage", "rank"]
+    },
+    {
+      "id": "pivot-table",
+      "title": "Pivot tables",
+      "body": "`pivot_table` creates spreadsheet-like summaries with row indexes, column dimensions, values, and aggregation functions. Use it for presentation or matrix outputs, but keep long tidy data for most analysis and plotting workflows.",
+      "tags": ["pivot-table", "wide", "long", "presentation"]
+    }
+  ],
+  "links": [
+    { "uri": "pandas/workflows/groupby#named-aggregation", "context": "Section on stable named aggregation output schemas" },
+    { "uri": "pandas/workflows/clean", "context": "Ensure measures and dimensions are typed before aggregation" },
+    { "uri": "pandas/workflows/join", "context": "Aggregate joined datasets after row counts are validated" },
+    { "uri": "pandas/workflows/time-series", "context": "Use resample for time-bucketed groupby work" },
+    { "uri": "database/sql", "context": "SQL GROUP BY equivalent concepts" },
+    { "uri": "duckdb/sql", "context": "Large grouped summaries over files with SQL" }
+  ],
+  "related": [
+    { "uri": "database/sql", "relation": "equivalent", "note": "Groupby maps to SQL GROUP BY and aggregate functions" },
+    { "uri": "pandas/workflows/time-series", "relation": "extends", "note": "Resampling is a time-indexed grouping workflow" },
+    { "uri": "duckdb/sql", "relation": "alternative", "note": "DuckDB handles large grouped summaries efficiently over Parquet and CSV" }
+  ],
+  "scripts": [
+    {
+      "id": "aggregate-dataset",
+      "name": "Aggregate Dataset",
+      "description": "Group a dataset by columns and compute aggregation functions from CLI or JSON specs",
+      "lang": "python",
+      "runtime": "python>=3.10",
+      "entry": "../scripts/aggregate_dataset.py",
+      "packages": ["pandas", "pyarrow", "openpyxl"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "input_path": { "type": "string" },
+        "output_path": { "type": "string" },
+        "by": { "type": "array", "items": { "type": "string" } },
+        "aggregations": { "type": "object", "description": "Column to aggregation function or function list" },
+        "include_na": { "type": "boolean", "default": false }
+      },
+      "required": ["input_path", "output_path", "by", "aggregations"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "input_rows": { "type": "integer" },
+        "output_rows": { "type": "integer" },
+        "group_keys": { "type": "array", "items": { "type": "string" } },
+        "output_path": { "type": "string" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "pandas/workflows", "reason": "Uses the shared aggregation script" },
+    { "uri": "pandas/workflows/clean", "reason": "Measure columns and group keys should be typed before aggregation" }
+  ],
+  "more": {
+    "docs": "https://pandas.pydata.org/docs/user_guide/groupby.html",
+    "groupby-api": "https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.groupby.html",
+    "pivot-table": "https://pandas.pydata.org/docs/reference/api/pandas.pivot_table.html",
+    "value-counts": "https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.value_counts.html"
+  },
+  "frontmatter": {
+    "created": "2026-04-15",
+    "updated": "2026-04-15",
+    "author": "dojo-community",
+    "audience": "AI agents, data engineers, analysts",
+    "estimated_reading_time": "6 min",
+    "prerequisites": ["pandas/workflows/clean"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://github.com/pandas-dev/pandas",
+  "created": "2026-04-15T00:00:00Z",
+  "updated": "2026-04-15T00:00:00Z",
+  "status": "published"
+}

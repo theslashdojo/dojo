@@ -1,0 +1,127 @@
+{
+  "name": "mock",
+  "version": "1.0.0",
+  "uri": "openapi/mock",
+  "type": "skill",
+  "context": "Run a mock HTTP API from an OpenAPI contract for frontend, integration, demo, and CI workflows.",
+  "info": "OpenAPI mocking serves fake API responses directly from a contract, usually before or beside a real backend. The primary execution surface is Stoplight Prism CLI, which can run `prism mock` against OpenAPI v2, v3.0, and v3.1 documents. Agents use this skill to unblock frontend development, simulate third-party APIs, test clients without real credentials, reproduce examples from docs, and validate whether a contract contains enough examples and schemas to support realistic behavior. Mocking should use a validated and bundled spec so route discovery, server URLs, examples, and refs behave predictably.",
+  "parent": "openapi",
+  "tags": ["openapi-mock", "mock-server", "prism", "api-mocking", "frontend", "integration-testing", "examples", "fake-api"],
+  "aliases": [
+    "openapi mock",
+    "swagger mock server",
+    "prism mock",
+    "mock api from swagger",
+    "fake api from openapi",
+    "api mock server",
+    "contract mock",
+    "mock http api"
+  ],
+  "triggers": [
+    "run a mock server from openapi",
+    "mock this swagger api",
+    "start prism for this spec",
+    "create a fake api for frontend",
+    "test client against mock api",
+    "serve openapi examples",
+    "mock third party api locally",
+    "run openapi mock in ci"
+  ],
+  "body": "# OpenAPI Mocking\n\nMocking turns a contract into an HTTP server. This is useful when the frontend is ahead of the backend, an upstream API is expensive or rate-limited, or a test needs deterministic responses without real credentials.\n\n## Start a Mock Server\n\n```bash\n# Validate and bundle first\nnodes/openapi/scripts/validate-openapi.sh openapi.yaml dist/openapi.yaml\n\n# Start Prism on port 4010\nnodes/openapi/scripts/mock-openapi.sh dist/openapi.yaml 4010\n\n# Call the mock\ncurl http://localhost:4010/health\n```\n\nThe wrapper uses a local `prism` binary if present, otherwise `npx --yes @stoplight/prism-cli`.\n\n## Host and Port\n\n```bash\nOPENAPI_MOCK_HOST=127.0.0.1 OPENAPI_MOCK_PORT=5000 nodes/openapi/scripts/mock-openapi.sh openapi.yaml\n```\n\nBind to `0.0.0.0` inside containers or remote dev environments when another process needs to reach the mock.\n\n## Examples Drive Quality\n\nPrism can use examples and schemas to produce responses. If the mock returns generic or unrealistic payloads, improve the contract by adding named examples under media types or by tightening schemas with required fields, formats, enums, and bounds.\n\n```yaml\nresponses:\n  '200':\n    description: Customer\n    content:\n      application/json:\n        schema:\n          $ref: '#/components/schemas/Customer'\n        examples:\n          active:\n            value:\n              id: cus_123\n              email: alice@example.com\n```\n\n## Mocking in Tests\n\nRun Prism in the background during integration tests, point the client base URL at the mock, and keep the spec file versioned with the test fixtures. Prefer contract examples over ad hoc JSON fixtures so docs, mocks, and tests share one source.",
+  "sections": [
+    {
+      "id": "workflow",
+      "title": "Mocking workflow",
+      "body": "Validate and bundle the spec, start Prism with `nodes/openapi/scripts/mock-openapi.sh`, set the application or generated client base URL to the mock server, then run frontend or integration tests. When behavior is missing, update examples and schemas in [[openapi/author]] rather than patching the mock output separately.",
+      "tags": ["workflow", "prism", "frontend", "tests"]
+    },
+    {
+      "id": "examples",
+      "title": "Examples as mock fixtures",
+      "body": "Good OpenAPI examples become mock fixtures, docs samples, and agent-readable behavior descriptions. Add named examples for common states: empty list, successful create, validation failure, unauthorized, not found, and rate-limited. Keep secrets and real customer data out of examples.",
+      "tags": ["examples", "fixtures", "mock-data"]
+    },
+    {
+      "id": "containers",
+      "title": "Containers and remote workspaces",
+      "body": "Prism binds to localhost by default. In Docker, Codespaces, or remote dev containers, bind to `0.0.0.0` and expose the port. The wrapper defaults to `0.0.0.0` so agents can share the mock URL with nearby processes.",
+      "tags": ["docker", "ports", "host", "remote-dev"]
+    },
+    {
+      "id": "limits",
+      "title": "Mock limits",
+      "body": "A mock server cannot replace a real implementation for persistence, authorization semantics, race conditions, background jobs, or database constraints. Use [[openapi/contract-test]] against a real service before release. Use mocks to unblock integration and clarify contracts, not to prove production behavior.",
+      "tags": ["limits", "contract-testing", "production"]
+    }
+  ],
+  "links": [
+    { "uri": "openapi/validate", "context": "Validate and bundle the spec before mocking" },
+    { "uri": "openapi/author", "context": "Improve examples and schemas that drive mock behavior" },
+    { "uri": "openapi/contract-test", "context": "Test real implementations after mock-driven development" },
+    { "uri": "curl", "context": "Call the mock server from the command line" },
+    { "uri": "frontend", "context": "Frontend applications commonly consume OpenAPI mocks during development" }
+  ],
+  "related": [
+    { "uri": "openapi/validate", "relation": "prerequisite", "note": "Mocks should run from a valid and bundled contract" },
+    { "uri": "openapi/contract-test", "relation": "see-also", "note": "Contract tests verify a real service, while mocks simulate one" },
+    { "uri": "curl", "relation": "see-also", "note": "curl is the fastest way to inspect mock routes and responses" }
+  ],
+  "scripts": [
+    {
+      "id": "mock-openapi",
+      "name": "Run OpenAPI Mock Server",
+      "description": "Start a Prism mock server from an OpenAPI file or URL",
+      "lang": "bash",
+      "runtime": "node>=18",
+      "entry": "../scripts/mock-openapi.sh",
+      "env": {
+        "OPENAPI_MOCK_HOST": { "required": false, "default": "0.0.0.0", "description": "Host/interface for Prism to bind" },
+        "OPENAPI_MOCK_PORT": { "required": false, "default": "4010", "description": "Port for the mock server" }
+      },
+      "packages": ["@stoplight/prism-cli"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "spec": { "type": "string", "description": "OpenAPI file path or URL" },
+        "host": { "type": "string", "description": "Host/interface to bind", "default": "0.0.0.0" },
+        "port": { "type": "integer", "description": "Mock server port", "default": 4010 },
+        "dynamic": { "type": "boolean", "description": "Pass Prism dynamic response generation flag via extra args", "default": false }
+      },
+      "required": ["spec"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "url": { "type": "string", "description": "Mock server base URL" },
+        "pid": { "type": "integer", "description": "Process ID when run in background by caller" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "openapi/validate", "reason": "Mocking should use a valid, bundled OpenAPI document" },
+    { "uri": "node/npm", "reason": "Prism CLI can run through npx" }
+  ],
+  "more": {
+    "prism": "https://github.com/stoplightio/prism",
+    "stoplight": "https://stoplight.io/open-source/prism"
+  },
+  "frontmatter": {
+    "created": "2026-04-15",
+    "updated": "2026-04-15",
+    "author": "dojo-community",
+    "audience": "frontend engineers, API consumers, QA engineers, AI agents",
+    "estimated_reading_time": "6 min",
+    "prerequisites": ["openapi/validate", "node/npm"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://github.com/stoplightio/prism",
+  "created": "2026-04-15T00:00:00Z",
+  "updated": "2026-04-15T00:00:00Z",
+  "status": "published"
+}

@@ -1,0 +1,293 @@
+{
+  "name": "repositories",
+  "version": "1.0.0",
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://salsa.debian.org/apt-team/apt",
+  "created": "2026-04-12T00:00:00Z",
+  "updated": "2026-04-12T00:00:00Z",
+  "status": "published",
+  "uri": "apt/repositories",
+  "type": "skill",
+  "parent": "apt",
+  "context": "Add, inspect, or remove APT repositories safely with deb822 source files, Signed-By keyrings, and PPA support",
+  "info": "This skill manages repository configuration on Debian-family hosts. It covers deb822 `.sources` files, legacy `.list` lines, keyring placement under `/etc/apt/keyrings` or `/usr/share/keyrings`, explicit `Signed-By` wiring, and repository removal. It also routes Ubuntu Launchpad PPAs to the dedicated [[apt/repositories/ppa]] sub-skill. Agents use this node when a package is missing from the default repositories, when vendor documentation still suggests deprecated `apt-key` patterns, or when a host needs controlled third-party repository lifecycle management.",
+  "tags": [
+    "apt",
+    "repositories",
+    "sources",
+    "deb822",
+    "signed-by",
+    "keyrings",
+    "third-party",
+    "ppa",
+    "sources-list"
+  ],
+  "aliases": [
+    "apt repository",
+    "add apt repo",
+    "sources list",
+    "deb822 sources",
+    "signed-by keyring",
+    "third party apt repo"
+  ],
+  "triggers": [
+    "add a vendor apt repository",
+    "configure apt sources",
+    "replace apt-key usage",
+    "remove a third party repository",
+    "add a ppa on ubuntu",
+    "create a deb822 source file"
+  ],
+  "sections": [
+    {
+      "id": "deb822",
+      "title": "Deb822 source files",
+      "body": "Deb822 `.sources` files are the preferred modern format. They support multiline stanzas, explicit `Signed-By`, and clearer structure than one-line entries. Ubuntu's own `ubuntu.sources` file is the reference example on current releases.",
+      "tags": [
+        "deb822",
+        "sources",
+        "modern-format"
+      ]
+    },
+    {
+      "id": "keyrings",
+      "title": "Keyrings and Signed-By",
+      "body": "APT archive authentication should be bound explicitly with `Signed-By`. Debian documents `/etc/apt/keyrings` for locally managed keys and `/usr/share/keyrings` for package-managed keyrings. Avoid `apt-key`; Ubuntu and Debian both now route best practice through per-repository keyrings.",
+      "tags": [
+        "signed-by",
+        "keyrings",
+        "trust",
+        "apt-secure"
+      ]
+    },
+    {
+      "id": "removal",
+      "title": "Removing repositories cleanly",
+      "body": "Deleting the source file is only part of removal. Also remove repository-specific pins, optionally delete a manually installed keyring, and then run `apt-get update`. If third-party packages remain installed, expect candidate selection or upgrade behavior to stay influenced by that repository until those packages are downgraded, removed, or repinned.",
+      "tags": [
+        "remove",
+        "cleanup",
+        "pins",
+        "keyrings"
+      ]
+    },
+    {
+      "id": "ppa",
+      "title": "Ubuntu PPAs",
+      "body": "Use [[apt/repositories/ppa]] for Launchpad PPAs. `add-apt-repository` handles the shortcut syntax and key acquisition, but Ubuntu notes that it does not automatically configure repository pinning. Add pins manually when a PPA should not outrank official packages.",
+      "tags": [
+        "ppa",
+        "launchpad",
+        "ubuntu",
+        "pinning"
+      ]
+    }
+  ],
+  "sub": [
+    "apt/repositories/ppa"
+  ],
+  "links": [
+    {
+      "uri": "apt/repositories/ppa",
+      "context": "Handle Launchpad PPAs with add-apt-repository"
+    },
+    {
+      "uri": "apt/pinning",
+      "context": "Reduce the priority of third-party repositories after adding them"
+    },
+    {
+      "uri": "apt/search#policy",
+      "context": "Verify candidate selection after adding a new source"
+    },
+    {
+      "uri": "apt/install",
+      "context": "Install packages once the new repository metadata is available"
+    },
+    {
+      "uri": "apt/troubleshooting#repo-auth",
+      "context": "Debug Signed-By and repository authentication failures"
+    }
+  ],
+  "related": [
+    {
+      "uri": "apt/pinning",
+      "relation": "extends",
+      "note": "Pinning is the normal follow-up when third-party repositories should stay lower priority"
+    },
+    {
+      "uri": "apt/repositories/ppa",
+      "relation": "implements",
+      "note": "The PPA sub-skill is the Ubuntu-specific repository shortcut workflow"
+    }
+  ],
+  "scripts": [
+    {
+      "id": "manage-repository",
+      "name": "Manage APT repository",
+      "description": "Create, inspect, or remove APT source files and associated keyrings",
+      "lang": "bash",
+      "runtime": "bash, apt>=2",
+      "entry": "./scripts/manage-repository.sh",
+      "env": {
+        "APT_REPO_ACTION": {
+          "required": true,
+          "description": "Repository action: add-deb822, add-line, remove, or list"
+        },
+        "APT_REPO_NAME": {
+          "required": false,
+          "description": "Short repository name used for source and keyring filenames"
+        },
+        "APT_REPO_URI": {
+          "required": false,
+          "description": "Base repository URI"
+        },
+        "APT_REPO_SUITES": {
+          "required": false,
+          "description": "Suite or suites, space-separated, such as stable or noble-updates"
+        },
+        "APT_REPO_COMPONENTS": {
+          "required": false,
+          "default": "main",
+          "description": "Space-separated components such as main, contrib, or non-free"
+        },
+        "APT_REPO_ARCH": {
+          "required": false,
+          "description": "Optional architectures value for the source definition"
+        },
+        "APT_REPO_KEY_URL": {
+          "required": false,
+          "description": "URL to download a repository keyring or armored key"
+        },
+        "APT_REPO_SIGNED_BY": {
+          "required": false,
+          "description": "Explicit Signed-By path; defaults to /etc/apt/keyrings/<name>.asc or .gpg if a key URL is provided"
+        },
+        "APT_ENABLE_SOURCE": {
+          "required": false,
+          "default": "false",
+          "description": "Set to true to add deb-src alongside deb"
+        },
+        "APT_NO_UPDATE": {
+          "required": false,
+          "default": "false",
+          "description": "Set to true to skip apt-get update after changes"
+        },
+        "APT_REMOVE_KEY": {
+          "required": false,
+          "default": "false",
+          "description": "Set to true to delete a matching keyring on repository removal"
+        },
+        "APT_REMOVE_PIN": {
+          "required": false,
+          "default": "false",
+          "description": "Set to true to delete matching preference files on repository removal"
+        }
+      },
+      "packages": [
+        "apt",
+        "curl",
+        "sudo"
+      ]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "action": {
+          "type": "string",
+          "enum": [
+            "add-deb822",
+            "add-line",
+            "remove",
+            "list"
+          ],
+          "description": "Repository management action"
+        },
+        "name": {
+          "type": "string",
+          "description": "Short name used for source and keyring filenames"
+        },
+        "uri": {
+          "type": "string",
+          "description": "Repository base URI"
+        },
+        "suites": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Suites or pockets to include"
+        },
+        "components": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Repository components"
+        },
+        "keyUrl": {
+          "type": "string",
+          "description": "URL to the repository key"
+        },
+        "signedBy": {
+          "type": "string",
+          "description": "Explicit Signed-By path"
+        },
+        "enableSource": {
+          "type": "boolean",
+          "description": "Also enable source packages"
+        }
+      },
+      "required": [
+        "action"
+      ]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "action": {
+          "type": "string",
+          "description": "Action that was executed"
+        },
+        "sourceFile": {
+          "type": "string",
+          "description": "Source file written or removed"
+        },
+        "keyringPath": {
+          "type": "string",
+          "description": "Keyring path associated with the repository"
+        },
+        "exitCode": {
+          "type": "integer",
+          "description": "Process exit code"
+        }
+      }
+    }
+  },
+  "depends": [
+    {
+      "uri": "apt/pinning",
+      "optional": true,
+      "reason": "Third-party repositories are often paired with explicit pinning to avoid overtaking official packages"
+    }
+  ],
+  "more": {
+    "docs": "https://manpages.debian.org/trixie/apt/sources.list.5.en.html",
+    "secure": "https://manpages.debian.org/testing/apt/apt-secure.8.en.html",
+    "ubuntu": "https://ubuntu.com/server/docs/explanation/software/third-party-repository-usage/",
+    "add": "https://manpages.ubuntu.com/manpages/resolute/man1/apt-add-repository.1.html"
+  },
+  "frontmatter": {
+    "created": "2026-04-12",
+    "updated": "2026-04-12",
+    "author": "dojo-community",
+    "status": "living",
+    "confidence": "high",
+    "audience": "developers, sre, ai agents",
+    "estimated_reading_time": "7 min",
+    "prerequisites": []
+  },
+  "body": "# Managing APT Repositories\n\nUse this node when packages are not available from the current sources or when a host needs to add, inspect, or remove an external repository. Modern APT repository management centers on explicit keyrings and deb822 source files.\n\n## Preferred deb822 format\n\n```bash\ncurl -fsSL https://packages.vendor.example/key.asc -o /tmp/vendor.asc\nsudo install -d -m 0755 /etc/apt/keyrings\nsudo install -m 0644 /tmp/vendor.asc /etc/apt/keyrings/vendor.asc\n\ncat <<'EON' | sudo tee /etc/apt/sources.list.d/vendor.sources >/dev/null\nTypes: deb\nURIs: https://packages.vendor.example/apt\nSuites: stable\nComponents: main\nSigned-By: /etc/apt/keyrings/vendor.asc\nEON\n\nsudo apt-get update\n```\n\nDebian documents `.sources` as the modern format. Ubuntu 24.04 and newer also default to deb822 source files for their official repositories.\n\n## Legacy one-line format\n\n```bash\necho \"deb [signed-by=/etc/apt/keyrings/vendor.asc] https://packages.vendor.example/apt stable main\" | \\\n  sudo tee /etc/apt/sources.list.d/vendor.list >/dev/null\nsudo apt-get update\n```\n\nLegacy `.list` files are still supported, but Debian documents them as deprecated in favor of deb822.\n\n## Keyrings and Signed-By\n\nAPT archive authentication should use explicit keyrings rather than `apt-key`. The current best practice is:\n\n- local administrator-managed keys in `/etc/apt/keyrings`\n- package-managed archive keyrings in `/usr/share/keyrings`\n- `Signed-By` in the source definition to bind the repository to that keyring\n\nSee [[apt/pinning]] if you need to reduce precedence for a third-party repository after adding it.\n\n## Removing a repository\n\n```bash\nsudo rm -f /etc/apt/sources.list.d/vendor.sources\nsudo rm -f /etc/apt/preferences.d/vendor\nsudo rm -f /etc/apt/keyrings/vendor.asc\nsudo apt-get update\n```\n\nIf packages from the repository are already installed, remove or repin them intentionally before deleting the source. Ubuntu explicitly warns that third-party repositories can interfere with release upgrades if they are left unmanaged.\n\n## PPAs\n\nLaunchpad PPAs are a special Ubuntu-only shortcut. Use [[apt/repositories/ppa]] when a task explicitly references `ppa:user/name` or `add-apt-repository`."
+}

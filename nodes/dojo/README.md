@@ -14,7 +14,7 @@ It demonstrates:
 
 - `node.json` is the ecosystem root
 - `api/` shows a `standard` with a child `skill`
-- `author/`, `skill/`, `api/query/`, `validate/`, and `publish/` all ship portable Agent Skills packages with `SKILL.md`, agent metadata, scripts, and focused references where useful
+- `authoring/`, `skill/`, `api/query/`, `validate/`, and `publish/` all ship portable Agent Skills packages with `SKILL.md`, agent metadata, scripts, and focused references where useful
 - `validate/` shows a `skill` with both `sub` children and a `context` child
 - `publish/` shows a release workflow split into `sub` variants that are also individually bundleable
 - `scripts/` folders demonstrate package-style `entry` files
@@ -30,7 +30,6 @@ Run the node tests directly with Node's built-in runner:
 
 ```bash
 node --test \
-  /workspaces/Contracts/dojo/nodes/dojo/author/tests/scaffold-node.test.js \
   /workspaces/Contracts/dojo/nodes/dojo/api/query/tests/query-registry.test.js \
   /workspaces/Contracts/dojo/nodes/dojo/skill/tests/use-dojo-skill.test.js \
   /workspaces/Contracts/dojo/nodes/dojo/validate/tests/validate-node.test.js \

@@ -1,0 +1,276 @@
+{
+  "name": "config",
+  "version": "1.0.0",
+  "uri": "prometheus/config",
+  "type": "skill",
+  "context": "Validate, inspect, and hot-reload Prometheus config and scrape discovery with promtool.",
+  "info": "This skill covers the operational lifecycle of `prometheus.yml`: authoring `global`, `scrape_configs`, `rule_files`, and `alerting` sections; validating them with `promtool check config`; resolving discovered targets with `promtool check service-discovery`; inspecting the loaded runtime config; and reloading the server through `/-/reload` when lifecycle endpoints are enabled. Agents use it to ship monitoring changes safely instead of editing config blind.",
+  "parent": "prometheus",
+  "tags": [
+    "config",
+    "promtool",
+    "scrape-configs",
+    "service-discovery",
+    "reload",
+    "prometheus-yml",
+    "relabeling",
+    "validation"
+  ],
+  "aliases": [
+    "prometheus config",
+    "prometheus yml",
+    "promtool check config",
+    "reload prometheus",
+    "prometheus scrape jobs",
+    "prometheus service discovery"
+  ],
+  "triggers": [
+    "validate prometheus config",
+    "reload prometheus after config change",
+    "check what scrape targets a job resolves to",
+    "inspect the loaded prometheus config",
+    "edit prometheus scrape configs"
+  ],
+  "body": "# Manage Prometheus Config\n\n`prometheus.yml` controls scrape frequency, target discovery, relabeling, rule file loading, remote storage, and Alertmanager delivery. The safest workflow is always the same: validate locally with `promtool`, inspect service discovery if the job is dynamic, then reload the server only after checks pass.\n\n```yaml\nglobal:\n  scrape_interval: 15s\n  evaluation_interval: 30s\nrule_files:\n  - rules/*.yml\nalerting:\n  alertmanagers:\n    - static_configs:\n        - targets: ['alertmanager:9093']\nscrape_configs:\n  - job_name: app\n    static_configs:\n      - targets: ['app-1:8080', 'app-2:8080']\n```\n\n```bash\npromtool check config prometheus.yml\npromtool check service-discovery prometheus.yml app\ncurl -X POST \"$PROMETHEUS_URL/-/reload\"\ncurl \"$PROMETHEUS_URL/api/v1/status/config\"\n```\n\nThe script in this skill wraps the same workflow and adds auth handling through environment variables. Use it before and after every config rollout.",
+  "sections": [
+    {
+      "id": "config-shape",
+      "title": "Main config shape",
+      "body": "The main sections agents usually touch are `global`, `rule_files`, `alerting`, and `scrape_configs`. `scrape_configs` is where `job_name`, intervals, discovery, and relabeling live. `rule_files` connects [[prometheus/rules]] into the server, and `alerting` tells Prometheus where Alertmanager is listening.",
+      "tags": [
+        "global",
+        "rule-files",
+        "alerting",
+        "scrape-configs"
+      ]
+    },
+    {
+      "id": "scrape-jobs",
+      "title": "Scrape jobs and relabeling",
+      "body": "A `scrape_config` defines one job in the common case. Targets can come from `static_configs` or a supported discovery mechanism, and `relabel_configs` can drop, rewrite, or map labels before scrape time. When a job discovers the wrong targets or labels, `promtool check service-discovery` is the shortest path to the truth.",
+      "tags": [
+        "scrape-jobs",
+        "static-configs",
+        "relabel-configs",
+        "service-discovery"
+      ]
+    },
+    {
+      "id": "validation-reload",
+      "title": "Validation and hot reload",
+      "body": "`promtool check config` validates config syntax and referenced resources, while `promtool check service-discovery` shows discovered targets for a named job. `/-/reload` only works when lifecycle endpoints are enabled. After reload, inspect `/api/v1/status/config` and [[prometheus/query#metadata-and-health]] to make sure the live server matches the intended change.",
+      "tags": [
+        "promtool",
+        "reload",
+        "status-config",
+        "lifecycle"
+      ]
+    }
+  ],
+  "links": [
+    {
+      "uri": "prometheus/query",
+      "context": "Inspect targets and loaded config after a rollout"
+    },
+    {
+      "uri": "prometheus/rules",
+      "context": "Rule files referenced by the config should be linted and tested first"
+    },
+    {
+      "uri": "prometheus/exporters",
+      "context": "Exporter and discovery patterns determine scrape job structure"
+    },
+    {
+      "uri": "prometheus/storage",
+      "context": "Retention and remote storage settings live in the main config"
+    },
+    {
+      "uri": "prometheus/auth",
+      "context": "Reload endpoints and UI inspection may require auth or TLS"
+    },
+    {
+      "uri": "kubernetes/configmaps",
+      "context": "ConfigMaps are a common rollout mechanism for prometheus.yml in clusters"
+    }
+  ],
+  "related": [
+    {
+      "uri": "prometheus/query",
+      "relation": "see-also",
+      "note": "Use API inspection to prove the config change worked"
+    },
+    {
+      "uri": "prometheus/rules",
+      "relation": "prerequisite",
+      "note": "Rule files should validate before being referenced in the main config"
+    },
+    {
+      "uri": "prometheus/auth",
+      "relation": "prerequisite",
+      "note": "Protected lifecycle endpoints require auth or proxy access for reloads"
+    }
+  ],
+  "scripts": [
+    {
+      "id": "manage-config",
+      "name": "Validate and Reload Prometheus Config",
+      "description": "Run promtool config checks, inspect discovered targets, and reload or inspect a running server",
+      "lang": "bash",
+      "runtime": "bash>=4.0",
+      "entry": "./scripts/manage-config.sh",
+      "env": {
+        "PROMTOOL_BIN": {
+          "required": false,
+          "default": "promtool",
+          "description": "promtool binary to use"
+        },
+        "PROMETHEUS_URL": {
+          "required": false,
+          "default": "http://localhost:9090",
+          "description": "Prometheus base URL"
+        },
+        "PROMETHEUS_BEARER_TOKEN": {
+          "required": false,
+          "secret": true,
+          "description": "Bearer token for protected endpoints"
+        },
+        "PROMETHEUS_BASIC_AUTH_USERNAME": {
+          "required": false,
+          "description": "Basic auth username for protected endpoints"
+        },
+        "PROMETHEUS_BASIC_AUTH_PASSWORD": {
+          "required": false,
+          "secret": true,
+          "description": "Basic auth password for protected endpoints"
+        },
+        "PROMETHEUS_CA_BUNDLE": {
+          "required": false,
+          "description": "Custom CA bundle for HTTPS endpoints"
+        },
+        "PROMETHEUS_INSECURE_SKIP_VERIFY": {
+          "required": false,
+          "default": "false",
+          "description": "Skip TLS verification for debugging only"
+        },
+        "PROM_CONFIG_SYNTAX_ONLY": {
+          "required": false,
+          "default": "false",
+          "description": "Only validate syntax, not referenced files"
+        },
+        "PROM_CONFIG_LINT": {
+          "required": false,
+          "description": "promtool lint mode such as all or none"
+        },
+        "PROM_CONFIG_LINT_FATAL": {
+          "required": false,
+          "default": "false",
+          "description": "Fail on lint warnings"
+        },
+        "PROM_CONFIG_AGENT_MODE": {
+          "required": false,
+          "default": "false",
+          "description": "Validate config in Prometheus Agent mode"
+        },
+        "PROM_SD_TIMEOUT": {
+          "required": false,
+          "default": "30s",
+          "description": "Discovery timeout for promtool check service-discovery"
+        }
+      }
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "action": {
+          "type": "string",
+          "enum": [
+            "validate",
+            "check-sd",
+            "reload",
+            "show-loaded"
+          ]
+        },
+        "configFile": {
+          "type": "string",
+          "description": "Path to prometheus.yml"
+        },
+        "job": {
+          "type": "string",
+          "description": "Job name for service-discovery inspection"
+        },
+        "syntaxOnly": {
+          "type": "boolean",
+          "description": "Only validate config syntax"
+        },
+        "lint": {
+          "type": "string",
+          "description": "promtool lint mode"
+        },
+        "agentMode": {
+          "type": "boolean",
+          "description": "Validate for Prometheus Agent mode"
+        }
+      },
+      "required": [
+        "action"
+      ]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "success": {
+          "type": "boolean"
+        },
+        "stdout": {
+          "type": "string"
+        },
+        "stderr": {
+          "type": "string"
+        },
+        "response": {
+          "type": "object"
+        }
+      }
+    }
+  },
+  "depends": [
+    {
+      "uri": "prometheus/auth",
+      "optional": true,
+      "reason": "Protected deployments require auth for reload and runtime inspection"
+    },
+    {
+      "uri": "prometheus/rules",
+      "optional": true,
+      "reason": "Configs that reference rule files should validate those rules as part of the rollout"
+    },
+    {
+      "uri": "prometheus/exporters",
+      "optional": true,
+      "reason": "Discovery and exporter choices shape scrape job configuration"
+    }
+  ],
+  "more": {
+    "docs": "https://prometheus.io/docs/prometheus/latest/configuration/configuration/",
+    "promtool": "https://prometheus.io/docs/prometheus/latest/command-line/promtool/",
+    "management-api": "https://prometheus.io/docs/prometheus/latest/management_api/"
+  },
+  "frontmatter": {
+    "created": "2026-04-12",
+    "updated": "2026-04-12",
+    "author": "dojo-community",
+    "audience": "ai-agents, sre, platform-engineers",
+    "estimated_reading_time": "6 min",
+    "prerequisites": [],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://github.com/prometheus/prometheus",
+  "created": "2026-04-12T00:00:00Z",
+  "updated": "2026-04-12T00:00:00Z",
+  "status": "published"
+}

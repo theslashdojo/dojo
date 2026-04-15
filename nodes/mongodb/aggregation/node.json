@@ -1,0 +1,215 @@
+{
+  "name": "aggregation",
+  "version": "1.0.0",
+  "uri": "mongodb/aggregation",
+  "type": "skill",
+  "context": "Build MongoDB aggregation pipelines for reporting, reshaping, joins, and materialized outputs",
+  "info": "Aggregation is MongoDB’s pipeline engine for transformations that exceed plain find queries. This skill covers stage ordering, common stages such as `$match`, `$project`, `$group`, `$unwind`, `$lookup`, and `$sort`, and output stages like `$merge`, plus practical optimization rules such as moving `$match` early, exploiting indexes, and using `allowDiskUse` when the pipeline would exceed in-memory limits. Agents use it for analytics, denormalized views, exports, and repair or enrichment jobs.",
+  "parent": "mongodb",
+  "tags": [
+    "aggregation",
+    "pipeline",
+    "match",
+    "group",
+    "lookup",
+    "unwind",
+    "merge",
+    "allowdiskuse"
+  ],
+  "aliases": [
+    "mongodb aggregation",
+    "aggregation pipeline",
+    "mongo pipeline",
+    "mongodb group by"
+  ],
+  "triggers": [
+    "build a mongodb aggregation pipeline",
+    "group documents in mongodb",
+    "join collections in mongodb",
+    "reshape mongodb data",
+    "use allowDiskUse in mongodb"
+  ],
+  "body": "# Aggregation Pipelines\n\nUse aggregation when a plain `find()` is no longer expressive enough. A pipeline passes documents through ordered stages that filter, reshape, join, group, sort, or materialize results.\n\n```javascript\nconst pipeline = [\n  { $match: { status: \"paid\", createdAt: { $gte: start } } },\n  { $unwind: \"$lineItems\" },\n  { $group: { _id: \"$lineItems.sku\", revenue: { $sum: \"$lineItems.total\" }, orders: { $sum: 1 } } },\n  { $sort: { revenue: -1 } },\n  { $limit: 20 }\n];\n\nconst results = await db.collection(\"orders\").aggregate(pipeline, { allowDiskUse: true }).toArray();\n```\n\n## Common Stage Roles\n\n- `$match` — filter early so later stages process less data\n- `$project` — keep only the fields the next stages need\n- `$group` — aggregate by key with accumulators such as `$sum`, `$avg`, `$first`, `$last`\n- `$lookup` — join data from another collection\n- `$merge` / `$out` — write results to a collection; treat these as destructive or materializing operations\n\nUse `explain()` on the pipeline when it is slow. Early `$match` and `$sort` stages can use indexes, especially when they remain near the front of the pipeline. See [[mongodb/indexes]] for the follow-up workflow.",
+  "sections": [
+    {
+      "id": "stage-order",
+      "title": "Stage order matters",
+      "body": "Put `$match`, `$limit`, and `$skip` as early as semantics allow so fewer documents enter expensive stages. MongoDB can use indexes for early `$match` and, in some cases, early `$sort`. If you place `$project`, `$group`, or `$unwind` too early, you can block index use and inflate the amount of work downstream.",
+      "tags": [
+        "match",
+        "sort",
+        "stage-order",
+        "optimization"
+      ]
+    },
+    {
+      "id": "allow-disk-use",
+      "title": "allowDiskUse and memory pressure",
+      "body": "Some pipelines exceed in-memory limits, especially when they sort or group large working sets. In those cases pass `allowDiskUse: true` explicitly and still tighten the pipeline because disk-backed execution is slower than an indexed, selective pipeline. `allowDiskUse` is a relief valve, not a substitute for query design.",
+      "tags": [
+        "allowdiskuse",
+        "memory",
+        "sort",
+        "group"
+      ]
+    },
+    {
+      "id": "materialized-results",
+      "title": "Materialized outputs",
+      "body": "Use `$merge` to write results into an existing collection with controlled merge behavior, or `$out` to replace the destination collection wholesale. These stages change data, so agents should treat them like write operations and confirm the target collection, write concern, and desired idempotency before running them.",
+      "tags": [
+        "merge",
+        "out",
+        "materialized-view",
+        "writes"
+      ]
+    }
+  ],
+  "links": [
+    {
+      "uri": "mongodb/auth",
+      "context": "Aggregation still depends on the correct URI, role, and topology"
+    },
+    {
+      "uri": "mongodb/indexes",
+      "context": "Tune pipelines by adding indexes that support early match and sort stages"
+    },
+    {
+      "uri": "mongodb/crud/find",
+      "context": "Use plain finds when a pipeline would be unnecessary complexity"
+    }
+  ],
+  "related": [
+    {
+      "uri": "mongodb/auth",
+      "relation": "prerequisite",
+      "note": "Aggregation pipelines run against a live deployment and need the correct roles and connection settings"
+    },
+    {
+      "uri": "mongodb/indexes",
+      "relation": "see-also",
+      "note": "Pipeline performance often depends on supporting indexes for early stages"
+    },
+    {
+      "uri": "database/indexing",
+      "relation": "see-also",
+      "note": "General index design principles still apply when tuning aggregation workloads"
+    }
+  ],
+  "scripts": [
+    {
+      "id": "run-pipeline",
+      "name": "Run aggregation pipeline",
+      "description": "Execute an aggregation pipeline with optional explain or allowDiskUse settings using Extended JSON input",
+      "lang": "javascript",
+      "runtime": "node>=18",
+      "entry": "./scripts/run-pipeline.js",
+      "env": {
+        "MONGODB_URI": {
+          "required": true,
+          "secret": true,
+          "description": "MongoDB connection string"
+        },
+        "AGGREGATION_INPUT_JSON": {
+          "required": false,
+          "description": "Extended JSON payload. If omitted, the script reads JSON from stdin."
+        }
+      },
+      "packages": [
+        "mongodb",
+        "bson"
+      ]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "database": {
+          "type": "string"
+        },
+        "collection": {
+          "type": "string"
+        },
+        "pipeline": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          },
+          "description": "Aggregation pipeline stages"
+        },
+        "options": {
+          "type": "object",
+          "description": "Aggregate options such as allowDiskUse, maxTimeMS, or hint"
+        },
+        "explain": {
+          "type": "boolean",
+          "default": false,
+          "description": "Return an explain plan instead of results"
+        },
+        "explainVerbosity": {
+          "type": "string",
+          "enum": [
+            "queryPlanner",
+            "executionStats",
+            "allPlansExecution"
+          ],
+          "default": "executionStats"
+        }
+      },
+      "required": [
+        "database",
+        "collection",
+        "pipeline"
+      ]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "count": {
+          "type": "integer",
+          "description": "Number of returned result documents when not using explain"
+        },
+        "documents": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "explain": {
+          "type": "object",
+          "description": "Explain plan when explain=true"
+        }
+      }
+    }
+  },
+  "depends": [
+    {
+      "uri": "mongodb/auth",
+      "reason": "The pipeline runs through the live deployment and still needs correct connection and role settings"
+    }
+  ],
+  "more": {
+    "docs": "https://www.mongodb.com/docs/manual/core/aggregation-pipeline/",
+    "optimization": "https://www.mongodb.com/docs/manual/core/aggregation-pipeline-optimization/",
+    "driver": "https://www.mongodb.com/docs/drivers/node/current/aggregation/"
+  },
+  "frontmatter": {
+    "created": "2026-04-12",
+    "updated": "2026-04-12",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "6 min",
+    "prerequisites": [
+      "mongodb/auth"
+    ],
+    "status": "living",
+    "confidence": "high"
+  },
+  "repository": "https://github.com/mongodb/node-mongodb-native",
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-12T00:00:00Z",
+  "updated": "2026-04-12T00:00:00Z",
+  "status": "published"
+}

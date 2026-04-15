@@ -1,0 +1,167 @@
+{
+  "name": "prometheus",
+  "version": "1.0.0",
+  "uri": "prometheus",
+  "type": "ecosystem",
+  "context": "Prometheus ecosystem for scraping metrics, querying time series, evaluating rules, and routing alerts.",
+  "info": "Prometheus is the operational core of many monitoring stacks: it scrapes pull-based metrics endpoints, stores samples in its local TSDB, evaluates recording and alerting rules, exposes a rich HTTP API, and hands notifications to Alertmanager. Agents reach for this ecosystem when they need to diagnose incidents from live telemetry, verify scrape coverage, roll out or validate monitoring config, and automate alert silences or routing checks.",
+  "parent": null,
+  "tags": [
+    "prometheus",
+    "metrics",
+    "monitoring",
+    "observability",
+    "promql",
+    "alerting",
+    "alertmanager",
+    "scraping",
+    "tsdb",
+    "exporters"
+  ],
+  "aliases": [
+    "prometheus",
+    "prom",
+    "prometheus monitoring",
+    "prometheus server",
+    "prometheus stack",
+    "metrics server",
+    "prometheus ecosystem"
+  ],
+  "triggers": [
+    "debug with prometheus",
+    "query prometheus metrics",
+    "configure prometheus scraping",
+    "write prometheus alerts",
+    "manage alertmanager silences",
+    "inspect prometheus targets",
+    "check tsdb cardinality",
+    "roll out monitoring config"
+  ],
+  "body": "# Prometheus Ecosystem\n\nPrometheus is a pull-based monitoring system built around four operational loops: scrape targets, store time series, evaluate rules, and notify on alerts. The server scrapes HTTP endpoints that expose metrics in Prometheus or OpenMetrics text format, stores those samples in the local TSDB, evaluates recording and alerting rules on a schedule, and sends alert state to [[prometheus/alertmanager]].\n\nThe two surfaces agents use most are the query API and the configuration layer. Query APIs answer questions like \"is the target healthy?\", \"what changed over the last hour?\", and \"which labels are exploding cardinality?\". Configuration and rule tooling answer \"what is Prometheus scraping?\", \"what rules are loaded?\", and \"can I reload this safely?\".\n\n```yaml\nglobal:\n  scrape_interval: 15s\n  evaluation_interval: 30s\nrule_files:\n  - rules/*.yml\nscrape_configs:\n  - job_name: prometheus\n    static_configs:\n      - targets: ['localhost:9090']\n```\n\n## Core Components\n\n- **[[prometheus/query]]** for `/api/v1/query`, `/query_range`, targets, rules, and TSDB health.\n- **[[prometheus/config]]** for `prometheus.yml`, scrape jobs, relabeling, reloads, and `promtool check config`.\n- **[[prometheus/rules]]** for recording and alerting rules plus unit tests with `promtool test rules`.\n- **[[prometheus/alertmanager]]** for silences, grouping, receivers, and route verification.\n- **[[prometheus/promql]]** for the expression language used by queries and rules.\n\n## Agent Jobs\n\nAgents usually come here to answer one of five questions:\n\n1. Is Prometheus scraping the thing I expect?\n2. Which metric or label explains the incident?\n3. Can I change config or rules without breaking the server?\n4. Why is an alert firing, grouping, or not notifying?\n5. Is storage or cardinality becoming the next outage?",
+  "sections": [
+    {
+      "id": "architecture",
+      "title": "Operational architecture",
+      "body": "Prometheus scrapes targets over HTTP, stores samples in the local TSDB, evaluates rule groups at `evaluation_interval`, and forwards alert state to [[prometheus/alertmanager]]. Querying and inspection happen through the UI and HTTP API. This model is simple and agent-friendly because the same server exposes both live data and its own configuration state.",
+      "tags": [
+        "architecture",
+        "scraping",
+        "tsdb",
+        "rules",
+        "alertmanager"
+      ]
+    },
+    {
+      "id": "agent-jobs",
+      "title": "What agents do here",
+      "body": "The common automation loop is: inspect targets with [[prometheus/query#metadata-and-health]], change scrape or rule config through [[prometheus/config]], validate expressions with [[prometheus/promql]], then silence or inspect downstream notification flow in [[prometheus/alertmanager]]. This ecosystem is strongest during incident response, deploy verification, and telemetry drift checks.",
+      "tags": [
+        "incident-response",
+        "automation",
+        "verification",
+        "monitoring"
+      ]
+    },
+    {
+      "id": "surface-area",
+      "title": "Execution surface",
+      "body": "The official execution surface is split across the Prometheus server binary, the HTTP query and management APIs, `promtool` for offline validation and testing, and `amtool` for Alertmanager route and silence operations. Agents should prefer `promtool` before hot reloads and prefer API inspection before changing labels or rules blind.",
+      "tags": [
+        "http-api",
+        "promtool",
+        "amtool",
+        "reload",
+        "validation"
+      ]
+    }
+  ],
+  "links": [
+    {
+      "uri": "prometheus/promql",
+      "context": "PromQL syntax and time-series query semantics"
+    },
+    {
+      "uri": "prometheus/query",
+      "context": "Live metric queries plus targets, rules, and TSDB inspection"
+    },
+    {
+      "uri": "prometheus/config",
+      "context": "Validate and reload scrape and alerting configuration"
+    },
+    {
+      "uri": "prometheus/rules",
+      "context": "Author and test recording and alerting rules"
+    },
+    {
+      "uri": "prometheus/alertmanager",
+      "context": "Inspect routes, grouped alerts, and silences"
+    },
+    {
+      "uri": "prometheus/exporters",
+      "context": "Choose the right metrics endpoint or exporter pattern"
+    },
+    {
+      "uri": "prometheus/storage",
+      "context": "Understand retention, WAL, compaction, and remote write"
+    },
+    {
+      "uri": "prometheus/auth",
+      "context": "Secure the UI, API, and reload endpoints"
+    },
+    {
+      "uri": "curl/request",
+      "context": "Manual HTTP requests against Prometheus and Alertmanager APIs"
+    },
+    {
+      "uri": "jq/query",
+      "context": "Post-process JSON responses from the monitoring APIs"
+    },
+    {
+      "uri": "kubernetes/configmaps",
+      "context": "Prometheus configs are often distributed through ConfigMaps"
+    },
+    {
+      "uri": "systemd/services",
+      "context": "Run Prometheus or Alertmanager as managed services on Linux"
+    }
+  ],
+  "related": [
+    {
+      "uri": "curl/request",
+      "relation": "see-also",
+      "note": "Prometheus and Alertmanager are HTTP-first operational APIs"
+    },
+    {
+      "uri": "kubernetes/configmaps",
+      "relation": "see-also",
+      "note": "Cluster deployments commonly mount config and rule files from ConfigMaps"
+    },
+    {
+      "uri": "systemd/services",
+      "relation": "see-also",
+      "note": "Single-host deployments usually run the binaries as systemd services"
+    }
+  ],
+  "more": {
+    "docs": "https://prometheus.io/docs/introduction/overview/",
+    "repo": "https://github.com/prometheus/prometheus",
+    "query-api": "https://prometheus.io/docs/prometheus/latest/querying/api/",
+    "alertmanager": "https://prometheus.io/docs/alerting/latest/overview/"
+  },
+  "frontmatter": {
+    "created": "2026-04-12",
+    "updated": "2026-04-12",
+    "author": "dojo-community",
+    "audience": "ai-agents, sre, platform-engineers",
+    "estimated_reading_time": "5 min",
+    "prerequisites": [],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://github.com/prometheus/prometheus",
+  "created": "2026-04-12T00:00:00Z",
+  "updated": "2026-04-12T00:00:00Z",
+  "status": "published"
+}

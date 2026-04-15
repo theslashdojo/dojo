@@ -1,0 +1,106 @@
+{
+  "name": "dataframe",
+  "version": "1.0.0",
+  "uri": "pandas/dataframe",
+  "type": "context",
+  "context": "Pandas DataFrame mental model: Series, Index, dtypes, missing values, selection, assignment, and vectorized operations",
+  "info": "A pandas DataFrame is the central labeled table abstraction for Python data analysis. Agents need this node before writing transformations because most correctness bugs come from dtype inference, row/column alignment, chained assignment, missing-value semantics, and using slow row loops instead of vectorized operations. This context explains the DataFrame, Series, and Index model, shows safe `.loc` and `.iloc` access, describes nullable dtypes and missing markers, and points to [[pandas/workflows/clean]], [[pandas/workflows/transform]], [[pandas/workflows/groupby]], and [[pandas/workflows/performance]] for applied work.",
+  "parent": "pandas",
+  "tags": [
+    "pandas",
+    "dataframe",
+    "series",
+    "index",
+    "dtypes",
+    "missing-values",
+    "loc",
+    "iloc",
+    "vectorization",
+    "copy-on-write"
+  ],
+  "aliases": [
+    "DataFrame",
+    "pandas DataFrame",
+    "pd.DataFrame",
+    "Series",
+    "Index",
+    "pandas index",
+    "pandas dtypes",
+    "pandas loc iloc",
+    "pandas missing values",
+    "SettingWithCopyWarning"
+  ],
+  "triggers": [
+    "what is a pandas dataframe",
+    "explain pandas series and index",
+    "fix pandas dtype conversion",
+    "why is pandas aligning data by index",
+    "use loc instead of chained assignment",
+    "select rows and columns in pandas",
+    "handle pandas missing values",
+    "make pandas code vectorized"
+  ],
+  "content_type": "explainer",
+  "body": "# DataFrame Mental Model\n\nA DataFrame is a labeled two-dimensional table. Columns are `Series`, rows are addressed by an `Index`, and operations align on labels. This label alignment is powerful but can surprise agents that expect positional arrays.\n\n## Inspect first\n\n```python\nimport pandas as pd\n\ndf = pd.read_csv('orders.csv')\nprint(df.shape)\nprint(df.dtypes)\nprint(df.info())\nprint(df.head())\nprint(df.isna().sum().sort_values(ascending=False))\n```\n\n## Selection\n\n```python\npaid = df.loc[df['status'].eq('paid'), ['order_id', 'amount', 'created_at']]\nthird_row = df.iloc[2]\namount = df.at[0, 'amount']\n```\n\nUse `.loc` for label-based row and column selection, `.iloc` for position-based selection, `.at` and `.iat` for scalar access. Avoid chained assignment like `df[df.status == 'paid']['amount'] = 0`; use `df.loc[mask, 'amount'] = 0`.\n\n## Dtypes and missing values\n\nUse `convert_dtypes()` after messy imports, then repair important columns explicitly. Nullable dtypes such as `string`, `Int64`, and `boolean` can represent missing values without lossy float coercion.\n\n```python\nclean = df.convert_dtypes()\nclean['created_at'] = pd.to_datetime(clean['created_at'], errors='coerce', utc=True)\nclean['amount'] = pd.to_numeric(clean['amount'], errors='coerce')\nclean = clean.dropna(subset=['created_at', 'amount'])\n```\n\n## Vectorization\n\nPrefer column operations over Python loops:\n\n```python\ndf['net'] = df['gross'] - df['discount'].fillna(0)\ndf['domain'] = df['email'].str.split('@').str[-1].str.lower()\ndf['month'] = df['created_at'].dt.to_period('M').dt.to_timestamp()\n```\n\nUse [[pandas/workflows/transform]] for transformation patterns, [[pandas/workflows/clean]] for dtype repair, and [[pandas/workflows/performance]] when row-wise code is too slow.\n",
+  "sections": [
+    {
+      "id": "series-dataframe-index",
+      "title": "Series, DataFrame, and Index",
+      "body": "A `Series` is a one-dimensional labeled array, a `DataFrame` is a collection of aligned Series sharing an index, and an `Index` is the row label object. Arithmetic and assignment align by labels, not only by physical row order. Reset or set indexes intentionally before joins, time-series resampling, or comparison operations.",
+      "tags": ["series", "dataframe", "index", "alignment"]
+    },
+    {
+      "id": "dtypes",
+      "title": "Dtypes and nullable values",
+      "body": "Dtypes are part of the schema. Object dtype often means mixed Python objects and should be investigated. Prefer `string` for text, `category` for low-cardinality labels, nullable `Int64` for integers with missing values, `boolean` for nullable booleans, and timezone-aware datetimes for external timestamps. Use `convert_dtypes()`, `astype()`, `to_numeric()`, and `to_datetime()` deliberately.",
+      "tags": ["dtypes", "string", "category", "nullable", "datetime"]
+    },
+    {
+      "id": "selection-assignment",
+      "title": "Selection and assignment",
+      "body": "Use `.loc[row_mask, columns]` for label-based selection and assignment. Use `.iloc` only when positions matter. Avoid chained assignment because it can operate on a temporary object. Assign new columns with `df.assign(...)` in method chains or `df.loc[:, 'new_col'] = values` in imperative code.",
+      "tags": ["loc", "iloc", "assignment", "copy-on-write"]
+    },
+    {
+      "id": "vectorization",
+      "title": "Vectorized operations",
+      "body": "Vectorized pandas operations run column-wise and delegate work to optimized array code. Use `.str`, `.dt`, arithmetic, boolean masks, `where`, `mask`, `clip`, `map`, `replace`, and `np.select` style patterns before reaching for row loops. If a transformation requires Python logic, isolate it and measure with [[pandas/workflows/performance]].",
+      "tags": ["vectorization", "str", "dt", "performance", "apply"]
+    }
+  ],
+  "links": [
+    { "uri": "pandas/dataframe#dtypes", "context": "Section on dtype and nullable-value choices" },
+    { "uri": "pandas/workflows/clean", "context": "Apply dtype and missing-value repair patterns" },
+    { "uri": "pandas/workflows/transform", "context": "Build safe DataFrame transformation pipelines" },
+    { "uri": "pandas/workflows/groupby", "context": "Use DataFrame groupby and aggregation APIs" },
+    { "uri": "pandas/workflows/performance", "context": "Avoid slow loops and memory-heavy dtypes" }
+  ],
+  "related": [
+    { "uri": "pandas", "relation": "prerequisite", "note": "DataFrame is the core object of the pandas ecosystem" },
+    { "uri": "python/typing", "relation": "see-also", "note": "Typed Python code can describe expected DataFrame schemas at API boundaries" },
+    { "uri": "duckdb/python", "relation": "see-also", "note": "DuckDB can query DataFrames directly from Python when SQL is a better fit" }
+  ],
+  "more": {
+    "dataframe-api": "https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html",
+    "series-api": "https://pandas.pydata.org/docs/reference/api/pandas.Series.html",
+    "indexing": "https://pandas.pydata.org/docs/user_guide/indexing.html",
+    "basics": "https://pandas.pydata.org/docs/user_guide/basics.html",
+    "missing-data": "https://pandas.pydata.org/docs/user_guide/missing_data.html"
+  },
+  "frontmatter": {
+    "created": "2026-04-15",
+    "updated": "2026-04-15",
+    "author": "dojo-community",
+    "audience": "AI agents and Python developers",
+    "estimated_reading_time": "5 min",
+    "prerequisites": ["pandas"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://github.com/pandas-dev/pandas",
+  "created": "2026-04-15T00:00:00Z",
+  "updated": "2026-04-15T00:00:00Z",
+  "status": "published"
+}

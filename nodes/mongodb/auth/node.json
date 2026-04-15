@@ -1,0 +1,141 @@
+{
+  "name": "auth",
+  "version": "1.0.0",
+  "uri": "mongodb/auth",
+  "type": "context",
+  "content_type": "guide",
+  "context": "Connect to MongoDB securely with SRV or standard URIs, roles, TLS, and Atlas network controls",
+  "info": "This guide covers the pieces an agent must get right before touching data: `mongodb+srv://` versus `mongodb://` connection strings, username/password and auth database selection, replica set and retry options, Atlas IP access controls, Stable API flags, TLS defaults, and safe secret handling. Every executable MongoDB node depends on these details because a bad URI or role choice causes immediate failures or dangerous over-permissioning.",
+  "parent": "mongodb",
+  "tags": [
+    "auth",
+    "connection-string",
+    "mongodb-uri",
+    "atlas",
+    "tls",
+    "scram",
+    "roles",
+    "stable-api"
+  ],
+  "aliases": [
+    "mongodb auth",
+    "mongodb authentication",
+    "mongodb uri",
+    "mongo uri",
+    "mongodb connection string",
+    "atlas connection string",
+    "MONGODB_URI"
+  ],
+  "triggers": [
+    "connect to mongodb atlas",
+    "build a mongodb connection string",
+    "fix mongodb authentication failed",
+    "set up mongodb tls",
+    "configure mongodb uri",
+    "authenticate mongosh"
+  ],
+  "body": "# MongoDB Authentication and Connectivity\n\nLoad this node before any executable MongoDB task. The standard secret surface is `MONGODB_URI`, and the connection string must match the deployment topology, auth mechanism, and network path.\n\n## URI Forms\n\n```text\nmongodb+srv://username:password@cluster0.example.mongodb.net/app?retryWrites=true&w=majority\nmongodb://username:password@host1:27017,host2:27017/app?replicaSet=rs0&authSource=admin&retryWrites=true&w=majority\n```\n\nUse `mongodb+srv://` when the deployment publishes DNS SRV records, which is typical in Atlas. Use `mongodb://` when you need an explicit host list, ports, or a direct self-managed topology description.\n\n## Node.js Driver\n\n```javascript\nimport { MongoClient, ServerApiVersion } from \"mongodb\";\n\nconst client = new MongoClient(process.env.MONGODB_URI, {\n  serverApi: {\n    version: ServerApiVersion.v1,\n    strict: true,\n    deprecationErrors: true,\n  },\n});\n\nawait client.connect();\n```\n\n## mongosh\n\n```bash\nmongosh \"$MONGODB_URI\" --apiVersion 1 --username \"$MONGODB_USERNAME\"\n```\n\nIf the deployment requires access control, embed or otherwise provide credentials that match the auth source. Store credentials in environment variables or a secret manager, never in committed shell scripts.\n\n## Atlas-Specific Checks\n\n- Add the client IP or egress range to the Atlas access list\n- Verify the database user has the exact role needed for the task\n- Prefer SRV URIs and Stable API versioning for long-lived automation\n\n## Environment Variables\n\n| Variable | Purpose |\n|----------|---------|\n| `MONGODB_URI` | Primary connection string for drivers and `mongosh` |\n| `MONGODB_DATABASE` | Default database name when the URI omits one |\n| `MONGODB_USERNAME` / `MONGODB_PASSWORD` | Optional split credentials when not embedded in the URI |\n| `MONGODB_TLS_CA_FILE` | CA bundle path for custom TLS roots in self-managed environments |",
+  "sections": [
+    {
+      "id": "connection-uris",
+      "title": "Connection URI anatomy",
+      "body": "A MongoDB URI bundles protocol, credentials, hosts, default database, and options. `mongodb+srv://` uses DNS SRV discovery and is common in Atlas. `mongodb://` uses explicit hosts and is common in self-managed replica sets. Important options include `authSource`, `replicaSet`, `retryWrites`, `w=majority`, and timeouts such as `serverSelectionTimeoutMS`.",
+      "tags": [
+        "uri",
+        "mongodb-srv",
+        "replica-set",
+        "retrywrites"
+      ]
+    },
+    {
+      "id": "roles-and-auth-db",
+      "title": "Roles and auth database",
+      "body": "MongoDB users authenticate against a specific database and hold roles such as `read`, `readWrite`, or admin roles on a database or cluster. Many self-managed deployments place administrative users in `admin`, which is why `authSource=admin` is common in standard URIs. Prefer the least-privileged role that still allows the target workflow.",
+      "tags": [
+        "roles",
+        "authsource",
+        "least-privilege",
+        "admin"
+      ]
+    },
+    {
+      "id": "atlas-networking",
+      "title": "Atlas networking checks",
+      "body": "Atlas blocks clients that are not on the project access list, even if credentials are correct. When a connection works locally but fails in CI or production, verify the egress IP, private endpoint configuration, and whether the driver is using the SRV host from the current Atlas cluster. This is often the real cause behind generic timeout errors.",
+      "tags": [
+        "atlas",
+        "access-list",
+        "network",
+        "timeouts"
+      ]
+    },
+    {
+      "id": "secret-handling",
+      "title": "Secret handling",
+      "body": "Use environment variables or a secret manager, not committed config files. Avoid printing full URIs because they frequently include credentials. `mongosh` redacts credentials from command history and logs, but wrapper scripts should still avoid echoing the raw URI.",
+      "tags": [
+        "secrets",
+        "logging",
+        "environment-variables",
+        "redaction"
+      ]
+    }
+  ],
+  "links": [
+    {
+      "uri": "mongodb/mongosh",
+      "context": "Use the shell once the URI and auth settings are correct"
+    },
+    {
+      "uri": "mongodb/crud",
+      "context": "Driver-based CRUD automation depends on a working connection string and roles"
+    },
+    {
+      "uri": "mongodb/transactions",
+      "context": "Transactions are sensitive to topology and connection options"
+    },
+    {
+      "uri": "ssh/tunnel",
+      "context": "Use SSH tunnels when the deployment is private and direct network access is blocked"
+    }
+  ],
+  "related": [
+    {
+      "uri": "mongodb/mongosh",
+      "relation": "prerequisite",
+      "note": "The shell cannot connect or script reliably without a valid URI and compatible auth settings"
+    },
+    {
+      "uri": "mongodb/crud",
+      "relation": "prerequisite",
+      "note": "All driver operations require a correctly scoped user and reachable deployment"
+    },
+    {
+      "uri": "ssh/tunnel",
+      "relation": "see-also",
+      "note": "Private MongoDB hosts are often accessed through a bastion or tunnel"
+    }
+  ],
+  "more": {
+    "docs": "https://www.mongodb.com/docs/manual/reference/connection-string/",
+    "atlas": "https://www.mongodb.com/docs/atlas/connect-to-cluster/",
+    "stable-api": "https://www.mongodb.com/docs/manual/reference/stable-api/",
+    "shell": "https://www.mongodb.com/docs/mongodb-shell/connect/"
+  },
+  "frontmatter": {
+    "created": "2026-04-12",
+    "updated": "2026-04-12",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "5 min",
+    "prerequisites": [],
+    "status": "living",
+    "confidence": "high"
+  },
+  "repository": "https://github.com/mongodb/docs",
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-12T00:00:00Z",
+  "updated": "2026-04-12T00:00:00Z",
+  "status": "published"
+}

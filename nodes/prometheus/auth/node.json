@@ -1,0 +1,131 @@
+{
+  "name": "auth",
+  "version": "1.0.0",
+  "uri": "prometheus/auth",
+  "type": "context",
+  "content_type": "guide",
+  "context": "Secure Prometheus and Alertmanager HTTP endpoints with web config, TLS, and proxy-layer authentication.",
+  "info": "Prometheus and Alertmanager are HTTP-first systems, so the operational question is not just \"can I query it\" but also \"who can query or reload it\". Prometheus supports TLS and basic authentication through a `--web.config.file`, while many production deployments still terminate auth and certificates at a reverse proxy or ingress. Agents use this node when API calls need credentials, when reloads fail on protected endpoints, or when exposing the UI safely.",
+  "parent": "prometheus",
+  "tags": [
+    "auth",
+    "basic-auth",
+    "tls",
+    "mtls",
+    "web-config",
+    "reverse-proxy",
+    "reload",
+    "security"
+  ],
+  "aliases": [
+    "prometheus auth",
+    "prometheus basic auth",
+    "prometheus tls",
+    "prometheus web config",
+    "secure prometheus",
+    "alertmanager auth"
+  ],
+  "triggers": [
+    "protect prometheus with basic auth",
+    "configure prometheus tls",
+    "why does reload return 401",
+    "secure alertmanager ui",
+    "prometheus web config file"
+  ],
+  "body": "# Prometheus And Alertmanager Auth\n\nPrometheus exposes its UI, query API, and management endpoints over the same web server. Official support for HTTPS and basic authentication is configured with `--web.config.file`, whose YAML controls TLS certificates, client auth, and hashed passwords. The same pattern applies to Alertmanager.\n\n```bash\nprometheus           --config.file=/etc/prometheus/prometheus.yml           --web.config.file=/etc/prometheus/web.yml\n```\n\n```yaml\ntls_server_config:\n  cert_file: /etc/prometheus/tls/server.crt\n  key_file: /etc/prometheus/tls/server.key\nbasic_auth_users:\n  admin: $2y$10$example-bcrypt-hash\n```\n\nPrometheus does **not** provide full multi-user authorization or RBAC inside the server. In practice, operators often put [[nginx/reverse-proxy]] or a Kubernetes ingress in front of Prometheus and Alertmanager to centralize authentication, SSO, and certificate management. Agents should expect either direct basic auth, bearer-style proxy auth, or network-level isolation.\n\nLifecycle and admin endpoints are separate concerns. `/-/reload` only works when Prometheus is started with `--web.enable-lifecycle`, and admin endpoints such as snapshot and TSDB deletion require `--web.enable-admin-api`. Protect those endpoints more aggressively than read-only query access.",
+  "sections": [
+    {
+      "id": "web-config",
+      "title": "Web config file",
+      "body": "Use `--web.config.file` to load TLS and basic auth settings for Prometheus or Alertmanager. The official HTTPS and authentication docs emphasize that the file is YAML and that client certificate auth should use `RequireAndVerifyClientCert` when mTLS is enabled. Passwords in `basic_auth_users` should be bcrypt hashes, not plaintext.",
+      "tags": [
+        "web-config",
+        "tls",
+        "basic-auth",
+        "bcrypt",
+        "mtls"
+      ]
+    },
+    {
+      "id": "reverse-proxy",
+      "title": "Reverse proxy pattern",
+      "body": "Many teams terminate authentication and TLS at [[nginx/reverse-proxy]] or a cluster ingress instead of enabling basic auth directly in Prometheus. This is a good fit when Prometheus needs SSO, request logging, IP allow-lists, or consistent certificate rotation across multiple internal UIs.",
+      "tags": [
+        "reverse-proxy",
+        "ingress",
+        "sso",
+        "tls-termination"
+      ]
+    },
+    {
+      "id": "reload-and-admin",
+      "title": "Lifecycle and admin endpoints",
+      "body": "`/-/reload` is disabled unless Prometheus starts with `--web.enable-lifecycle`. Admin APIs are disabled unless `--web.enable-admin-api` is set. Agents changing [[prometheus/config]] or using snapshot and TSDB maintenance actions should confirm both the runtime flags and the auth path before assuming the endpoint is available.",
+      "tags": [
+        "reload",
+        "admin-api",
+        "web-enable-lifecycle",
+        "web-enable-admin-api"
+      ]
+    }
+  ],
+  "links": [
+    {
+      "uri": "prometheus/query",
+      "context": "Query calls often need basic auth, bearer auth, or trusted network access"
+    },
+    {
+      "uri": "prometheus/config",
+      "context": "Hot reloads depend on lifecycle endpoint access"
+    },
+    {
+      "uri": "prometheus/alertmanager",
+      "context": "Alertmanager route and silence APIs may be protected the same way"
+    },
+    {
+      "uri": "nginx/reverse-proxy",
+      "context": "Common pattern for fronting Prometheus and Alertmanager with auth and TLS"
+    },
+    {
+      "uri": "nginx/ssl",
+      "context": "Terminate or re-encrypt TLS for the monitoring endpoints"
+    }
+  ],
+  "related": [
+    {
+      "uri": "prometheus/query",
+      "relation": "prerequisite",
+      "note": "Some deployments require auth before any query or inspection call works"
+    },
+    {
+      "uri": "prometheus/config",
+      "relation": "prerequisite",
+      "note": "Reload operations fail if lifecycle endpoints are disabled or protected incorrectly"
+    },
+    {
+      "uri": "nginx/reverse-proxy",
+      "relation": "see-also",
+      "note": "Proxy-layer auth is the common production deployment pattern"
+    }
+  ],
+  "more": {
+    "docs": "https://prometheus.io/docs/prometheus/latest/configuration/https/",
+    "alertmanager-docs": "https://prometheus.io/docs/alerting/latest/configuration/"
+  },
+  "frontmatter": {
+    "created": "2026-04-12",
+    "updated": "2026-04-12",
+    "author": "dojo-community",
+    "audience": "ai-agents, sre, security-engineers",
+    "estimated_reading_time": "4 min",
+    "prerequisites": [],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://github.com/prometheus/prometheus",
+  "created": "2026-04-12T00:00:00Z",
+  "updated": "2026-04-12T00:00:00Z",
+  "status": "published"
+}

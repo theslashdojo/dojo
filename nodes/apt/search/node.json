@@ -1,0 +1,244 @@
+{
+  "name": "search",
+  "version": "1.0.0",
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://salsa.debian.org/apt-team/apt",
+  "created": "2026-04-12T00:00:00Z",
+  "updated": "2026-04-12T00:00:00Z",
+  "status": "published",
+  "uri": "apt/search",
+  "type": "skill",
+  "parent": "apt",
+  "context": "Search the APT cache, inspect package metadata, and explain candidate selection without changing system state",
+  "info": "This skill covers non-mutating package inspection through `apt-cache` and related read-only commands. It searches package names and descriptions, shows metadata for exact packages, prints forward and reverse dependencies, reveals candidate selection with `policy`, and surfaces version tables with `madison`. Agents use it before installation, during upgrade analysis, and while debugging why a package is unavailable, pinned, phased, or selected from an unexpected source.",
+  "tags": [
+    "apt",
+    "search",
+    "apt-cache",
+    "policy",
+    "depends",
+    "rdepends",
+    "versions",
+    "metadata",
+    "inspection"
+  ],
+  "aliases": [
+    "apt search",
+    "apt-cache",
+    "apt-cache search",
+    "apt policy",
+    "check package version",
+    "inspect package dependencies"
+  ],
+  "triggers": [
+    "search for a package with apt",
+    "show package metadata",
+    "why is this version selected",
+    "list package dependencies",
+    "show reverse dependencies",
+    "check apt candidate version"
+  ],
+  "sections": [
+    {
+      "id": "search",
+      "title": "Search package names and descriptions",
+      "body": "`apt-cache search` performs a full-text search over package names and descriptions. Add `--names-only` when you need tighter matching for automation or when descriptions create too much noise.",
+      "tags": [
+        "search",
+        "names-only",
+        "discovery"
+      ]
+    },
+    {
+      "id": "show",
+      "title": "Show package metadata",
+      "body": "`apt-cache show` prints the package record for a package, including dependencies, size, source, and descriptive metadata. Use `apt-cache madison` when you need a compact view of available versions instead of the full record.",
+      "tags": [
+        "show",
+        "metadata",
+        "madison",
+        "versions"
+      ]
+    },
+    {
+      "id": "dependency-graph",
+      "title": "Inspect forward and reverse dependencies",
+      "body": "`apt-cache depends` shows which packages a given package requires or can use. `apt-cache rdepends` reveals which installed or available packages depend on it. This is essential before purging shared libraries or core tools.",
+      "tags": [
+        "depends",
+        "rdepends",
+        "dependency-graph",
+        "libraries"
+      ]
+    },
+    {
+      "id": "policy",
+      "title": "Explain candidate selection",
+      "body": "`apt-cache policy` explains why APT would pick a particular version. It displays installed state, the candidate version, and the priorities of each visible source. Use it to debug pins, target releases, phased updates, and third-party repository precedence.",
+      "tags": [
+        "policy",
+        "candidate",
+        "pinning",
+        "phased-updates"
+      ]
+    }
+  ],
+  "links": [
+    {
+      "uri": "apt/install",
+      "context": "Use inspection results to install or remove the right package"
+    },
+    {
+      "uri": "apt/pinning",
+      "context": "Understand why a source or version has higher preference"
+    },
+    {
+      "uri": "apt/repositories",
+      "context": "Add a source when the package is missing from current repositories"
+    },
+    {
+      "uri": "apt/upgrade#held-back",
+      "context": "Use policy output to explain kept-back packages and phasing"
+    },
+    {
+      "uri": "apt/troubleshooting",
+      "context": "Troubleshoot unavailable or conflicting package candidates"
+    }
+  ],
+  "related": [
+    {
+      "uri": "apt/pinning",
+      "relation": "see-also",
+      "note": "Policy output is the fastest way to validate whether pinning rules are working"
+    }
+  ],
+  "scripts": [
+    {
+      "id": "inspect-package",
+      "name": "Inspect package metadata",
+      "description": "Search package metadata and explain version or dependency state",
+      "lang": "bash",
+      "runtime": "bash, apt>=2",
+      "entry": "./scripts/inspect-package.sh",
+      "env": {
+        "APT_SEARCH_ACTION": {
+          "required": true,
+          "description": "Inspection action: search, show, depends, rdepends, policy, madison, unmet, or list-installed"
+        },
+        "APT_QUERY": {
+          "required": false,
+          "description": "Search query for apt-cache search"
+        },
+        "APT_PACKAGE": {
+          "required": false,
+          "description": "Single package name for show, depends, rdepends, policy, or madison"
+        },
+        "APT_PACKAGES": {
+          "required": false,
+          "description": "Space-separated package list for multi-package show, policy, or madison"
+        },
+        "APT_NAMES_ONLY": {
+          "required": false,
+          "default": "true",
+          "description": "Set to true to search package names only"
+        },
+        "APT_RECURSE": {
+          "required": false,
+          "default": "false",
+          "description": "Set to true to recurse dependency output"
+        },
+        "APT_INSTALLED_ONLY": {
+          "required": false,
+          "default": "false",
+          "description": "Set to true to limit depends and rdepends to installed packages"
+        }
+      },
+      "packages": [
+        "apt"
+      ]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "action": {
+          "type": "string",
+          "enum": [
+            "search",
+            "show",
+            "depends",
+            "rdepends",
+            "policy",
+            "madison",
+            "unmet",
+            "list-installed"
+          ],
+          "description": "Inspection action to perform"
+        },
+        "query": {
+          "type": "string",
+          "description": "Search term for full-text cache search"
+        },
+        "packages": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Package names to inspect"
+        },
+        "namesOnly": {
+          "type": "boolean",
+          "description": "Restrict searches to package names"
+        },
+        "recurse": {
+          "type": "boolean",
+          "description": "Recurse dependency traversal"
+        },
+        "installedOnly": {
+          "type": "boolean",
+          "description": "Restrict dependency output to installed packages"
+        }
+      },
+      "required": [
+        "action"
+      ]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "action": {
+          "type": "string",
+          "description": "Inspection action that ran"
+        },
+        "exitCode": {
+          "type": "integer",
+          "description": "Process exit code"
+        },
+        "packages": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Package names inspected"
+        }
+      }
+    }
+  },
+  "more": {
+    "docs": "https://manpages.debian.org/testing/apt/apt-cache.8.en.html",
+    "apt": "https://manpages.debian.org/testing/apt/apt.8.en.html"
+  },
+  "frontmatter": {
+    "created": "2026-04-12",
+    "updated": "2026-04-12",
+    "author": "dojo-community",
+    "status": "living",
+    "confidence": "high",
+    "audience": "developers, sre, ai agents",
+    "estimated_reading_time": "5 min",
+    "prerequisites": []
+  },
+  "body": "# Searching and Inspecting Packages\n\nUse this node when you need answers from the APT cache without changing package state. `apt-cache` works from the local metadata acquired by `apt-get update`, so stale indexes produce stale answers.\n\n## Search and show\n\n```bash\napt-cache search --names-only postgres\napt-cache show nginx\napt-cache madison docker-ce\n```\n\n`search` scans package names and descriptions. `show` prints the package records. `madison` is useful when you care about the exact versions currently visible from configured sources.\n\n## Dependency inspection\n\n```bash\napt-cache depends nginx\napt-cache rdepends libssl3\napt-cache unmet\n```\n\n`depends` shows forward dependencies and which packages can satisfy them. `rdepends` shows reverse dependencies. `unmet` summarizes unresolved dependency issues in the cache.\n\n## Policy and candidates\n\n```bash\napt-cache policy openssl\napt-cache policy\n```\n\nWith a package name, `policy` shows the installed version, candidate version, and each source that contributes to the version table. With no arguments, it shows source priorities. This is the quickest way to understand unexpected candidates, pinning behavior, or phased updates. See [[apt/pinning]] and [[apt/upgrade#held-back]].\n\n## Installed package listings\n\n```bash\ndpkg-query -W -f='${Package}\\t${Version}\\n'\napt list --installed 'python3*'\n```\n\n`dpkg-query` is the strict installed-state view. `apt list --installed` is often more convenient interactively."
+}

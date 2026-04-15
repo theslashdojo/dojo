@@ -1,0 +1,234 @@
+{
+  "name": "rules",
+  "version": "1.0.0",
+  "uri": "prometheus/rules",
+  "type": "skill",
+  "context": "Author, lint, unit-test, and inspect Prometheus recording and alerting rules.",
+  "info": "Prometheus rules turn raw queries into durable operational behavior. Recording rules precompute expensive or commonly reused PromQL, while alerting rules track symptoms over time and emit alert state with labels and annotations. This skill covers authoring rule groups, validating them with `promtool check rules`, unit testing them with `promtool test rules`, and inspecting loaded rules and active alerts from the server.",
+  "parent": "prometheus",
+  "tags": [
+    "rules",
+    "recording-rules",
+    "alerting-rules",
+    "promtool",
+    "unit-tests",
+    "alerts",
+    "promql",
+    "sre"
+  ],
+  "aliases": [
+    "prometheus rules",
+    "prometheus alerts",
+    "recording rules",
+    "alerting rules",
+    "promtool test rules",
+    "promtool check rules"
+  ],
+  "triggers": [
+    "write a prometheus alert",
+    "create a recording rule",
+    "test prometheus rules",
+    "list loaded prometheus rules",
+    "show active alerts in prometheus"
+  ],
+  "body": "# Prometheus Rules\n\nRule files are YAML groups evaluated on a schedule. Recording rules create new series from PromQL expressions, and alerting rules create alert state with labels and annotations that later flow into [[prometheus/alertmanager]].\n\n```yaml\ngroups:\n  - name: api\n    interval: 30s\n    rules:\n      - record: job:http_requests:rate5m\n        expr: sum by (job) (rate(http_requests_total[5m]))\n      - alert: ApiHighErrorRate\n        expr: rate(http_requests_total{code=~\"5..\"}[5m]) > 0.05\n        for: 10m\n        labels:\n          severity: page\n        annotations:\n          summary: API error rate is above 5 percent\n```\n\nThe official toolchain is explicit:\n\n```bash\npromtool check rules rules/*.yml\npromtool test rules tests/*.test.yml\ncurl \"$PROMETHEUS_URL/api/v1/rules\"\ncurl \"$PROMETHEUS_URL/api/v1/alerts\"\n```\n\nUnit tests are the key quality bar. They let an agent prove the rule still behaves correctly when raw metrics or label sets change.",
+  "sections": [
+    {
+      "id": "recording-vs-alerting",
+      "title": "Recording vs alerting rules",
+      "body": "Recording rules save the result of a PromQL expression back into the TSDB under a new metric name, which is ideal for expensive or reused aggregations. Alerting rules evaluate a condition and create alert state, optionally requiring it to hold for `for:` before firing. Use recording rules to simplify dashboards and alert expressions; use alerting rules to define operational symptoms.",
+      "tags": [
+        "recording-rules",
+        "alerting-rules",
+        "for",
+        "reuse"
+      ]
+    },
+    {
+      "id": "rule-files",
+      "title": "Rule file structure",
+      "body": "A rule file contains `groups`, and each group contains `rules`. Group-level `interval` controls how often expressions are evaluated. Within an alert, `labels` influence routing and deduplication in [[prometheus/alertmanager]], while `annotations` provide human-readable detail for responders.",
+      "tags": [
+        "groups",
+        "interval",
+        "labels",
+        "annotations",
+        "routing"
+      ]
+    },
+    {
+      "id": "testing",
+      "title": "Testing with promtool",
+      "body": "The official `promtool test rules` flow feeds synthetic input series into rule files and asserts the expected recording samples or alert states at specific evaluation times. This is how agents prevent regressions when metric names, labels, or thresholds shift. Tests are especially important for `for:` behavior, absent-series logic, and multi-label alert grouping.",
+      "tags": [
+        "promtool",
+        "test-rules",
+        "regression",
+        "for",
+        "absent"
+      ]
+    }
+  ],
+  "links": [
+    {
+      "uri": "prometheus/promql",
+      "context": "Every rule expression is written in PromQL"
+    },
+    {
+      "uri": "prometheus/config",
+      "context": "Rule files must be referenced by prometheus.yml before the server loads them"
+    },
+    {
+      "uri": "prometheus/query",
+      "context": "Inspect loaded rule groups and active alerts after rollout"
+    },
+    {
+      "uri": "prometheus/alertmanager",
+      "context": "Alert labels and annotations control downstream grouping and routing"
+    }
+  ],
+  "related": [
+    {
+      "uri": "prometheus/promql",
+      "relation": "prerequisite",
+      "note": "Rule expressions are PromQL and need correct data-type and aggregation semantics"
+    },
+    {
+      "uri": "prometheus/config",
+      "relation": "prerequisite",
+      "note": "Rule files are only active once referenced and reloaded by the server"
+    },
+    {
+      "uri": "prometheus/alertmanager",
+      "relation": "see-also",
+      "note": "Alerting rules feed Alertmanager receivers, silences, and grouping behavior"
+    }
+  ],
+  "scripts": [
+    {
+      "id": "manage-rules",
+      "name": "Validate and Test Prometheus Rules",
+      "description": "Check rule files, run promtool unit tests, and inspect loaded rules or alerts from a live server",
+      "lang": "bash",
+      "runtime": "bash>=4.0",
+      "entry": "./scripts/manage-rules.sh",
+      "env": {
+        "PROMTOOL_BIN": {
+          "required": false,
+          "default": "promtool",
+          "description": "promtool binary to use"
+        },
+        "PROMETHEUS_URL": {
+          "required": false,
+          "default": "http://localhost:9090",
+          "description": "Prometheus base URL for list and alerts actions"
+        },
+        "PROMETHEUS_BEARER_TOKEN": {
+          "required": false,
+          "secret": true,
+          "description": "Bearer token for protected endpoints"
+        },
+        "PROMETHEUS_BASIC_AUTH_USERNAME": {
+          "required": false,
+          "description": "Basic auth username for protected endpoints"
+        },
+        "PROMETHEUS_BASIC_AUTH_PASSWORD": {
+          "required": false,
+          "secret": true,
+          "description": "Basic auth password for protected endpoints"
+        },
+        "PROMETHEUS_CA_BUNDLE": {
+          "required": false,
+          "description": "Custom CA bundle for HTTPS endpoints"
+        },
+        "PROMETHEUS_INSECURE_SKIP_VERIFY": {
+          "required": false,
+          "default": "false",
+          "description": "Skip TLS verification for debugging only"
+        }
+      }
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "action": {
+          "type": "string",
+          "enum": [
+            "check",
+            "test",
+            "list",
+            "alerts"
+          ]
+        },
+        "files": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Rule or test files depending on action"
+        }
+      },
+      "required": [
+        "action"
+      ]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "success": {
+          "type": "boolean"
+        },
+        "stdout": {
+          "type": "string"
+        },
+        "stderr": {
+          "type": "string"
+        },
+        "response": {
+          "type": "object"
+        }
+      }
+    }
+  },
+  "depends": [
+    {
+      "uri": "prometheus/promql",
+      "reason": "Rule expressions are PromQL and should be reviewed with the language semantics in mind"
+    },
+    {
+      "uri": "prometheus/config",
+      "reason": "Rule files must be referenced and reloaded through the server config"
+    },
+    {
+      "uri": "prometheus/alertmanager",
+      "optional": true,
+      "reason": "Alert labels and annotations are most meaningful once routed through Alertmanager"
+    }
+  ],
+  "more": {
+    "recording-rules": "https://prometheus.io/docs/prometheus/latest/configuration/recording_rules/",
+    "alerting-rules": "https://prometheus.io/docs/prometheus/latest/configuration/alerting_rules/",
+    "testing": "https://prometheus.io/docs/prometheus/latest/configuration/unit_testing_rules/",
+    "promtool": "https://prometheus.io/docs/prometheus/latest/command-line/promtool/"
+  },
+  "frontmatter": {
+    "created": "2026-04-12",
+    "updated": "2026-04-12",
+    "author": "dojo-community",
+    "audience": "ai-agents, sre, developers",
+    "estimated_reading_time": "6 min",
+    "prerequisites": [
+      "prometheus/promql"
+    ],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://github.com/prometheus/prometheus",
+  "created": "2026-04-12T00:00:00Z",
+  "updated": "2026-04-12T00:00:00Z",
+  "status": "published"
+}

@@ -1,0 +1,298 @@
+{
+  "version": "1.0.0",
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://github.com/jqlang/jq",
+  "created": "2026-04-12T00:00:00Z",
+  "updated": "2026-04-12T00:00:00Z",
+  "status": "published",
+  "name": "query",
+  "uri": "jq/query",
+  "type": "skill",
+  "context": "Extract fields, filter arrays, and emit script-friendly values from JSON streams or files with jq",
+  "info": "This skill is for the most common jq job: turning bulky JSON from APIs, CLIs, logs, or config files into the small set of values an agent needs for the next step. It covers field access, array traversal, `select`, `map`, fallbacks, variable binding, raw output for shell use, and exit-status checks for control flow. The packaged script wraps jq with predictable environment-variable inputs so agents can run extraction and filtering tasks without reassembling flag logic each time.",
+  "parent": "jq",
+  "tags": [
+    "jq",
+    "query",
+    "extract",
+    "filter",
+    "select",
+    "map",
+    "json",
+    "api",
+    "shell",
+    "raw-output"
+  ],
+  "aliases": [
+    "jq query",
+    "jq extract",
+    "jq filter json",
+    "get field from json",
+    "parse api response",
+    "json lookup",
+    "jq select",
+    "jq raw output"
+  ],
+  "triggers": [
+    "extract a field from json",
+    "filter an array with jq",
+    "get ids from api output",
+    "print one value from package json",
+    "check a json condition in bash",
+    "turn json into plain text with jq",
+    "query cli output with jq"
+  ],
+  "body": "# jq Query\n\nLoad this skill when the job is to look up values, narrow results, or branch on JSON without mutating the original structure.\n\n## Common Patterns\n\n~~~bash\njq \".id\" issue.json\njq -r \".version\" package.json\njq \".items[] | select(.state == \\\"open\\\") | {id, title}\" issues.json\njq \".deployments | map(select(.env == \\\"prod\\\")) | length\" deployments.json\njq -e \".status == \\\"ok\\\"\" health.json > /dev/null\n~~~\n\n## API and CLI Pipelines\n\njq is often chained after a JSON-producing command. Use `-r` when the next shell command needs raw text instead of JSON strings.\n\n~~~bash\ncurl -s https://api.github.com/repos/jqlang/jq | jq -r \".clone_url\"\ngh api repos/jqlang/jq/issues | jq \".[] | select(.state == \\\"open\\\") | .title\"\nterraform output -json | jq -r \".bucket_name.value\"\n~~~\n\n## Variables and Fallbacks\n\nUse `--arg` or `--argjson` when the filter depends on caller input. Use the alternative operator `//` when a missing or null value should fall back to something safer.\n\n~~~bash\njq --arg env prod \".deployments[] | select(.environment == $env) | .url\" deploys.json\njq -r \".metadata.owner // \\\"unknown\\\"\" app.json\n~~~\n\n## Shell-Friendly Checks\n\nThe `-e` flag turns jq into a predicate engine for Bash conditionals.\n\n~~~bash\nif jq -e \".ready == true\" status.json > /dev/null; then\n  echo \"ready\"\nelse\n  echo \"not ready\"\nfi\n~~~\n\nFor JSON rewrites, continue to [[jq/transform]]. For large payloads, continue to [[jq/streaming]].",
+  "sections": [
+    {
+      "id": "field-access",
+      "title": "Field and element access",
+      "body": "Use `.field`, `.[index]`, `.items[]`, and object literals such as `{id, url}` to pull only the fields that matter. These are the smallest useful jq queries and are often enough for follow-up shell interpolation or logging.",
+      "tags": [
+        "fields",
+        "arrays",
+        "objects",
+        "lookup"
+      ]
+    },
+    {
+      "id": "filtering",
+      "title": "Filtering arrays and objects",
+      "body": "Use `select(...)` inside a stream or `map(select(...))` when the result should remain an array. Combine field access, comparisons, and pipes to narrow large responses into a short actionable list.",
+      "tags": [
+        "select",
+        "map",
+        "filter",
+        "arrays"
+      ]
+    },
+    {
+      "id": "script-friendly-output",
+      "title": "Script-friendly output",
+      "body": "Use `-r` when Bash or another command needs plain text, `-c` when one compact JSON value per line is easier to consume, and `-e` when jq should drive conditional logic through its exit code. These three flags are the difference between a human-friendly jq command and an automation-friendly jq command.",
+      "tags": [
+        "raw-output",
+        "compact-output",
+        "exit-status",
+        "bash"
+      ]
+    },
+    {
+      "id": "variables",
+      "title": "Caller-provided variables",
+      "body": "Use `--arg` for strings and `--argjson` for already-encoded JSON values. This lets the caller parameterize a filter without unsafe string interpolation in the jq program itself. See [[jq/cli#args-and-vars]] for the full argument surface.",
+      "tags": [
+        "arg",
+        "argjson",
+        "parameters",
+        "variables"
+      ]
+    }
+  ],
+  "links": [
+    {
+      "uri": "jq/cli",
+      "context": "Quoting, raw output, and exit status flags used by query workflows"
+    },
+    {
+      "uri": "jq/transform",
+      "context": "Move from extraction to mutation and file rewrites"
+    },
+    {
+      "uri": "jq/streaming",
+      "context": "Switch to streaming when payloads are large"
+    },
+    {
+      "uri": "curl/request",
+      "context": "Pipe API responses into jq"
+    },
+    {
+      "uri": "shell/pipes",
+      "context": "Compose jq with other shell tools"
+    }
+  ],
+  "related": [
+    {
+      "uri": "jq/cli",
+      "relation": "prerequisite",
+      "note": "Correct invocation flags matter as much as the filter itself"
+    },
+    {
+      "uri": "curl/request",
+      "relation": "see-also",
+      "note": "HTTP responses are a primary source of jq input"
+    },
+    {
+      "uri": "jq/transform",
+      "relation": "see-also",
+      "note": "Once you need to rewrite structure instead of read it, switch to transform workflows"
+    }
+  ],
+  "scripts": [
+    {
+      "id": "run-query",
+      "name": "Run Query",
+      "description": "Execute a jq extraction or filtering command against stdin, a file, or inline JSON",
+      "lang": "bash",
+      "runtime": "bash>=4.0, jq>=1.7",
+      "entry": "./scripts/run-query.sh",
+      "env": {
+        "JQ_FILTER": {
+          "required": true,
+          "description": "jq filter to execute"
+        },
+        "JQ_FILE": {
+          "required": false,
+          "description": "Path to the input JSON file; omit to read stdin or JQ_INPUT"
+        },
+        "JQ_INPUT": {
+          "required": false,
+          "description": "Inline JSON or raw text input"
+        },
+        "JQ_NULL_INPUT": {
+          "required": false,
+          "default": "false",
+          "description": "Use -n and do not read stdin, JQ_FILE, or JQ_INPUT"
+        },
+        "JQ_RAW_INPUT": {
+          "required": false,
+          "default": "false",
+          "description": "Treat input as raw text lines via -R"
+        },
+        "JQ_SLURP": {
+          "required": false,
+          "default": "false",
+          "description": "Read all inputs into one array or one raw string via -s"
+        },
+        "JQ_RAW_OUTPUT": {
+          "required": false,
+          "default": "false",
+          "description": "Write strings without JSON quoting via -r"
+        },
+        "JQ_COMPACT_OUTPUT": {
+          "required": false,
+          "default": "false",
+          "description": "Emit compact one-line JSON via -c"
+        },
+        "JQ_SORT_KEYS": {
+          "required": false,
+          "default": "false",
+          "description": "Sort object keys via -S"
+        },
+        "JQ_EXIT_STATUS": {
+          "required": false,
+          "default": "false",
+          "description": "Set shell-friendly exit status via -e"
+        },
+        "JQ_VARS_JSON": {
+          "required": false,
+          "description": "JSON object whose keys become jq variables through --argjson"
+        }
+      }
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "filter": {
+          "type": "string",
+          "description": "jq filter to execute"
+        },
+        "file": {
+          "type": "string",
+          "description": "Input JSON file path"
+        },
+        "input": {
+          "type": "string",
+          "description": "Inline JSON or raw text input"
+        },
+        "nullInput": {
+          "type": "boolean",
+          "default": false,
+          "description": "Use jq -n"
+        },
+        "rawInput": {
+          "type": "boolean",
+          "default": false,
+          "description": "Use jq -R"
+        },
+        "slurp": {
+          "type": "boolean",
+          "default": false,
+          "description": "Use jq -s"
+        },
+        "rawOutput": {
+          "type": "boolean",
+          "default": false,
+          "description": "Use jq -r"
+        },
+        "compactOutput": {
+          "type": "boolean",
+          "default": false,
+          "description": "Use jq -c"
+        },
+        "sortKeys": {
+          "type": "boolean",
+          "default": false,
+          "description": "Use jq -S"
+        },
+        "exitStatus": {
+          "type": "boolean",
+          "default": false,
+          "description": "Use jq -e"
+        },
+        "variables": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "Named values exposed to jq as variables"
+        }
+      },
+      "required": [
+        "filter"
+      ]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "stdout": {
+          "type": "string",
+          "description": "jq output written to standard output"
+        },
+        "exitCode": {
+          "type": "integer",
+          "description": "Process exit code from jq"
+        }
+      }
+    }
+  },
+  "depends": [
+    {
+      "uri": "jq/cli",
+      "reason": "Query workflows depend on correct invocation flags and variable passing"
+    },
+    {
+      "uri": "shell/bash",
+      "reason": "The packaged script runs in Bash and is commonly embedded in shell pipelines"
+    }
+  ],
+  "more": {
+    "docs": "https://jqlang.org/manual/v1.8/",
+    "tutorial": "https://jqlang.org/tutorial/",
+    "playground": "https://play.jqlang.org/"
+  },
+  "frontmatter": {
+    "created": "2026-04-12",
+    "updated": "2026-04-12",
+    "author": "dojo-community",
+    "audience": "AI agents, developers",
+    "estimated_reading_time": "5 min",
+    "status": "living",
+    "confidence": "high",
+    "prerequisites": [
+      "jq/cli",
+      "shell/bash"
+    ]
+  }
+}

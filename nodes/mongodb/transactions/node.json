@@ -1,0 +1,240 @@
+{
+  "name": "transactions",
+  "version": "1.0.0",
+  "uri": "mongodb/transactions",
+  "type": "skill",
+  "context": "Run MongoDB multi-document ACID transactions with sessions, retry-aware logic, and explicit constraints",
+  "info": "This skill covers session-backed transactions through the MongoDB Node.js driver: starting a session, using `withTransaction()` or the core transaction API, passing transaction options like read concern, write concern, read preference, and `maxCommitTimeMS`, and handling transient failures safely. Agents use it when a change must span multiple documents or collections atomically. It also calls out the important limits: transactions require a replica set or sharded cluster, carry overhead, and should not replace sound document design.",
+  "parent": "mongodb",
+  "tags": [
+    "transactions",
+    "session",
+    "withtransaction",
+    "acid",
+    "replica-set",
+    "writeconcern",
+    "readconcern"
+  ],
+  "aliases": [
+    "mongodb transactions",
+    "mongo transaction",
+    "withTransaction",
+    "mongodb session"
+  ],
+  "triggers": [
+    "run a mongodb transaction",
+    "transfer data between mongodb collections atomically",
+    "use withTransaction in mongodb",
+    "start a mongodb session",
+    "retry transient transaction error"
+  ],
+  "body": "# MongoDB Transactions\n\nUse transactions only when a single-document atomic write is not enough. They are powerful, but they add coordination cost and require a topology that supports them.\n\n## withTransaction Example\n\n```javascript\nconst session = client.startSession();\n\nawait session.withTransaction(async () => {\n  const db = client.db(\"bank\");\n  await db.collection(\"checking_accounts\").updateOne(\n    { account_id: \"9876\" },\n    { $inc: { amount: -100 } },\n    { session }\n  );\n  await db.collection(\"savings_accounts\").updateOne(\n    { account_id: \"9876\" },\n    { $inc: { amount: 100 } },\n    { session }\n  );\n}, {\n  readPreference: \"primary\",\n  readConcern: { level: \"local\" },\n  writeConcern: { w: \"majority\" },\n  maxCommitTimeMS: 1000\n});\n```\n\n## Constraints That Matter\n\n- Transactions require a replica set or sharded cluster, not a standalone `mongod`\n- Do not run parallel operations inside the same transaction callback\n- Expect retry-worthy transient errors and design the callback to be idempotent\n- Prefer embedding related data when a single-document write can model the invariant\n\nUse [[mongodb/crud]] first. Escalate to transactions only when the invariant truly spans multiple documents or collections.",
+  "sections": [
+    {
+      "id": "session-lifecycle",
+      "title": "Session lifecycle",
+      "body": "Create a session with `client.startSession()`, run the transaction inside `withTransaction()` or with the core API, and end the session when done. All operations in the transaction must use the same session instance and the same `MongoClient` that created it.",
+      "tags": [
+        "session",
+        "startsession",
+        "withtransaction",
+        "client"
+      ]
+    },
+    {
+      "id": "options-and-retries",
+      "title": "Transaction options and retries",
+      "body": "Transaction options let you override the client defaults for `readConcern`, `writeConcern`, `readPreference`, and `maxCommitTimeMS`. Design the work so a retry is safe, because transient transaction errors and commit-time uncertainty can require a second attempt. That usually means avoiding side effects outside MongoDB inside the transaction callback.",
+      "tags": [
+        "readconcern",
+        "writeconcern",
+        "readpreference",
+        "retry"
+      ]
+    },
+    {
+      "id": "constraints",
+      "title": "Operational constraints",
+      "body": "Transactions carry overhead and should not become the default answer to every consistency problem. They are unsupported on standalone deployments, and parallel operations in a single transaction are not supported. When possible, restructure the data model so one atomic document update is enough.",
+      "tags": [
+        "standalone",
+        "replica-set",
+        "parallel-ops",
+        "data-modeling"
+      ]
+    }
+  ],
+  "links": [
+    {
+      "uri": "mongodb/auth",
+      "context": "Topology and connection settings determine whether transactions are even available"
+    },
+    {
+      "uri": "mongodb/crud",
+      "context": "Use normal CRUD first and escalate only when multi-document atomicity is required"
+    },
+    {
+      "uri": "mongodb/schema-validation",
+      "context": "Transactions do not bypass collection validators"
+    }
+  ],
+  "related": [
+    {
+      "uri": "mongodb/auth",
+      "relation": "prerequisite",
+      "note": "Sessions and transaction support depend on correct topology, URI options, and roles"
+    },
+    {
+      "uri": "mongodb/crud",
+      "relation": "see-also",
+      "note": "Single-document atomic writes are cheaper and usually preferable when they satisfy the invariant"
+    }
+  ],
+  "scripts": [
+    {
+      "id": "run-transaction",
+      "name": "Run transaction",
+      "description": "Execute a sequence of MongoDB write operations in a single session-backed transaction using Extended JSON input",
+      "lang": "javascript",
+      "runtime": "node>=18",
+      "entry": "./scripts/run-transaction.js",
+      "env": {
+        "MONGODB_URI": {
+          "required": true,
+          "secret": true,
+          "description": "MongoDB connection string"
+        },
+        "TRANSACTION_INPUT_JSON": {
+          "required": false,
+          "description": "Extended JSON payload. If omitted, the script reads JSON from stdin."
+        }
+      },
+      "packages": [
+        "mongodb",
+        "bson"
+      ]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "database": {
+          "type": "string",
+          "description": "Default database for operations unless overridden per step"
+        },
+        "operations": {
+          "type": "array",
+          "description": "Ordered write operations to execute in the transaction",
+          "items": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "insertOne",
+                  "updateOne",
+                  "updateMany",
+                  "replaceOne",
+                  "deleteOne",
+                  "deleteMany"
+                ]
+              },
+              "collection": {
+                "type": "string"
+              },
+              "database": {
+                "type": "string"
+              },
+              "filter": {
+                "type": "object"
+              },
+              "document": {
+                "type": "object"
+              },
+              "update": {
+                "type": "object"
+              },
+              "options": {
+                "type": "object"
+              }
+            },
+            "required": [
+              "type",
+              "collection"
+            ]
+          }
+        },
+        "transactionOptions": {
+          "type": "object",
+          "properties": {
+            "readPreference": {
+              "type": "string"
+            },
+            "readConcern": {
+              "type": "object"
+            },
+            "writeConcern": {
+              "type": "object"
+            },
+            "maxCommitTimeMS": {
+              "type": "integer"
+            }
+          }
+        }
+      },
+      "required": [
+        "operations"
+      ]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "committed": {
+          "type": "boolean",
+          "description": "Whether the transaction committed successfully"
+        },
+        "results": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          },
+          "description": "Per-operation result metadata"
+        }
+      }
+    }
+  },
+  "depends": [
+    {
+      "uri": "mongodb/auth",
+      "reason": "Transactions depend on topology, URI settings, and roles that allow session-backed writes"
+    },
+    {
+      "uri": "mongodb/crud",
+      "reason": "Transactions are composed from normal CRUD operations and should only be used when CRUD atomicity is insufficient"
+    }
+  ],
+  "more": {
+    "docs": "https://www.mongodb.com/docs/drivers/node/current/crud/transactions/",
+    "manual": "https://www.mongodb.com/docs/manual/core/transactions/"
+  },
+  "frontmatter": {
+    "created": "2026-04-12",
+    "updated": "2026-04-12",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "6 min",
+    "prerequisites": [
+      "mongodb/auth",
+      "mongodb/crud"
+    ],
+    "status": "living",
+    "confidence": "high"
+  },
+  "repository": "https://github.com/mongodb/node-mongodb-native",
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-12T00:00:00Z",
+  "updated": "2026-04-12T00:00:00Z",
+  "status": "published"
+}

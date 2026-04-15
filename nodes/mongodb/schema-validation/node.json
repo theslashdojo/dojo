@@ -1,0 +1,112 @@
+{
+  "name": "schema-validation",
+  "version": "1.0.0",
+  "uri": "mongodb/schema-validation",
+  "type": "context",
+  "content_type": "guide",
+  "context": "Enforce MongoDB document shape with validators, `$jsonSchema`, and invalid-write policies",
+  "info": "MongoDB does not require a fixed schema, but it does support server-side validation through collection validators. This node covers creating and modifying validators with `$jsonSchema`, selecting `validationAction` (`error` or `warn`), choosing `validationLevel` for how strictly existing documents are treated, and using BSON-aware field rules such as `bsonType`, `required`, and nested property constraints. Agents use it when flexibility is becoming drift, when writes must be rejected consistently, or when a collection needs a gradual cleanup path.",
+  "parent": "mongodb",
+  "tags": [
+    "schema-validation",
+    "json-schema",
+    "validator",
+    "validationaction",
+    "validationlevel",
+    "bsontype"
+  ],
+  "aliases": [
+    "mongodb schema validation",
+    "mongo validator",
+    "mongodb json schema",
+    "collection validator",
+    "collMod validator"
+  ],
+  "triggers": [
+    "validate mongodb documents",
+    "add a validator to a collection",
+    "use json schema in mongodb",
+    "warn on invalid mongodb writes",
+    "change mongodb validation level"
+  ],
+  "body": "# MongoDB Schema Validation\n\nMongoDB validators let you keep a flexible document model without giving up server-side guarantees. Use validators when application-level checks are not enough or when multiple services write to the same collection.\n\n## Create a Collection with `$jsonSchema`\n\n```javascript\ndb.createCollection(\"users\", {\n  validator: {\n    $jsonSchema: {\n      bsonType: \"object\",\n      required: [\"email\", \"role\"],\n      properties: {\n        email: { bsonType: \"string\", pattern: \"@\" },\n        role: { enum: [\"admin\", \"member\"] },\n        profile: {\n          bsonType: \"object\",\n          properties: {\n            displayName: { bsonType: \"string\" }\n          }\n        }\n      }\n    }\n  },\n  validationAction: \"error\",\n  validationLevel: \"strict\"\n});\n```\n\n## Update an Existing Collection\n\n```javascript\ndb.runCommand({\n  collMod: \"users\",\n  validator: {\n    $jsonSchema: {\n      bsonType: \"object\",\n      required: [\"email\"]\n    }\n  },\n  validationAction: \"warn\",\n  validationLevel: \"moderate\"\n});\n```\n\n`validationAction: \"error\"` rejects invalid writes. `validationAction: \"warn\"` records the violation but allows the write, which is useful during cleanup. `validationLevel: \"strict\"` applies validation to all inserts and updates, while `moderate` is a softer option for collections that already contain legacy invalid documents.\n\nPair validation with [[mongodb/crud]] so writes fail early and consistently, and revisit [[mongodb/indexes]] when validators reveal the collection is serving more than one access pattern or entity shape.",
+  "sections": [
+    {
+      "id": "json-schema-rules",
+      "title": "JSON schema rule vocabulary",
+      "body": "MongoDB validators use a BSON-aware JSON schema dialect. `bsonType` lets you distinguish MongoDB-specific types, `required` enforces required fields, `properties` defines nested rules, and `enum`, `minimum`, `maximum`, `pattern`, and `additionalProperties` can refine constraints further. Use Extended JSON examples in documentation so agents can express ObjectIds and dates consistently.",
+      "tags": [
+        "json-schema",
+        "bsontype",
+        "required",
+        "properties"
+      ]
+    },
+    {
+      "id": "validation-action",
+      "title": "Choosing validation action",
+      "body": "Use `validationAction: \"error\"` when invalid writes must be blocked immediately. Use `validationAction: \"warn\"` when you need observability first and a later cleanup or backfill. Warning mode is especially useful when retrofitting validators onto a collection that already has inconsistent historical data.",
+      "tags": [
+        "validationaction",
+        "error",
+        "warn",
+        "backfill"
+      ]
+    },
+    {
+      "id": "validation-level",
+      "title": "Choosing validation level",
+      "body": "Use `validationLevel: \"strict\"` for clean collections and new workloads. Use `validationLevel: \"moderate\"` when older invalid documents still exist and you want validation to focus on new inserts and updates that touch compliant documents. Moderate mode is a migration aid, not a permanent substitute for cleanup.",
+      "tags": [
+        "validationlevel",
+        "strict",
+        "moderate",
+        "migrations"
+      ]
+    }
+  ],
+  "links": [
+    {
+      "uri": "mongodb/crud",
+      "context": "Write paths should align with collection validators"
+    },
+    {
+      "uri": "mongodb/indexes",
+      "context": "Validation and indexing often evolve together as a collection matures"
+    }
+  ],
+  "related": [
+    {
+      "uri": "mongodb/crud",
+      "relation": "see-also",
+      "note": "Validators are only useful if the write paths surface and handle validation failures correctly"
+    },
+    {
+      "uri": "zod/schemas",
+      "relation": "see-also",
+      "note": "Zod complements MongoDB validators by enforcing shape in application code before the write reaches the database"
+    }
+  ],
+  "more": {
+    "docs": "https://www.mongodb.com/docs/manual/core/schema-validation/",
+    "json-schema": "https://www.mongodb.com/docs/manual/core/schema-validation/specify-json-schema/",
+    "invalid-docs": "https://www.mongodb.com/docs/manual/core/schema-validation/handle-invalid-documents/",
+    "validation-level": "https://www.mongodb.com/docs/manual/core/schema-validation/specify-validation-level/"
+  },
+  "frontmatter": {
+    "created": "2026-04-12",
+    "updated": "2026-04-12",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "5 min",
+    "prerequisites": [],
+    "status": "living",
+    "confidence": "high"
+  },
+  "repository": "https://github.com/mongodb/docs",
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-12T00:00:00Z",
+  "updated": "2026-04-12T00:00:00Z",
+  "status": "published"
+}

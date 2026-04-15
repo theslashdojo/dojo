@@ -1,0 +1,301 @@
+{
+  "version": "1.0.0",
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://github.com/jqlang/jq",
+  "created": "2026-04-12T00:00:00Z",
+  "updated": "2026-04-12T00:00:00Z",
+  "status": "published",
+  "name": "transform",
+  "uri": "jq/transform",
+  "type": "skill",
+  "context": "Rewrite JSON objects and arrays with assignments, paths, entries, and reducers instead of hand-editing files",
+  "info": "This skill covers the jq features used when agents need to patch config files, normalize API payloads, redact keys, or restructure data before persisting it. It focuses on update assignment (`|=`), arithmetic assignment, plain assignment, `setpath`, `getpath`, `delpaths`, `to_entries` and `from_entries`, `with_entries`, and reducers that build new JSON values. The bundled script supports safe temp-file rewrites so an agent can patch `package.json`, deployment manifests, or generated artifacts without relying on brittle text substitution.",
+  "parent": "jq",
+  "tags": [
+    "jq",
+    "transform",
+    "assignment",
+    "setpath",
+    "delpaths",
+    "with-entries",
+    "rewrite",
+    "json",
+    "files",
+    "patch"
+  ],
+  "aliases": [
+    "jq transform",
+    "jq rewrite",
+    "jq update json",
+    "patch json file",
+    "jq assign",
+    "jq setpath",
+    "jq delpaths",
+    "jq with entries"
+  ],
+  "triggers": [
+    "rewrite a json file with jq",
+    "update a field in package json",
+    "remove keys from json",
+    "rename object keys with jq",
+    "patch config json",
+    "set nested json path with jq",
+    "transform api payload into a new object"
+  ],
+  "body": "# jq Transform\n\nLoad this skill when jq should produce a modified JSON document, not just a filtered view.\n\n## Assignment Operators\n\nThe official manual distinguishes plain assignment `=` from update assignment `|=`. Use `|=` when the right-hand side should run against the existing value at the path, and use `=` when the right-hand side should run against the whole input.\n\n~~~bash\njq \".version = \\\"1.2.4\\\"\" package.json\njq \".count += 1\" counters.json\njq \"(.features[] | select(.name == \\\"beta\\\") | .enabled) |= true\" config.json\n~~~\n\n## Path Helpers\n\nUse `setpath`, `getpath`, and `delpaths` when the target key path is easier to describe as data than as a hard-coded expression.\n\n~~~bash\njq \"setpath([\\\"deploy\\\", \\\"region\\\"]; \\\"us-east-1\\\")\" app.json\njq \"getpath([\\\"metadata\\\", \\\"owner\\\"])\" app.json\njq \"delpaths([[ \\\"debug\\\" ], [ \\\"metadata\\\", \\\"trace\\\" ]])\" app.json\n~~~\n\n## Reshaping Objects\n\nObject-entry helpers are the reliable way to rename keys, map values, or turn arrays into index objects.\n\n~~~bash\njq \"with_entries(.key |= ascii_downcase)\" env.json\njq \"to_entries | map(select(.value != null)) | from_entries\" payload.json\njq \"group_by(.environment) | map({key: .[0].environment, value: length}) | from_entries\" deploys.json\n~~~\n\n## Safe File Rewrite Pattern\n\njq does not edit files in place. Write to a temp file, verify success, then move the temp file over the original.\n\n~~~bash\ntmp=$(mktemp)\njq -S \".scripts.test = \\\"vitest\\\"\" package.json > \"$tmp\" && mv \"$tmp\" package.json\ngit diff -- package.json\n~~~\n\nFor reusable filters in program files, continue to [[jq/modules]].",
+  "sections": [
+    {
+      "id": "assignment",
+      "title": "Assignment operators",
+      "body": "Use `|=` when the update depends on the existing value at the selected path, such as `.count += 1` or `.name |= ascii_downcase`. Use plain `=` when the right-hand side should evaluate against the whole input document. The difference matters when copying values across the document or emitting multiple results.",
+      "tags": [
+        "assignment",
+        "update-assignment",
+        "plain-assignment",
+        "operators"
+      ]
+    },
+    {
+      "id": "paths",
+      "title": "Path-oriented updates",
+      "body": "`setpath`, `getpath`, and `delpaths` are the path-data equivalents of hard-coded field expressions. They are especially useful when the path comes from another tool or needs to be generated inside a jq reduction.",
+      "tags": [
+        "setpath",
+        "getpath",
+        "delpaths",
+        "nested"
+      ]
+    },
+    {
+      "id": "reshaping",
+      "title": "Reshaping and normalization",
+      "body": "Use `to_entries`, `from_entries`, and `with_entries` to rename keys, filter nulls, or transform object values. Use `reduce` to build index objects or summaries from arrays. This is the main pattern for normalizing upstream JSON before saving it or handing it to another tool.",
+      "tags": [
+        "to-entries",
+        "from-entries",
+        "with-entries",
+        "reduce",
+        "normalize"
+      ]
+    },
+    {
+      "id": "file-rewrites",
+      "title": "Safe file rewrites",
+      "body": "jq itself does not have an in-place flag. The safe pattern is temp file plus atomic move. Sort keys with `-S` when stable diffs help review, and always inspect the result with [[git/diff]] or another comparison tool before committing large generated changes.",
+      "tags": [
+        "files",
+        "tempfile",
+        "atomic",
+        "diff",
+        "review"
+      ]
+    }
+  ],
+  "links": [
+    {
+      "uri": "jq/cli",
+      "context": "Output flags and argument passing used by transform commands"
+    },
+    {
+      "uri": "jq/modules",
+      "context": "Move complex transforms into reusable jq program files"
+    },
+    {
+      "uri": "shell/files",
+      "context": "Safe file movement and temp-file patterns"
+    },
+    {
+      "uri": "git/diff",
+      "context": "Review jq-driven file rewrites before committing"
+    },
+    {
+      "uri": "jq/query",
+      "context": "Use query workflows when you only need extraction"
+    }
+  ],
+  "related": [
+    {
+      "uri": "jq/cli",
+      "relation": "prerequisite",
+      "note": "Correct invocation flags determine whether transforms produce stable file output"
+    },
+    {
+      "uri": "shell/files",
+      "relation": "prerequisite",
+      "note": "In-place-style rewrites rely on temp files and moves, not text editors"
+    },
+    {
+      "uri": "jq/modules",
+      "relation": "extends",
+      "note": "Reusable jq program files are the next step for large transforms"
+    }
+  ],
+  "scripts": [
+    {
+      "id": "transform-json",
+      "name": "Transform JSON",
+      "description": "Run a jq transform and optionally replace a target file through a temp-file rewrite",
+      "lang": "bash",
+      "runtime": "bash>=4.0, jq>=1.7",
+      "entry": "./scripts/transform-json.sh",
+      "env": {
+        "JQ_FILTER": {
+          "required": true,
+          "description": "jq transform filter to execute"
+        },
+        "JQ_FILE": {
+          "required": false,
+          "description": "Input JSON file path"
+        },
+        "JQ_INPUT": {
+          "required": false,
+          "description": "Inline JSON or raw text input"
+        },
+        "JQ_NULL_INPUT": {
+          "required": false,
+          "default": "false",
+          "description": "Use -n and do not read a file or stdin"
+        },
+        "JQ_RAW_INPUT": {
+          "required": false,
+          "default": "false",
+          "description": "Treat input as raw text via -R"
+        },
+        "JQ_SLURP": {
+          "required": false,
+          "default": "false",
+          "description": "Read all inputs into one array or one raw string via -s"
+        },
+        "JQ_COMPACT_OUTPUT": {
+          "required": false,
+          "default": "false",
+          "description": "Emit compact JSON via -c"
+        },
+        "JQ_SORT_KEYS": {
+          "required": false,
+          "default": "false",
+          "description": "Sort object keys via -S"
+        },
+        "JQ_INPLACE": {
+          "required": false,
+          "default": "false",
+          "description": "Replace JQ_FILE via temp file after a successful transform"
+        },
+        "JQ_BACKUP_SUFFIX": {
+          "required": false,
+          "description": "Optional suffix for a backup copy before overwrite, such as .bak"
+        },
+        "JQ_VARS_JSON": {
+          "required": false,
+          "description": "JSON object whose keys become jq variables through --argjson"
+        }
+      }
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "filter": {
+          "type": "string",
+          "description": "jq transform filter"
+        },
+        "file": {
+          "type": "string",
+          "description": "Input JSON file path"
+        },
+        "input": {
+          "type": "string",
+          "description": "Inline JSON or raw text input"
+        },
+        "nullInput": {
+          "type": "boolean",
+          "default": false
+        },
+        "rawInput": {
+          "type": "boolean",
+          "default": false
+        },
+        "slurp": {
+          "type": "boolean",
+          "default": false
+        },
+        "compactOutput": {
+          "type": "boolean",
+          "default": false
+        },
+        "sortKeys": {
+          "type": "boolean",
+          "default": false
+        },
+        "inPlace": {
+          "type": "boolean",
+          "default": false,
+          "description": "Replace file after successful transform"
+        },
+        "backupSuffix": {
+          "type": "string",
+          "description": "Optional suffix for a pre-overwrite backup copy"
+        },
+        "variables": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "Named jq variables exposed through --argjson"
+        }
+      },
+      "required": [
+        "filter"
+      ]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "stdout": {
+          "type": "string",
+          "description": "Transformed JSON when not rewriting a file"
+        },
+        "file": {
+          "type": "string",
+          "description": "Target file path when inPlace is true"
+        },
+        "exitCode": {
+          "type": "integer",
+          "description": "Process exit code from jq or the wrapper script"
+        }
+      }
+    }
+  },
+  "depends": [
+    {
+      "uri": "jq/cli",
+      "reason": "Transform commands rely on correct flag selection and variable handling"
+    },
+    {
+      "uri": "shell/bash",
+      "reason": "The packaged script runs in Bash"
+    },
+    {
+      "uri": "shell/files",
+      "reason": "Temp-file rewrite patterns are required for safe file replacement"
+    }
+  ],
+  "more": {
+    "docs": "https://jqlang.org/manual/v1.8/",
+    "playground": "https://play.jqlang.org/"
+  },
+  "frontmatter": {
+    "created": "2026-04-12",
+    "updated": "2026-04-12",
+    "author": "dojo-community",
+    "audience": "AI agents, developers",
+    "estimated_reading_time": "5 min",
+    "status": "living",
+    "confidence": "high",
+    "prerequisites": [
+      "jq/cli",
+      "shell/bash",
+      "shell/files"
+    ]
+  }
+}

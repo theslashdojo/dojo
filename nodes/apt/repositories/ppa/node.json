@@ -1,0 +1,197 @@
+{
+  "name": "ppa",
+  "version": "1.0.0",
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://salsa.debian.org/apt-team/apt",
+  "created": "2026-04-12T00:00:00Z",
+  "updated": "2026-04-12T00:00:00Z",
+  "status": "published",
+  "uri": "apt/repositories/ppa",
+  "type": "sub",
+  "parent": "apt/repositories",
+  "context": "Add, list, or remove Ubuntu Launchpad PPAs with add-apt-repository when a task uses ppa:user/name syntax",
+  "info": "This sub-skill is the Ubuntu-specific repository shortcut for Launchpad Personal Package Archives. It wraps `add-apt-repository` for adding and removing PPAs, supports private PPAs through `--login`, and preserves the distinction between PPA convenience and broader third-party repository risk. Agents use it when vendor instructions explicitly reference `ppa:user/name`, when a Launchpad-hosted build is required, or when PPA lifecycle must be managed without manually editing source files.",
+  "tags": [
+    "apt",
+    "repositories",
+    "ppa",
+    "launchpad",
+    "ubuntu",
+    "add-apt-repository"
+  ],
+  "aliases": [
+    "ubuntu ppa",
+    "add-apt-repository",
+    "launchpad ppa",
+    "ppa:user/name",
+    "add ppa"
+  ],
+  "triggers": [
+    "add a ppa on ubuntu",
+    "use add-apt-repository",
+    "remove a launchpad ppa",
+    "list configured ppas",
+    "authenticate to a private ppa"
+  ],
+  "sections": [
+    {
+      "id": "add-remove",
+      "title": "Add, remove, and list PPAs",
+      "body": "Use `add-apt-repository -y ppa:user/name` to add a PPA, `-r` to remove it, and `-L` to list configured repositories. Add `-n` when you do not want the command to refresh package indexes immediately.",
+      "tags": [
+        "add",
+        "remove",
+        "list",
+        "no-update"
+      ]
+    },
+    {
+      "id": "private-ppas",
+      "title": "Private PPA authentication",
+      "body": "`add-apt-repository --login` authenticates to private PPAs. The command can reuse an existing Launchpad authentication token or save one through the desktop keyring or `LP_CREDENTIALS_FILE`.",
+      "tags": [
+        "private",
+        "login",
+        "launchpad",
+        "credentials"
+      ]
+    },
+    {
+      "id": "risk",
+      "title": "PPA risk and precedence",
+      "body": "A PPA is still a third-party repository with the same trust and upgrade risks as any other external source. Use [[apt/pinning]] if a PPA must stay below official Ubuntu repositories in candidate selection.",
+      "tags": [
+        "risk",
+        "pinning",
+        "third-party"
+      ]
+    }
+  ],
+  "links": [
+    {
+      "uri": "apt/repositories",
+      "context": "Use the general repository workflow for explicit deb822 source files"
+    },
+    {
+      "uri": "apt/pinning",
+      "context": "Limit PPA precedence so official packages remain preferred"
+    },
+    {
+      "uri": "apt/search#policy",
+      "context": "Verify which source now provides the selected candidate"
+    }
+  ],
+  "related": [
+    {
+      "uri": "apt/repositories",
+      "relation": "extends",
+      "note": "PPAs are a repository shortcut layered on top of the standard APT source model"
+    }
+  ],
+  "scripts": [
+    {
+      "id": "manage-ppa",
+      "name": "Manage Ubuntu PPA",
+      "description": "Add, remove, or list Launchpad PPAs with add-apt-repository",
+      "lang": "bash",
+      "runtime": "bash, software-properties-common",
+      "entry": "./scripts/manage-ppa.sh",
+      "env": {
+        "APT_PPA_ACTION": {
+          "required": true,
+          "description": "PPA action: add, remove, or list"
+        },
+        "APT_PPA": {
+          "required": false,
+          "description": "PPA reference, with or without the ppa: prefix"
+        },
+        "APT_ASSUME_YES": {
+          "required": false,
+          "default": "true",
+          "description": "Set to true to pass -y to add-apt-repository"
+        },
+        "APT_NO_UPDATE": {
+          "required": false,
+          "default": "false",
+          "description": "Set to true to pass -n and skip index refresh"
+        },
+        "LP_CREDENTIALS_FILE": {
+          "required": false,
+          "description": "File used to persist Launchpad credentials for private PPAs"
+        }
+      },
+      "packages": [
+        "software-properties-common",
+        "sudo"
+      ]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "action": {
+          "type": "string",
+          "enum": [
+            "add",
+            "remove",
+            "list"
+          ],
+          "description": "PPA action to run"
+        },
+        "ppa": {
+          "type": "string",
+          "description": "PPA reference such as ppa:deadsnakes/ppa"
+        },
+        "noUpdate": {
+          "type": "boolean",
+          "description": "Skip package index refresh after add or remove"
+        }
+      },
+      "required": [
+        "action"
+      ]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "action": {
+          "type": "string",
+          "description": "Action that ran"
+        },
+        "ppa": {
+          "type": "string",
+          "description": "PPA reference operated on"
+        },
+        "exitCode": {
+          "type": "integer",
+          "description": "Process exit code"
+        }
+      }
+    }
+  },
+  "depends": [
+    {
+      "uri": "apt/repositories",
+      "reason": "A PPA is a specialized repository workflow within the wider APT source model"
+    }
+  ],
+  "more": {
+    "docs": "https://manpages.ubuntu.com/manpages/resolute/man1/apt-add-repository.1.html",
+    "ubuntu": "https://ubuntu.com/server/docs/explanation/software/third-party-repository-usage/"
+  },
+  "frontmatter": {
+    "created": "2026-04-12",
+    "updated": "2026-04-12",
+    "author": "dojo-community",
+    "status": "living",
+    "confidence": "high",
+    "audience": "developers, sre, ai agents",
+    "estimated_reading_time": "4 min",
+    "prerequisites": [
+      "apt/repositories"
+    ]
+  },
+  "body": "# Ubuntu PPAs\n\nPPAs are a special Ubuntu shortcut layered on top of standard APT repository configuration. Use this node when instructions explicitly reference `ppa:user/name` or the `add-apt-repository` command.\n\n## Add and remove\n\n```bash\nsudo add-apt-repository -y ppa:deadsnakes/ppa\nsudo add-apt-repository -r -y ppa:deadsnakes/ppa\nsudo add-apt-repository -L\n```\n\n`add-apt-repository` can also skip the immediate cache refresh with `-n`.\n\n## Private PPAs\n\n```bash\nexport LP_CREDENTIALS_FILE=\"$HOME/.cache/launchpad-credentials\"\nsudo add-apt-repository --login ppa:team/private-archive\n```\n\nThe Ubuntu manpage documents `--login` for private PPAs. Existing Launchpad credentials can be reused, or the tool can request interactive authorization.\n\n## Operational cautions\n\n- PPAs are still third-party repositories.\n- Ubuntu's third-party repository guidance recommends pinning when you do not want an external source to outrank official packages.\n- `add-apt-repository` does not add pinning automatically. See [[apt/pinning]].\n\nIf you need explicit deb822 source files and keyring control instead of the shortcut, use [[apt/repositories]]."
+}

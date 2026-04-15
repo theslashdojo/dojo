@@ -1,0 +1,149 @@
+{
+  "name": "performance",
+  "version": "1.0.0",
+  "uri": "pandas/workflows/performance",
+  "type": "sub",
+  "context": "Make pandas workflows fit memory and run faster with profiling, efficient dtypes, vectorization, chunking, Parquet, Arrow, and handoffs",
+  "info": "Pandas runs in one Python process and is constrained by memory, dtype choices, and whether operations are vectorized. Agents use this node when a dataset is slow, too large, object-heavy, or repeatedly read from CSV. It teaches profiling with `memory_usage(deep=True)`, selecting columns early, converting repeated strings to categorical values, using nullable and Arrow-backed dtypes, chunking CSV reductions, writing Parquet artifacts, avoiding row loops, and handing work to [[duckdb]] when SQL over large files is the better execution model.",
+  "parent": "pandas/workflows",
+  "tags": [
+    "pandas",
+    "performance",
+    "memory",
+    "chunking",
+    "vectorization",
+    "category",
+    "pyarrow",
+    "parquet",
+    "large-datasets",
+    "optimization"
+  ],
+  "aliases": [
+    "pandas performance",
+    "pandas memory usage",
+    "large pandas dataframe",
+    "pandas chunksize",
+    "optimize pandas",
+    "speed up pandas",
+    "pandas pyarrow backend",
+    "pandas categorical dtype"
+  ],
+  "triggers": [
+    "pandas is slow",
+    "pandas out of memory",
+    "reduce dataframe memory usage",
+    "read a large csv with pandas",
+    "optimize pandas dtypes",
+    "avoid pandas apply",
+    "use chunksize in pandas",
+    "when to use duckdb instead of pandas",
+    "make pandas workflow faster"
+  ],
+  "body": "# Pandas Performance\n\nOptimize by reducing data read, reducing memory per column, avoiding Python loops, and switching engines when pandas is the wrong tool.\n\n## Measure\n\n```python\nprint(df.shape)\nprint(df.memory_usage(deep=True).sort_values(ascending=False).head(20))\nprint(df.dtypes.value_counts())\n```\n\n## Reduce memory\n\n```python\ndf = pd.read_csv('events.csv', usecols=['user_id', 'event', 'ts'])\ndf['event'] = df['event'].astype('category')\ndf['user_id'] = df['user_id'].astype('string')\ndf.to_parquet('events.parquet', index=False)\n```\n\n## Chunk CSV reductions\n\n```python\ntotals = []\nfor chunk in pd.read_csv('orders.csv', chunksize=100_000, usecols=['status', 'amount']):\n    chunk['amount'] = pd.to_numeric(chunk['amount'], errors='coerce')\n    totals.append(chunk.groupby('status')['amount'].sum())\nsummary = pd.concat(totals, axis=1).sum(axis=1).reset_index(name='amount')\n```\n\n## Handoff\n\nUse [[duckdb]] for SQL joins and aggregations over large CSV or Parquet files, especially when the operation can be expressed as a query and does not need complex Python functions.\n",
+  "sections": [
+    {
+      "id": "profile-memory",
+      "title": "Profile memory",
+      "body": "Use `df.memory_usage(deep=True)` to see true memory use for object columns. The shared `profile_dataset.py` script reports total memory, dtypes, and top values. Large object columns with repeated text are prime candidates for `category` or Arrow-backed strings.",
+      "tags": ["memory-usage", "object", "profile", "category"]
+    },
+    {
+      "id": "read-less",
+      "title": "Read less data",
+      "body": "Use `usecols`, Parquet `columns`, row filters before joins, and sampling with `nrows` to avoid reading unused data. Convert repeated CSV reads into Parquet artifacts. Drop unneeded columns before high-cardinality joins or groupby operations.",
+      "tags": ["usecols", "columns", "sampling", "parquet"]
+    },
+    {
+      "id": "efficient-dtypes",
+      "title": "Efficient dtypes",
+      "body": "Use `category` for low-cardinality strings, nullable integer and boolean dtypes when missing values exist, and Arrow-backed dtypes when interoperating with Arrow/Parquet-heavy workflows. Explicit dtypes reduce memory and prevent accidental object columns.",
+      "tags": ["category", "nullable", "arrow", "dtypes"]
+    },
+    {
+      "id": "vectorize-or-handoff",
+      "title": "Vectorize or hand off",
+      "body": "Prefer vectorized pandas operations, built-in reductions, and string/datetime accessors. Avoid `iterrows` and row-wise `apply` for large data. If the task is SQL-shaped over large files, use [[duckdb]]. If it needs distributed compute, pandas is not the right engine.",
+      "tags": ["vectorization", "apply", "duckdb", "large-data"]
+    }
+  ],
+  "links": [
+    { "uri": "pandas/workflows/performance#efficient-dtypes", "context": "Section on reducing memory with dtype choices" },
+    { "uri": "pandas/workflows/io", "context": "Read fewer columns and write Parquet artifacts" },
+    { "uri": "pandas/workflows/groupby", "context": "Optimize grouped reductions and chunked summaries" },
+    { "uri": "pandas/workflows/join", "context": "Reduce and validate joins before row multiplication" },
+    { "uri": "duckdb", "context": "Use DuckDB when SQL over large files is a better fit" },
+    { "uri": "python", "context": "Python runtime and package environment constraints" }
+  ],
+  "related": [
+    { "uri": "duckdb", "relation": "alternative", "note": "DuckDB often outperforms pandas for SQL scans, joins, and aggregations over large Parquet or CSV files" },
+    { "uri": "pandas/workflows/io", "relation": "prerequisite", "note": "Most performance wins start with reading fewer columns and better file formats" },
+    { "uri": "python", "relation": "see-also", "note": "Python process memory, virtual environments, and numeric dependency threads affect pandas runs" }
+  ],
+  "scripts": [
+    {
+      "id": "profile-dataset",
+      "name": "Profile Dataset",
+      "description": "Report DataFrame memory use, dtypes, duplicates, missing values, samples, and top values for optimization decisions",
+      "lang": "python",
+      "runtime": "python>=3.10",
+      "entry": "../scripts/profile_dataset.py",
+      "packages": ["pandas", "pyarrow", "openpyxl"]
+    },
+    {
+      "id": "convert-dataset",
+      "name": "Convert Dataset",
+      "description": "Convert row-oriented files to Parquet or JSONL and optionally select columns or parse dates",
+      "lang": "python",
+      "runtime": "python>=3.10",
+      "entry": "../scripts/convert_dataset.py",
+      "packages": ["pandas", "pyarrow", "openpyxl"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "input_path": { "type": "string" },
+        "sample_rows": { "type": "integer" },
+        "columns": { "type": "array", "items": { "type": "string" } },
+        "target_format": { "type": "string", "enum": ["parquet", "csv", "jsonl"] }
+      },
+      "required": ["input_path"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "memory_bytes": { "type": "integer" },
+        "dtype_report": { "type": "object" },
+        "recommendations": { "type": "array", "items": { "type": "string" } },
+        "artifact_path": { "type": "string" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "pandas/workflows", "reason": "Uses shared profiling and conversion scripts" },
+    { "uri": "duckdb", "optional": true, "reason": "Recommended handoff for SQL-shaped large-file analytics" }
+  ],
+  "more": {
+    "docs": "https://pandas.pydata.org/docs/user_guide/scale.html",
+    "enhancing-performance": "https://pandas.pydata.org/docs/user_guide/enhancingperf.html",
+    "sparse": "https://pandas.pydata.org/docs/user_guide/sparse.html",
+    "parquet": "https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.to_parquet.html"
+  },
+  "frontmatter": {
+    "created": "2026-04-15",
+    "updated": "2026-04-15",
+    "author": "dojo-community",
+    "audience": "AI agents, data engineers",
+    "estimated_reading_time": "6 min",
+    "prerequisites": ["pandas/workflows/io", "pandas/dataframe"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://github.com/pandas-dev/pandas",
+  "created": "2026-04-15T00:00:00Z",
+  "updated": "2026-04-15T00:00:00Z",
+  "status": "published"
+}

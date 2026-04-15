@@ -1,0 +1,281 @@
+{
+  "name": "install",
+  "version": "1.0.0",
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://salsa.debian.org/apt-team/apt",
+  "created": "2026-04-12T00:00:00Z",
+  "updated": "2026-04-12T00:00:00Z",
+  "status": "published",
+  "uri": "apt/install",
+  "type": "skill",
+  "parent": "apt",
+  "context": "Install, reinstall, remove, or purge Debian and Ubuntu packages with automation-safe apt-get patterns",
+  "info": "This skill covers package state changes on Debian-family hosts: installing new packages, reinstalling damaged packages, removing packages while keeping configuration, and purging packages completely. It emphasizes the stable `apt-get` interface for scripts, explicit non-interactive execution, targeted version or release selection, and conservative use of recommends. Agents use it to provision system tools, slim containers, recover from missing binaries, and apply precise package versions without rewriting repository policy.",
+  "tags": [
+    "apt",
+    "install",
+    "remove",
+    "purge",
+    "reinstall",
+    "packages",
+    "debian",
+    "ubuntu",
+    "noninteractive",
+    "apt-get"
+  ],
+  "aliases": [
+    "apt install",
+    "apt-get install",
+    "install a package",
+    "remove a package",
+    "purge package",
+    "reinstall package",
+    "sudo apt install"
+  ],
+  "triggers": [
+    "install curl on ubuntu",
+    "remove a package with apt-get",
+    "purge package config files",
+    "reinstall a broken package",
+    "install package non-interactively",
+    "install a specific package version"
+  ],
+  "sections": [
+    {
+      "id": "install",
+      "title": "Install and reinstall",
+      "body": "Run `apt-get update` before installation so candidate metadata is current. Use `apt-get install` to add packages and `apt-get install --reinstall` to repair a package whose files are missing or corrupted. `--no-install-recommends` is the usual automation default when you want a minimal dependency set.",
+      "tags": [
+        "install",
+        "reinstall",
+        "update",
+        "no-install-recommends"
+      ]
+    },
+    {
+      "id": "remove-vs-purge",
+      "title": "Remove vs purge",
+      "body": "`remove` changes the package state to not-installed but keeps package-managed configuration files. `purge` deletes those configuration files too. Follow removals with `apt-get autoremove --purge` if you also want to clean up orphaned automatically installed dependencies.",
+      "tags": [
+        "remove",
+        "purge",
+        "autoremove",
+        "cleanup"
+      ]
+    },
+    {
+      "id": "versions",
+      "title": "Selecting versions and target releases",
+      "body": "APT lets you request an exact package version with `pkg=version` or prefer a distribution or pocket with `-t release` or `pkg/release`. These mechanisms influence dependency resolution and may override the default candidate. Check [[apt/search#policy]] before using them, and use [[apt/pinning]] if the preference should persist.",
+      "tags": [
+        "versions",
+        "target-release",
+        "backports",
+        "candidate"
+      ]
+    },
+    {
+      "id": "automation",
+      "title": "Automation-safe execution",
+      "body": "Use `apt-get`, not `apt`, for scripts. Set `DEBIAN_FRONTEND=noninteractive`, pass `-y` only when prompts are expected, and consider `-s` for simulation. This pattern is appropriate for CI, cloud-init, Dockerfiles, and remote shell automation where interactive progress UI is unhelpful or unsafe.",
+      "tags": [
+        "automation",
+        "noninteractive",
+        "debian-frontend",
+        "simulation"
+      ]
+    },
+    {
+      "id": "local-debs",
+      "title": "Local deb files and dpkg",
+      "body": "Ubuntu documents `dpkg -i` for local `.deb` files but explicitly cautions that `dpkg` does not resolve dependencies. If the install leaves the host in a broken state, immediately run `apt-get install -f` via [[apt/repair]] so APT can converge the dependency graph again.",
+      "tags": [
+        "deb",
+        "dpkg",
+        "local-package",
+        "repair"
+      ]
+    }
+  ],
+  "links": [
+    {
+      "uri": "apt/search",
+      "context": "Inspect package names, versions, and dependencies before changing state"
+    },
+    {
+      "uri": "apt/upgrade",
+      "context": "Refresh indexes or upgrade the wider system after install work"
+    },
+    {
+      "uri": "apt/repair#fix-broken",
+      "context": "Recover if a local deb or interrupted install leaves broken dependencies"
+    },
+    {
+      "uri": "apt/pinning",
+      "context": "Persist a package preference instead of using ad hoc target releases"
+    },
+    {
+      "uri": "apt/repositories",
+      "context": "Add a repository if the package is not available from current sources"
+    }
+  ],
+  "related": [
+    {
+      "uri": "apt/search",
+      "relation": "see-also",
+      "note": "Inspect candidates with apt-cache before committing to a package action"
+    },
+    {
+      "uri": "apt/repair",
+      "relation": "see-also",
+      "note": "Interrupted installs and local debs often need fix-broken or dpkg reconfiguration afterward"
+    }
+  ],
+  "scripts": [
+    {
+      "id": "manage-package",
+      "name": "Manage package state",
+      "description": "Install, reinstall, remove, or purge packages with apt-get",
+      "lang": "bash",
+      "runtime": "bash, apt>=2",
+      "entry": "./scripts/manage-package.sh",
+      "env": {
+        "APT_ACTION": {
+          "required": true,
+          "description": "Package action: install, reinstall, remove, or purge"
+        },
+        "APT_PACKAGES": {
+          "required": true,
+          "description": "Space-separated package specs, optionally including =version"
+        },
+        "APT_ASSUME_YES": {
+          "required": false,
+          "default": "true",
+          "description": "Set to true to pass -y to apt-get"
+        },
+        "APT_NO_RECOMMENDS": {
+          "required": false,
+          "default": "false",
+          "description": "Set to true to add --no-install-recommends for installs"
+        },
+        "APT_TARGET_RELEASE": {
+          "required": false,
+          "description": "Optional target release passed via -t, such as noble-backports"
+        },
+        "APT_SKIP_UPDATE": {
+          "required": false,
+          "default": "false",
+          "description": "Set to true to skip apt-get update before install and reinstall"
+        },
+        "APT_SIMULATE": {
+          "required": false,
+          "default": "false",
+          "description": "Set to true to simulate the action with -s"
+        },
+        "APT_QUIET": {
+          "required": false,
+          "default": "false",
+          "description": "Set to true to add -q for quieter logging"
+        },
+        "DEBIAN_FRONTEND": {
+          "required": false,
+          "default": "noninteractive",
+          "description": "Frontend selection for non-interactive package configuration"
+        }
+      },
+      "packages": [
+        "apt",
+        "dpkg",
+        "sudo"
+      ]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "action": {
+          "type": "string",
+          "enum": [
+            "install",
+            "reinstall",
+            "remove",
+            "purge"
+          ],
+          "description": "Requested package action"
+        },
+        "packages": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Package specs, optionally including exact versions"
+        },
+        "targetRelease": {
+          "type": "string",
+          "description": "Optional target release or pocket passed via -t"
+        },
+        "noRecommends": {
+          "type": "boolean",
+          "description": "Do not install recommended packages"
+        },
+        "assumeYes": {
+          "type": "boolean",
+          "description": "Automatically confirm apt prompts"
+        },
+        "simulate": {
+          "type": "boolean",
+          "description": "Run in simulation mode without modifying the system"
+        }
+      },
+      "required": [
+        "action",
+        "packages"
+      ]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "action": {
+          "type": "string",
+          "description": "Action that was executed"
+        },
+        "requested": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Requested package specs"
+        },
+        "exitCode": {
+          "type": "integer",
+          "description": "Process exit code"
+        }
+      }
+    }
+  },
+  "depends": [
+    {
+      "uri": "apt/search",
+      "optional": true,
+      "reason": "Package inspection is often useful before selecting a version or target release"
+    }
+  ],
+  "more": {
+    "docs": "https://manpages.debian.org/testing/apt/apt-get.8.en.html",
+    "ubuntu": "https://ubuntu.com/server/docs/how-to/software/package-management/",
+    "apt": "https://manpages.debian.org/testing/apt/apt.8.en.html"
+  },
+  "frontmatter": {
+    "created": "2026-04-12",
+    "updated": "2026-04-12",
+    "author": "dojo-community",
+    "status": "living",
+    "confidence": "high",
+    "audience": "developers, sre, ai agents",
+    "estimated_reading_time": "6 min",
+    "prerequisites": []
+  },
+  "body": "# Installing and Removing Packages\n\nUse this node when the package name is already known and the task is to change package state on a Debian or Ubuntu host. For automation, prefer `apt-get` with explicit flags and a non-interactive frontend.\n\n## Install and reinstall\n\n```bash\nsudo apt-get update\nsudo DEBIAN_FRONTEND=noninteractive apt-get -y install curl jq\nsudo DEBIAN_FRONTEND=noninteractive apt-get -y --no-install-recommends install ripgrep fd-find\nsudo apt-get install --reinstall ca-certificates\n```\n\nAPT installs dependencies automatically. If you are installing inside a container or CI image, `--no-install-recommends` often keeps the result smaller and more predictable.\n\n## Remove vs purge\n\n```bash\nsudo apt-get remove nginx\nsudo apt-get purge nginx\nsudo apt-get autoremove --purge\n```\n\n`remove` leaves package configuration files behind. `purge` removes package-managed configuration files too. User data in home directories is not touched.\n\n## Selecting versions and releases\n\n```bash\n# Exact version\nsudo apt-get install openssl=3.0.2-0ubuntu1.20\n\n# Target a suite or pocket\nsudo apt-get install -t noble-backports neovim\nsudo apt-get install nginx/stable\n```\n\nExact version and target-release selection can downgrade packages or pull from different pockets. Inspect candidates first with [[apt/search#policy]] and understand pinning rules in [[apt/pinning]].\n\n## Non-interactive scripting\n\n```bash\nexport DEBIAN_FRONTEND=noninteractive\nsudo apt-get update\nsudo apt-get -y -q install postgresql-client\n```\n\nUbuntu explicitly recommends `apt-get` rather than `apt` inside non-interactive scripts. The surface is more stable and easier to reason about in automation.\n\n## Local .deb files\n\nUbuntu documents `dpkg -i ./package.deb` for local package files, but warns that `dpkg` alone does not resolve dependencies. If a local install leaves the system inconsistent, use [[apt/repair#fix-broken]] immediately:\n\n```bash\nsudo dpkg -i ./vendor-package_1.2.3_amd64.deb\nsudo apt-get install -f\n```\n\nFor repository-backed packages, stay with APT end to end."
+}

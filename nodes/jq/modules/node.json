@@ -1,0 +1,323 @@
+{
+  "version": "1.0.0",
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://github.com/jqlang/jq",
+  "created": "2026-04-12T00:00:00Z",
+  "updated": "2026-04-12T00:00:00Z",
+  "status": "published",
+  "name": "modules",
+  "uri": "jq/modules",
+  "type": "skill",
+  "context": "Organize reusable jq programs, import modules, extend library paths, and run jq tests from files",
+  "info": "This skill is for jq code that has grown beyond an inline shell string. It covers filter files loaded with `-f`, module libraries stored as `.jq` files, `import` versus `include`, `-L` search paths, optional module metadata, JSON imports, and the `--run-tests` harness. Agents use this node when a jq filter should be reused across commands, committed to a repository, reviewed independently, or validated with deterministic tests.",
+  "parent": "jq",
+  "tags": [
+    "jq",
+    "modules",
+    "files",
+    "import",
+    "include",
+    "library-path",
+    "run-tests",
+    "program-file",
+    "reuse",
+    "testing"
+  ],
+  "aliases": [
+    "jq modules",
+    "jq program file",
+    "jq import module",
+    "jq include",
+    "jq library path",
+    "jq run tests",
+    "jq -f",
+    "jq -L"
+  ],
+  "triggers": [
+    "put a jq filter in a file",
+    "reuse jq code across commands",
+    "import a jq module",
+    "run jq tests",
+    "set jq library path",
+    "package jq helpers",
+    "test jq program files"
+  ],
+  "body": "# jq Modules\n\nLoad this skill when the jq logic should live in version-controlled files rather than inline shell strings.\n\n## Program Files\n\nUse `-f` to run a jq program file directly.\n\n~~~bash\njq -f filters/main.jq input.json\n~~~\n\n## Modules and Imports\n\njq modules are `.jq` files discovered through the default search path or paths added with `-L`. `import \"name\" as alias;` prefixes exported symbols with `alias::`, while `include \"name\";` brings definitions into the caller namespace.\n\n~~~jq\nmodule {homepage: \"https://jqlang.org/manual/v1.8/\"};\n\ndef normalize_name:\n  tostring\n  | ascii_downcase\n  | gsub(\"[^a-z0-9]+\"; \"-\")\n  | gsub(\"(^-+|-+$)\"; \"\");\n~~~\n\n~~~jq\nimport \"slug\" as slug;\n\nmap(.name |= slug::normalize_name)\n~~~\n\n## Library Paths\n\nUse `-L` to prepend module search directories. The manual notes that module search is based on the default path or the provided `-L` path list.\n\n~~~bash\njq -L ./jq-lib -f main.jq input.json\n~~~\n\n## Tests\n\n`--run-tests` executes jq test files. Each test consists of the program line, one input line, one or more expected output lines, and a blank separator. Compilation failure tests start with `%%FAIL`.\n\n~~~text\nimport \"slug\" as slug; \"Hello, jq!\" | slug::normalize_name\nnull\n\"hello-jq\"\n\n~~~\n\n~~~bash\njq -L ./jq-lib --run-tests slug.tests\n~~~\n\nSee `references/sample-module.jq` and `references/sample-module.tests` for a portable example bundle.",
+  "sections": [
+    {
+      "id": "program-files",
+      "title": "Program files with -f",
+      "body": "Use `-f` when a jq program is long enough that shell quoting becomes a liability or when the filter should be committed and reviewed as its own artifact. This is the first step from one-liner to reusable jq code.",
+      "tags": [
+        "from-file",
+        "program-file",
+        "review"
+      ]
+    },
+    {
+      "id": "imports",
+      "title": "import, include, and library paths",
+      "body": "`import \"name\" as alias;` keeps imported functions namespaced as `alias::func`, while `include \"name\";` behaves like textual inclusion into the caller namespace. Extend the module search path with `-L` when libraries live outside jq default locations.",
+      "tags": [
+        "import",
+        "include",
+        "library-path",
+        "namespace"
+      ]
+    },
+    {
+      "id": "tests",
+      "title": "Testing jq code",
+      "body": "Use `jq --run-tests file.tests` to verify jq programs and modules. Each test file alternates program lines, input lines, expected output lines, and blank separators. Keep module tests near the module and use `-L` when libraries live in a sibling directory.",
+      "tags": [
+        "run-tests",
+        "testing",
+        "fixtures",
+        "regression"
+      ]
+    },
+    {
+      "id": "metadata",
+      "title": "Module metadata",
+      "body": "The optional `module { ... };` directive attaches metadata that can be read with `modulemeta`. jq itself does not require it for execution, but metadata is useful when modules should describe their homepage, search hints, or exported capabilities.",
+      "tags": [
+        "module",
+        "modulemeta",
+        "metadata"
+      ]
+    }
+  ],
+  "links": [
+    {
+      "uri": "jq/cli",
+      "context": "Program files, variables, and -L behavior depend on jq CLI flags"
+    },
+    {
+      "uri": "jq/transform",
+      "context": "Move large transforms into jq program files"
+    },
+    {
+      "uri": "jq/streaming",
+      "context": "Store complex reducers and stream rebuild logic in files"
+    },
+    {
+      "uri": "shell/files",
+      "context": "Program files and test fixtures are regular files in the repo"
+    },
+    {
+      "uri": "git",
+      "context": "Version jq program files and review them like source code"
+    }
+  ],
+  "related": [
+    {
+      "uri": "jq/cli",
+      "relation": "prerequisite",
+      "note": "Modules depend on -f, -L, and test runner invocation details"
+    },
+    {
+      "uri": "shell/files",
+      "relation": "prerequisite",
+      "note": "Reusable jq code lives as files and fixtures in the filesystem"
+    },
+    {
+      "uri": "jq/transform",
+      "relation": "extends",
+      "note": "Complex transforms are easier to maintain as program files or modules"
+    }
+  ],
+  "scripts": [
+    {
+      "id": "run-program",
+      "name": "Run Program File",
+      "description": "Execute a jq program from a file with optional library paths and named variables",
+      "lang": "bash",
+      "runtime": "bash>=4.0, jq>=1.7",
+      "entry": "./scripts/run-program.sh",
+      "env": {
+        "JQ_PROGRAM_FILE": {
+          "required": true,
+          "description": "Path to the jq program file to execute with -f"
+        },
+        "JQ_INPUT_FILE": {
+          "required": false,
+          "description": "Input JSON file path"
+        },
+        "JQ_INPUT": {
+          "required": false,
+          "description": "Inline JSON or raw text input"
+        },
+        "JQ_NULL_INPUT": {
+          "required": false,
+          "default": "false",
+          "description": "Use -n and do not read an input file or stdin"
+        },
+        "JQ_RAW_INPUT": {
+          "required": false,
+          "default": "false",
+          "description": "Treat input as raw text via -R"
+        },
+        "JQ_SLURP": {
+          "required": false,
+          "default": "false",
+          "description": "Read all inputs into one array or one raw string via -s"
+        },
+        "JQ_RAW_OUTPUT": {
+          "required": false,
+          "default": "false",
+          "description": "Write strings without JSON quotes via -r"
+        },
+        "JQ_COMPACT_OUTPUT": {
+          "required": false,
+          "default": "false",
+          "description": "Emit compact JSON via -c"
+        },
+        "JQ_SORT_KEYS": {
+          "required": false,
+          "default": "false",
+          "description": "Sort object keys via -S"
+        },
+        "JQ_LIBRARY_PATH": {
+          "required": false,
+          "description": "Colon-separated list of additional jq library directories"
+        },
+        "JQ_VARS_JSON": {
+          "required": false,
+          "description": "JSON object whose keys become jq variables through --argjson"
+        }
+      }
+    },
+    {
+      "id": "run-tests",
+      "name": "Run jq Tests",
+      "description": "Execute a jq test file with optional library paths",
+      "lang": "bash",
+      "runtime": "bash>=4.0, jq>=1.7",
+      "entry": "./scripts/run-tests.sh",
+      "env": {
+        "JQ_TEST_FILE": {
+          "required": true,
+          "description": "Path to the jq test file"
+        },
+        "JQ_LIBRARY_PATH": {
+          "required": false,
+          "description": "Colon-separated list of additional jq library directories"
+        }
+      }
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "operation": {
+          "type": "string",
+          "enum": [
+            "run-file",
+            "run-tests"
+          ],
+          "description": "Module operation to perform"
+        },
+        "programFile": {
+          "type": "string",
+          "description": "jq program file path for run-file"
+        },
+        "inputFile": {
+          "type": "string",
+          "description": "Input JSON file for run-file"
+        },
+        "input": {
+          "type": "string",
+          "description": "Inline JSON or raw text input for run-file"
+        },
+        "nullInput": {
+          "type": "boolean",
+          "default": false
+        },
+        "rawInput": {
+          "type": "boolean",
+          "default": false
+        },
+        "slurp": {
+          "type": "boolean",
+          "default": false
+        },
+        "rawOutput": {
+          "type": "boolean",
+          "default": false
+        },
+        "compactOutput": {
+          "type": "boolean",
+          "default": false
+        },
+        "sortKeys": {
+          "type": "boolean",
+          "default": false
+        },
+        "libraryPath": {
+          "type": "string",
+          "description": "Colon-separated library path list"
+        },
+        "variables": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "Named jq variables exposed through --argjson"
+        },
+        "testFile": {
+          "type": "string",
+          "description": "jq test file path for run-tests"
+        }
+      },
+      "required": [
+        "operation"
+      ]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "stdout": {
+          "type": "string",
+          "description": "Program or test output from jq"
+        },
+        "exitCode": {
+          "type": "integer",
+          "description": "Process exit code from jq"
+        }
+      }
+    }
+  },
+  "depends": [
+    {
+      "uri": "jq/cli",
+      "reason": "Reusable jq files depend on from-file, library-path, and variable flags"
+    },
+    {
+      "uri": "shell/bash",
+      "reason": "The packaged wrapper scripts run in Bash"
+    },
+    {
+      "uri": "shell/files",
+      "reason": "Program files, modules, and test fixtures are file-based assets"
+    }
+  ],
+  "more": {
+    "docs": "https://jqlang.org/manual/v1.8/",
+    "repo": "https://github.com/jqlang/jq",
+    "playground": "https://play.jqlang.org/"
+  },
+  "frontmatter": {
+    "created": "2026-04-12",
+    "updated": "2026-04-12",
+    "author": "dojo-community",
+    "audience": "AI agents, developers",
+    "estimated_reading_time": "6 min",
+    "status": "living",
+    "confidence": "high",
+    "prerequisites": [
+      "jq/cli",
+      "shell/bash",
+      "shell/files"
+    ]
+  }
+}

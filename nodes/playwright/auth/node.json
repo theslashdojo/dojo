@@ -1,0 +1,71 @@
+{
+  "name": "auth",
+  "version": "1.0.0",
+  "uri": "playwright/auth",
+  "type": "context",
+  "context": "Persist and reuse authenticated Playwright browser state safely with setup projects, storageState files, roles, cookies, and secrets hygiene.",
+  "info": "Authentication in Playwright is usually handled by logging in once, saving cookies and localStorage to a storage state JSON file, and reusing that file in tests or scripts. This context covers setup projects, multi-role state, API-assisted login, per-worker accounts, session expiry, secret handling, and how to keep auth artifacts out of git. Agents use it when testing protected pages, automating authenticated research, or avoiding repeated UI login flows in CI.",
+  "parent": "playwright",
+  "content_type": "guide",
+  "tags": ["playwright", "auth", "storage-state", "cookies", "localstorage", "login", "secrets", "setup-project", "roles"],
+  "aliases": ["playwright auth", "storageState", "playwright login state", "save cookies playwright", "authenticated playwright", "reuse login playwright", "playwright .auth"],
+  "triggers": ["login once playwright", "reuse auth state", "save cookies in playwright", "test authenticated page", "playwright storage state", "multiple user roles playwright", "do not repeat login in tests"],
+  "body": "# Playwright Authentication\n\nThe standard pattern is: log in once, save browser storage state, then load that state for tests or scripts.\n\n```typescript\nimport { test as setup, expect } from '@playwright/test';\n\nconst authFile = 'playwright/.auth/user.json';\n\nsetup('authenticate', async ({ page }) => {\n  await page.goto('/login');\n  await page.getByLabel('Email').fill(process.env.E2E_EMAIL!);\n  await page.getByLabel('Password').fill(process.env.E2E_PASSWORD!);\n  await page.getByRole('button', { name: 'Sign in' }).click();\n  await expect(page).toHaveURL(/dashboard/);\n  await page.context().storageState({ path: authFile });\n});\n```\n\n```typescript\nprojects: [\n  { name: 'setup', testMatch: /.*\\.setup\\.ts/ },\n  { name: 'chromium', dependencies: ['setup'], use: { storageState: 'playwright/.auth/user.json' } }\n]\n```\n\nAdd `playwright/.auth/` to `.gitignore` because state files can contain live session tokens.",
+  "sections": [
+    {
+      "id": "setup-project",
+      "title": "Setup project",
+      "body": "A setup project runs before dependent browser projects. It performs UI login, waits for a post-login condition, then saves `page.context().storageState({ path })`. Dependent projects set `use.storageState` to that path. This avoids repeating login in every test and makes failures easier to diagnose.",
+      "tags": ["setup-project", "storageState", "dependencies", "login"]
+    },
+    {
+      "id": "multi-role",
+      "title": "Multiple roles",
+      "body": "Create separate storage state files for roles such as admin, user, and viewer: `playwright/.auth/admin.json`, `user.json`, and `viewer.json`. Define separate setup tests or an API-assisted setup that writes each file. Use projects or fixtures to choose the right state per test. Never share one account across parallel tests if the app mutates shared user state.",
+      "tags": ["roles", "admin", "parallel", "fixtures", "accounts"]
+    },
+    {
+      "id": "api-login",
+      "title": "API-assisted login",
+      "body": "When the app supports API login, use Playwright's `request` fixture or `request.newContext()` to authenticate faster than the UI, then save cookies or issue tokens into a browser context. Still keep at least one UI login test so the login page itself remains covered.",
+      "tags": ["api-login", "request", "speed", "coverage"]
+    },
+    {
+      "id": "secret-hygiene",
+      "title": "Secret hygiene",
+      "body": "Storage state may include cookies, localStorage tokens, CSRF values, and user identifiers. Keep `playwright/.auth/` in `.gitignore`, avoid uploading auth state as CI artifacts, rotate credentials if state files are committed, and scope test accounts to the minimum permissions needed.",
+      "tags": ["secrets", "gitignore", "cookies", "tokens", "ci"]
+    }
+  ],
+  "links": [
+    { "uri": "playwright/browser-automation", "context": "Load storage state in standalone browser scripts" },
+    { "uri": "playwright/api-testing", "context": "Use API requests for faster login setup or authenticated checks" },
+    { "uri": "playwright/ci", "context": "Provide auth credentials safely in CI" },
+    { "uri": "github/actions", "context": "Store Playwright credentials as CI secrets" }
+  ],
+  "related": [
+    { "uri": "github/auth", "relation": "similar", "note": "Both require careful token and secret handling." },
+    { "uri": "playwright/api-testing", "relation": "see-also", "note": "API request contexts can create auth state without UI login." },
+    { "uri": "testing/playwright", "relation": "see-also", "note": "Authenticated state is common in end-to-end test suites." }
+  ],
+  "more": {
+    "docs": "https://playwright.dev/docs/auth",
+    "api-testing": "https://playwright.dev/docs/api-testing",
+    "ci": "https://playwright.dev/docs/ci"
+  },
+  "frontmatter": {
+    "created": "2026-04-15",
+    "updated": "2026-04-15",
+    "author": "dojo-community",
+    "audience": "developers, QA engineers, AI agents",
+    "estimated_reading_time": "7 min",
+    "prerequisites": ["playwright/install"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-15T00:00:00Z",
+  "updated": "2026-04-15T00:00:00Z",
+  "status": "published"
+}

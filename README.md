@@ -172,7 +172,7 @@ curl -X POST https://slashdojo.com/v1/agent/ask \
 The JavaScript SDK (`sdk/src/index.js`) wraps the registry API for agent workflows:
 
 ```js
-import { Dojo } from '@dojo/sdk';
+import { Dojo } from 'slashdojo';
 
 const dojo = new Dojo({ registry: 'https://slashdojo.com' });
 
@@ -200,6 +200,8 @@ const deps = await dojo.resolve('ethereum/transactions/send');
 // Compose a pipeline
 const pipeline = await dojo.pipeline('docker/images', 'vercel/deployments');
 ```
+
+Install with `npm install slashdojo`.
 
 ```bash
 cd sdk && npm install && npm test

@@ -1,0 +1,131 @@
+{
+  "name": "validate",
+  "version": "1.0.0",
+  "uri": "openapi/validate",
+  "type": "skill",
+  "context": "Lint, validate, and bundle OpenAPI YAML or JSON before generation, mocking, testing, or publishing.",
+  "info": "OpenAPI validation checks that an API description is syntactically valid, structurally consistent, reference-resolvable, and aligned with local governance rules. The execution surface is Redocly CLI, which can run via `redocly` or `npx @redocly/cli@latest`, plus optional `redocly.yaml` configuration. Agents use this skill before every downstream OpenAPI action: generation, mocking, contract testing, docs publishing, or breaking-change diffing. Bundling is equally important for multi-file specs because many downstream tools behave better with a single resolved file.",
+  "parent": "openapi",
+  "tags": ["openapi-validate", "lint", "redocly", "bundle", "refs", "yaml", "ci", "api-governance"],
+  "aliases": [
+    "openapi validate",
+    "swagger validate",
+    "redocly lint",
+    "openapi lint",
+    "validate api spec",
+    "bundle openapi",
+    "resolve openapi refs",
+    "api governance",
+    "lint swagger yaml"
+  ],
+  "triggers": [
+    "validate this openapi file",
+    "lint swagger yaml",
+    "bundle the openapi spec",
+    "resolve openapi refs",
+    "check if the api spec is valid",
+    "redocly lint this spec",
+    "add openapi validation to ci",
+    "fix invalid openapi",
+    "why does codegen fail on this spec"
+  ],
+  "body": "# OpenAPI Validation and Bundling\n\nValidate the contract before using it. Most expensive OpenAPI failures come from skipping this step: generators produce broken SDKs, mocks return invalid payloads, docs omit operations, or contract tests target a schema that never actually parsed.\n\n## Validate\n\n```bash\nnodes/openapi/scripts/validate-openapi.sh openapi.yaml\n```\n\nThe script uses a local `redocly` binary if present, otherwise `npx --yes @redocly/cli@latest`. It accepts local files and remote URLs.\n\n## Bundle Multi-file Specs\n\n```bash\nnodes/openapi/scripts/validate-openapi.sh openapi.yaml dist/openapi.bundle.yaml\n\n# Equivalent environment-driven form\nOPENAPI_BUNDLE_OUT=dist/openapi.bundle.yaml nodes/openapi/scripts/validate-openapi.sh openapi.yaml\n```\n\nBundling rewrites a multi-file API description into one file for tools that do not reliably traverse external references.\n\n## Redocly Configuration\n\nPut governance rules in `redocly.yaml` and pass it through the environment:\n\n```yaml\napis:\n  main:\n    root: openapi.yaml\nrules:\n  operation-operationId: error\n  operation-summary: warn\n  security-defined: error\n  no-unused-components: warn\n```\n\n```bash\nOPENAPI_REDOCLY_CONFIG=redocly.yaml nodes/openapi/scripts/validate-openapi.sh openapi.yaml\n```\n\n## CI Gate\n\n```yaml\nname: OpenAPI\non: [push, pull_request]\njobs:\n  validate:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n      - uses: actions/setup-node@v4\n        with:\n          node-version: 22\n      - run: nodes/openapi/scripts/validate-openapi.sh openapi.yaml dist/openapi.yaml\n```\n\nPair this with [[openapi/diff]] for compatibility checks and [[openapi/contract-test]] for live service verification.",
+  "sections": [
+    {
+      "id": "lint",
+      "title": "Lint the contract",
+      "body": "Run `redocly lint openapi.yaml` or the wrapper script before generation, mocking, publishing, or merge. Linting catches invalid structure, broken references, duplicate or missing operation IDs, bad examples, undefined security, unused components, and governance rule violations.",
+      "tags": ["lint", "redocly", "validation"]
+    },
+    {
+      "id": "bundle",
+      "title": "Bundle references",
+      "body": "Use `redocly bundle openapi.yaml --output dist/openapi.yaml` or `nodes/openapi/scripts/validate-openapi.sh openapi.yaml dist/openapi.yaml` when the spec uses external `$ref` files. Bundling is the safest handoff format for [[openapi/generate]], [[openapi/mock]], [[openapi/contract-test]], and documentation publishing.",
+      "tags": ["bundle", "refs", "multi-file", "output"]
+    },
+    {
+      "id": "governance",
+      "title": "Governance rules",
+      "body": "A `redocly.yaml` file turns validation into repeatable API governance. Enforce operation IDs, summaries, security definitions, tag descriptions, response examples, and unused component cleanup. Keep rules strict enough to protect clients but not so strict that teams bypass the gate.",
+      "tags": ["governance", "rules", "redocly-yaml"]
+    },
+    {
+      "id": "failure-patterns",
+      "title": "Common failure patterns",
+      "body": "Typical failures are invalid YAML indentation, missing `responses`, duplicate `operationId`, path parameters not declared in `parameters`, examples that do not match schemas, undefined security schemes, and relative external refs that resolve differently in CI. Bundle and validate from the same working directory CI uses.",
+      "tags": ["troubleshooting", "yaml", "refs", "operation-id"]
+    }
+  ],
+  "links": [
+    { "uri": "openapi/spec", "context": "Spec semantics used by validators" },
+    { "uri": "openapi/author", "context": "Fix authoring issues surfaced by validation" },
+    { "uri": "openapi/generate", "context": "Generate only after validation passes" },
+    { "uri": "openapi/mock", "context": "Mock only a valid and preferably bundled spec" },
+    { "uri": "github/actions", "context": "Run validation as a pull request gate" }
+  ],
+  "related": [
+    { "uri": "openapi/spec", "relation": "prerequisite", "note": "Validation enforces the OpenAPI object model" },
+    { "uri": "openapi/generate", "relation": "prerequisite", "note": "Generation should consume a validated and bundled description" },
+    { "uri": "github/actions", "relation": "see-also", "note": "CI is the natural home for OpenAPI validation gates" }
+  ],
+  "scripts": [
+    {
+      "id": "validate-openapi",
+      "name": "Validate and Bundle OpenAPI",
+      "description": "Run Redocly CLI lint and optionally write a bundled OpenAPI document",
+      "lang": "bash",
+      "runtime": "node>=18",
+      "entry": "../scripts/validate-openapi.sh",
+      "env": {
+        "OPENAPI_BUNDLE_OUT": { "required": false, "description": "Optional bundled output path" },
+        "OPENAPI_REDOCLY_CONFIG": { "required": false, "description": "Optional redocly.yaml configuration path" },
+        "HTTP_PROXY": { "required": false, "description": "Proxy for remote refs and npm access" },
+        "HTTPS_PROXY": { "required": false, "description": "HTTPS proxy for remote refs and npm access" },
+        "NO_PROXY": { "required": false, "description": "Comma-separated hosts that bypass proxy" }
+      },
+      "packages": ["@redocly/cli"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "spec": { "type": "string", "description": "OpenAPI file path or URL" },
+        "bundleOutput": { "type": "string", "description": "Optional output path for bundled spec" },
+        "config": { "type": "string", "description": "Optional redocly.yaml path" }
+      },
+      "required": ["spec"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "valid": { "type": "boolean", "description": "Whether validation passed" },
+        "bundlePath": { "type": "string", "description": "Bundle output path when requested" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "node/npm", "reason": "Redocly CLI can run through npx" },
+    { "uri": "openapi/spec", "reason": "Validation applies OpenAPI rules" }
+  ],
+  "more": {
+    "redocly": "https://redocly.com/docs/cli/",
+    "installation": "https://redocly.com/docs/cli/installation",
+    "rules": "https://redocly.com/docs/cli/rules/"
+  },
+  "frontmatter": {
+    "created": "2026-04-15",
+    "updated": "2026-04-15",
+    "author": "dojo-community",
+    "audience": "API designers, platform engineers, AI agents",
+    "estimated_reading_time": "6 min",
+    "prerequisites": ["openapi/spec", "node/npm"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-15T00:00:00Z",
+  "updated": "2026-04-15T00:00:00Z",
+  "status": "published"
+}

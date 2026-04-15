@@ -1,0 +1,254 @@
+{
+  "name": "nodejs",
+  "version": "1.0.0",
+  "uri": "opentelemetry/nodejs",
+  "type": "skill",
+  "context": "Instrument Node.js services with OpenTelemetry auto-instrumentation, manual spans, metrics, and OTLP export.",
+  "info": "This skill covers OpenTelemetry for Node.js: installing the JavaScript SDK packages, starting the SDK before application imports, enabling auto-instrumentation, adding manual spans and metrics, configuring resource attributes, exporting through OTLP, and shutting down cleanly. Agents use it when a Node, Express, Fastify, NestJS, worker, CLI, queue consumer, or background job needs production traces and metrics that can flow through [[opentelemetry/collector]] or directly to a backend.",
+  "parent": "opentelemetry",
+  "tags": [
+    "nodejs",
+    "javascript",
+    "typescript",
+    "sdk-node",
+    "auto-instrumentation",
+    "manual-spans",
+    "metrics",
+    "otlp",
+    "express",
+    "fastify"
+  ],
+  "aliases": [
+    "opentelemetry node",
+    "opentelemetry nodejs",
+    "otel node",
+    "otel javascript",
+    "node sdk",
+    "node.js tracing",
+    "express tracing",
+    "nestjs tracing",
+    "auto instrument node",
+    "manual spans node"
+  ],
+  "triggers": [
+    "add opentelemetry to node",
+    "instrument express with otel",
+    "create instrumentation.mjs",
+    "node --import opentelemetry",
+    "add manual spans",
+    "export node traces to otlp",
+    "configure node sdk",
+    "trace database calls in node",
+    "add metrics to node service"
+  ],
+  "body": "# OpenTelemetry Node.js\n\nThe OpenTelemetry JavaScript SDK instruments Node.js processes. The most important rule is startup order: initialize the SDK before importing libraries you want to auto-instrument.\n\n## Install\n\n```bash\nnpm install @opentelemetry/api @opentelemetry/sdk-node @opentelemetry/auto-instrumentations-node @opentelemetry/exporter-trace-otlp-http @opentelemetry/exporter-metrics-otlp-http @opentelemetry/sdk-metrics @opentelemetry/resources @opentelemetry/semantic-conventions\n```\n\n## Generate Bootstrap\n\n```bash\nnode nodes/opentelemetry/nodejs/scripts/create-node-bootstrap.mjs --service-name checkout-api --service-version 1.7.3 --out instrumentation.mjs\nOTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318 node --import ./instrumentation.mjs ./server.js\n```\n\nThe script creates an ESM bootstrap file using `NodeSDK`, `getNodeAutoInstrumentations`, OTLP/HTTP trace export, OTLP/HTTP metric export, resource attributes, and clean shutdown hooks.\n\n## Manual Spans\n\n```javascript\nimport { trace, SpanStatusCode } from '@opentelemetry/api';\n\nconst tracer = trace.getTracer('checkout-service', '1.7.3');\n\nexport async function chargeCard(payment) {\n  return tracer.startActiveSpan('checkout.charge_card', async (span) => {\n    try {\n      span.setAttribute('payment.provider', payment.provider);\n      span.setAttribute('checkout.amount_cents', payment.amountCents);\n      const result = await provider.charge(payment);\n      span.setAttribute('payment.approved', result.approved);\n      return result;\n    } catch (error) {\n      span.recordException(error);\n      span.setStatus({ code: SpanStatusCode.ERROR, message: error.message });\n      throw error;\n    } finally {\n      span.end();\n    }\n  });\n}\n```\n\n## Metrics\n\n```javascript\nimport { metrics } from '@opentelemetry/api';\n\nconst meter = metrics.getMeter('checkout-service', '1.7.3');\nconst checkoutCounter = meter.createCounter('checkout.requests', {\n  description: 'Checkout requests accepted by the service'\n});\n\ncheckoutCounter.add(1, {\n  'checkout.result': 'accepted',\n  'deployment.environment.name': process.env.NODE_ENV || 'development'\n});\n```\n\nUse [[opentelemetry/semantic-conventions]] before inventing attributes, and keep metric attributes low-cardinality.\n\n## Environment\n\n```bash\nexport OTEL_SERVICE_NAME=checkout-api\nexport OTEL_RESOURCE_ATTRIBUTES=service.version=1.7.3,deployment.environment.name=production\nexport OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318\nexport OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf\nexport OTEL_TRACES_SAMPLER=parentbased_traceidratio\nexport OTEL_TRACES_SAMPLER_ARG=0.10\n```\n\nUse [[opentelemetry/troubleshooting#sdk-startup]] if spans do not appear.",
+  "sections": [
+    {
+      "id": "startup-order",
+      "title": "Startup order",
+      "body": "Load the OpenTelemetry bootstrap before application code imports HTTP, framework, database, or queue modules. In Node.js ESM, run `node --import ./instrumentation.mjs app.js`. For TypeScript during development, use a runtime that supports import hooks, such as `tsx --import ./instrumentation.ts app.ts`. Auto-instrumentation loaded after modules are cached may miss hooks.",
+      "tags": [
+        "startup",
+        "import",
+        "auto-instrumentation",
+        "esm"
+      ]
+    },
+    {
+      "id": "auto-instrumentation",
+      "title": "Auto-instrumentation",
+      "body": "`@opentelemetry/auto-instrumentations-node` enables instrumentations for common Node.js libraries. It is the fastest way to get HTTP, framework, database, and messaging spans. Tune or disable noisy instrumentation only after confirming the default signal is too broad.",
+      "tags": [
+        "auto-instrumentation",
+        "http",
+        "database",
+        "messaging"
+      ]
+    },
+    {
+      "id": "manual-instrumentation",
+      "title": "Manual instrumentation",
+      "body": "Add manual spans around business operations that auto-instrumentation cannot infer: payment decisions, workflow steps, batch jobs, queue handlers, cache rebuilds, and expensive algorithms. Use `startActiveSpan`, set bounded attributes, record exceptions, set error status, and always end spans in `finally`.",
+      "tags": [
+        "manual-spans",
+        "business-logic",
+        "exceptions",
+        "attributes"
+      ]
+    },
+    {
+      "id": "resource-and-export",
+      "title": "Resource and export config",
+      "body": "Set `OTEL_SERVICE_NAME` and `OTEL_RESOURCE_ATTRIBUTES` at deployment time. Export to a nearby [[opentelemetry/collector]] with `OTEL_EXPORTER_OTLP_ENDPOINT=http://collector:4318` and `OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf`. Use signal-specific endpoints only when traces, metrics, and logs intentionally go different places.",
+      "tags": [
+        "resource",
+        "otlp",
+        "environment",
+        "collector"
+      ]
+    }
+  ],
+  "links": [
+    {
+      "uri": "opentelemetry/collector",
+      "context": "Receive Node.js OTLP telemetry and route it to backends"
+    },
+    {
+      "uri": "opentelemetry/otlp",
+      "context": "Configure exporter endpoints, protocol, headers, and TLS"
+    },
+    {
+      "uri": "opentelemetry/semantic-conventions",
+      "context": "Choose stable resource and span attributes"
+    },
+    {
+      "uri": "opentelemetry/sampling",
+      "context": "Configure SDK sampling through env vars"
+    },
+    {
+      "uri": "opentelemetry/troubleshooting",
+      "context": "Debug startup order, endpoint, and propagation issues"
+    },
+    {
+      "uri": "node/npm/install",
+      "context": "Install required OpenTelemetry packages"
+    },
+    {
+      "uri": "node/esm",
+      "context": "ESM startup and --import behavior affect instrumentation bootstrap"
+    }
+  ],
+  "related": [
+    {
+      "uri": "node",
+      "relation": "prerequisite",
+      "note": "Node.js runtime and package management are required"
+    },
+    {
+      "uri": "opentelemetry/otlp",
+      "relation": "implements",
+      "note": "Node.js exporters send telemetry through OTLP"
+    },
+    {
+      "uri": "opentelemetry/semantic-conventions",
+      "relation": "prerequisite",
+      "note": "Manual spans and metrics should use standard attributes where possible"
+    }
+  ],
+  "scripts": [
+    {
+      "id": "create-node-bootstrap",
+      "name": "Create Node.js OpenTelemetry Bootstrap",
+      "description": "Generate an instrumentation.mjs file that starts NodeSDK with auto-instrumentation, OTLP/HTTP exporters, resource attributes, and shutdown hooks",
+      "lang": "javascript",
+      "runtime": "node>=18",
+      "entry": "./scripts/create-node-bootstrap.mjs",
+      "env": {
+        "OTEL_SERVICE_NAME": {
+          "required": false,
+          "description": "Service name used by generated bootstrap when not passed as an argument"
+        },
+        "OTEL_EXPORTER_OTLP_ENDPOINT": {
+          "required": false,
+          "default": "http://localhost:4318",
+          "description": "Base OTLP/HTTP endpoint used by the generated bootstrap"
+        }
+      },
+      "packages": [
+        "@opentelemetry/api",
+        "@opentelemetry/sdk-node",
+        "@opentelemetry/auto-instrumentations-node",
+        "@opentelemetry/exporter-trace-otlp-http",
+        "@opentelemetry/exporter-metrics-otlp-http",
+        "@opentelemetry/sdk-metrics",
+        "@opentelemetry/resources",
+        "@opentelemetry/semantic-conventions"
+      ]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "serviceName": {
+          "type": "string",
+          "description": "OpenTelemetry service.name value"
+        },
+        "serviceVersion": {
+          "type": "string",
+          "description": "service.version value"
+        },
+        "out": {
+          "type": "string",
+          "description": "Output file path for instrumentation.mjs"
+        },
+        "endpoint": {
+          "type": "string",
+          "description": "Default OTLP/HTTP base endpoint"
+        },
+        "force": {
+          "type": "boolean",
+          "description": "Overwrite an existing output file"
+        }
+      },
+      "required": [
+        "serviceName"
+      ]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string",
+          "description": "Generated bootstrap path"
+        },
+        "packages": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Required npm packages"
+        },
+        "runCommand": {
+          "type": "string",
+          "description": "Example Node.js startup command"
+        }
+      }
+    }
+  },
+  "depends": [
+    {
+      "uri": "node/npm/install",
+      "reason": "OpenTelemetry JavaScript packages are installed through npm-compatible package managers"
+    },
+    {
+      "uri": "opentelemetry/otlp",
+      "reason": "Node.js SDK exports telemetry through OTLP"
+    }
+  ],
+  "more": {
+    "docs": "https://opentelemetry.io/docs/languages/js/",
+    "node-getting-started": "https://opentelemetry.io/docs/languages/js/getting-started/nodejs/",
+    "instrumentation": "https://opentelemetry.io/docs/languages/js/instrumentation/",
+    "api": "https://github.com/open-telemetry/opentelemetry-js"
+  },
+  "frontmatter": {
+    "created": "2026-04-15",
+    "updated": "2026-04-15",
+    "author": "dojo-community",
+    "audience": "ai-agents, nodejs-developers, backend-engineers",
+    "estimated_reading_time": "8 min",
+    "prerequisites": [
+      "node",
+      "node/npm/install",
+      "opentelemetry/otlp"
+    ],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-15T00:00:00Z",
+  "updated": "2026-04-15T00:00:00Z",
+  "status": "published"
+}

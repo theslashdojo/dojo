@@ -1,0 +1,233 @@
+{
+  "name": "write",
+  "version": "1.0.0",
+  "uri": "mongodb/crud/write",
+  "type": "sub",
+  "context": "Insert, update, replace, delete, and bulk-write MongoDB documents with acknowledged results",
+  "info": "This sub-skill focuses on write operations and their result objects: creating documents with generated or supplied `_id` values, modifying matching documents with update operators, replacing a full document, deleting selectively, and batching heterogeneous writes with `bulkWrite()`. Agents use it for app mutations, cleanup jobs, backfills, and repair scripts where the exact matched, modified, inserted, or deleted counts matter.",
+  "parent": "mongodb/crud",
+  "tags": [
+    "write",
+    "insert",
+    "update",
+    "replace",
+    "delete",
+    "bulkwrite",
+    "upsert"
+  ],
+  "aliases": [
+    "mongodb write",
+    "mongo update",
+    "mongodb insert",
+    "mongodb delete",
+    "mongodb upsert"
+  ],
+  "triggers": [
+    "insert a document into mongodb",
+    "update mongodb documents",
+    "upsert data in mongodb",
+    "delete documents from mongodb",
+    "run a mongodb bulk write"
+  ],
+  "body": "# Write Documents\n\nWrite operations return structured acknowledgment data that tells you what actually changed. Agents should inspect those counts instead of assuming the write succeeded exactly as intended.\n\n```javascript\nconst insertResult = await db.collection(\"users\").insertOne({\n  email: \"new@example.com\",\n  role: \"member\",\n  createdAt: new Date()\n});\n\nconst updateResult = await db.collection(\"users\").updateOne(\n  { email: \"new@example.com\" },\n  { $set: { role: \"admin\" }, $currentDate: { updatedAt: true } },\n  { upsert: false }\n);\n```\n\nBulk writes are useful for migrations or repair jobs:\n\n```javascript\nawait db.collection(\"users\").bulkWrite([\n  { updateOne: { filter: { email: \"a@example.com\" }, update: { $set: { active: true } } } },\n  { deleteOne: { filter: { email: \"stale@example.com\" } } }\n], { ordered: false });\n```\n\nRemember that `_id` must remain unique. Let the driver generate ObjectIds unless you have a strong reason to provide your own identifiers.",
+  "sections": [
+    {
+      "id": "insert-and-id",
+      "title": "Insert and `_id` handling",
+      "body": "Every MongoDB document needs a unique `_id`. The Node.js driver generates one automatically when you omit it, which is the safest default. Provide your own `_id` only when you control uniqueness and need stable identifiers across systems.",
+      "tags": [
+        "insert",
+        "objectid",
+        "id",
+        "uniqueness"
+      ]
+    },
+    {
+      "id": "updates-and-upserts",
+      "title": "Updates and upserts",
+      "body": "Use operator updates such as `$set`, `$unset`, `$inc`, and `$currentDate` when changing parts of a document. Use `upsert: true` when the workflow should create the document if it does not already exist. Inspect `matchedCount`, `modifiedCount`, and `upsertedId` so the caller knows what happened.",
+      "tags": [
+        "update",
+        "upsert",
+        "matchedcount",
+        "modifiedcount"
+      ]
+    },
+    {
+      "id": "bulk-write",
+      "title": "Bulk write semantics",
+      "body": "Use `bulkWrite()` to batch mixed operations and reduce round trips. `ordered: true` stops at the first failure, which is safer for tightly coupled changes. `ordered: false` allows the server to continue past failures, which is useful for best-effort cleanup or large migrations that should maximize throughput.",
+      "tags": [
+        "bulkwrite",
+        "ordered",
+        "unordered",
+        "migrations"
+      ]
+    }
+  ],
+  "links": [
+    {
+      "uri": "mongodb/crud",
+      "context": "Parent CRUD skill for mixed read/write workflows"
+    },
+    {
+      "uri": "mongodb/schema-validation",
+      "context": "Writes must conform to collection validators when they exist"
+    },
+    {
+      "uri": "mongodb/transactions",
+      "context": "Escalate to a transaction when related writes must commit together"
+    }
+  ],
+  "related": [
+    {
+      "uri": "mongodb/schema-validation",
+      "relation": "see-also",
+      "note": "Validators can reject inserts and updates that violate collection rules"
+    },
+    {
+      "uri": "mongodb/transactions",
+      "relation": "see-also",
+      "note": "Use transactions when the write spans multiple documents or collections that must commit together"
+    }
+  ],
+  "scripts": [
+    {
+      "id": "write-documents",
+      "name": "Write documents",
+      "description": "Run a focused MongoDB write operation or bulkWrite batch using Extended JSON input",
+      "lang": "javascript",
+      "runtime": "node>=18",
+      "entry": "./scripts/write-documents.js",
+      "env": {
+        "MONGODB_URI": {
+          "required": true,
+          "secret": true,
+          "description": "MongoDB connection string"
+        },
+        "WRITE_INPUT_JSON": {
+          "required": false,
+          "description": "Extended JSON payload. If omitted, the script reads JSON from stdin."
+        }
+      },
+      "packages": [
+        "mongodb",
+        "bson"
+      ]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "database": {
+          "type": "string"
+        },
+        "collection": {
+          "type": "string"
+        },
+        "action": {
+          "type": "string",
+          "enum": [
+            "insertOne",
+            "insertMany",
+            "updateOne",
+            "updateMany",
+            "replaceOne",
+            "deleteOne",
+            "deleteMany",
+            "bulkWrite"
+          ]
+        },
+        "filter": {
+          "type": "object"
+        },
+        "document": {
+          "type": "object"
+        },
+        "documents": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "update": {
+          "type": "object"
+        },
+        "operations": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "options": {
+          "type": "object"
+        }
+      },
+      "required": [
+        "database",
+        "collection",
+        "action"
+      ]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "action": {
+          "type": "string"
+        },
+        "acknowledged": {
+          "type": "boolean"
+        },
+        "insertedId": {
+          "type": [
+            "string",
+            "object"
+          ]
+        },
+        "insertedCount": {
+          "type": "integer"
+        },
+        "matchedCount": {
+          "type": "integer"
+        },
+        "modifiedCount": {
+          "type": "integer"
+        },
+        "deletedCount": {
+          "type": "integer"
+        },
+        "upsertedId": {
+          "type": [
+            "string",
+            "object"
+          ]
+        }
+      }
+    }
+  },
+  "more": {
+    "docs": "https://www.mongodb.com/docs/drivers/node/current/crud/insert/",
+    "update": "https://www.mongodb.com/docs/drivers/node/current/crud/update/modify/",
+    "delete": "https://www.mongodb.com/docs/drivers/node/current/crud/delete/"
+  },
+  "frontmatter": {
+    "created": "2026-04-12",
+    "updated": "2026-04-12",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "4 min",
+    "prerequisites": [
+      "mongodb/auth",
+      "mongodb/crud"
+    ],
+    "status": "living",
+    "confidence": "high"
+  },
+  "repository": "https://github.com/mongodb/node-mongodb-native",
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-12T00:00:00Z",
+  "updated": "2026-04-12T00:00:00Z",
+  "status": "published"
+}

@@ -1,0 +1,71 @@
+{
+  "name": "downloads",
+  "version": "1.0.0",
+  "uri": "playwright/downloads",
+  "type": "context",
+  "context": "Handle browser-triggered file downloads with waitForEvent, suggested filenames, saveAs, cleanup, and CI artifact retention.",
+  "info": "Downloads in Playwright are event-driven browser artifacts. This context teaches agents to start waiting before clicking, use the download object's suggested filename, save files before the context closes, validate MIME/content when needed, and manage artifacts safely in local and CI runs. Agents use it when automating export buttons, invoice downloads, generated reports, CSV workflows, PDFs, or any UI action where the browser receives a file rather than rendering content.",
+  "parent": "playwright",
+  "content_type": "guide",
+  "tags": ["playwright", "downloads", "files", "artifacts", "csv", "pdf", "saveas", "waitforevent"],
+  "aliases": ["playwright download", "waitForEvent download", "download.saveAs", "suggestedFilename", "export csv playwright", "download pdf playwright"],
+  "triggers": ["download file with playwright", "click export and save file", "test csv download", "save downloaded pdf", "playwright download path", "wait for download event"],
+  "body": "# Playwright Downloads\n\nDownloads are emitted as events. Start waiting before the click or navigation that triggers the file.\n\n```typescript\nconst downloadPromise = page.waitForEvent('download');\nawait page.getByRole('button', { name: 'Export CSV' }).click();\nconst download = await downloadPromise;\nawait download.saveAs(`artifacts/${download.suggestedFilename()}`);\n```\n\nThe downloaded temporary file is tied to the browser context. Call `saveAs()` before closing the context or browser.",
+  "sections": [
+    {
+      "id": "event-order",
+      "title": "Event order",
+      "body": "Always create `const downloadPromise = page.waitForEvent('download')` before triggering the download. If the click happens first, a fast download event can be missed. This pattern mirrors `waitForResponse` and other event waits.",
+      "tags": ["waitForEvent", "race", "click", "event"]
+    },
+    {
+      "id": "save-and-verify",
+      "title": "Save and verify",
+      "body": "Use `download.suggestedFilename()` for the browser-provided name and `download.saveAs(path)` to persist the file. After saving, verify existence, file size, extension, MIME-adjacent content, or parse the file directly for assertions. For CSV, parse rows; for PDF, at least verify magic bytes or use a PDF parser when content matters.",
+      "tags": ["saveAs", "suggestedFilename", "verify", "csv", "pdf"]
+    },
+    {
+      "id": "artifact-management",
+      "title": "Artifact management",
+      "body": "Write downloads under `artifacts/`, `test-results/`, or a CI artifact path. Do not commit generated downloads unless they are intentional fixtures. Review authenticated downloads for secrets or personal data before uploading them to CI artifacts or issue trackers.",
+      "tags": ["artifacts", "ci", "privacy", "fixtures"]
+    },
+    {
+      "id": "automation-fit",
+      "title": "Automation fit",
+      "body": "Use browser downloads when validating the UI flow matters. If only the file endpoint matters, use [[playwright/api-testing]] or [[curl/request]] to call it directly with the same auth headers or storage-derived session cookies.",
+      "tags": ["api-testing", "curl", "ui-flow", "endpoint"]
+    }
+  ],
+  "links": [
+    { "uri": "playwright/auth", "context": "Authenticated exports usually need storage state" },
+    { "uri": "playwright/browser-automation", "context": "Automate the UI flow that triggers downloads" },
+    { "uri": "playwright/api-testing", "context": "Call download endpoints directly when browser UI is irrelevant" },
+    { "uri": "node/fs", "context": "Verify saved files and manage artifact paths" }
+  ],
+  "related": [
+    { "uri": "node/fs", "relation": "see-also", "note": "Downloaded files are verified and moved with filesystem APIs." },
+    { "uri": "playwright/api-testing", "relation": "alternative", "note": "Direct request contexts are faster when UI behavior does not matter." },
+    { "uri": "playwright/ci", "relation": "see-also", "note": "CI workflows often upload downloaded artifacts for debugging." }
+  ],
+  "more": {
+    "docs": "https://playwright.dev/docs/downloads",
+    "events": "https://playwright.dev/docs/events",
+    "api": "https://playwright.dev/docs/api/class-download"
+  },
+  "frontmatter": {
+    "created": "2026-04-15",
+    "updated": "2026-04-15",
+    "author": "dojo-community",
+    "audience": "developers, QA engineers, AI agents",
+    "estimated_reading_time": "5 min",
+    "prerequisites": ["playwright/browser-automation"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-15T00:00:00Z",
+  "updated": "2026-04-15T00:00:00Z",
+  "status": "published"
+}

@@ -1,0 +1,63 @@
+{
+  "name": "transactions",
+  "version": "1.0.0",
+  "uri": "ethereum/transactions",
+  "type": "standard",
+  "context": "Ethereum transaction workflows for sending value, managing nonces, gas, and confirmations",
+  "info": "Ethereum transactions are signed messages submitted to an EVM chain. Agents use this node to understand native ETH transfers, nonce handling, fee selection, confirmation waiting, and failure modes before calling a concrete transaction skill such as [[ethereum/transactions/send]]. It complements [[ethereum/wallets]] for key management and [[ethereum/gas]] for fee estimation.",
+  "parent": "ethereum",
+  "tags": ["ethereum", "transactions", "eth", "evm", "nonce", "gas", "transfer"],
+  "aliases": [
+    "ethereum transactions",
+    "eth transactions",
+    "evm transactions",
+    "onchain transactions"
+  ],
+  "triggers": [
+    "send an ethereum transaction",
+    "handle ethereum nonces",
+    "how do i handle nonce when sending eth",
+    "wait for transaction confirmation",
+    "estimate gas for a transaction"
+  ],
+  "body": "# Ethereum Transactions\n\nAn Ethereum transaction is a signed instruction from an account. For native ETH transfers, the transaction includes a recipient, a value in wei, gas parameters, a chain ID, and a nonce. Contract calls add calldata in the `data` field. The sender signs the payload with a private key and broadcasts it through an RPC endpoint.\n\nUse [[ethereum/transactions/send]] for native ETH transfers. Use [[ethereum/gas]] when deciding fee parameters, and use [[ethereum/wallets]] when the problem is key storage, wallet creation, or signer selection.",
+  "sections": [
+    {
+      "id": "nonce-model",
+      "title": "Nonce model",
+      "body": "Each externally owned account has a monotonically increasing nonce. The next transaction from an account must use the next pending nonce. Parallel sends from the same account need coordination, because two transactions with the same nonce replace each other instead of both landing.",
+      "tags": ["nonce", "replacement", "pending"]
+    },
+    {
+      "id": "confirmation-model",
+      "title": "Confirmation model",
+      "body": "A broadcast transaction returns a hash before it is finalized. Wait for the receipt, then check `status`, `blockNumber`, and the number of confirmations required by the workflow. L2 transfers often confirm quickly, while mainnet workflows may wait for more blocks.",
+      "tags": ["confirmation", "receipt", "finality"]
+    }
+  ],
+  "links": [
+    { "uri": "ethereum/transactions/send", "context": "Send a native ETH transfer" },
+    { "uri": "ethereum/gas", "context": "Estimate gas and EIP-1559 fees" },
+    { "uri": "ethereum/wallets", "context": "Manage private keys and signers" }
+  ],
+  "related": [
+    { "uri": "ethereum/gas", "relation": "prerequisite", "note": "Fee estimation is part of transaction construction" },
+    { "uri": "ethereum/wallets", "relation": "prerequisite", "note": "A signer is required to submit transactions" }
+  ],
+  "frontmatter": {
+    "created": "2026-04-15",
+    "updated": "2026-04-15",
+    "author": "dojo-community",
+    "audience": "developers and AI agents",
+    "estimated_reading_time": "3 min",
+    "prerequisites": ["ethereum/wallets", "ethereum/gas"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://github.com/ethereum",
+  "created": "2026-04-15T00:00:00Z",
+  "updated": "2026-04-15T00:00:00Z",
+  "status": "published"
+}

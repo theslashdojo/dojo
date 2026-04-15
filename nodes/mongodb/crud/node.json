@@ -1,0 +1,276 @@
+{
+  "name": "crud",
+  "version": "1.0.0",
+  "uri": "mongodb/crud",
+  "type": "skill",
+  "context": "Read and write MongoDB documents with filters, projections, updates, deletes, and bulk operations",
+  "info": "This skill covers the core document lifecycle through the official Node.js driver: querying with filters and cursors, projecting fields, sorting and paginating results, inserting one or many documents, using update operators or full replacements, deleting selectively, and batching operations with `bulkWrite()`. Agents use it for application data changes, audits, migrations, and repair jobs. Single-document writes are atomic, while broader transactional guarantees live in [[mongodb/transactions]].",
+  "parent": "mongodb",
+  "sub": [
+    "mongodb/crud/find",
+    "mongodb/crud/write"
+  ],
+  "tags": [
+    "crud",
+    "find",
+    "insert",
+    "update",
+    "delete",
+    "bulk-write",
+    "cursor",
+    "projection"
+  ],
+  "aliases": [
+    "mongodb crud",
+    "mongo crud",
+    "mongodb query and update",
+    "mongodb writes",
+    "mongodb reads"
+  ],
+  "triggers": [
+    "find documents in mongodb",
+    "insert data into mongodb",
+    "update mongodb documents",
+    "delete mongodb records",
+    "run mongodb bulk write"
+  ],
+  "body": "# MongoDB CRUD\n\nUse this skill for the normal document lifecycle. It maps directly onto the official Node.js driver and gives you structured automation instead of shell-only snippets.\n\n## Sub-Skills\n\n- **[[mongodb/crud/find]]** — focused read patterns with filters, projections, sort, skip, and limit\n- **[[mongodb/crud/write]]** — focused insert, update, replace, delete, and bulk write patterns\n\n## Read Example\n\n```javascript\nconst docs = await db.collection(\"users\")\n  .find({ active: true }, { projection: { email: 1, role: 1 } })\n  .sort({ createdAt: -1 })\n  .limit(20)\n  .toArray();\n```\n\n## Write Example\n\n```javascript\nawait db.collection(\"users\").updateOne(\n  { email: \"ops@example.com\" },\n  { $set: { role: \"admin\" }, $currentDate: { updatedAt: true } },\n  { upsert: true }\n);\n```\n\n## Bulk Example\n\n```javascript\nawait db.collection(\"users\").bulkWrite([\n  { updateOne: { filter: { email: \"a@example.com\" }, update: { $set: { active: true } } } },\n  { deleteOne: { filter: { email: \"legacy@example.com\" } } }\n], { ordered: true });\n```\n\nA `find()` call returns a cursor, not an array. Convert it with `toArray()` only when the result set is bounded. For large scans, iterate the cursor or add tighter filters. For multi-document atomicity or cross-collection changes, route to [[mongodb/transactions]].",
+  "sections": [
+    {
+      "id": "read-patterns",
+      "title": "Read patterns",
+      "body": "Use filters to reduce the result set, projections to cut payload size, and sort/skip/limit for deterministic pagination or sampling. `findOne()` is a convenience form for a single result and behaves like a limited query. See [[mongodb/crud/find]] for a focused version of these patterns.",
+      "tags": [
+        "find",
+        "findone",
+        "projection",
+        "pagination"
+      ]
+    },
+    {
+      "id": "write-patterns",
+      "title": "Write patterns",
+      "body": "Choose `insertOne()` or `insertMany()` for new documents, `updateOne()` or `updateMany()` for operator-based changes, `replaceOne()` when replacing an entire document shape, and `deleteOne()` or `deleteMany()` for removals. Use `bulkWrite()` when you need a single batched round trip with ordered or unordered semantics.",
+      "tags": [
+        "insert",
+        "update",
+        "replace",
+        "delete",
+        "bulkwrite"
+      ]
+    },
+    {
+      "id": "atomicity",
+      "title": "Atomicity and escalation",
+      "body": "A single-document write is atomic. That is often enough if related state is embedded together. Escalate to [[mongodb/transactions]] only when a change truly spans multiple documents or collections and cannot be modeled safely as a single-document update.",
+      "tags": [
+        "atomicity",
+        "single-document",
+        "transactions"
+      ]
+    }
+  ],
+  "links": [
+    {
+      "uri": "mongodb/auth",
+      "context": "Connect with the correct URI and role before any CRUD work"
+    },
+    {
+      "uri": "mongodb/crud/find",
+      "context": "Focused read workflow for queries and cursors"
+    },
+    {
+      "uri": "mongodb/crud/write",
+      "context": "Focused write workflow for inserts, updates, deletes, and bulk operations"
+    },
+    {
+      "uri": "mongodb/transactions",
+      "context": "Escalate to transactions when the write spans multiple documents or collections"
+    },
+    {
+      "uri": "mongodb/schema-validation",
+      "context": "Keep application writes aligned with server-side validators"
+    }
+  ],
+  "related": [
+    {
+      "uri": "mongodb/auth",
+      "relation": "prerequisite",
+      "note": "CRUD operations fail immediately when the connection string, roles, or topology are wrong"
+    },
+    {
+      "uri": "mongodb/transactions",
+      "relation": "see-also",
+      "note": "Use transactions only when single-document atomicity is not sufficient"
+    }
+  ],
+  "scripts": [
+    {
+      "id": "run-crud",
+      "name": "Run CRUD operation",
+      "description": "Execute a structured CRUD operation through the MongoDB Node.js driver using Extended JSON input",
+      "lang": "javascript",
+      "runtime": "node>=18",
+      "entry": "./scripts/run-crud.js",
+      "env": {
+        "MONGODB_URI": {
+          "required": true,
+          "secret": true,
+          "description": "MongoDB connection string"
+        },
+        "CRUD_INPUT_JSON": {
+          "required": false,
+          "description": "Extended JSON payload. If omitted, the script reads JSON from stdin."
+        }
+      },
+      "packages": [
+        "mongodb",
+        "bson"
+      ]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "database": {
+          "type": "string",
+          "description": "Database name"
+        },
+        "collection": {
+          "type": "string",
+          "description": "Collection name"
+        },
+        "operation": {
+          "type": "string",
+          "enum": [
+            "find",
+            "findOne",
+            "insertOne",
+            "insertMany",
+            "updateOne",
+            "updateMany",
+            "replaceOne",
+            "deleteOne",
+            "deleteMany",
+            "bulkWrite",
+            "countDocuments"
+          ],
+          "description": "CRUD operation to run"
+        },
+        "filter": {
+          "type": "object",
+          "description": "Query filter for reads, updates, deletes, or counts"
+        },
+        "document": {
+          "type": "object",
+          "description": "Single document payload for insertOne or replaceOne"
+        },
+        "documents": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          },
+          "description": "Document array for insertMany"
+        },
+        "update": {
+          "type": "object",
+          "description": "Update document or update pipeline"
+        },
+        "operations": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          },
+          "description": "bulkWrite operations array"
+        },
+        "options": {
+          "type": "object",
+          "description": "Driver options such as projection, sort, limit, upsert, ordered, hint, or write concern"
+        }
+      },
+      "required": [
+        "database",
+        "collection",
+        "operation"
+      ]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "operation": {
+          "type": "string",
+          "description": "CRUD operation that ran"
+        },
+        "acknowledged": {
+          "type": "boolean",
+          "description": "Whether the server acknowledged the write"
+        },
+        "documents": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          },
+          "description": "Read result set for find operations"
+        },
+        "matchedCount": {
+          "type": "integer",
+          "description": "Matched documents for updates"
+        },
+        "modifiedCount": {
+          "type": "integer",
+          "description": "Modified documents for updates"
+        },
+        "insertedId": {
+          "type": [
+            "string",
+            "object"
+          ],
+          "description": "Inserted identifier for insertOne"
+        },
+        "insertedCount": {
+          "type": "integer",
+          "description": "Inserted count for insertMany"
+        },
+        "deletedCount": {
+          "type": "integer",
+          "description": "Deleted documents count"
+        },
+        "count": {
+          "type": "integer",
+          "description": "Count returned by countDocuments or number of returned documents for find"
+        }
+      }
+    }
+  },
+  "depends": [
+    {
+      "uri": "mongodb/auth",
+      "reason": "CRUD automation needs a valid connection string, reachable deployment, and adequate roles"
+    }
+  ],
+  "more": {
+    "docs": "https://www.mongodb.com/docs/drivers/node/current/crud/",
+    "find": "https://www.mongodb.com/docs/drivers/node/current/crud/query/retrieve/",
+    "insert": "https://www.mongodb.com/docs/drivers/node/current/crud/insert/",
+    "delete": "https://www.mongodb.com/docs/drivers/node/current/crud/delete/"
+  },
+  "frontmatter": {
+    "created": "2026-04-12",
+    "updated": "2026-04-12",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "6 min",
+    "prerequisites": [
+      "mongodb/auth"
+    ],
+    "status": "living",
+    "confidence": "high"
+  },
+  "repository": "https://github.com/mongodb/node-mongodb-native",
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-12T00:00:00Z",
+  "updated": "2026-04-12T00:00:00Z",
+  "status": "published"
+}

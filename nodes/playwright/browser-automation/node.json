@@ -1,0 +1,120 @@
+{
+  "name": "browser-automation",
+  "version": "1.0.0",
+  "uri": "playwright/browser-automation",
+  "type": "skill",
+  "context": "Drive Chromium, Firefox, or WebKit from scripts for dynamic-page research, scraping, screenshots, HTML capture, and workflow automation.",
+  "info": "This skill covers Playwright Library mode: launching a browser, creating isolated contexts, opening pages, navigating with explicit wait conditions, extracting text and links, saving screenshots or HTML, blocking noisy resources, reusing storage state, and closing resources cleanly. It is the right surface when the goal is automation or research rather than a test suite. Agents use it to inspect SPAs, capture evidence, interact with pages requiring JavaScript, or turn a manual browser workflow into repeatable code.",
+  "parent": "playwright",
+  "tags": ["playwright", "browser-automation", "library", "scraping", "screenshots", "html-capture", "research", "chromium", "headless", "context"],
+  "aliases": ["playwright library", "browser script", "headless browser script", "scrape with playwright", "capture page with playwright", "dynamic page scraping", "playwright chromium launch"],
+  "triggers": ["automate this page", "take a screenshot with playwright", "scrape a javascript site", "capture rendered html", "open a browser from node", "use chromium headless", "inspect dynamic website", "save page text with playwright"],
+  "body": "# Browser Automation\n\nUse Playwright Library mode when you need a script, not a test runner. The explicit lifecycle is: launch browser, create context, open page, navigate, interact or extract data, write artifacts, close browser.\n\n## Capture A Page\n\n```bash\nnodes/playwright/scripts/browser-capture.mjs https://example.com \\\n  --browser chromium \\\n  --screenshot artifacts/example.png \\\n  --html artifacts/example.html \\\n  --text artifacts/example.txt \\\n  --wait-until load \\\n  --viewport 1280x720\n```\n\n## Minimal Script\n\n```javascript\nimport { chromium } from 'playwright';\n\nconst browser = await chromium.launch({ headless: true });\nconst context = await browser.newContext({ viewport: { width: 1280, height: 720 } });\nconst page = await context.newPage();\nawait page.goto('https://example.com', { waitUntil: 'load' });\nconsole.log(await page.title());\nawait page.screenshot({ path: 'example.png', fullPage: true });\nawait browser.close();\n```\n\nUse [[playwright/locators]] for interaction, [[playwright/auth]] for authenticated scripts, [[playwright/network]] for request routing, and [[playwright/screenshots]] for visual artifacts.",
+  "sections": [
+    {
+      "id": "lifecycle",
+      "title": "Browser lifecycle",
+      "body": "Library scripts must clean up explicitly. Choose `chromium`, `firefox`, or `webkit`; call `browserType.launch()`; create an isolated `browser.newContext()`; call `context.newPage()`; run actions; close the browser or context. Test runner fixtures handle this automatically, but library scripts do not.",
+      "tags": ["launch", "context", "page", "cleanup"]
+    },
+    {
+      "id": "navigation",
+      "title": "Navigation and waits",
+      "body": "Use `page.goto(url, { waitUntil: 'load' })` for normal pages, `domcontentloaded` when you only need initial DOM, and `networkidle` sparingly for SPAs where late network quietness matters. Prefer waiting for a locator or response that proves readiness, such as `await page.getByRole('heading', { name: 'Dashboard' }).waitFor()` or `await page.waitForResponse('**/api/data')`.",
+      "tags": ["goto", "wait-until", "networkidle", "readiness"]
+    },
+    {
+      "id": "extraction",
+      "title": "Extraction",
+      "body": "Extract rendered text with `page.locator('body').innerText()`, HTML with `page.content()`, attributes with locator evaluation, and links with `page.locator('a[href]').evaluateAll(...)`. Keep outputs bounded for agent workflows: write full HTML to a file and return only summaries or snippets to the model.",
+      "tags": ["scraping", "innerText", "html", "links", "artifacts"]
+    },
+    {
+      "id": "resource-control",
+      "title": "Resource control",
+      "body": "Use `context.route()` to abort images, fonts, analytics, or ads when they are irrelevant to research. Use storage state to run authenticated captures without repeating login. Fix viewport, locale, timezone, and user agent when outputs must be reproducible. Avoid arbitrary sleeps; wait for locators, URLs, events, or responses.",
+      "tags": ["route", "block", "storage-state", "viewport", "determinism"]
+    }
+  ],
+  "links": [
+    { "uri": "playwright/install", "context": "Install the library package and required browser binaries" },
+    { "uri": "playwright/locators", "context": "Find and interact with page elements reliably" },
+    { "uri": "playwright/auth", "context": "Reuse login state in automation scripts" },
+    { "uri": "playwright/network", "context": "Inspect or alter browser network traffic" },
+    { "uri": "playwright/screenshots", "context": "Capture screenshots and visual artifacts" },
+    { "uri": "node/fs", "context": "Write extracted HTML, text, and screenshots to disk" }
+  ],
+  "related": [
+    { "uri": "curl/request", "relation": "alternative", "note": "curl is simpler for static HTTP responses; Playwright is needed for browser-rendered behavior." },
+    { "uri": "playwright/screenshots", "relation": "implements", "note": "Screenshot capture is a common browser automation artifact." },
+    { "uri": "playwright/agent-cli", "relation": "alternative", "note": "Use the agent CLI for interactive sessions; use scripts for repeatable automation." }
+  ],
+  "scripts": [
+    {
+      "id": "browser-capture",
+      "name": "Capture Browser Page",
+      "description": "Open a URL in Chromium, Firefox, or WebKit and save screenshot, HTML, text, links, console messages, and network summaries.",
+      "lang": "javascript",
+      "runtime": "node>=18",
+      "entry": "../scripts/browser-capture.mjs",
+      "env": {
+        "HTTPS_PROXY": { "required": false, "description": "Proxy used by browser navigation and package installation." },
+        "PLAYWRIGHT_BROWSERS_PATH": { "required": false, "description": "Custom browser binary cache path." }
+      },
+      "packages": ["playwright"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "url": { "type": "string", "format": "uri", "description": "URL to open." },
+        "browser": { "type": "string", "enum": ["chromium", "firefox", "webkit"], "default": "chromium" },
+        "screenshot": { "type": "string", "description": "Output path for screenshot." },
+        "html": { "type": "string", "description": "Optional output path for rendered HTML." },
+        "text": { "type": "string", "description": "Optional output path for visible text." },
+        "selector": { "type": "string", "description": "Optional selector to wait for and screenshot." },
+        "viewport": { "type": "string", "description": "Viewport as WIDTHxHEIGHT." },
+        "storageState": { "type": "string", "description": "Path to Playwright storage state JSON." }
+      },
+      "required": ["url"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "finalUrl": { "type": "string" },
+        "title": { "type": "string" },
+        "status": { "type": ["integer", "null"] },
+        "screenshot": { "type": "string" },
+        "html": { "type": ["string", "null"] },
+        "textPreview": { "type": "string" },
+        "links": { "type": "array", "items": { "type": "object" } }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "playwright/install", "reason": "The playwright package and browser binaries must be installed first." },
+    { "uri": "node/fs", "optional": true, "reason": "Automation scripts commonly write artifacts to disk." }
+  ],
+  "more": {
+    "docs": "https://playwright.dev/docs/library",
+    "api": "https://playwright.dev/docs/api/class-playwright",
+    "browsers": "https://playwright.dev/docs/browsers",
+    "events": "https://playwright.dev/docs/events"
+  },
+  "frontmatter": {
+    "created": "2026-04-15",
+    "updated": "2026-04-15",
+    "author": "dojo-community",
+    "audience": "developers, researchers, automation agents",
+    "estimated_reading_time": "7 min",
+    "prerequisites": ["playwright/install"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-15T00:00:00Z",
+  "updated": "2026-04-15T00:00:00Z",
+  "status": "published"
+}

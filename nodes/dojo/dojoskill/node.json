@@ -1,0 +1,165 @@
+{
+  "name": "skill",
+  "version": "1.1.0",
+  "uri": "dojo/skill",
+  "type": "skill",
+  "context": "Answer-first Dojo meta-skill - help agents find information, inspect match quality, and fetch or execute portable bundles",
+  "info": "Dojo defines a universal format for AI agent skills and knowledge: discoverable, composable, hierarchical units of capability. Any agent, any framework, any LLM can query the registry and get back executable skills and knowledge with full context. The knowledge layer is what makes Dojo more than npm: every `ecosystem`, `standard`, `skill`, `context`, and `sub` node can carry rich, linked, wiki-like content, so agents can search, learn, inspect graph neighbors, and then fetch a portable bundle in the Agent Skills directory format. The bundled helper works both as a JavaScript module and as a direct CLI entrypoint, which makes the exported package easier for other agent runtimes to execute without custom glue.",
+  "parent": "dojo",
+  "tags": ["dojo", "skill", "registry", "discover", "learn", "knowledge", "graph", "bundle", "answers", "docs", "agent", "cli"],
+  "aliases": ["dojo skill", "dojo meta skill", "portable dojo skill", "use dojo registry skill", "find info in dojo", "how do i find info in dojo", "how do i search dojo", "dojo knowledge registry", "dojo docs", "search dojo docs", "dojo answer-first skill", "inspect dojo match", "dojo skill cli"],
+  "triggers": [
+    "use the dojo skill",
+    "fetch the dojo skill",
+    "bundle the dojo skill",
+    "how do i navigate dojo as an agent",
+    "how do i find info in dojo",
+    "how do i search dojo",
+    "find information in dojo",
+    "ask dojo a question",
+    "find docs in dojo",
+    "search dojo knowledge",
+    "why did dojo pick this node"
+  ],
+  "body": "# Dojo Skill\n\nDojo defines a universal format for AI agent skills and knowledge: discoverable, composable, hierarchical units of capability. Any agent, any framework, any LLM can query the registry and get back executable skills and knowledge with full context. The knowledge layer is what makes Dojo more than npm. Every node in the tree `ecosystem`, `standard`, `skill`, `context`, and `sub` can carry rich, linked, wiki-like content. They are the Obsidian notes of the agent world. Context nodes are how agents learn.\n\nThis node packages that experience for external agents. Start with `agent_learn` when the goal is information and the agent wants answer nodes, excerpts, and `then_do` suggestions. Use `discover` when you do not yet know whether the task needs knowledge or execution. Use `learn` with `question` when you already know the node but need the right section. Use `search`, `skill`, `alias`, `graph`, or `backlinks` when discovery is weak and you need to inspect the knowledge graph directly. Use `bundle` when the goal is portability: fetch `SKILL.md`, agent metadata, references, scripts, and tests so another framework can execute the same capability outside the registry.\n\nThe reusable package beside this manifest intentionally mirrors the Agent Skills directory format: `SKILL.md`, `agents/`, `references/`, `scripts/`, and tests when present. The helper in `scripts/use-dojo-skill.js` can be imported directly or executed as `node scripts/use-dojo-skill.js ...`, which makes the bundle usable by agents that prefer a CLI boundary over an in-process JavaScript import. This node exists so the registry can return the package through [[dojo/api#bundle-route]].",
+  "sections": [
+    {
+      "id": "answer-first-workflow",
+      "title": "Answer-first workflow",
+      "body": "Use `operation=agent_learn` for prompts like \"what is dojo\", \"explain the knowledge layer\", or \"find info about bundle routes\" when the agent wants answer nodes, excerpts, and `then_do` suggestions. Use `operation=discover` instead when the prompt may end in execution and you want the registry to split the result into `learn_first` and `then_do` in one request.",
+      "tags": ["agent_learn", "discover", "workflow", "answers"]
+    },
+    {
+      "id": "cli-workflow",
+      "title": "CLI workflow",
+      "body": "Run `node scripts/use-dojo-skill.js agent_learn --question \"find info in dojo\" --current-context dojo` for direct answer-first lookups. The CLI accepts comma-separated or JSON-array values for `tags` and `current_context`, plus JSON objects for `agent_context` and `query_options`. That keeps the bundle practical for agent runtimes that want a subprocess boundary instead of an in-memory import.",
+      "tags": ["cli", "entry-script", "answer-first", "portable"]
+    },
+    {
+      "id": "learn-workflow",
+      "title": "Learn workflow",
+      "body": "Use `GET /v1/learn/*?question=...` when the node is known but the relevant section is not. Follow `answer_nodes[*].routes.learn`, `best_match.routes.learn`, or a `learn_first[*].routes.learn` entry from the earlier discovery call so the agent lands on the right section before deciding whether to execute or bundle anything.",
+      "tags": ["learn", "question", "relevant-sections"]
+    },
+    {
+      "id": "inspection-workflow",
+      "title": "Inspection workflow",
+      "body": "Use `search` with `mode=learn` when recall matters more than a single recommendation. Use `skill` to inspect `knowledge`, `execution`, and canonical `routes`. Use `alias` to turn human phrasing into a canonical URI, `graph` to inspect nearby nodes, and `backlinks` to see what already points at the topic. This is the workflow that makes Dojo's knowledge layer practical when ranking is ambiguous.",
+      "tags": ["search", "graph", "alias", "backlinks", "inspection"]
+    },
+    {
+      "id": "bundle-workflow",
+      "title": "Bundle workflow",
+      "body": "Call `GET /v1/bundle/dojo/skill` or the query helper's `bundle` operation when you need the full portable package. The response includes `entrypoints.manifest`, `entrypoints.skill_md`, agent metadata, references, scripts, and tests when present. This is the proof point for Dojo's promise that any agent can fetch executable skills and knowledge with full context.",
+      "tags": ["bundle", "portable", "skill-package", "agent-skills"]
+    },
+    {
+      "id": "agent-skills-package",
+      "title": "Agent Skills package shape",
+      "body": "Dojo's `node.json` drives graph semantics, but the exported package also follows the external Agent Skills layout centered on `SKILL.md`. That package shape is what lets another runtime reuse the same instructions, references, scripts, and agent metadata after a `bundle` request. The package now also exposes a direct CLI entrypoint through `scripts/use-dojo-skill.js`, which lowers the integration cost for agents that execute tools through subprocesses.",
+      "tags": ["agent-skills", "package", "skill-md", "node-json", "cli"]
+    }
+  ],
+  "links": [
+    { "uri": "dojo/api#discovery-routes", "context": "Grouped discovery and targeted search routes" },
+    { "uri": "dojo/api#knowledge-routes", "context": "Knowledge-layer routes for learn, graph, backlinks, and alias" },
+    { "uri": "dojo/api#agent-routes", "context": "Answer-first and do-first agent helper routes" },
+    { "uri": "dojo/api#bundle-route", "context": "Portable skill bundle export" },
+    { "uri": "dojo/api/query#discover-and-bundle", "context": "Scriptable wrapper for discover and bundle" },
+    { "uri": "dojo/knowledge#learn-and-graph-endpoints", "context": "Knowledge-layer read flows" },
+    { "uri": "dojo/spec#knowledge-fields", "context": "Why the portable skill carries rich context" },
+    { "uri": "dojo/spec#file-layout", "context": "How `node.json` and `SKILL.md` live together in one package" }
+  ],
+  "related": [
+    { "uri": "dojo/api", "relation": "implements", "note": "This skill packages the API for external agent reuse" },
+    { "uri": "dojo/api/query", "relation": "see-also", "note": "The generic query helper covers the same route map" },
+    { "uri": "dojo/knowledge", "relation": "see-also", "note": "The knowledge node explains the learn-side fields this skill relies on" },
+    { "uri": "dojo/spec", "relation": "see-also", "note": "The spec explains how Dojo `node.json` coexists with the bundled Agent Skills files" }
+  ],
+  "depends": [
+    { "uri": "dojo/api", "optional": false, "reason": "This skill is an operational package for the API routes" },
+    { "uri": "dojo/api/query", "optional": true, "reason": "The generic query helper covers the same route map" },
+    { "uri": "dojo/knowledge", "optional": true, "reason": "Understanding learn payloads helps agents choose reading paths" }
+  ],
+  "install": "dojo install dojo/skill",
+  "scripts": [
+    {
+      "id": "use-dojo-skill",
+      "name": "Use Dojo Skill",
+      "description": "Find information in Dojo from JavaScript or CLI, inspect graph context, fetch bundles, or proxy query operations",
+      "lang": "javascript",
+      "runtime": "node>=18",
+      "entry": "./scripts/use-dojo-skill.js",
+      "packages": []
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "operation": {
+          "type": "string",
+          "enum": ["index", "resolve", "discover", "search", "skill", "bundle", "tree", "learn", "backlinks", "graph", "alias", "ecosystems", "query", "agent_ask", "agent_learn"]
+        },
+        "base_url": { "type": "string" },
+        "need": { "type": "string" },
+        "q": { "type": "string" },
+        "message": { "type": "string" },
+        "uri": { "type": "string" },
+        "alias": { "type": "string" },
+        "ecosystem": { "type": "string" },
+        "eco": { "type": "string" },
+        "type": { "type": "string" },
+        "tags": {
+          "oneOf": [
+            { "type": "string" },
+            { "type": "array", "items": { "type": "string" } }
+          ]
+        },
+        "mode": { "type": "string" },
+        "executable": { "type": ["boolean", "string"] },
+        "limit": { "type": ["integer", "string"] },
+        "offset": { "type": ["integer", "string"] },
+        "question": { "type": "string" },
+        "section": { "type": "string" },
+        "depth": { "type": ["integer", "string"] },
+        "current_context": { "type": "array", "items": { "type": "string" } },
+        "agent_context": { "type": "object" },
+        "query_options": { "type": "object" }
+      },
+      "required": ["operation"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "status": { "type": "integer" },
+        "method": { "type": "string" },
+        "url": { "type": "string" },
+        "data": { "type": "object" }
+      }
+    }
+  },
+  "frontmatter": {
+    "created": "2026-04-10",
+    "updated": "2026-04-11",
+    "author": "dojo-community",
+    "audience": "integrators and agent authors",
+    "estimated_reading_time": "5 min",
+    "prerequisites": ["dojo/api"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "more": {
+    "docs": "https://github.com/theslashdojo/dojo/tree/main/nodes/dojo/skill",
+    "api": "https://github.com/theslashdojo/dojo/blob/main/server/src/server.js",
+    "tests": "https://github.com/theslashdojo/dojo/blob/main/nodes/dojo/skill/tests/use-dojo-skill.test.js",
+    "agent_skills_spec": "https://github.com/agentskills/agentskills/blob/main/docs/specification.mdx",
+    "repo": "https://github.com/theslashdojo/dojo"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://github.com/theslashdojo/dojo",
+  "created": "2026-04-10T00:00:00Z",
+  "updated": "2026-04-11T00:00:00Z",
+  "status": "verified"
+}

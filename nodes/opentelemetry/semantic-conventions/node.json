@@ -1,0 +1,150 @@
+{
+  "name": "semantic-conventions",
+  "version": "1.0.0",
+  "uri": "opentelemetry/semantic-conventions",
+  "type": "standard",
+  "context": "Use OpenTelemetry semantic conventions for stable service, HTTP, database, cloud, and error attributes.",
+  "info": "Semantic conventions define common attribute names, span names, metric names, event names, and resource attributes so telemetry from many languages and services can be queried consistently. Agents use this node before naming a span, metric, log field, or resource attribute. The goal is portability and low-cardinality consistency: use standard attributes like `service.name`, `service.version`, `deployment.environment.name`, `http.request.method`, `url.path`, `db.system.name`, and `error.type` before inventing custom names.",
+  "parent": "opentelemetry",
+  "tags": [
+    "semantic-conventions",
+    "semconv",
+    "attributes",
+    "resource",
+    "service-name",
+    "http",
+    "database",
+    "error-type",
+    "cardinality"
+  ],
+  "aliases": [
+    "otel semconv",
+    "semantic conventions",
+    "opentelemetry attributes",
+    "service.name",
+    "service version",
+    "deployment environment",
+    "http attributes",
+    "db attributes",
+    "span attributes"
+  ],
+  "triggers": [
+    "what should i name this span attribute",
+    "set service name",
+    "standardize telemetry attributes",
+    "use semantic conventions",
+    "fix high cardinality attributes",
+    "name http spans",
+    "add resource attributes",
+    "record errors in spans"
+  ],
+  "body": "# Semantic Conventions\n\nSemantic conventions are the shared vocabulary for OpenTelemetry. They keep telemetry portable across SDKs and backends. Before adding a custom attribute, check whether a stable convention already exists.\n\n## Resource Attributes\n\nResource attributes describe the entity producing telemetry. They should be present on every signal from the service.\n\n```bash\nexport OTEL_SERVICE_NAME=checkout-api\nexport OTEL_RESOURCE_ATTRIBUTES=service.version=1.7.3,deployment.environment.name=production,cloud.region=us-east-1,k8s.namespace.name=payments\n```\n\nCommon resource attributes:\n\n| Attribute | Meaning |\n| --- | --- |\n| `service.name` | Logical service name, required for useful traces |\n| `service.version` | Deployed service version or git SHA |\n| `service.namespace` | Namespace when service names are not globally unique |\n| `deployment.environment.name` | `production`, `staging`, `dev`, or equivalent |\n| `cloud.provider` / `cloud.region` | Cloud placement |\n| `k8s.cluster.name` / `k8s.namespace.name` | Kubernetes placement |\n\n## HTTP Span Attributes\n\n```text\nhttp.request.method = GET\nurl.path = /users/123\nurl.scheme = https\nhttp.route = /users/:id\nhttp.response.status_code = 200\nserver.address = api.example.com\n```\n\nUse `http.route` for route templates and `url.path` for the concrete path only when needed. Avoid putting query strings, raw IDs, emails, or tokens into attributes unless there is an explicit privacy review.\n\n## Error Attributes\n\nUse span status and `error.type` to describe failures. Keep `error.type` low-cardinality inside one instrumentation library when possible. Do not create one value per message or stack trace.\n\n```javascript\nspan.recordException(error);\nspan.setStatus({ code: SpanStatusCode.ERROR, message: error.message });\nspan.setAttribute('error.type', error.name || 'Error');\n```\n\n## Custom Attributes\n\nUse custom attributes only when standard ones do not exist. Prefix internal attributes with a stable namespace such as `acme.checkout.cart_size`. Use lowercase dotted names. Avoid labels with unbounded values: user IDs, request IDs, UUIDs, full URLs, emails, and raw SQL strings are common cardinality traps.",
+  "sections": [
+    {
+      "id": "resources",
+      "title": "Resource identity",
+      "body": "Set `service.name` for every process. Add `service.version` for release correlation and `deployment.environment.name` for production/staging separation. Prefer env vars (`OTEL_SERVICE_NAME`, `OTEL_RESOURCE_ATTRIBUTES`) for deployment-specific values so the same artifact can run in multiple environments.",
+      "tags": [
+        "resource",
+        "service-name",
+        "service-version",
+        "environment"
+      ]
+    },
+    {
+      "id": "http",
+      "title": "HTTP conventions",
+      "body": "For HTTP spans, use attributes such as `http.request.method`, `url.path`, `url.scheme`, `server.address`, `server.port`, `http.response.status_code`, and `http.route`. Use route templates for names and aggregation. If the request method is unknown to instrumentation, the convention uses `_OTHER` rather than free-form values.",
+      "tags": [
+        "http",
+        "route",
+        "method",
+        "status-code"
+      ]
+    },
+    {
+      "id": "cardinality",
+      "title": "Cardinality control",
+      "body": "Every attribute can become a grouping key. Bounded attributes like method, status code, environment, and route are good. Unbounded attributes like request IDs, user IDs, object IDs, full URLs, SQL text, and exception messages are risky. High cardinality damages [[prometheus/storage]], trace search, and billing.",
+      "tags": [
+        "cardinality",
+        "labels",
+        "metrics",
+        "cost"
+      ]
+    },
+    {
+      "id": "custom-names",
+      "title": "Custom names",
+      "body": "When no convention exists, choose a dotted namespace owned by the project, such as `acme.checkout.cart_size`. Keep names stable, lowercase, and descriptive. Do not encode units in values; put units in metric names or instrument definitions where the SDK supports it.",
+      "tags": [
+        "custom-attributes",
+        "naming",
+        "namespace"
+      ]
+    }
+  ],
+  "links": [
+    {
+      "uri": "opentelemetry/nodejs",
+      "context": "Use semantic convention constants in JavaScript instrumentation"
+    },
+    {
+      "uri": "opentelemetry/signals",
+      "context": "Apply conventions to traces, metrics, logs, and resources"
+    },
+    {
+      "uri": "opentelemetry/sampling",
+      "context": "Some attributes must be present at span creation time for sampling decisions"
+    },
+    {
+      "uri": "prometheus/storage",
+      "context": "Cardinality mistakes are especially expensive in metrics storage"
+    },
+    {
+      "uri": "sentry/config",
+      "context": "Release and environment naming should align with observability attributes"
+    }
+  ],
+  "related": [
+    {
+      "uri": "opentelemetry/signals",
+      "relation": "prerequisite",
+      "note": "Semantic conventions are applied to each telemetry signal"
+    },
+    {
+      "uri": "prometheus/storage",
+      "relation": "see-also",
+      "note": "Metric attribute cardinality maps directly to time-series cardinality"
+    },
+    {
+      "uri": "sentry",
+      "relation": "see-also",
+      "note": "Sentry release and environment concepts should match OpenTelemetry resources"
+    }
+  ],
+  "more": {
+    "docs": "https://opentelemetry.io/docs/specs/semconv/",
+    "resource": "https://opentelemetry.io/docs/specs/semconv/resource/",
+    "service": "https://opentelemetry.io/docs/specs/semconv/resource/service/",
+    "http": "https://opentelemetry.io/docs/specs/semconv/http/http-spans/",
+    "naming": "https://opentelemetry.io/docs/specs/semconv/general/attribute-naming/"
+  },
+  "frontmatter": {
+    "created": "2026-04-15",
+    "updated": "2026-04-15",
+    "author": "dojo-community",
+    "audience": "ai-agents, developers, observability-engineers",
+    "estimated_reading_time": "6 min",
+    "prerequisites": [
+      "opentelemetry/signals"
+    ],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-15T00:00:00Z",
+  "updated": "2026-04-15T00:00:00Z",
+  "status": "published"
+}

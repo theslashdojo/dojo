@@ -1,0 +1,131 @@
+{
+  "name": "otlp",
+  "version": "1.0.0",
+  "uri": "opentelemetry/otlp",
+  "type": "standard",
+  "context": "Configure the OpenTelemetry Protocol for traces, metrics, and logs over gRPC or HTTP.",
+  "info": "OTLP is the standard OpenTelemetry wire protocol for exporting telemetry from SDKs to Collectors or backends. Agents use this node to set endpoints, choose transport, configure headers and TLS, understand default ports, and debug why an SDK sends to the wrong path. OTLP matters because it is the compatibility boundary: code can emit once and vendors can change behind the Collector or exporter configuration.",
+  "parent": "opentelemetry",
+  "tags": [
+    "otlp",
+    "protocol",
+    "grpc",
+    "http-protobuf",
+    "http-json",
+    "exporter",
+    "endpoint",
+    "headers",
+    "tls"
+  ],
+  "aliases": [
+    "otlp",
+    "open telemetry protocol",
+    "opentelemetry protocol",
+    "otel exporter",
+    "otlp grpc",
+    "otlp http",
+    "4317",
+    "4318",
+    "otel exporter endpoint"
+  ],
+  "triggers": [
+    "configure otlp",
+    "set otel exporter endpoint",
+    "send traces to collector",
+    "use port 4317 or 4318",
+    "why is otlp adding v1 traces",
+    "add otlp headers",
+    "configure otlp tls",
+    "choose grpc or http protobuf"
+  ],
+  "body": "# OTLP\n\nOTLP is the OpenTelemetry Protocol used by SDK exporters and Collectors. It supports traces, metrics, and logs. The two common transports are OTLP/gRPC on port `4317` and OTLP/HTTP on port `4318`.\n\n## Endpoint Rules\n\n```bash\n# One HTTP endpoint for all signals. SDKs append signal paths.\nexport OTEL_EXPORTER_OTLP_ENDPOINT=http://collector:4318\n# traces -> http://collector:4318/v1/traces\n# metrics -> http://collector:4318/v1/metrics\n# logs -> http://collector:4318/v1/logs\n\n# Signal-specific endpoint is used as-is.\nexport OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=http://collector:4318/v1/traces\nexport OTEL_EXPORTER_OTLP_METRICS_ENDPOINT=https://metrics.example.com/v1/metrics\n```\n\nWhen using the general `OTEL_EXPORTER_OTLP_ENDPOINT` with OTLP/HTTP, SDKs build per-signal paths. When using `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT`, `OTEL_EXPORTER_OTLP_METRICS_ENDPOINT`, or `OTEL_EXPORTER_OTLP_LOGS_ENDPOINT`, provide the final URL yourself.\n\n## Transport\n\n```bash\nexport OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf\n# Other common values: grpc, http/json\n```\n\nUse `grpc` when the SDK and network support HTTP/2 cleanly. Use `http/protobuf` when proxies, serverless platforms, or edge networks make gRPC harder. Use `http/json` mainly for debugging or constrained interoperability.\n\n## Headers and Auth\n\n```bash\nexport OTEL_EXPORTER_OTLP_HEADERS=authorization=Bearer%20$OTEL_TOKEN,x-tenant=my-team\nexport OTEL_EXPORTER_OTLP_TIMEOUT=10000\nexport OTEL_EXPORTER_OTLP_COMPRESSION=gzip\n```\n\nHeader values are commonly URL-encoded in environment variables. Keep exporter tokens in secret stores, not source code or committed config.\n\n## Collector Receiver Example\n\n```yaml\nreceivers:\n  otlp:\n    protocols:\n      grpc:\n        endpoint: 0.0.0.0:4317\n      http:\n        endpoint: 0.0.0.0:4318\nservice:\n  pipelines:\n    traces:\n      receivers: [otlp]\n      processors: [batch]\n      exporters: [debug]\n```",
+  "sections": [
+    {
+      "id": "ports-and-paths",
+      "title": "Ports and paths",
+      "body": "OTLP/gRPC commonly listens on `4317`. OTLP/HTTP commonly listens on `4318`. For the general HTTP endpoint env var, exporters append `/v1/traces`, `/v1/metrics`, or `/v1/logs`; for signal-specific endpoint env vars, the URL is used as-is. This distinction explains many 404s and empty collectors.",
+      "tags": [
+        "ports",
+        "paths",
+        "4317",
+        "4318",
+        "endpoint"
+      ]
+    },
+    {
+      "id": "env-vars",
+      "title": "Environment variables",
+      "body": "`OTEL_EXPORTER_OTLP_ENDPOINT` sets the base endpoint. Signal-specific variants override it: `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT`, `OTEL_EXPORTER_OTLP_METRICS_ENDPOINT`, and `OTEL_EXPORTER_OTLP_LOGS_ENDPOINT`. `OTEL_EXPORTER_OTLP_PROTOCOL` chooses transport. `OTEL_EXPORTER_OTLP_HEADERS` carries auth or tenancy headers. `OTEL_EXPORTER_OTLP_CERTIFICATE`, `OTEL_EXPORTER_OTLP_CLIENT_KEY`, and `OTEL_EXPORTER_OTLP_CLIENT_CERTIFICATE` support TLS and mTLS where SDKs implement them.",
+      "tags": [
+        "environment",
+        "headers",
+        "protocol",
+        "tls",
+        "mtls"
+      ]
+    },
+    {
+      "id": "collector-boundary",
+      "title": "Collector boundary",
+      "body": "Point applications at [[opentelemetry/collector]] rather than every vendor endpoint when you need fan-out, redaction, batching, retries, or policy control. The app usually exports OTLP to the nearest collector; the collector then exports OTLP, Prometheus remote write, debug logs, or vendor-specific formats.",
+      "tags": [
+        "collector",
+        "fanout",
+        "batching",
+        "exporters"
+      ]
+    }
+  ],
+  "links": [
+    {
+      "uri": "opentelemetry/nodejs",
+      "context": "Node.js SDK exporters are usually configured through OTLP env vars"
+    },
+    {
+      "uri": "opentelemetry/collector",
+      "context": "Collector OTLP receiver accepts SDK telemetry"
+    },
+    {
+      "uri": "opentelemetry/troubleshooting",
+      "context": "Debug endpoint, protocol, and path mismatches"
+    },
+    {
+      "uri": "curl/request",
+      "context": "Manual HTTP checks for OTLP/HTTP endpoints and collector health"
+    }
+  ],
+  "related": [
+    {
+      "uri": "opentelemetry/collector",
+      "relation": "implements",
+      "note": "Collectors commonly expose OTLP receivers and OTLP exporters"
+    },
+    {
+      "uri": "opentelemetry/nodejs",
+      "relation": "see-also",
+      "note": "NodeSDK exporters use the same OTLP endpoint model"
+    }
+  ],
+  "more": {
+    "docs": "https://opentelemetry.io/docs/specs/otel/protocol/",
+    "exporter": "https://opentelemetry.io/docs/specs/otel/protocol/exporter/",
+    "sdk-config": "https://opentelemetry.io/docs/languages/sdk-configuration/otlp-exporter/"
+  },
+  "frontmatter": {
+    "created": "2026-04-15",
+    "updated": "2026-04-15",
+    "author": "dojo-community",
+    "audience": "ai-agents, backend-engineers, platform-engineers",
+    "estimated_reading_time": "5 min",
+    "prerequisites": [
+      "opentelemetry/signals"
+    ],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-15T00:00:00Z",
+  "updated": "2026-04-15T00:00:00Z",
+  "status": "published"
+}

@@ -1,0 +1,114 @@
+{
+  "name": "performance",
+  "version": "1.0.0",
+  "uri": "duckdb/performance",
+  "type": "context",
+  "content_type": "guide",
+  "context": "Tune DuckDB query performance, memory, temp spilling, threads, Parquet row groups, EXPLAIN, and profiling",
+  "info": "DuckDB is fast by default, but agents still need a disciplined path for slow scans, out-of-memory failures, remote object storage latency, and nondeterministic reports. This node covers measurement with `EXPLAIN`, `EXPLAIN ANALYZE`, `SUMMARIZE`, and profiling; workload settings such as `threads`, `memory_limit`, `temp_directory`, and `preserve_insertion_order`; and data-layout choices such as Parquet, row groups, partition pruning, projection, and early filters. Use it when [[duckdb/cli]] or [[duckdb/python]] queries are slow, spill unexpectedly, fail on large files, or need reproducible CI behavior.",
+  "parent": "duckdb",
+  "tags": [
+    "duckdb",
+    "performance",
+    "explain",
+    "profiling",
+    "memory",
+    "threads",
+    "parquet",
+    "row-groups",
+    "temp-directory",
+    "out-of-core"
+  ],
+  "aliases": [
+    "duckdb performance",
+    "duckdb tuning",
+    "duckdb explain",
+    "duckdb explain analyze",
+    "duckdb profiling",
+    "duckdb memory limit",
+    "duckdb out of memory",
+    "duckdb threads",
+    "duckdb temp directory",
+    "duckdb slow query"
+  ],
+  "triggers": [
+    "duckdb query is slow",
+    "duckdb out of memory",
+    "profile a duckdb query",
+    "explain duckdb query plan",
+    "set duckdb memory limit",
+    "limit duckdb threads",
+    "duckdb spilling to disk",
+    "optimize parquet scans",
+    "speed up duckdb csv import",
+    "large dataset does not fit memory",
+    "make duckdb report deterministic"
+  ],
+  "body": "# DuckDB Performance\n\nStart by measuring. Do not tune blind.\n\n```sql\nEXPLAIN SELECT * FROM events WHERE status = 'paid';\nEXPLAIN ANALYZE SELECT status, count() FROM events GROUP BY status;\nSUMMARIZE SELECT * FROM events;\n```\n\n`EXPLAIN` shows the physical plan without running the query. `EXPLAIN ANALYZE` executes it and annotates operators with runtime measurements. `SUMMARIZE` is useful for schema and distribution inspection before choosing casts or filters.\n\n## Core Settings\n\n```sql\nSET threads = 4;\nSET memory_limit = '8GB';\nSET temp_directory = '/tmp/duckdb-spill';\nSET preserve_insertion_order = false;\n```\n\n- `threads`: limit or increase worker parallelism. Too many threads can hurt on hyperthreaded or shared hosts.\n- `memory_limit`: cap memory use for the DuckDB process.\n- `temp_directory`: enables spill space for larger-than-memory intermediates.\n- `preserve_insertion_order = false`: allows DuckDB to reorder unordered results and can reduce memory use during large imports/exports.\n\n## Query Shape\n\n```sql\n-- Prefer projection and filters near the scan\nSELECT customer_id, amount, created_at\nFROM read_parquet('events/*.parquet')\nWHERE created_at >= DATE '2026-01-01'\n  AND status = 'paid';\n\n-- Avoid SELECT * in repeated production jobs\nCREATE OR REPLACE TABLE paid_events AS\nSELECT event_id, customer_id, amount, created_at\nFROM read_parquet('events/*.parquet')\nWHERE status = 'paid';\n```\n\n## Parquet and Row Groups\n\nParquet is usually the best file format for repeated analytics because DuckDB can skip columns and push filters into scans. For large datasets:\n\n- Prefer Parquet over CSV/JSON after initial ingestion.\n- Keep row groups large enough for parallel scans but not so large that pruning is ineffective.\n- Use partitioned paths for high-cardinality time or tenant filters only when downstream tools benefit.\n- Use `hive_partitioning = true` when partition columns are encoded in paths.\n\n## Out-of-Core Workloads\n\nDuckDB can process many workloads larger than memory, but not every operator spills equally. If a query fails:\n\n1. Set a temp directory with enough disk space.\n2. Reduce selected columns and filter earlier.\n3. Break the query into persisted intermediate tables.\n4. Disable insertion-order preservation when output order is not required.\n5. Convert CSV/JSON to Parquet before repeated analysis.\n\n## Determinism and Tests\n\nPerformance settings can allow unordered results to change order. Stable tests and reports must include `ORDER BY`. Use [[duckdb/sql#deterministic-reports]] for report rules.",
+  "sections": [
+    {
+      "id": "explain",
+      "title": "EXPLAIN and EXPLAIN ANALYZE",
+      "body": "`EXPLAIN` displays the physical plan without executing the query. `EXPLAIN ANALYZE` executes the query and reports operator runtime and cardinality information. Use them before changing settings so the bottleneck is visible.",
+      "tags": ["explain", "explain-analyze", "plan", "profile"]
+    },
+    {
+      "id": "memory-and-temp",
+      "title": "Memory and temporary spill",
+      "body": "Set `memory_limit` to control process memory and `temp_directory` to provide disk space for spills. For large imports or exports, `SET preserve_insertion_order = false` can reduce memory use when output order is not semantically required.",
+      "tags": ["memory-limit", "temp-directory", "spill", "oom", "preserve-insertion-order"]
+    },
+    {
+      "id": "parallelism",
+      "title": "Parallelism and threads",
+      "body": "DuckDB parallelizes scan and execution work across threads. Set `threads` when a shared runner is overloaded, hyperthreading hurts, or deterministic resource use matters in CI. More threads are not always faster.",
+      "tags": ["threads", "parallelism", "cpu", "ci"]
+    },
+    {
+      "id": "parquet-and-row-groups",
+      "title": "Parquet and row groups",
+      "body": "Parquet enables column pruning and predicate pushdown. Row groups influence parallelism and pruning. For repeated analytics, convert raw CSV/JSON to Parquet once and query the Parquet files. For object storage, keep files large enough to avoid request overhead but small enough for parallelism and retry practicality.",
+      "tags": ["parquet", "row-groups", "predicate-pushdown", "column-pruning"]
+    },
+    {
+      "id": "query-shape",
+      "title": "Query shape",
+      "body": "Select only needed columns, filter early, avoid unnecessary `ORDER BY`, and persist expensive intermediate results when the same computation is reused. Use `CREATE TABLE AS SELECT` checkpoints for multi-step research pipelines that otherwise recompute large scans.",
+      "tags": ["projection", "filters", "ctas", "checkpoints"]
+    }
+  ],
+  "links": [
+    { "uri": "duckdb/sql#deterministic-reports", "context": "Add ORDER BY for stable results" },
+    { "uri": "duckdb/files#parquet", "context": "Use Parquet for repeated analytical scans" },
+    { "uri": "duckdb/cli", "context": "Apply settings in SQL files run by CLI scripts" },
+    { "uri": "duckdb/python", "context": "Apply settings and stream large results from Python" },
+    { "uri": "postgres/performance", "context": "Compare database performance workflows and EXPLAIN habits" }
+  ],
+  "related": [
+    { "uri": "duckdb/files", "relation": "prerequisite", "note": "File format and layout often dominate DuckDB performance" },
+    { "uri": "database/indexing", "relation": "alternative", "note": "DuckDB analytics often benefit more from columnar layout and pruning than traditional OLTP indexing" },
+    { "uri": "postgres/performance", "relation": "similar", "note": "EXPLAIN discipline transfers, but DuckDB's embedded OLAP tuning knobs differ" }
+  ],
+  "more": {
+    "docs": "https://duckdb.org/docs/stable/guides/performance/how_to_tune_workloads",
+    "explain": "https://duckdb.org/docs/stable/guides/meta/explain",
+    "explain-analyze": "https://duckdb.org/docs/stable/guides/meta/explain_analyze",
+    "configuration": "https://duckdb.org/docs/stable/configuration/overview",
+    "profiling": "https://duckdb.org/docs/stable/dev/profiling"
+  },
+  "frontmatter": {
+    "created": "2026-04-15",
+    "updated": "2026-04-15",
+    "author": "dojo-community",
+    "audience": "AI agents, data engineers, performance engineers",
+    "estimated_reading_time": "6 min",
+    "prerequisites": ["duckdb", "duckdb/sql", "duckdb/files"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-15T00:00:00Z",
+  "updated": "2026-04-15T00:00:00Z",
+  "status": "published"
+}

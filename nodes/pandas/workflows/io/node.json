@@ -1,0 +1,151 @@
+{
+  "name": "io",
+  "version": "1.0.0",
+  "uri": "pandas/workflows/io",
+  "type": "sub",
+  "context": "Read, profile, and write tabular files with pandas: CSV, TSV, JSON, JSONL, Excel, Parquet, SQL, and typed exports",
+  "info": "Pandas IO is the entry and exit point for most autonomous data tasks. Agents use `read_csv`, `read_excel`, `read_json`, `read_parquet`, and SQL readers to create DataFrames, then write results with `to_csv`, `to_parquet`, `to_json`, `to_excel`, or `to_sql`. This node teaches format choice, dtype control, date parsing, column pruning, indexes, compression, and reproducible exports. It exposes the shared [[pandas/workflows]] scripts for dataset profiling and conversion.",
+  "parent": "pandas/workflows",
+  "tags": [
+    "pandas",
+    "io",
+    "read-csv",
+    "read-excel",
+    "read-json",
+    "read-parquet",
+    "to-csv",
+    "to-parquet",
+    "sql",
+    "file-conversion"
+  ],
+  "aliases": [
+    "pandas read_csv",
+    "pd.read_csv",
+    "pandas read_excel",
+    "pandas read_parquet",
+    "pandas to_csv",
+    "pandas to_parquet",
+    "csv to dataframe",
+    "excel to dataframe",
+    "jsonl to dataframe",
+    "csv to parquet"
+  ],
+  "triggers": [
+    "load a csv into pandas",
+    "read an excel file with pandas",
+    "convert csv to parquet",
+    "write dataframe to csv",
+    "read json lines",
+    "profile this file",
+    "load only these columns",
+    "preserve dtypes when exporting",
+    "parse dates while reading csv"
+  ],
+  "body": "# Pandas IO\n\nUse IO deliberately: the first read determines dtypes, missing markers, dates, memory use, and whether downstream joins and aggregations behave correctly.\n\n## Read examples\n\n```python\nimport pandas as pd\n\norders = pd.read_csv(\n    'orders.csv',\n    usecols=['order_id', 'user_id', 'amount', 'created_at'],\n    dtype={'order_id': 'string', 'user_id': 'string'},\n    parse_dates=['created_at'],\n)\n\nevents = pd.read_json('events.jsonl', lines=True)\nlookup = pd.read_excel('lookup.xlsx', sheet_name='states')\nparquet = pd.read_parquet('events.parquet', columns=['user_id', 'event', 'ts'])\n```\n\n## Write examples\n\n```python\norders.to_parquet('orders.parquet', index=False)\norders.to_csv('orders.csv', index=False)\norders.to_json('orders.jsonl', orient='records', lines=True, date_format='iso')\n```\n\nPrefer Parquet for internal artifacts because it preserves types and supports column pruning. Pass `index=False` unless the index is meaningful data.\n\n## CLI scripts\n\n```bash\npython nodes/pandas/workflows/scripts/profile_dataset.py data/orders.csv --parse-dates created_at\npython nodes/pandas/workflows/scripts/convert_dataset.py data/orders.csv data/orders.parquet --parse-dates created_at\n```\n\nUse [[pandas/workflows/clean]] immediately after reading if dtypes, missing values, or duplicate rows look suspicious.\n",
+  "sections": [
+    {
+      "id": "format-choice",
+      "title": "Format choice",
+      "body": "Use CSV for interchange, not typed internal storage. Use JSONL for record streams. Use Excel when the source is a workbook, but convert to Parquet after ingestion. Use Parquet for intermediate and analytical artifacts because it stores column types, is compact, and supports reading selected columns.",
+      "tags": ["csv", "jsonl", "excel", "parquet", "artifact"]
+    },
+    {
+      "id": "read-controls",
+      "title": "Read controls",
+      "body": "Important read controls are `usecols` for column pruning, `dtype` for explicit schema, `parse_dates` or `pd.to_datetime` for timestamps, `na_values` and `keep_default_na` for missing markers, `nrows` for sampling, `chunksize` for streaming, `sheet_name` for Excel, and `columns` for Parquet.",
+      "tags": ["usecols", "dtype", "parse-dates", "chunksize", "sheet-name"]
+    },
+    {
+      "id": "exports",
+      "title": "Exports",
+      "body": "Use `to_parquet(..., index=False)` for typed data files, `to_csv(..., index=False)` for human-readable output, `to_json(..., orient='records', lines=True)` for JSONL records, and `to_excel(..., index=False)` for workbook handoff. Avoid writing incidental indexes that create extra unnamed columns on reload.",
+      "tags": ["to-parquet", "to-csv", "to-json", "to-excel", "index"]
+    },
+    {
+      "id": "sql-io",
+      "title": "SQL IO",
+      "body": "Use `read_sql_query` for database results and `to_sql` for loading DataFrames through SQLAlchemy-compatible connections. For local analytical SQL over files, [[duckdb]] is often a better execution engine and can exchange DataFrames with pandas.",
+      "tags": ["read-sql", "to-sql", "sqlalchemy", "duckdb"]
+    }
+  ],
+  "links": [
+    { "uri": "pandas/workflows/io#read-controls", "context": "Section on dtype, date, column, and chunking read controls" },
+    { "uri": "pandas/workflows", "context": "Parent skill and shared scripts" },
+    { "uri": "pandas/workflows/clean", "context": "Clean and type-check imported data" },
+    { "uri": "pandas/workflows/performance", "context": "Use chunking, column pruning, and efficient dtypes" },
+    { "uri": "duckdb/files", "context": "SQL-first file reads and conversions" },
+    { "uri": "database/sql", "context": "SQL reads and writes through database connections" }
+  ],
+  "related": [
+    { "uri": "pandas/workflows", "relation": "extends", "note": "IO is one executable sub-workflow of the pandas skill" },
+    { "uri": "duckdb/files", "relation": "alternative", "note": "DuckDB can query CSV, JSON, and Parquet directly with SQL" },
+    { "uri": "python/pip", "relation": "prerequisite", "note": "Optional pandas IO engines are installed as Python packages" }
+  ],
+  "scripts": [
+    {
+      "id": "profile-dataset",
+      "name": "Profile Dataset",
+      "description": "Read a tabular file and emit JSON profile data for dtypes, missingness, duplicates, memory, samples, and top values",
+      "lang": "python",
+      "runtime": "python>=3.10",
+      "entry": "../scripts/profile_dataset.py",
+      "packages": ["pandas", "pyarrow", "openpyxl"]
+    },
+    {
+      "id": "convert-dataset",
+      "name": "Convert Dataset",
+      "description": "Convert between CSV, TSV, JSON, JSONL, Excel, and Parquet with optional date parsing and column selection",
+      "lang": "python",
+      "runtime": "python>=3.10",
+      "entry": "../scripts/convert_dataset.py",
+      "packages": ["pandas", "pyarrow", "openpyxl"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "input_path": { "type": "string", "description": "Input data path" },
+        "output_path": { "type": "string", "description": "Optional converted output path" },
+        "format": { "type": "string", "enum": ["auto", "csv", "tsv", "json", "jsonl", "excel", "parquet"] },
+        "columns": { "type": "array", "items": { "type": "string" } },
+        "parse_dates": { "type": "array", "items": { "type": "string" } }
+      },
+      "required": ["input_path"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "rows": { "type": "integer" },
+        "columns": { "type": "integer" },
+        "dtypes": { "type": "object" },
+        "output_path": { "type": "string" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "pandas/workflows", "reason": "Uses the shared pandas workflow scripts" }
+  ],
+  "more": {
+    "docs": "https://pandas.pydata.org/docs/user_guide/io.html",
+    "read-csv": "https://pandas.pydata.org/docs/reference/api/pandas.read_csv.html",
+    "read-parquet": "https://pandas.pydata.org/docs/reference/api/pandas.read_parquet.html",
+    "to-parquet": "https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.to_parquet.html"
+  },
+  "frontmatter": {
+    "created": "2026-04-15",
+    "updated": "2026-04-15",
+    "author": "dojo-community",
+    "audience": "AI agents, data engineers",
+    "estimated_reading_time": "5 min",
+    "prerequisites": ["pandas/workflows"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://github.com/pandas-dev/pandas",
+  "created": "2026-04-15T00:00:00Z",
+  "updated": "2026-04-15T00:00:00Z",
+  "status": "published"
+}

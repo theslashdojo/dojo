@@ -1,0 +1,81 @@
+{
+  "name": "ci",
+  "version": "1.0.0",
+  "uri": "playwright/ci",
+  "type": "context",
+  "context": "Run Playwright reliably in CI with browser installation, OS dependencies, workers, retries, webServer, caches, reports, and artifacts.",
+  "info": "Playwright CI requires more than running the test command. Runners must install npm dependencies, install browser binaries and Linux dependencies, start or reuse the application server, configure workers and retries for constrained environments, provide secrets for auth, and upload reports, traces, screenshots, and videos. This context covers GitHub Actions defaults, package-manager caches, browser caches, container images, sharding, artifact retention, and common CI-only failures. Agents use it when adding Playwright to a pipeline or debugging browser tests that pass locally but fail remotely.",
+  "parent": "playwright",
+  "content_type": "guide",
+  "tags": ["playwright", "ci", "github-actions", "browsers", "with-deps", "workers", "retries", "artifacts", "sharding"],
+  "aliases": ["playwright ci", "playwright github actions", "npx playwright install --with-deps", "playwright report artifact", "run e2e in ci", "playwright docker"],
+  "triggers": ["run playwright in ci", "github actions playwright", "install browsers in ci", "playwright fails only in ci", "upload playwright report", "shard playwright tests", "cache playwright browsers"],
+  "body": "# Playwright CI\n\nA reliable CI job installs packages, installs browsers, runs tests with CI-appropriate retries/workers, and uploads artifacts.\n\n```yaml\nname: Playwright\non: [push, pull_request]\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n      - uses: actions/setup-node@v4\n        with:\n          node-version: 22\n          cache: npm\n      - run: npm ci\n      - run: npx playwright install --with-deps\n      - run: npx playwright test\n      - uses: actions/upload-artifact@v4\n        if: ${{ !cancelled() }}\n        with:\n          name: playwright-report\n          path: playwright-report/\n          retention-days: 30\n```\n\nIn config, use `forbidOnly: !!process.env.CI`, `retries: process.env.CI ? 2 : 0`, `workers: process.env.CI ? 1 : undefined`, and `trace: 'on-first-retry'`.",
+  "sections": [
+    {
+      "id": "install",
+      "title": "Install phase",
+      "body": "Run `npm ci`, `pnpm install --frozen-lockfile`, or the project equivalent. Then run `npx playwright install --with-deps` so browser binaries and Linux dependencies are available. If using official Playwright container images, dependencies may already exist, but package install and browser-version compatibility still matter.",
+      "tags": ["install", "with-deps", "browsers", "container"]
+    },
+    {
+      "id": "server",
+      "title": "Application server",
+      "body": "Use Playwright config `webServer` to start the app before tests and wait for a URL. Set `reuseExistingServer: !process.env.CI` so local runs reuse dev servers but CI starts a clean instance. Ensure environment variables, database migrations, seed data, and ports are deterministic.",
+      "tags": ["webServer", "ports", "env", "database", "seed"]
+    },
+    {
+      "id": "parallelism",
+      "title": "Parallelism and sharding",
+      "body": "CI runners often have fewer CPU and memory resources than developer machines. Reduce workers with `workers: process.env.CI ? 1 : undefined` for stability, then increase once the suite is clean. For large suites, use Playwright sharding across jobs and merge reports after the run.",
+      "tags": ["workers", "retries", "sharding", "resources"]
+    },
+    {
+      "id": "artifacts",
+      "title": "Artifacts",
+      "body": "Upload `playwright-report/` and `test-results/` when jobs fail or are cancelled. Traces, videos, screenshots, and HTML reports are the evidence needed to debug remote browser failures. Keep artifact retention finite and avoid uploading authentication state or private downloaded files.",
+      "tags": ["report", "trace", "video", "screenshots", "retention"]
+    },
+    {
+      "id": "common-failures",
+      "title": "Common failures",
+      "body": "Missing browser executable means `npx playwright install` did not run or cache paths mismatch. Font or pixel diffs usually mean different OS/browser/font settings. Timeouts can indicate the app server was not ready or CI resources are too constrained. Auth failures usually mean secrets are absent, expired, or not scoped to pull-request events.",
+      "tags": ["troubleshooting", "fonts", "timeouts", "auth", "cache"]
+    }
+  ],
+  "links": [
+    { "uri": "playwright/install", "context": "Install browser binaries and Linux dependencies correctly" },
+    { "uri": "playwright/trace-debugging", "context": "Collect reports and traces for CI failures" },
+    { "uri": "playwright/auth", "context": "Inject credentials and storage state safely" },
+    { "uri": "github/actions", "context": "Implement Playwright jobs in GitHub Actions" },
+    { "uri": "docker/images", "context": "Build or use container images with browser dependencies" },
+    { "uri": "testing/ci", "context": "General CI testing strategies" }
+  ],
+  "related": [
+    { "uri": "github/actions", "relation": "implements", "note": "GitHub Actions is a common Playwright CI execution environment." },
+    { "uri": "docker/images", "relation": "see-also", "note": "Docker images can stabilize browser dependencies and fonts." },
+    { "uri": "testing/ci", "relation": "see-also", "note": "General test pipeline concerns apply to browser tests." }
+  ],
+  "more": {
+    "docs": "https://playwright.dev/docs/ci",
+    "browsers": "https://playwright.dev/docs/browsers",
+    "parallelism": "https://playwright.dev/docs/test-parallel",
+    "sharding": "https://playwright.dev/docs/test-sharding",
+    "reporters": "https://playwright.dev/docs/test-reporters"
+  },
+  "frontmatter": {
+    "created": "2026-04-15",
+    "updated": "2026-04-15",
+    "author": "dojo-community",
+    "audience": "developers, CI maintainers, AI agents",
+    "estimated_reading_time": "8 min",
+    "prerequisites": ["playwright/install", "github/actions"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-15T00:00:00Z",
+  "updated": "2026-04-15T00:00:00Z",
+  "status": "published"
+}

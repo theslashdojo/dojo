@@ -1,0 +1,132 @@
+{
+  "name": "exporters",
+  "version": "1.0.0",
+  "uri": "prometheus/exporters",
+  "type": "context",
+  "content_type": "reference",
+  "context": "Choose and wire Prometheus exporters, multi-target probes, and service-discovery based scrape jobs.",
+  "info": "Prometheus depends on exporters and instrumented services to expose usable metrics. The exporter layer determines what gets scraped, how labels are attached, and whether target discovery is static, file-based, HTTP-based, or platform-native. Agents use this node when onboarding a new service, probing external endpoints, or debugging why a scrape job sees zero or too many targets.",
+  "parent": "prometheus",
+  "tags": [
+    "exporters",
+    "node-exporter",
+    "blackbox-exporter",
+    "service-discovery",
+    "scrape-jobs",
+    "file-sd",
+    "http-sd",
+    "relabeling"
+  ],
+  "aliases": [
+    "prometheus exporters",
+    "node exporter",
+    "blackbox exporter",
+    "prometheus service discovery",
+    "scrape target discovery"
+  ],
+  "triggers": [
+    "monitor a linux host with prometheus",
+    "probe an endpoint with blackbox exporter",
+    "discover targets from a file",
+    "prometheus http service discovery",
+    "which exporter should i use"
+  ],
+  "body": "# Exporters And Discovery\n\nExporters translate runtime state into a `/metrics` endpoint that Prometheus can scrape. Some are attached directly to the workload, while others follow a multi-target pattern and probe third-party endpoints on demand.\n\nThe most common first step is [[prometheus/config]] plus the Node Exporter:\n\n```yaml\nscrape_configs:\n  - job_name: node\n    static_configs:\n      - targets: ['server-a:9100', 'server-b:9100']\n```\n\nFor synthetic checks, the Blackbox Exporter uses relabeling to turn a target label into a probe parameter:\n\n```yaml\nscrape_configs:\n  - job_name: blackbox-http\n    metrics_path: /probe\n    params:\n      module: [http_2xx]\n    static_configs:\n      - targets: ['https://example.com']\n    relabel_configs:\n      - source_labels: [__address__]\n        target_label: __param_target\n      - source_labels: [__param_target]\n        target_label: instance\n      - target_label: __address__\n        replacement: blackbox-exporter:9115\n```\n\nDiscovery can be static, file-based, HTTP-based, or platform-native. `promtool check service-discovery` is the fastest way to confirm what a scrape job resolves to after relabeling, which is especially important when discovery returns many ephemeral targets.",
+  "sections": [
+    {
+      "id": "node-exporter",
+      "title": "Node Exporter",
+      "body": "The Node Exporter is the default choice for Linux host metrics such as CPU, filesystem, memory, and network stats. Prometheus provides an official guide for it because host monitoring is often the first operational use case. Use a dedicated job with stable instance labels so [[prometheus/query]] and [[prometheus/rules]] can build host-health alerts consistently.",
+      "tags": [
+        "node-exporter",
+        "host-metrics",
+        "linux",
+        "infrastructure"
+      ]
+    },
+    {
+      "id": "blackbox-pattern",
+      "title": "Multi-target exporter pattern",
+      "body": "Blackbox-style exporters probe a target passed in as a parameter rather than exposing metrics about themselves. This requires relabeling from `__address__` to `__param_target`, then replacing `__address__` with the exporter instance. Agents should check the final discovered labels with `promtool check service-discovery` before assuming probes are aimed at the right endpoint.",
+      "tags": [
+        "blackbox-exporter",
+        "multi-target",
+        "probe",
+        "relabeling"
+      ]
+    },
+    {
+      "id": "discovery",
+      "title": "File and HTTP service discovery",
+      "body": "File-based discovery is the simplest dynamic option when another system can write target files. HTTP service discovery is useful when a controller can serve JSON target groups on demand. Both feed into `scrape_configs`, and both can still be transformed by `relabel_configs` before scrape time. See [[prometheus/config#validation-reload]] for how to validate the resulting job behavior.",
+      "tags": [
+        "file-sd",
+        "http-sd",
+        "discovery",
+        "targets"
+      ]
+    }
+  ],
+  "links": [
+    {
+      "uri": "prometheus/config",
+      "context": "Wire exporters and discovery outputs into scrape jobs"
+    },
+    {
+      "uri": "prometheus/query",
+      "context": "Verify target health and scrape labels after deployment"
+    },
+    {
+      "uri": "prometheus/rules",
+      "context": "Turn exporter metrics into host and endpoint alerts"
+    },
+    {
+      "uri": "systemd/services",
+      "context": "Run node_exporter or blackbox_exporter as managed services"
+    },
+    {
+      "uri": "kubernetes/services",
+      "context": "Kubernetes services often front exporter endpoints for scraping"
+    }
+  ],
+  "related": [
+    {
+      "uri": "prometheus/config",
+      "relation": "prerequisite",
+      "note": "Exporters are only useful once scrape jobs and relabeling are configured"
+    },
+    {
+      "uri": "prometheus/query",
+      "relation": "see-also",
+      "note": "Use target and series inspection to confirm exporter rollout success"
+    },
+    {
+      "uri": "systemd/services",
+      "relation": "see-also",
+      "note": "Exporters commonly run as background services on hosts"
+    }
+  ],
+  "more": {
+    "docs": "https://prometheus.io/docs/instrumenting/exporters/",
+    "node-exporter-guide": "https://prometheus.io/docs/guides/node-exporter/",
+    "http-sd": "https://prometheus.io/docs/prometheus/latest/http_sd/"
+  },
+  "frontmatter": {
+    "created": "2026-04-12",
+    "updated": "2026-04-12",
+    "author": "dojo-community",
+    "audience": "ai-agents, sre, platform-engineers",
+    "estimated_reading_time": "4 min",
+    "prerequisites": [
+      "prometheus/config"
+    ],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://github.com/prometheus/prometheus",
+  "created": "2026-04-12T00:00:00Z",
+  "updated": "2026-04-12T00:00:00Z",
+  "status": "published"
+}

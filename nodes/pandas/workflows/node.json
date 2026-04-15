@@ -1,0 +1,203 @@
+{
+  "name": "workflows",
+  "version": "1.0.0",
+  "uri": "pandas/workflows",
+  "type": "skill",
+  "context": "Run reproducible pandas workflows for profiling, conversion, cleaning, transforms, joins, aggregations, and time-series resampling",
+  "info": "This skill packages pandas as an executable local data workflow surface. It gives agents deterministic scripts for profiling unknown datasets, converting file formats, joining files, aggregating groups, transforming rows and columns, and resampling timestamped data. Use it when a task needs action, not only explanation: inspect data quality, produce a cleaned artifact, convert CSV to Parquet, merge exports, summarize metrics, or generate resampled time buckets. The single `SKILL.md` in this directory teaches the full pandas ecosystem and references the subnodes [[pandas/workflows/io]], [[pandas/workflows/clean]], [[pandas/workflows/transform]], [[pandas/workflows/join]], [[pandas/workflows/groupby]], [[pandas/workflows/time-series]], and [[pandas/workflows/performance]].",
+  "parent": "pandas",
+  "sub": [
+    "pandas/workflows/io",
+    "pandas/workflows/clean",
+    "pandas/workflows/transform",
+    "pandas/workflows/join",
+    "pandas/workflows/groupby",
+    "pandas/workflows/time-series",
+    "pandas/workflows/performance"
+  ],
+  "tags": [
+    "pandas",
+    "workflow",
+    "data-analysis",
+    "etl",
+    "profiling",
+    "conversion",
+    "cleaning",
+    "join",
+    "groupby",
+    "resample",
+    "automation"
+  ],
+  "aliases": [
+    "pandas workflows",
+    "pandas skill",
+    "pandas data workflow",
+    "pandas scripts",
+    "data wrangling with pandas",
+    "pandas automation",
+    "tabular data workflow",
+    "dataframe workflow"
+  ],
+  "triggers": [
+    "profile this dataset",
+    "convert this csv to parquet",
+    "join these two files",
+    "aggregate this spreadsheet",
+    "clean this csv with pandas",
+    "run a pandas workflow",
+    "resample this time series",
+    "prepare a dataframe output",
+    "transform these rows and columns"
+  ],
+  "body": "# Pandas Workflows\n\nThis is the executable pandas node. It contains one Agent Skills `SKILL.md`, reusable scripts, and a reference file so agents can act without rewriting boilerplate.\n\n## Install\n\n```bash\npython -m pip install 'pandas[performance,excel,parquet]'\n```\n\n## Script surface\n\n```bash\n# Profile rows, dtypes, missing values, duplicate rows, samples, and top values\npython nodes/pandas/workflows/scripts/profile_dataset.py data/orders.csv --parse-dates created_at\n\n# Convert formats while preserving typed data better than CSV\npython nodes/pandas/workflows/scripts/convert_dataset.py data/orders.csv data/orders.parquet --parse-dates created_at\n\n# Merge two datasets and validate cardinality\npython nodes/pandas/workflows/scripts/join_datasets.py users.csv orders.csv joined.parquet --on user_id --how left --validate one_to_many --indicator\n\n# Aggregate by groups\npython nodes/pandas/workflows/scripts/aggregate_dataset.py orders.csv by_status.csv --by status --agg amount:sum --agg order_id:nunique\n\n# Transform rows and columns safely\npython nodes/pandas/workflows/scripts/transform_dataset.py raw.csv clean.parquet --query 'amount > 0' --drop-duplicates\n\n# Resample timestamped rows\npython nodes/pandas/workflows/scripts/resample_timeseries.py events.csv daily.csv --date-column ts --freq D --agg event_id:count\n```\n\n## Operating sequence\n\n1. Profile first with [[pandas/workflows/io]] and [[pandas/workflows/clean]] signals.\n2. Decide which dtypes and date parsing rules must be explicit.\n3. Transform and clean into a new artifact; never mutate raw inputs.\n4. Use [[pandas/workflows/join]] with `validate=` for combined data.\n5. Use [[pandas/workflows/groupby]] or [[pandas/workflows/time-series]] for summaries.\n6. Use [[pandas/workflows/performance]] if memory usage, runtime, or file size becomes a blocker.\n\n## Outputs\n\nScripts write JSON summaries to stdout for agents and write data artifacts to requested output paths. Prefer Parquet for internal artifacts, CSV for exchange with humans or legacy tools, and JSONL when downstream systems consume records.\n",
+  "sections": [
+    {
+      "id": "profile-first",
+      "title": "Profile before changing data",
+      "body": "Run `profile_dataset.py` before writing transformation code. Check row count, column names, dtypes, missing percentages, duplicate rows, memory usage, sample rows, numeric summaries, and top values. Use the profile to decide dtype conversions, required fields, join keys, and whether the dataset fits in memory.",
+      "tags": ["profile", "inspect", "dtypes", "missing-values"]
+    },
+    {
+      "id": "artifacts",
+      "title": "Artifact policy",
+      "body": "Keep raw inputs untouched. Write derived artifacts to explicit paths such as `clean.parquet`, `joined.parquet`, or `summary.csv`. Parquet is the default for repeatable typed intermediate outputs because it preserves column types better than CSV and supports column pruning. CSV is acceptable for final human review.",
+      "tags": ["artifacts", "parquet", "csv", "reproducibility"]
+    },
+    {
+      "id": "script-contract",
+      "title": "Script contract",
+      "body": "Each script accepts paths and options, writes result files only when requested, and emits a machine-readable JSON summary to stdout. This makes the scripts safe for agents to compose in shell automation and CI. Scripts fail fast on unsupported file formats, invalid join cardinality, bad aggregation specs, or missing optional dependencies.",
+      "tags": ["scripts", "json", "automation", "cli"]
+    },
+    {
+      "id": "handoffs",
+      "title": "Handoffs to other nodes",
+      "body": "Use [[python/venv]], [[python/pip]], or [[python/uv]] to create the environment. Use [[duckdb]] when SQL over large files is more appropriate. Use [[database/sql]] when translating groupby, filter, and join work into database queries. Use [[testing]] to add regression tests for cleanup logic.",
+      "tags": ["python", "duckdb", "sql", "testing"]
+    }
+  ],
+  "links": [
+    { "uri": "pandas/workflows#script-contract", "context": "Section defining the shared workflow script contract" },
+    { "uri": "pandas/workflows/io", "context": "Read, profile, and write tabular files" },
+    { "uri": "pandas/workflows/clean", "context": "Repair missing values, dtypes, and duplicates" },
+    { "uri": "pandas/workflows/transform", "context": "Filter, select, rename, sort, deduplicate, and reshape data" },
+    { "uri": "pandas/workflows/join", "context": "Merge and concatenate datasets with cardinality validation" },
+    { "uri": "pandas/workflows/groupby", "context": "Aggregate grouped data and produce summaries" },
+    { "uri": "pandas/workflows/time-series", "context": "Parse timestamps and resample time buckets" },
+    { "uri": "pandas/workflows/performance", "context": "Handle memory and runtime pressure" },
+    { "uri": "python/uv", "context": "Fast Python environment and dependency management" },
+    { "uri": "duckdb", "context": "SQL-first local analytics alternative" }
+  ],
+  "related": [
+    { "uri": "pandas", "relation": "implements", "note": "Executable workflow layer for the pandas ecosystem" },
+    { "uri": "python", "relation": "prerequisite", "note": "Scripts run under Python and require pandas installed" },
+    { "uri": "duckdb", "relation": "alternative", "note": "Use DuckDB when the workflow is mostly SQL scans and joins over large files" },
+    { "uri": "testing", "relation": "see-also", "note": "Data cleaning scripts should have regression tests for edge cases" }
+  ],
+  "scripts": [
+    {
+      "id": "profile-dataset",
+      "name": "Profile Dataset",
+      "description": "Inspect a CSV, TSV, JSON, JSONL, Excel, or Parquet dataset and emit a JSON profile of dtypes, missingness, duplicates, samples, and summaries",
+      "lang": "python",
+      "runtime": "python>=3.10",
+      "entry": "./scripts/profile_dataset.py",
+      "packages": ["pandas", "pyarrow", "openpyxl"]
+    },
+    {
+      "id": "convert-dataset",
+      "name": "Convert Dataset",
+      "description": "Convert tabular datasets between CSV, TSV, JSON, JSONL, Excel, and Parquet with optional column selection and date parsing",
+      "lang": "python",
+      "runtime": "python>=3.10",
+      "entry": "./scripts/convert_dataset.py",
+      "packages": ["pandas", "pyarrow", "openpyxl"]
+    },
+    {
+      "id": "join-datasets",
+      "name": "Join Datasets",
+      "description": "Merge two tabular datasets with pandas.merge, cardinality validation, suffix control, and optional source indicator",
+      "lang": "python",
+      "runtime": "python>=3.10",
+      "entry": "./scripts/join_datasets.py",
+      "packages": ["pandas", "pyarrow", "openpyxl"]
+    },
+    {
+      "id": "aggregate-dataset",
+      "name": "Aggregate Dataset",
+      "description": "Group a dataset by columns and compute aggregations from JSON or column:function CLI specs",
+      "lang": "python",
+      "runtime": "python>=3.10",
+      "entry": "./scripts/aggregate_dataset.py",
+      "packages": ["pandas", "pyarrow", "openpyxl"]
+    },
+    {
+      "id": "transform-dataset",
+      "name": "Transform Dataset",
+      "description": "Apply safe common transformations: select, drop, rename, query, deduplicate, sort, and write the result",
+      "lang": "python",
+      "runtime": "python>=3.10",
+      "entry": "./scripts/transform_dataset.py",
+      "packages": ["pandas", "pyarrow", "openpyxl"]
+    },
+    {
+      "id": "resample-timeseries",
+      "name": "Resample Time Series",
+      "description": "Parse a timestamp column, optionally group by entities, resample by a pandas offset alias, and aggregate values",
+      "lang": "python",
+      "runtime": "python>=3.10",
+      "entry": "./scripts/resample_timeseries.py",
+      "packages": ["pandas", "pyarrow", "openpyxl"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "operation": { "type": "string", "enum": ["profile", "convert", "join", "aggregate", "transform", "resample"], "description": "Workflow script to execute" },
+        "input_paths": { "type": "array", "items": { "type": "string" }, "description": "One or more dataset paths" },
+        "output_path": { "type": "string", "description": "Destination path for workflows that write data" },
+        "options": { "type": "object", "description": "Script-specific flags such as join keys, aggregations, parse dates, or output format" }
+      },
+      "required": ["operation"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "summary_json": { "type": "object", "description": "Machine-readable script summary emitted to stdout" },
+        "artifact_path": { "type": "string", "description": "Output dataset path when the workflow writes one" },
+        "rows": { "type": "integer", "description": "Rows processed or emitted when applicable" },
+        "columns": { "type": "integer", "description": "Columns emitted when applicable" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "python", "reason": "Pandas scripts run in Python" },
+    { "uri": "python/pip", "optional": true, "reason": "Install pandas and optional extras with pip" },
+    { "uri": "python/uv", "optional": true, "reason": "Use uv for fast reproducible Python environments" }
+  ],
+  "more": {
+    "docs": "https://pandas.pydata.org/docs/",
+    "io": "https://pandas.pydata.org/docs/user_guide/io.html",
+    "groupby": "https://pandas.pydata.org/docs/user_guide/groupby.html",
+    "merging": "https://pandas.pydata.org/docs/user_guide/merging.html",
+    "timeseries": "https://pandas.pydata.org/docs/user_guide/timeseries.html",
+    "scale": "https://pandas.pydata.org/docs/user_guide/scale.html"
+  },
+  "frontmatter": {
+    "created": "2026-04-15",
+    "updated": "2026-04-15",
+    "author": "dojo-community",
+    "audience": "AI agents, data engineers, research engineers",
+    "estimated_reading_time": "8 min",
+    "prerequisites": ["pandas", "python"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://github.com/pandas-dev/pandas",
+  "created": "2026-04-15T00:00:00Z",
+  "updated": "2026-04-15T00:00:00Z",
+  "status": "published"
+}

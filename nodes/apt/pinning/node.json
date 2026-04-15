@@ -1,0 +1,132 @@
+{
+  "name": "pinning",
+  "version": "1.0.0",
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://salsa.debian.org/apt-team/apt",
+  "created": "2026-04-12T00:00:00Z",
+  "updated": "2026-04-12T00:00:00Z",
+  "status": "published",
+  "uri": "apt/pinning",
+  "type": "context",
+  "content_type": "guide",
+  "parent": "apt",
+  "context": "Control candidate selection with apt preferences, target releases, apt-mark hold, and repository priority rules",
+  "info": "This guide explains how APT chooses a candidate version and how to override that decision. It covers target releases, default priority levels, `Pin-Priority` records under `/etc/apt/preferences.d/`, repository-wide preference reduction for third-party archives, and package-level state such as `apt-mark hold`, `auto`, and `manual`. Agents use this node when a package keeps resolving to the wrong source, when a PPA or vendor repository must stay lower priority, or when upgrades should be frozen selectively without disabling the whole repository.",
+  "tags": [
+    "apt",
+    "pinning",
+    "preferences",
+    "pin-priority",
+    "target-release",
+    "hold",
+    "apt-mark",
+    "policy"
+  ],
+  "aliases": [
+    "apt pinning",
+    "preferences file",
+    "pin priority",
+    "apt-mark hold",
+    "default release",
+    "repository priority"
+  ],
+  "triggers": [
+    "pin a package version with apt",
+    "lower the priority of a third party repository",
+    "hold a package from upgrades",
+    "why is apt choosing this source",
+    "set apt default release"
+  ],
+  "sections": [
+    {
+      "id": "default-priorities",
+      "title": "Default priority levels",
+      "body": "APT assigns implicit priorities before it evaluates your custom preferences. The especially useful values are 1, 100, 500, and 990, with anything above 1000 required to permit a downgrade. Understanding these defaults is the key to predicting how a custom pin will interact with installed state and target releases.",
+      "tags": [
+        "priorities",
+        "defaults",
+        "downgrade"
+      ]
+    },
+    {
+      "id": "repo-pinning",
+      "title": "Repository-wide pinning",
+      "body": "A file under `/etc/apt/preferences.d/` can reduce the priority of an entire external archive. Ubuntu's repository guidance uses `Pin-Priority: 100` as a practical default for a third-party repository that should remain available but not silently replace official packages.",
+      "tags": [
+        "repository",
+        "preferences-d",
+        "third-party",
+        "priority-100"
+      ]
+    },
+    {
+      "id": "hold-and-auto",
+      "title": "Holds, manual installs, and autoremove",
+      "body": "`apt-mark hold` freezes a package against install, upgrade, and removal. `apt-mark manual` prevents `autoremove` from pruning a package, while `apt-mark auto` makes it eligible for removal once nothing manually installed depends on it. These are install-state controls, not source-preference controls.",
+      "tags": [
+        "hold",
+        "manual",
+        "auto",
+        "autoremove"
+      ]
+    },
+    {
+      "id": "policy-validation",
+      "title": "Validate with apt-cache policy",
+      "body": "`apt-cache policy` is the verification step for every pinning change. It shows source priorities, candidate selection, and whether a phased update is pinning a version to priority 1 on the current system.",
+      "tags": [
+        "policy",
+        "validation",
+        "candidate",
+        "phased-updates"
+      ]
+    }
+  ],
+  "links": [
+    {
+      "uri": "apt/search#policy",
+      "context": "Use apt-cache policy to inspect the actual outcome of pinning rules"
+    },
+    {
+      "uri": "apt/repositories",
+      "context": "Pair third-party repository setup with explicit preference reduction"
+    },
+    {
+      "uri": "apt/upgrade#held-back",
+      "context": "Held-back packages can be caused by pinning or phased updates"
+    },
+    {
+      "uri": "apt/install#versions",
+      "context": "Use target releases or exact versions for one-off overrides"
+    }
+  ],
+  "related": [
+    {
+      "uri": "apt/repositories",
+      "relation": "extends",
+      "note": "Repository management is often incomplete without pinning when third-party sources are involved"
+    },
+    {
+      "uri": "apt/search",
+      "relation": "see-also",
+      "note": "Policy inspection is the best way to confirm preference changes"
+    }
+  ],
+  "more": {
+    "docs": "https://manpages.debian.org/testing/apt/apt_preferences.5.en.html",
+    "apt-mark": "https://manpages.debian.org/testing/apt/apt-mark.8.en.html",
+    "ubuntu": "https://ubuntu.com/server/docs/explanation/software/third-party-repository-usage/"
+  },
+  "frontmatter": {
+    "created": "2026-04-12",
+    "updated": "2026-04-12",
+    "author": "dojo-community",
+    "status": "living",
+    "confidence": "high",
+    "audience": "developers, sre, ai agents",
+    "estimated_reading_time": "6 min",
+    "prerequisites": []
+  },
+  "body": "# Pinning, Holds, and Candidate Selection\n\nAPT chooses a package candidate by combining installed state, source priorities, target release settings, phased-update rules, and explicit preferences. This node explains the knobs agents can use before forcing package installs ad hoc.\n\n## Default priority model\n\nDebian documents the following important defaults when a target release is set:\n\n- priority `1` for not-automatic archives and versions not phased on this system\n- priority `100` for the installed version\n- priority `500` for versions outside the target release\n- priority `990` for versions in the target release\n\nAPT will not downgrade unless the chosen version has a priority above `1000`.\n\n## Repository-wide pinning\n\n```text\n# /etc/apt/preferences.d/vendor\nPackage: *\nPin: origin packages.vendor.example\nPin-Priority: 100\n```\n\nUbuntu's third-party repository guidance recommends lowering precedence for external repositories so official packages are not overwritten by accident. A priority of `100` still allows installs and upgrades of already installed packages from that source. A priority of `1` allows explicit installs but prevents automatic upgrades from that source.\n\n## Target releases\n\n```bash\nsudo apt-get install -t noble-backports neovim\n```\n\n`-t release` sets a target release for the command and temporarily raises that release's priority. Use it when you want a one-off preference rather than a persistent pin.\n\n## Holds and install-state markers\n\n```bash\nsudo apt-mark hold docker-ce\nsudo apt-mark unhold docker-ce\napt-mark showhold\n\nsudo apt-mark manual jq\nsudo apt-mark auto libjq1\n```\n\n`hold` prevents automatic install, upgrade, or removal. `manual` and `auto` control whether a package is eligible for `autoremove`.\n\n## Inspect the result\n\n```bash\napt-cache policy docker-ce\napt-cache policy\n```\n\nAlways validate pinning with policy output before and after changes. That is the ground truth for the final candidate calculation."
+}

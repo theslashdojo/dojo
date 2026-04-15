@@ -1,0 +1,130 @@
+{
+  "name": "sampling",
+  "version": "1.0.0",
+  "uri": "opentelemetry/sampling",
+  "type": "context",
+  "context": "Control OpenTelemetry trace volume with parent-based, ratio, always-on, always-off, and tail sampling.",
+  "info": "Sampling decides which traces are recorded and exported. Agents use this node when telemetry volume, backend cost, or ingestion limits require policy. Head sampling happens in the SDK before the full trace is known; tail sampling happens in a Collector after observing trace content. Good sampling preserves important errors and representative latency while reducing noise. Bad sampling breaks trace continuity, hides incidents, or produces misleading dashboards.",
+  "parent": "opentelemetry",
+  "tags": [
+    "sampling",
+    "head-sampling",
+    "tail-sampling",
+    "traceidratio",
+    "parentbased",
+    "cost-control",
+    "collector",
+    "traces"
+  ],
+  "aliases": [
+    "otel sampling",
+    "trace sampling",
+    "head sampling",
+    "tail sampling",
+    "parent based sampler",
+    "trace id ratio",
+    "sampling rate",
+    "reduce traces",
+    "sampling policy"
+  ],
+  "triggers": [
+    "reduce trace volume",
+    "set otel sampling rate",
+    "sample ten percent of traces",
+    "keep error traces",
+    "configure tail sampling",
+    "why are traces incomplete",
+    "parentbased traceidratio",
+    "control observability cost"
+  ],
+  "content_type": "guide",
+  "body": "# Sampling\n\nSampling reduces trace volume. It should be an explicit production decision, not an accidental default. Metrics and logs have separate volume controls; this node focuses on trace sampling.\n\n## SDK Head Sampling\n\nHead sampling decides when a span is created, before the SDK knows how the request will finish. It is cheap and simple.\n\n```bash\n# Keep every trace. Good during rollout, noisy in production.\nexport OTEL_TRACES_SAMPLER=always_on\n\n# Drop every trace. Useful only for emergency disablement.\nexport OTEL_TRACES_SAMPLER=always_off\n\n# Parent-based 10% sampling. Child services follow upstream decisions.\nexport OTEL_TRACES_SAMPLER=parentbased_traceidratio\nexport OTEL_TRACES_SAMPLER_ARG=0.10\n```\n\nUse `parentbased_*` in distributed systems so downstream services do not make independent decisions that fragment a trace.\n\n## Collector Tail Sampling\n\nTail sampling waits until spans for a trace arrive at a Collector, then applies policy using attributes, status, latency, or route. It can keep all errors and slow traces while sampling normal traffic.\n\n```yaml\nprocessors:\n  tail_sampling:\n    decision_wait: 10s\n    num_traces: 50000\n    policies:\n      - name: errors\n        type: status_code\n        status_code:\n          status_codes: [ERROR]\n      - name: slow\n        type: latency\n        latency:\n          threshold_ms: 1000\n      - name: baseline\n        type: probabilistic\n        probabilistic:\n          sampling_percentage: 10\nservice:\n  pipelines:\n    traces:\n      receivers: [otlp]\n      processors: [memory_limiter, tail_sampling, batch]\n      exporters: [otlp]\n```\n\nTail sampling needs all spans for a trace to reach the same Collector instance. In a scaled gateway, use routing or load balancing that keeps a trace together.",
+  "sections": [
+    {
+      "id": "head-sampling",
+      "title": "Head sampling",
+      "body": "Head sampling runs in the SDK as spans are created. It is cheap, works without a Collector, and can be configured with `OTEL_TRACES_SAMPLER` and `OTEL_TRACES_SAMPLER_ARG`. Use `parentbased_traceidratio` for distributed systems. Do not use independent ratio sampling in every service unless partial traces are acceptable.",
+      "tags": [
+        "head-sampling",
+        "sdk",
+        "parentbased",
+        "traceidratio"
+      ]
+    },
+    {
+      "id": "tail-sampling",
+      "title": "Tail sampling",
+      "body": "Tail sampling runs in [[opentelemetry/collector]] after spans arrive. It can keep traces by status code, latency, attributes, routes, or probabilistic fallback. It is more expensive and requires enough collector memory, but it is the usual answer when you must keep errors and slow traces while reducing normal traffic.",
+      "tags": [
+        "tail-sampling",
+        "collector",
+        "latency",
+        "errors"
+      ]
+    },
+    {
+      "id": "policy-design",
+      "title": "Policy design",
+      "body": "Start with always-on during rollout. Move to parent-based ratio sampling for steady state. Add tail sampling for production systems where preserving errors, high latency, premium tenants, or critical routes matters. Keep a baseline probabilistic policy so ordinary traffic remains represented. Monitor dropped spans and collector memory after every policy change.",
+      "tags": [
+        "policy",
+        "production",
+        "cost",
+        "rollout"
+      ]
+    }
+  ],
+  "links": [
+    {
+      "uri": "opentelemetry/nodejs",
+      "context": "Configure SDK head sampling through environment variables"
+    },
+    {
+      "uri": "opentelemetry/collector",
+      "context": "Implement tail sampling in Collector trace pipelines"
+    },
+    {
+      "uri": "opentelemetry/semantic-conventions",
+      "context": "Sampling policies depend on stable span attributes"
+    },
+    {
+      "uri": "opentelemetry/troubleshooting",
+      "context": "Sampling is a common reason spans disappear"
+    }
+  ],
+  "related": [
+    {
+      "uri": "opentelemetry/collector",
+      "relation": "implements",
+      "note": "Tail sampling is implemented as a Collector processor"
+    },
+    {
+      "uri": "opentelemetry/semantic-conventions",
+      "relation": "prerequisite",
+      "note": "Sampling decisions are more reliable when attributes are standardized"
+    }
+  ],
+  "more": {
+    "docs": "https://opentelemetry.io/docs/concepts/sampling/",
+    "trace-sdk": "https://opentelemetry.io/docs/specs/otel/trace/sdk/#sampling",
+    "collector-transform": "https://opentelemetry.io/docs/collector/transforming-telemetry/"
+  },
+  "frontmatter": {
+    "created": "2026-04-15",
+    "updated": "2026-04-15",
+    "author": "dojo-community",
+    "audience": "ai-agents, sre, platform-engineers",
+    "estimated_reading_time": "5 min",
+    "prerequisites": [
+      "opentelemetry/signals",
+      "opentelemetry/collector"
+    ],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-15T00:00:00Z",
+  "updated": "2026-04-15T00:00:00Z",
+  "status": "published"
+}

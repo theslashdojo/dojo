@@ -228,7 +228,7 @@ describe('Knowledge Layer', () => {
 
   it('GET /v1/bundle/* returns portable packages for executable dojo nodes', async () => {
     const bundles = [
-      { uri: 'dojo/author', script: 'scripts/scaffold-node.js', reference: 'references/authoring-guide.md' },
+      { uri: 'dojo/authoring', script: 'scripts/create-node.sh' },
       { uri: 'dojo/skill', script: 'scripts/use-dojo-skill.js', reference: 'references/workflows.md' },
       { uri: 'dojo/api/query', script: 'scripts/query-registry.js', reference: 'references/operations.md' },
       { uri: 'dojo/validate', script: 'scripts/validate-node.js', reference: 'references/checks.md' },

@@ -1,0 +1,175 @@
+{
+  "name": "pnpm",
+  "version": "1.0.0",
+  "uri": "pnpm",
+  "type": "ecosystem",
+  "context": "pnpm package manager ecosystem for deterministic installs, monorepos, filtered execution, and safer dependency workflows",
+  "info": "pnpm is a Node.js package manager built around a content-addressable global store, a virtual `node_modules/.pnpm` layout, and first-class workspace support. It matters to autonomous agents because it changes how dependencies are installed, how commands are scoped in monorepos, how deployable subsets are produced, and how build-script trust is enforced. This ecosystem focuses on the jobs agents perform repeatedly: lockfile-driven installs, package mutations in one workspace, recursive script execution, deployment packaging, patching upstream packages, and configuring pnpm-specific safety and runtime controls.",
+  "parent": null,
+  "tags": [
+    "pnpm",
+    "package-manager",
+    "monorepo",
+    "workspaces",
+    "lockfile",
+    "dependencies",
+    "deploy",
+    "patch",
+    "store",
+    "corepack"
+  ],
+  "aliases": [
+    "pnpm",
+    "pnpm package manager",
+    "pnpm monorepo",
+    "pnpm workspace",
+    "pnpm lockfile",
+    "pnpm install",
+    "pnpm package manager ecosystem",
+    "fast node package manager"
+  ],
+  "triggers": [
+    "use pnpm in this repository",
+    "install dependencies with pnpm",
+    "work in a pnpm monorepo",
+    "run pnpm commands across workspaces",
+    "deploy a pnpm workspace package",
+    "patch a dependency with pnpm",
+    "configure pnpm safely for CI"
+  ],
+  "body": "# pnpm\n\npnpm is a fast package manager built around a reusable global store and a virtual dependency graph under `node_modules/.pnpm`. For an agent, the important part is not just speed: pnpm changes resolution, workspace targeting, deployment packaging, and supply-chain controls.\n\n## Agent jobs\n\n- Install deterministically from `pnpm-lock.yaml` with [[pnpm/install]]\n- Scope monorepo work with [[pnpm/workspace#filters]] and the `workspace:` protocol\n- Run local binaries and scripts with [[pnpm/scripts]]\n- Produce a portable output directory with [[pnpm/deploy]]\n- Patch broken upstream packages with [[pnpm/patch]]\n\n## Key files\n\n```yaml\n# pnpm-workspace.yaml\npackages:\n  - apps/*\n  - packages/*\n```\n\n```json\n{\n  \"packageManager\": \"pnpm@10.23.0\"\n}\n```\n\nUse Corepack or another official installer to pin the package-manager version, then keep `pnpm-lock.yaml` committed. In automation, prefer `pnpm install --frozen-lockfile` and cache the pnpm store instead of treating `node_modules` as the primary cache.\n",
+  "sections": [
+    {
+      "id": "install-and-versioning",
+      "title": "Install and version pinning",
+      "body": "Official installation docs recommend Node.js 18.12+ when not using the standalone installer, and Corepack can pin the project version by writing a `packageManager` field. Use `corepack enable pnpm` and `corepack use pnpm@latest-10` when you need reproducible team-wide pnpm versions. Once pnpm is present, [[pnpm/install]] covers lockfile-driven installs and dependency changes.",
+      "tags": [
+        "installation",
+        "corepack",
+        "package-manager",
+        "version-pinning"
+      ]
+    },
+    {
+      "id": "workspace-model",
+      "title": "Workspace model",
+      "body": "A pnpm workspace is rooted by `pnpm-workspace.yaml`. Local packages should usually depend on each other with the `workspace:` protocol so pnpm refuses registry fallback. Filters such as `foo...`, `...foo`, `{packages/**}`, and `[origin/main]` let an agent narrow changes to only the relevant part of a monorepo. See [[pnpm/workspace]] for the execution patterns and graph selectors.",
+      "tags": [
+        "workspace",
+        "workspace-protocol",
+        "filtering",
+        "monorepo"
+      ]
+    },
+    {
+      "id": "supply-chain-controls",
+      "title": "Supply-chain controls",
+      "body": "pnpm has explicit controls for dependency scripts and release trust. Recent versions add `approve-builds`, `allowBuilds`, `minimumReleaseAge`, trust policies, and patch workflows. These controls matter when an agent installs unreviewed third-party code or needs to unblock a broken dependency without dropping all safeguards. See [[pnpm/security]] and [[pnpm/patch]].",
+      "tags": [
+        "security",
+        "approve-builds",
+        "minimum-release-age",
+        "patching"
+      ]
+    }
+  ],
+  "links": [
+    {
+      "uri": "pnpm/install",
+      "context": "Install, add, update, remove, and fetch dependencies"
+    },
+    {
+      "uri": "pnpm/workspace",
+      "context": "Target workspace packages safely with filters and the workspace protocol"
+    },
+    {
+      "uri": "pnpm/scripts",
+      "context": "Run scripts, binaries, and temporary CLIs with run, exec, and dlx"
+    },
+    {
+      "uri": "pnpm/deploy",
+      "context": "Create deployable output for one workspace package"
+    },
+    {
+      "uri": "pnpm/patch",
+      "context": "Patch and remove modified upstream dependencies"
+    },
+    {
+      "uri": "pnpm/config",
+      "context": "Configure packageManager, catalogs, runtime pinning, and workspace settings"
+    },
+    {
+      "uri": "pnpm/store",
+      "context": "Understand the content-addressable store and virtual node_modules layout"
+    },
+    {
+      "uri": "pnpm/security",
+      "context": "Review build-script permissions and release-age controls"
+    },
+    {
+      "uri": "node",
+      "context": "Node.js runtime prerequisite for standard pnpm installs"
+    },
+    {
+      "uri": "node/npm",
+      "context": "Alternative Node package manager for projects that are not on pnpm"
+    },
+    {
+      "uri": "turbo/workspaces",
+      "context": "Monorepo structure patterns often paired with pnpm"
+    }
+  ],
+  "related": [
+    {
+      "uri": "node",
+      "relation": "prerequisite",
+      "note": "Standard pnpm installations require a supported Node.js runtime"
+    },
+    {
+      "uri": "node/npm",
+      "relation": "alternative",
+      "note": "npm solves the same class of package-management jobs but with different workspace and store behavior"
+    },
+    {
+      "uri": "turbo/workspaces",
+      "relation": "see-also",
+      "note": "Turborepo commonly uses pnpm workspaces and filter-driven task execution"
+    },
+    {
+      "uri": "docker",
+      "relation": "see-also",
+      "note": "pnpm fetch, offline installs, and deploy workflows are frequently used in Docker builds"
+    }
+  ],
+  "more": {
+    "docs": "https://pnpm.io/installation",
+    "workspace": "https://pnpm.io/workspaces",
+    "settings": "https://pnpm.io/settings",
+    "repo": "https://github.com/pnpm/pnpm"
+  },
+  "sub": [
+    "pnpm/install",
+    "pnpm/workspace",
+    "pnpm/scripts",
+    "pnpm/deploy",
+    "pnpm/patch",
+    "pnpm/config",
+    "pnpm/store",
+    "pnpm/security"
+  ],
+  "frontmatter": {
+    "created": "2026-04-12",
+    "updated": "2026-04-12",
+    "author": "dojo-community",
+    "audience": "developers, AI agents, build engineers",
+    "estimated_reading_time": "5 min",
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://github.com/pnpm/pnpm",
+  "created": "2026-04-12T00:00:00Z",
+  "updated": "2026-04-12T00:00:00Z",
+  "status": "published"
+}

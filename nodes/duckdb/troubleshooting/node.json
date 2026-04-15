@@ -1,0 +1,120 @@
+{
+  "name": "troubleshooting",
+  "version": "1.0.0",
+  "uri": "duckdb/troubleshooting",
+  "type": "context",
+  "content_type": "faq",
+  "context": "Diagnose DuckDB parser, binder, type inference, CSV, extension, remote file, lock, memory, and performance failures",
+  "info": "DuckDB failures usually fall into a few buckets: SQL parser or binder errors, file format and schema inference surprises, extension install/load problems, object-storage credentials, memory pressure, locks on `.duckdb` files, and shell quoting mistakes. This troubleshooting node gives agents a triage path with concrete checks and commands before changing code. It links back to [[duckdb/cli]] for execution, [[duckdb/files]] for file-reader options, [[duckdb/extensions]] and [[duckdb/secrets]] for remote data, and [[duckdb/performance]] for OOM and slow queries.",
+  "parent": "duckdb",
+  "tags": [
+    "duckdb",
+    "troubleshooting",
+    "errors",
+    "parser",
+    "binder",
+    "csv",
+    "extensions",
+    "s3",
+    "memory",
+    "locks"
+  ],
+  "aliases": [
+    "duckdb error",
+    "duckdb troubleshooting",
+    "duckdb parser error",
+    "duckdb binder error",
+    "duckdb conversion error",
+    "duckdb csv error",
+    "duckdb extension error",
+    "duckdb access denied",
+    "duckdb out of memory",
+    "duckdb database locked"
+  ],
+  "triggers": [
+    "fix duckdb error",
+    "duckdb query failed",
+    "parser error duckdb",
+    "binder error duckdb",
+    "column not found duckdb",
+    "csv auto detect failed duckdb",
+    "duckdb cannot load extension",
+    "duckdb cannot read s3",
+    "duckdb out of memory",
+    "database is locked duckdb",
+    "duckdb shell quoting issue"
+  ],
+  "body": "# DuckDB Troubleshooting\n\nUse a narrow triage path. First identify whether the failure is SQL, file inference, extension/credentials, memory/performance, or filesystem locking.\n\n## Fast Triage\n\n```bash\n# Check executable and version\nduckdb --version\n\n# Reduce to a minimal query\nduckdb -c \"SELECT 1 AS ok;\"\n\n# Inspect file schema before transforming\nduckdb -c \"DESCRIBE SELECT * FROM read_parquet('data.parquet');\"\n\n# Profile if it runs but is slow\nduckdb -c \"EXPLAIN ANALYZE SELECT count(*) FROM 'data.parquet';\"\n```\n\n## Parser Errors\n\nParser errors mean the SQL text is not valid syntax after shell quoting. Common causes: missing semicolon in interactive mode, smart quotes copied from docs, unescaped single quotes in paths, reserved words used as identifiers, and shell expansion of `*` or `$` before DuckDB sees the query.\n\n```bash\n# Good: SQL sees the glob string\nduckdb -c \"SELECT count(*) FROM read_parquet('data/*.parquet');\"\n\n# Safer for complex SQL: use a file\nduckdb analysis.duckdb < report.sql\n```\n\n## Binder Errors\n\nBinder errors usually mean a referenced table, column, function, or type cannot be resolved.\n\n```sql\nDESCRIBE SELECT * FROM read_csv('input.csv');\nSELECT * FROM duckdb_tables();\nSELECT * FROM duckdb_columns() WHERE table_name = 'events';\n```\n\nIf a column exists but has unexpected capitalization or punctuation, quote it: `SELECT \"User ID\" FROM users;`.\n\n## CSV and Type Inference\n\nCSV auto-detection can guess the wrong delimiter, header, date, or column type. Pin options when the file is important.\n\n```sql\nSELECT *\nFROM read_csv(\n  'input.csv',\n  header = true,\n  delim = ',',\n  sample_size = -1,\n  nullstr = ['', 'NULL'],\n  union_by_name = true\n);\n```\n\nFor mixed-type columns, cast deliberately after reading as text or provide an explicit schema.\n\n## Extension Failures\n\n```sql\nSELECT extension_name, installed, loaded, install_path\nFROM duckdb_extensions()\nORDER BY extension_name;\n\nINSTALL httpfs;\nLOAD httpfs;\n```\n\nIf `INSTALL` fails, check network access, repository policy, DuckDB version, platform support, and proxy configuration. If `LOAD` fails, the installed extension may not match the running DuckDB version.\n\n## Remote File and S3 Failures\n\nSeparate extension loading from credentials and path issues.\n\n```sql\nINSTALL httpfs;\nLOAD httpfs;\n-- Then create the relevant secret from [[duckdb/secrets]]\nSELECT count(*) FROM read_parquet('s3://bucket/path/one-file.parquet');\n```\n\nCheck endpoint, region, URL style, session token, bucket policy, object prefix, and whether the runtime has outbound network access.\n\n## Out of Memory\n\nUse [[duckdb/performance#memory-and-temp]] first.\n\n```sql\nSET memory_limit = '4GB';\nSET temp_directory = '/tmp/duckdb-spill';\nSET preserve_insertion_order = false;\n```\n\nThen reduce selected columns, filter earlier, convert CSV/JSON to Parquet, or persist intermediate tables.\n\n## Database Locks\n\nDuckDB is embedded. Avoid multiple processes writing to the same `.duckdb` file. Use `-readonly` for inspection and serialize writers in scripts or CI jobs.\n",
+  "sections": [
+    {
+      "id": "parser-errors",
+      "title": "Parser errors",
+      "body": "Parser errors are syntax or quoting problems. Reproduce with `duckdb -c 'SELECT 1'`, move complex SQL into a `.sql` file, replace smart quotes, check semicolons, quote string literals, and avoid letting the shell expand globs before DuckDB receives them.",
+      "tags": ["parser", "syntax", "quoting", "shell"]
+    },
+    {
+      "id": "binder-errors",
+      "title": "Binder errors",
+      "body": "Binder errors mean the SQL parsed but names or types could not be resolved. Run `DESCRIBE SELECT * FROM source`, inspect `duckdb_tables()` and `duckdb_columns()`, qualify ambiguous columns, and quote unusual identifiers. Check whether extension functions are loaded.",
+      "tags": ["binder", "columns", "tables", "functions", "identifiers"]
+    },
+    {
+      "id": "csv-inference",
+      "title": "CSV inference problems",
+      "body": "Auto-detection can misread headers, delimiters, nulls, dates, and mixed-type columns. Set `header`, `delim`, `sample_size`, `nullstr`, date/timestamp formats, and explicit types for production jobs. Use `sample_size = -1` when a late row changes inference.",
+      "tags": ["csv", "auto-detect", "types", "delimiter", "headers"]
+    },
+    {
+      "id": "extensions",
+      "title": "Extension failures",
+      "body": "Check `duckdb_extensions()` for installed and loaded state. Re-run `INSTALL name; LOAD name;`. If installation fails, inspect network and repository policy. If loading fails, verify platform and DuckDB version compatibility. Prefer core repositories unless the task explicitly requires community extensions.",
+      "tags": ["extensions", "install", "load", "repository", "version"]
+    },
+    {
+      "id": "remote-files",
+      "title": "Remote file failures",
+      "body": "For HTTPS/S3 problems, first load `httpfs`, then run a minimal one-file query. Verify credentials with [[duckdb/secrets]], then endpoint, region, path style, session token, and bucket permissions. Avoid debugging against a recursive glob until a single object works.",
+      "tags": ["s3", "https", "httpfs", "secrets", "permissions"]
+    },
+    {
+      "id": "oom-and-slow",
+      "title": "Out of memory and slow queries",
+      "body": "Set `temp_directory`, right-size `memory_limit`, and consider `preserve_insertion_order = false`. Use `EXPLAIN ANALYZE` to identify the expensive operator. Select fewer columns, filter earlier, convert raw files to Parquet, and checkpoint expensive intermediates.",
+      "tags": ["oom", "slow", "memory", "profile", "parquet"]
+    }
+  ],
+  "links": [
+    { "uri": "duckdb/cli", "context": "Reproduce failures with minimal CLI commands" },
+    { "uri": "duckdb/files#csv", "context": "Pin CSV reader options when inference fails" },
+    { "uri": "duckdb/extensions#troubleshooting", "context": "Resolve extension install and load issues" },
+    { "uri": "duckdb/secrets#debugging", "context": "Debug object storage credentials" },
+    { "uri": "duckdb/performance#memory-and-temp", "context": "Handle OOM and spill failures" },
+    { "uri": "shell/bash", "context": "Fix shell quoting around SQL strings" }
+  ],
+  "related": [
+    { "uri": "duckdb/performance", "relation": "see-also", "note": "Performance triage handles slow and out-of-memory workloads" },
+    { "uri": "duckdb/files", "relation": "see-also", "note": "Most ingestion failures are file-reader option issues" },
+    { "uri": "sqlite/performance", "relation": "see-also", "note": "Embedded database lock and local file behavior are adjacent operational concerns" }
+  ],
+  "more": {
+    "docs": "https://duckdb.org/docs/stable/guides/troubleshooting/overview",
+    "command-line": "https://duckdb.org/docs/stable/guides/troubleshooting/command_line",
+    "oom": "https://duckdb.org/docs/stable/guides/troubleshooting/oom_errors",
+    "crashes": "https://duckdb.org/docs/stable/guides/troubleshooting/crashes"
+  },
+  "frontmatter": {
+    "created": "2026-04-15",
+    "updated": "2026-04-15",
+    "author": "dojo-community",
+    "audience": "AI agents, data engineers, software engineers",
+    "estimated_reading_time": "6 min",
+    "prerequisites": ["duckdb", "duckdb/cli"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-15T00:00:00Z",
+  "updated": "2026-04-15T00:00:00Z",
+  "status": "published"
+}

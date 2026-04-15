@@ -1,0 +1,142 @@
+{
+  "name": "time-series",
+  "version": "1.0.0",
+  "uri": "pandas/workflows/time-series",
+  "type": "sub",
+  "context": "Work with pandas time series: to_datetime, DateTimeIndex, time zones, offsets, resample, rolling windows, shift, and asfreq",
+  "info": "Pandas time-series workflows cover timestamp parsing, timezone normalization, DateTimeIndex construction, resampling into fixed frequency buckets, rolling calculations, lag features, and calendar-aware offsets. Agents use this node for event logs, metrics, billing periods, daily active counts, monthly revenue, and temporal feature engineering. It emphasizes parsing external timestamps with `utc=True`, sorting by time, choosing offset aliases deliberately, handling invalid dates, and using the shared `resample_timeseries.py` script for repeatable file-to-file summaries.",
+  "parent": "pandas/workflows",
+  "tags": [
+    "pandas",
+    "time-series",
+    "datetime",
+    "to-datetime",
+    "timezone",
+    "resample",
+    "rolling",
+    "shift",
+    "offsets",
+    "datetimeindex"
+  ],
+  "aliases": [
+    "pandas time series",
+    "pandas datetime",
+    "pd.to_datetime",
+    "DataFrame.resample",
+    "DateTimeIndex",
+    "pandas rolling",
+    "time buckets",
+    "monthly revenue pandas",
+    "daily counts pandas"
+  ],
+  "triggers": [
+    "parse timestamp column in pandas",
+    "resample events by day",
+    "group data by month",
+    "calculate rolling average",
+    "convert timezone in pandas",
+    "fix invalid dates in dataframe",
+    "create lag feature in pandas",
+    "monthly time series summary"
+  ],
+  "body": "# Time-Series Workflows\n\nTime-series correctness starts with timestamp parsing. Normalize external timestamps to UTC, sort by time, then resample or roll.\n\n## Parse and resample\n\n```python\nimport pandas as pd\n\nevents['ts'] = pd.to_datetime(events['ts'], errors='coerce', utc=True)\ndaily = (\n    events\n    .dropna(subset=['ts'])\n    .set_index('ts')\n    .sort_index()\n    .resample('D')\n    .agg(events=('event_id', 'count'), users=('user_id', 'nunique'))\n    .reset_index()\n)\n```\n\n## Per-entity monthly summary\n\n```python\nmonthly = (\n    orders\n    .assign(paid_at=lambda d: pd.to_datetime(d['paid_at'], errors='coerce', utc=True))\n    .dropna(subset=['paid_at'])\n    .set_index('paid_at')\n    .groupby('region')\n    .resample('ME')\n    .agg(revenue=('amount', 'sum'), orders=('order_id', 'nunique'))\n    .reset_index()\n)\n```\n\n## CLI resample\n\n```bash\npython nodes/pandas/workflows/scripts/resample_timeseries.py orders.csv monthly.parquet --date-column paid_at --freq ME --group-by region --agg amount:sum --utc\n```\n",
+  "sections": [
+    {
+      "id": "parsing",
+      "title": "Parsing timestamps",
+      "body": "Use `pd.to_datetime(column, errors='coerce', utc=True)` for external timestamps. `errors='coerce'` turns invalid timestamps into `NaT` so they can be counted and handled. Keep original strings if parsing failures need audit. Convert to local time for presentation with `.dt.tz_convert(...)` after UTC normalization.",
+      "tags": ["to-datetime", "utc", "nat", "timezone"]
+    },
+    {
+      "id": "resample",
+      "title": "Resampling",
+      "body": "Set a DateTimeIndex, sort it, then call `.resample(freq).agg(...)`. Common offset aliases include `D` for day, `W` for week, `ME` for month end, `MS` for month start, `QE` for quarter end, `h` for hour, and `15min` for fixed intervals. Use [[pandas/workflows/groupby]] with `groupby(...).resample(...)` for per-entity buckets.",
+      "tags": ["resample", "offsets", "datetimeindex", "groupby"]
+    },
+    {
+      "id": "rolling-shift",
+      "title": "Rolling and shift",
+      "body": "`rolling(window)` computes moving statistics. Use row-count windows such as `rolling(7)` or time windows such as `rolling('7D')` on a time index. `shift()` creates lags and period-over-period comparisons. Sort by timestamp and group before shifting entity-specific series.",
+      "tags": ["rolling", "shift", "lag", "moving-average"]
+    },
+    {
+      "id": "frequency-gaps",
+      "title": "Frequency and gaps",
+      "body": "`asfreq()` conforms a time index to a frequency without aggregation. Use it to reveal missing intervals, then fill deliberately with `ffill`, `bfill`, or numeric zeros only when the domain supports it. Do not fill missing revenue or event counts without distinguishing no activity from missing data.",
+      "tags": ["asfreq", "gaps", "ffill", "bfill"]
+    }
+  ],
+  "links": [
+    { "uri": "pandas/workflows/time-series#resample", "context": "Section on frequency-based time resampling" },
+    { "uri": "pandas/workflows/groupby", "context": "Group time buckets by entity or dimension" },
+    { "uri": "pandas/workflows/clean", "context": "Clean invalid dates and required timestamp fields" },
+    { "uri": "pandas/workflows/performance", "context": "Optimize high-volume event time-series workflows" },
+    { "uri": "database/sql", "context": "SQL date truncation and time bucket equivalents" }
+  ],
+  "related": [
+    { "uri": "pandas/workflows/groupby", "relation": "extends", "note": "Resampling is a time-indexed grouping operation" },
+    { "uri": "database/sql", "relation": "see-also", "note": "SQL engines implement similar date_trunc and window functions" },
+    { "uri": "duckdb/sql", "relation": "alternative", "note": "DuckDB is useful for large time-series summaries over Parquet logs" }
+  ],
+  "scripts": [
+    {
+      "id": "resample-timeseries",
+      "name": "Resample Time Series",
+      "description": "Parse a timestamp column, optionally group by dimensions, resample by a pandas offset alias, and aggregate values",
+      "lang": "python",
+      "runtime": "python>=3.10",
+      "entry": "../scripts/resample_timeseries.py",
+      "packages": ["pandas", "pyarrow", "openpyxl"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "input_path": { "type": "string" },
+        "output_path": { "type": "string" },
+        "date_column": { "type": "string" },
+        "frequency": { "type": "string", "description": "Pandas offset alias such as D, W, ME, h, 15min" },
+        "group_by": { "type": "array", "items": { "type": "string" } },
+        "aggregations": { "type": "object" },
+        "utc": { "type": "boolean", "default": true }
+      },
+      "required": ["input_path", "output_path", "date_column", "frequency"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "input_rows": { "type": "integer" },
+        "invalid_dates": { "type": "integer" },
+        "output_rows": { "type": "integer" },
+        "output_path": { "type": "string" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "pandas/workflows", "reason": "Uses the shared resampling script" },
+    { "uri": "pandas/workflows/clean", "reason": "Timestamp columns need parsing and invalid-date policy" }
+  ],
+  "more": {
+    "docs": "https://pandas.pydata.org/docs/user_guide/timeseries.html",
+    "to-datetime": "https://pandas.pydata.org/docs/reference/api/pandas.to_datetime.html",
+    "resample-api": "https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.resample.html",
+    "rolling-api": "https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.rolling.html"
+  },
+  "frontmatter": {
+    "created": "2026-04-15",
+    "updated": "2026-04-15",
+    "author": "dojo-community",
+    "audience": "AI agents, data engineers, analysts",
+    "estimated_reading_time": "6 min",
+    "prerequisites": ["pandas/workflows/clean", "pandas/workflows/groupby"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://github.com/pandas-dev/pandas",
+  "created": "2026-04-15T00:00:00Z",
+  "updated": "2026-04-15T00:00:00Z",
+  "status": "published"
+}

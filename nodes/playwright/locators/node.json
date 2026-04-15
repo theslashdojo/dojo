@@ -1,0 +1,72 @@
+{
+  "name": "locators",
+  "version": "1.0.0",
+  "uri": "playwright/locators",
+  "type": "context",
+  "context": "Choose resilient Playwright locators using roles, labels, text, test IDs, filters, frames, and auto-waiting actionability rules.",
+  "info": "Locators are Playwright's core abstraction for finding elements and waiting until they are actionable. This context teaches the selector priority agents should use: user-facing role and accessible-name locators first, then labels and text, then test IDs, with CSS/XPath as escape hatches. It also covers chained locators, filtering, strictness, frames, shadow DOM, auto-waiting, and why arbitrary sleeps create flaky automation. Agents use it whenever writing tests, scripts, or translating CLI exploration into durable Playwright code.",
+  "parent": "playwright",
+  "content_type": "guide",
+  "tags": ["playwright", "locators", "selectors", "getbyrole", "accessibility", "auto-wait", "actionability", "testid", "frames"],
+  "aliases": ["playwright locators", "getByRole", "getByText", "getByLabel", "getByTestId", "playwright selector", "locator strict mode", "accessible locators", "auto waiting"],
+  "triggers": ["find element with playwright", "choose playwright selector", "fix flaky locator", "use getbyrole", "playwright strict mode violation", "wait for element", "click button by text", "test id selector"],
+  "body": "# Playwright Locators\n\nLocators describe how to find an element at action time. They auto-wait and re-resolve before each action, which makes them more reliable than one-time element handles.\n\n## Priority\n\n```typescript\npage.getByRole('button', { name: 'Submit' });\npage.getByLabel('Email address');\npage.getByPlaceholder('Search');\npage.getByText('Welcome back');\npage.getByTestId('cart-total');\npage.locator('article').filter({ hasText: 'Playwright' }).getByRole('link');\n```\n\nPrefer user-facing selectors because they survive DOM refactors and align with accessibility. Use `getByTestId` when the UI lacks stable accessible text. Use CSS and XPath only when there is no semantic contract.\n\n## Auto-Waiting\n\nBefore actions such as click and fill, Playwright waits for the target to be attached, visible, stable, enabled, and able to receive events. Assertions such as `expect(locator).toBeVisible()` retry until the condition is true or timeout expires.",
+  "sections": [
+    {
+      "id": "priority-order",
+      "title": "Locator priority order",
+      "body": "Use `getByRole(role, { name })` first because it tests the same accessible contract users and assistive technologies rely on. Use `getByLabel()` for form fields, `getByPlaceholder()` when labels are unavailable, and `getByText()` for visible copy. Use `getByTestId()` for intentionally stable app contracts. CSS and XPath are fallback tools for technical DOM details, not the default.",
+      "tags": ["getbyrole", "getbylabel", "getbytext", "testid", "css", "xpath"]
+    },
+    {
+      "id": "strictness",
+      "title": "Strictness and filtering",
+      "body": "Actions require a locator to resolve to one element. If a locator matches many elements, refine it with accessible name, `filter({ hasText })`, `filter({ has })`, `first()`, `last()`, or `nth(index)`. Prefer semantic refinement over positional selection; `nth()` is acceptable for ordered lists only when order is part of the contract.",
+      "tags": ["strictness", "filter", "nth", "hasText", "single-match"]
+    },
+    {
+      "id": "actionability",
+      "title": "Actionability",
+      "body": "Playwright auto-waits for actionability before user actions. A click waits for visibility, stability, receiving events, and enabled state. A fill waits for an editable input. Use this instead of `waitForTimeout`. If a race remains, wait for the real condition: a URL, a response, a locator state, an event, or a web-first assertion.",
+      "tags": ["auto-wait", "click", "fill", "enabled", "visible", "stable"]
+    },
+    {
+      "id": "frames-shadow",
+      "title": "Frames and shadow DOM",
+      "body": "Use `frameLocator()` for iframes: `page.frameLocator('iframe[name=checkout]').getByRole('button', { name: 'Pay' })`. Playwright locators pierce open shadow roots by default for most selector types. Closed shadow roots are not inspectable; rely on public UI or app-provided test hooks.",
+      "tags": ["frameLocator", "iframe", "shadow-dom", "components"]
+    }
+  ],
+  "links": [
+    { "uri": "playwright/browser-automation", "context": "Use locators in standalone scripts" },
+    { "uri": "testing/playwright", "context": "Use locators in end-to-end tests" },
+    { "uri": "frontend/accessibility", "context": "Accessible names and roles make locators more reliable" },
+    { "uri": "playwright/agent-cli", "context": "Translate CLI element refs into durable locators" }
+  ],
+  "related": [
+    { "uri": "frontend/accessibility", "relation": "prerequisite", "note": "Accessible roles and names improve both users' experience and test reliability." },
+    { "uri": "playwright/browser-automation", "relation": "see-also", "note": "Browser scripts use locators for reliable interactions." },
+    { "uri": "testing/playwright", "relation": "see-also", "note": "The testing node includes locator examples for test suites." }
+  ],
+  "more": {
+    "docs": "https://playwright.dev/docs/locators",
+    "actionability": "https://playwright.dev/docs/actionability",
+    "best-practices": "https://playwright.dev/docs/best-practices",
+    "frames": "https://playwright.dev/docs/frames"
+  },
+  "frontmatter": {
+    "created": "2026-04-15",
+    "updated": "2026-04-15",
+    "author": "dojo-community",
+    "audience": "developers, QA engineers, AI agents",
+    "estimated_reading_time": "7 min",
+    "prerequisites": ["playwright"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-15T00:00:00Z",
+  "updated": "2026-04-15T00:00:00Z",
+  "status": "published"
+}

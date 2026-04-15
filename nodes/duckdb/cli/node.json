@@ -1,0 +1,159 @@
+{
+  "name": "cli",
+  "version": "1.0.0",
+  "uri": "duckdb/cli",
+  "type": "skill",
+  "context": "Run DuckDB from the command line for SQL queries, file inspection, exports, CI checks, and shell pipelines",
+  "info": "The DuckDB CLI is a single executable that opens in-memory or persistent `.duckdb` databases, runs SQL with command flags, emits table/CSV/JSON output, and reads data files directly. Agents use this skill when they need deterministic local analytics from shell scripts: query a Parquet or CSV file, create a temporary database, export query results, validate dataset shape in CI, or produce JSON for downstream tools. This skill includes real wrappers for executing SQL and inspecting local or remote files, and it routes deeper learning to [[duckdb/sql]], [[duckdb/files]], [[duckdb/extensions]], [[duckdb/secrets]], and [[duckdb/performance]].",
+  "parent": "duckdb",
+  "tags": [
+    "duckdb",
+    "cli",
+    "sql",
+    "shell",
+    "automation",
+    "csv",
+    "json-output",
+    "parquet",
+    "inspection"
+  ],
+  "aliases": [
+    "duckdb cli",
+    "duckdb command line",
+    "duckdb shell",
+    "duckdb command",
+    "duck db cli",
+    "run duckdb sql",
+    "duckdb -c",
+    "duckdb json output",
+    "duckdb csv output",
+    "duckdb read only"
+  ],
+  "triggers": [
+    "run a duckdb query",
+    "query this parquet file from shell",
+    "inspect this csv with duckdb",
+    "run duckdb in ci",
+    "export duckdb query results",
+    "create a duckdb database file",
+    "open duckdb readonly",
+    "get json output from duckdb",
+    "use duckdb in bash",
+    "sample this data file"
+  ],
+  "body": "# DuckDB CLI\n\nThe CLI gives agents a small, deterministic execution surface for local analytics. It can run without a database file, or it can open a persistent `.duckdb` file that stores tables, views, macros, secrets, and extension metadata.\n\n## Installation Check\n\n```bash\nduckdb --version\n# If missing, install from https://duckdb.org/docs/stable/installation/ or use your package manager.\n```\n\n## Invocation Patterns\n\n```bash\n# In-memory query\nduckdb -c \"SELECT 42 AS answer;\"\n\n# Persistent database file\nduckdb analysis.duckdb -c \"CREATE TABLE events AS SELECT * FROM 'events.parquet';\"\n\n# Read-only inspection\nduckdb -readonly analysis.duckdb -c \"SELECT count() FROM events;\"\n\n# JSON for downstream agents\nduckdb -json -c \"SELECT count(*) AS rows FROM 'events.csv';\"\n\n# CSV export to stdout\nduckdb -csv -c \"SELECT * FROM 'events.parquet' LIMIT 10;\"\n```\n\nThe CLI accepts output flags such as `-csv`, `-json`, and `-readonly`. Interactive use also supports dot commands like `.help`, `.tables`, `.schema`, `.mode`, `.output`, `.read`, and `.timer` because the shell is modeled after the SQLite CLI.\n\n## Repository Scripts\n\n```bash\n# Execute SQL directly\nnodes/duckdb/cli/scripts/run-sql.sh --sql \"SELECT count(*) AS rows FROM 'data.csv'\" --output json\n\n# Execute a file of SQL against a persistent database\nnodes/duckdb/cli/scripts/run-sql.sh --db analysis.duckdb --file report.sql --output table\n\n# Inspect a local or remote data file\nnodes/duckdb/cli/scripts/inspect-file.sh data/events.parquet --sample 20 --output table\n```\n\n## Operational Rules\n\n- Use `--readonly` when inspecting an existing `.duckdb` file you do not intend to modify.\n- Use `-json` when another tool or agent will parse the result.\n- Use a SQL file for multi-statement workflows and committed reports.\n- Add `ORDER BY` in reports; unordered analytical results are not stable by contract.\n- Put credentials in [[duckdb/secrets]], environment variables, or external secret stores, not in committed SQL files.\n\n## Common Shell Recipes\n\n```bash\n# Count rows in every Parquet partition as one table\nduckdb -json -c \"SELECT count(*) AS rows FROM read_parquet('warehouse/events/**/*.parquet');\"\n\n# Convert CSV to Parquet\nduckdb -c \"COPY (SELECT * FROM read_csv('input.csv', union_by_name = true)) TO 'output.parquet' (FORMAT parquet);\"\n\n# Fail CI if duplicate IDs exist\nduckdb -c \"SELECT id, count(*) c FROM 'users.csv' GROUP BY id HAVING c > 1 LIMIT 1;\" | tee duplicates.txt\ntest ! -s duplicates.txt\n\n# Build a view over files for repeated work\nduckdb analysis.duckdb <<'SQL'\nCREATE OR REPLACE VIEW events AS\nSELECT * FROM read_parquet('data/events/**/*.parquet', hive_partitioning = true);\nSELECT date_trunc('day', ts) AS day, count() FROM events GROUP BY ALL ORDER BY ALL;\nSQL\n```\n\nContinue to [[duckdb/sql]] for query syntax, [[duckdb/files]] for file readers and COPY, and [[duckdb/performance]] when queries spill, run out of memory, or scan too slowly.",
+  "sections": [
+    {
+      "id": "run-sql",
+      "title": "Run SQL from shell",
+      "body": "Use `duckdb -c \"SQL\"` for one statement or pipe a SQL file into `duckdb database.duckdb`. The `scripts/run-sql.sh` wrapper normalizes database path, output mode, read-only mode, and direct SQL versus SQL files. Prefer SQL files for multi-step automation because they are reviewable and easier to reproduce.",
+      "tags": ["sql", "shell", "scripts", "automation"]
+    },
+    {
+      "id": "output-modes",
+      "title": "Output modes",
+      "body": "Use table output for humans, `-json` for agents and API handoffs, and `-csv` for pipelines that load into spreadsheets or other data tools. For large exports, prefer `COPY (...) TO 'file.parquet'` or `COPY (...) TO 'file.csv'` from [[duckdb/files]] instead of printing everything to stdout.",
+      "tags": ["json", "csv", "stdout", "copy"]
+    },
+    {
+      "id": "database-files",
+      "title": "In-memory versus persistent databases",
+      "body": "Without a filename the CLI opens a transient in-memory database. With a filename, DuckDB opens or creates a persistent `.duckdb` file. Use persistent files for reusable tables, views, macros, and checkpoints. Use `-readonly` for inspection to avoid accidental writes.",
+      "tags": ["database-file", "memory", "readonly", "persistent"]
+    },
+    {
+      "id": "file-inspection",
+      "title": "Inspect files before acting",
+      "body": "The `scripts/inspect-file.sh` wrapper builds a small report for CSV, Parquet, or JSON: row count, schema, summary statistics, and a sample. Run it before writing transformation SQL so type inference, headers, dates, and nested values are visible.",
+      "tags": ["inspect", "csv", "parquet", "json", "schema"]
+    },
+    {
+      "id": "safe-automation",
+      "title": "Safe automation",
+      "body": "Quote file paths as SQL string literals, avoid interpolating untrusted SQL, and whitelist dynamic identifiers. For credentials, use [[duckdb/secrets]] or environment variables and keep secret creation SQL out of logs. For large files, set [[duckdb/performance#memory-and-temp]] options before the query.",
+      "tags": ["security", "quoting", "secrets", "ci"]
+    }
+  ],
+  "links": [
+    { "uri": "duckdb/sql", "context": "Write DuckDB SQL used by CLI commands" },
+    { "uri": "duckdb/files", "context": "Read CSV, Parquet, JSON and export results" },
+    { "uri": "duckdb/secrets", "context": "Configure credentials for S3 and remote object stores" },
+    { "uri": "duckdb/performance", "context": "Tune memory, threads, and profiling for CLI workloads" },
+    { "uri": "shell/bash", "context": "Use CLI safely in shell scripts and pipelines" },
+    { "uri": "jq/cli", "context": "Parse JSON output from `duckdb -json` in shell workflows" }
+  ],
+  "related": [
+    { "uri": "duckdb", "relation": "prerequisite", "note": "The CLI is the default executable surface for the DuckDB ecosystem" },
+    { "uri": "duckdb/python", "relation": "alternative", "note": "Python is better when the workflow needs DataFrames or parameters" },
+    { "uri": "sqlite", "relation": "similar", "note": "DuckDB CLI intentionally resembles the SQLite shell, but runs DuckDB's analytical engine" },
+    { "uri": "shell/bash", "relation": "see-also", "note": "Shell quoting and exit status handling matter for CLI automation" }
+  ],
+  "scripts": [
+    {
+      "id": "run-sql",
+      "name": "Run DuckDB SQL",
+      "description": "Execute DuckDB SQL from an argument or file with configurable database, output mode, and read-only mode",
+      "lang": "bash",
+      "runtime": "duckdb-cli",
+      "entry": "./scripts/run-sql.sh",
+      "env": {
+        "DUCKDB_DATABASE": { "required": false, "description": "Default database path if --db is omitted" }
+      }
+    },
+    {
+      "id": "inspect-file",
+      "name": "Inspect Data File",
+      "description": "Summarize a CSV, Parquet, or JSON file with DuckDB: row count, schema, statistics, and sample rows",
+      "lang": "bash",
+      "runtime": "duckdb-cli",
+      "entry": "./scripts/inspect-file.sh"
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "database": { "type": "string", "description": "Optional `.duckdb` database path; omit for in-memory execution" },
+        "sql": { "type": "string", "description": "SQL statement or statements to execute" },
+        "sqlFile": { "type": "string", "description": "Path to a SQL file to execute instead of `sql`" },
+        "output": { "type": "string", "enum": ["table", "csv", "json", "line", "markdown"], "description": "CLI output mode" },
+        "readonly": { "type": "boolean", "description": "Open the database read-only" }
+      },
+      "required": []
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "stdout": { "type": "string", "description": "Command output in the selected mode" },
+        "stderr": { "type": "string", "description": "DuckDB diagnostics and errors" },
+        "exitCode": { "type": "integer", "description": "Process exit code" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "duckdb", "reason": "The CLI executes DuckDB SQL and file readers" },
+    { "uri": "shell/bash", "reason": "Scripts are Bash wrappers around the DuckDB executable" },
+    { "uri": "jq/cli", "optional": true, "reason": "Useful for post-processing JSON output from DuckDB" }
+  ],
+  "more": {
+    "docs": "https://duckdb.org/docs/stable/clients/cli/overview",
+    "arguments": "https://duckdb.org/docs/stable/clients/cli/arguments",
+    "dot-commands": "https://duckdb.org/docs/stable/clients/cli/dot_commands",
+    "installation": "https://duckdb.org/docs/stable/installation/"
+  },
+  "frontmatter": {
+    "created": "2026-04-15",
+    "updated": "2026-04-15",
+    "author": "dojo-community",
+    "audience": "AI agents, data engineers, software engineers",
+    "estimated_reading_time": "7 min",
+    "prerequisites": ["duckdb", "shell/bash"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-15T00:00:00Z",
+  "updated": "2026-04-15T00:00:00Z",
+  "status": "published"
+}

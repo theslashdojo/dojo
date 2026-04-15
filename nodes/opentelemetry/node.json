@@ -1,0 +1,197 @@
+{
+  "name": "opentelemetry",
+  "version": "1.0.0",
+  "uri": "opentelemetry",
+  "type": "ecosystem",
+  "context": "Vendor-neutral observability instrumentation, OTLP export, Collector pipelines, and semantic conventions.",
+  "info": "OpenTelemetry is the vendor-neutral instrumentation and telemetry pipeline layer for modern systems. It gives agents a common way to create traces, metrics, logs, and baggage in application code, propagate request context across services, export telemetry through OTLP, and route or transform that telemetry with the OpenTelemetry Collector before it reaches Prometheus, Sentry, Jaeger, Grafana, Honeycomb, Datadog, or another backend. This ecosystem matters because autonomous agents need production evidence: they must instrument code, verify spans and metrics, debug missing telemetry, control sampling cost, and keep signal names consistent across services.",
+  "parent": null,
+  "tags": [
+    "opentelemetry",
+    "otel",
+    "observability",
+    "tracing",
+    "metrics",
+    "logs",
+    "otlp",
+    "collector",
+    "instrumentation",
+    "telemetry"
+  ],
+  "aliases": [
+    "opentelemetry",
+    "open telemetry",
+    "otel",
+    "otel sdk",
+    "otel collector",
+    "opentelemetry collector",
+    "distributed tracing",
+    "observability instrumentation",
+    "telemetry pipeline",
+    "vendor neutral observability",
+    "open telemetry protocol"
+  ],
+  "triggers": [
+    "add opentelemetry",
+    "instrument this service",
+    "send traces to a collector",
+    "configure otlp export",
+    "why are spans missing",
+    "set service.name",
+    "add distributed tracing",
+    "configure the otel collector",
+    "export metrics with opentelemetry",
+    "standardize telemetry attributes"
+  ],
+  "body": "# OpenTelemetry\n\nOpenTelemetry is the vendor-neutral layer between application code and observability backends. Agents use it when they need a programmatic way to create telemetry, carry context across service boundaries, and ship traces, metrics, and logs without tying code to one vendor SDK.\n\n## Tree\n\n- [[opentelemetry/signals]] explains traces, metrics, logs, baggage, and context propagation.\n- [[opentelemetry/nodejs]] instruments Node.js applications with the OpenTelemetry JavaScript SDK.\n- [[opentelemetry/collector]] receives, processes, and exports telemetry through configurable pipelines.\n- [[opentelemetry/otlp]] covers OTLP endpoints, transports, paths, headers, and environment variables.\n- [[opentelemetry/semantic-conventions]] defines stable attribute names like `service.name`, `http.request.method`, and `deployment.environment.name`.\n- [[opentelemetry/sampling]] controls telemetry volume with head, parent-based, ratio, and tail sampling.\n- [[opentelemetry/troubleshooting]] gives a field checklist for missing spans, broken propagation, and collector failures.\n\n## Fast Path\n\nFor a Node.js service exporting to a local Collector:\n\n```bash\nnpm install @opentelemetry/api @opentelemetry/sdk-node @opentelemetry/auto-instrumentations-node @opentelemetry/exporter-trace-otlp-http @opentelemetry/exporter-metrics-otlp-http @opentelemetry/sdk-metrics @opentelemetry/resources @opentelemetry/semantic-conventions\nnode nodes/opentelemetry/nodejs/scripts/create-node-bootstrap.mjs --service-name api --out instrumentation.mjs\nOTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318 node --import ./instrumentation.mjs ./server.js\n```\n\nFor a local Collector that accepts OTLP and prints telemetry while you verify the app:\n\n```bash\npython3 nodes/opentelemetry/collector/scripts/collector-config.py render --out otelcol.yaml --debug\notelcol validate --config=otelcol.yaml\notelcol --config=otelcol.yaml\n```\n\n## Decision Model\n\nUse the SDK in application code when the process can emit telemetry directly. Use the Collector when you need a stable endpoint, retries, batching, fan-out to multiple vendors, redaction, resource enrichment, Kubernetes metadata, or tail sampling. Use semantic conventions before inventing names; stable names make queries portable across backends and make [[prometheus/query]], [[sentry/capture]], and trace search agree on the same facts.\n\n## Important Environment Variables\n\n```bash\nexport OTEL_SERVICE_NAME=checkout-api\nexport OTEL_RESOURCE_ATTRIBUTES=deployment.environment.name=production,service.version=1.7.3\nexport OTEL_EXPORTER_OTLP_ENDPOINT=https://otel-gateway.example.com:4318\nexport OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf\nexport OTEL_EXPORTER_OTLP_HEADERS=authorization=Bearer%20$OTEL_TOKEN\nexport OTEL_TRACES_SAMPLER=parentbased_traceidratio\nexport OTEL_TRACES_SAMPLER_ARG=0.10\n```\n\nPrefer `OTEL_SERVICE_NAME` over embedding the service name in code when deploying the same artifact to many environments. Prefer `OTEL_RESOURCE_ATTRIBUTES` for environment, version, region, cluster, and team metadata.",
+  "sections": [
+    {
+      "id": "agent-jobs",
+      "title": "Agent jobs",
+      "body": "The main agent jobs are: add SDK initialization, add manual spans around important operations, configure OTLP endpoints, generate Collector configs, validate collector pipelines, keep attributes aligned with [[opentelemetry/semantic-conventions]], tune [[opentelemetry/sampling]], and debug missing telemetry with [[opentelemetry/troubleshooting]].",
+      "tags": [
+        "agents",
+        "workflow",
+        "instrumentation",
+        "debugging"
+      ]
+    },
+    {
+      "id": "architecture",
+      "title": "Architecture",
+      "body": "Application code uses an OpenTelemetry API and SDK. Instrumentation libraries create spans, metric measurements, and log records. Propagators inject and extract context, usually W3C `traceparent` and `baggage` headers. Exporters send telemetry through [[opentelemetry/otlp]] directly to a backend or to [[opentelemetry/collector]], where receivers, processors, exporters, extensions, and service pipelines control delivery.",
+      "tags": [
+        "sdk",
+        "api",
+        "propagation",
+        "collector",
+        "otlp"
+      ]
+    },
+    {
+      "id": "when-to-use-collector",
+      "title": "When to use the Collector",
+      "body": "Use [[opentelemetry/collector]] when multiple apps need one telemetry endpoint, when outbound network policy should be centralized, when signals need batching or retry queues, when processors must enrich or redact data, when one stream must fan out to multiple backends, or when tail sampling must decide after seeing the whole trace.",
+      "tags": [
+        "collector",
+        "gateway",
+        "agent",
+        "processing",
+        "fanout"
+      ]
+    },
+    {
+      "id": "safety",
+      "title": "Safety rules",
+      "body": "Never put secrets, API keys, raw tokens, or personal data into span attributes, baggage, metric labels, or resource attributes. Keep metric and attribute cardinality bounded. Use route templates like `/users/:id` instead of concrete URLs with IDs. Use sampling for high-volume traces, but keep errors and important flows observable through explicit policies.",
+      "tags": [
+        "security",
+        "pii",
+        "cardinality",
+        "sampling"
+      ]
+    }
+  ],
+  "sub": [
+    "opentelemetry/signals",
+    "opentelemetry/nodejs",
+    "opentelemetry/collector",
+    "opentelemetry/otlp",
+    "opentelemetry/semantic-conventions",
+    "opentelemetry/sampling",
+    "opentelemetry/troubleshooting"
+  ],
+  "links": [
+    {
+      "uri": "opentelemetry/signals",
+      "context": "Understand traces, metrics, logs, baggage, and context propagation"
+    },
+    {
+      "uri": "opentelemetry/nodejs",
+      "context": "Instrument Node.js services with the JavaScript SDK"
+    },
+    {
+      "uri": "opentelemetry/collector",
+      "context": "Route, batch, transform, validate, and export telemetry"
+    },
+    {
+      "uri": "opentelemetry/otlp",
+      "context": "Configure standard OTLP export from SDKs and collectors"
+    },
+    {
+      "uri": "opentelemetry/semantic-conventions",
+      "context": "Use stable resource, span, metric, and log attributes"
+    },
+    {
+      "uri": "opentelemetry/sampling",
+      "context": "Control telemetry volume and tracing cost"
+    },
+    {
+      "uri": "opentelemetry/troubleshooting",
+      "context": "Debug missing telemetry and broken pipelines"
+    },
+    {
+      "uri": "prometheus",
+      "context": "Prometheus commonly receives metrics produced by OpenTelemetry pipelines"
+    },
+    {
+      "uri": "sentry",
+      "context": "Sentry can consume errors and performance telemetry alongside OpenTelemetry"
+    },
+    {
+      "uri": "node",
+      "context": "Node.js services are a common OpenTelemetry instrumentation target"
+    },
+    {
+      "uri": "kubernetes",
+      "context": "Collectors are commonly deployed as DaemonSets, sidecars, or gateways"
+    }
+  ],
+  "related": [
+    {
+      "uri": "prometheus",
+      "relation": "see-also",
+      "note": "Prometheus is a backend and query layer for metrics that OpenTelemetry can produce or collect"
+    },
+    {
+      "uri": "sentry",
+      "relation": "see-also",
+      "note": "Sentry handles error and performance workflows that can coexist with OpenTelemetry traces"
+    },
+    {
+      "uri": "kubernetes",
+      "relation": "see-also",
+      "note": "Collector deployment, service discovery, and resource enrichment often happen in Kubernetes"
+    },
+    {
+      "uri": "node",
+      "relation": "prerequisite",
+      "note": "The Node.js skill is needed for JavaScript service instrumentation"
+    }
+  ],
+  "more": {
+    "docs": "https://opentelemetry.io/docs/",
+    "overview": "https://opentelemetry.io/docs/what-is-opentelemetry/",
+    "signals": "https://opentelemetry.io/docs/concepts/signals/",
+    "collector": "https://opentelemetry.io/docs/collector/",
+    "otlp": "https://opentelemetry.io/docs/specs/otel/protocol/",
+    "semconv": "https://opentelemetry.io/docs/specs/semconv/",
+    "repo": "https://github.com/open-telemetry"
+  },
+  "frontmatter": {
+    "created": "2026-04-15",
+    "updated": "2026-04-15",
+    "author": "dojo-community",
+    "audience": "ai-agents, backend-engineers, sre, platform-engineers",
+    "estimated_reading_time": "7 min",
+    "prerequisites": [],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://github.com/open-telemetry",
+  "created": "2026-04-15T00:00:00Z",
+  "updated": "2026-04-15T00:00:00Z",
+  "status": "published"
+}

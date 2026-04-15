@@ -1,0 +1,112 @@
+{
+  "name": "extensions",
+  "version": "1.0.0",
+  "uri": "duckdb/extensions",
+  "type": "context",
+  "content_type": "reference",
+  "context": "Install, load, audit, and troubleshoot DuckDB extensions such as httpfs, spatial, fts, icu, json, and community modules",
+  "info": "DuckDB extensions add optional capabilities to the embedded engine: remote file systems, spatial functions, full-text search, ICU collations/time zones, additional file formats, and community modules. Extension use has two steps: installation downloads or locates the binary, and loading makes it available in the current DuckDB connection. Agents use this node when a query needs `httpfs` for HTTPS/S3, `spatial` for geospatial data, `fts` for full-text search, or when troubleshooting extension autoloading and repository security. For credentials around remote files, continue to [[duckdb/secrets]].",
+  "parent": "duckdb",
+  "tags": [
+    "duckdb",
+    "extensions",
+    "httpfs",
+    "spatial",
+    "fts",
+    "icu",
+    "autoload",
+    "community",
+    "install-load"
+  ],
+  "aliases": [
+    "duckdb extensions",
+    "duckdb install extension",
+    "duckdb load extension",
+    "install httpfs",
+    "load httpfs",
+    "duckdb spatial",
+    "duckdb fts",
+    "duckdb icu",
+    "duckdb community extensions",
+    "duckdb_extensions"
+  ],
+  "triggers": [
+    "install a duckdb extension",
+    "load a duckdb extension",
+    "read s3 with duckdb",
+    "use httpfs in duckdb",
+    "use spatial extension",
+    "list duckdb extensions",
+    "update duckdb extensions",
+    "extension not found duckdb",
+    "autoload duckdb extension",
+    "use community extension"
+  ],
+  "body": "# DuckDB Extensions\n\nExtensions are optional modules. In most workflows there are two explicit statements:\n\n```sql\nINSTALL httpfs;\nLOAD httpfs;\n```\n\n`INSTALL` obtains the extension from a repository or local path. `LOAD` makes it active in the current connection. If an extension is already installed or loaded, these statements are safe to repeat.\n\n## Inspect Extensions\n\n```sql\nSELECT extension_name, installed, loaded, install_path, description\nFROM duckdb_extensions()\nORDER BY extension_name;\n```\n\n## Common Extensions\n\n| Extension | Use |\n|-----------|-----|\n| `httpfs` | HTTPS, S3-compatible object storage, remote Parquet/CSV/JSON |\n| `spatial` | Geospatial types, functions, and file formats |\n| `fts` | Full-text search indexes and ranking |\n| `icu` | ICU collations, calendars, and time zone behavior |\n| `json` | JSON functions where not already built in for the installed version |\n\n## Repositories\n\nCore extensions are built and signed by the DuckDB team. Community extensions are useful but should be treated as third-party executable code.\n\n```sql\n-- Default core repository\nINSTALL httpfs;\n\n-- Explicit core repository\nINSTALL httpfs FROM core;\n\n-- Community repository\nINSTALL avro FROM community;\n\n-- Nightly core extension repository for testing only\nINSTALL spatial FROM core_nightly;\n```\n\n## Autoloading\n\nMany core extensions autoload when a query needs them. For example, reading an HTTPS file can trigger `httpfs`. Autoloading is convenient, but production SQL is easier to audit when it explicitly declares required extensions.\n\n## Update and Reinstall\n\n```sql\nUPDATE EXTENSIONS;\nFORCE INSTALL httpfs;\n```\n\nUse `FORCE INSTALL` only when you need to refresh or repair an installed extension. Do not pin a production workflow to nightly repositories unless the risk is documented.\n",
+  "sections": [
+    {
+      "id": "install-load",
+      "title": "INSTALL and LOAD",
+      "body": "`INSTALL name;` downloads or locates an extension. `LOAD name;` loads it into the current connection. Installation persists in DuckDB's extension directory; loading is connection-scoped and usually repeated after reconnecting.",
+      "tags": ["install", "load", "connection", "persistence"]
+    },
+    {
+      "id": "httpfs",
+      "title": "httpfs for remote files",
+      "body": "`httpfs` enables HTTP(S) and S3-compatible object storage reads. It is usually paired with [[duckdb/secrets]] for credentials and [[duckdb/files]] for `read_parquet`, `read_csv`, and `read_json_auto` over remote paths.",
+      "tags": ["httpfs", "https", "s3", "remote-files"]
+    },
+    {
+      "id": "spatial",
+      "title": "Spatial extension",
+      "body": "`spatial` adds geospatial functions and geospatial file support. Load it explicitly for GIS workflows, coordinate transformations, geometry operations, and spatial joins. Check extension availability on the target platform before relying on it in automation.",
+      "tags": ["spatial", "gis", "geometry", "geospatial"]
+    },
+    {
+      "id": "repositories",
+      "title": "Repositories and supply chain",
+      "body": "Prefer the default core repository. `community` and custom repositories are third-party code distribution paths and should be treated as supply chain inputs. In controlled environments, pin allowed repositories and disable arbitrary extension installation where possible.",
+      "tags": ["repositories", "core", "community", "security", "supply-chain"]
+    },
+    {
+      "id": "troubleshooting",
+      "title": "Extension troubleshooting",
+      "body": "If `LOAD` fails, verify that the extension was installed for the same DuckDB version and platform. If `INSTALL` fails, check network access, repository URL, proxy settings, and whether unsigned/community extensions are blocked. Query `duckdb_extensions()` to see installed and loaded state.",
+      "tags": ["troubleshooting", "install-failed", "load-failed", "version"]
+    }
+  ],
+  "links": [
+    { "uri": "duckdb/files#remote-files", "context": "Use extensions to read remote CSV, Parquet, and JSON files" },
+    { "uri": "duckdb/secrets", "context": "Create secrets for S3 and object-storage access" },
+    { "uri": "duckdb/troubleshooting#extensions", "context": "Resolve extension installation and loading failures" },
+    { "uri": "cloudflare/r2", "context": "S3-compatible object storage often queried through httpfs" },
+    { "uri": "aws/s3", "context": "S3 data lakes can be queried through httpfs and secrets" }
+  ],
+  "related": [
+    { "uri": "duckdb/secrets", "relation": "prerequisite", "note": "Remote object storage extensions usually need credentials" },
+    { "uri": "duckdb/files", "relation": "extends", "note": "Extensions expand the file systems and formats DuckDB can read" },
+    { "uri": "postgres/extensions", "relation": "similar", "note": "Both ecosystems use extensions to add capabilities beyond the core engine" }
+  ],
+  "more": {
+    "docs": "https://duckdb.org/docs/stable/extensions/overview",
+    "installing": "https://duckdb.org/docs/stable/extensions/installing_extensions",
+    "httpfs": "https://duckdb.org/docs/stable/core_extensions/httpfs/overview",
+    "spatial": "https://duckdb.org/docs/stable/core_extensions/spatial/overview",
+    "securing": "https://duckdb.org/docs/stable/operations_manual/securing_duckdb/securing_extensions"
+  },
+  "frontmatter": {
+    "created": "2026-04-15",
+    "updated": "2026-04-15",
+    "author": "dojo-community",
+    "audience": "AI agents, data engineers, platform engineers",
+    "estimated_reading_time": "5 min",
+    "prerequisites": ["duckdb"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-15T00:00:00Z",
+  "updated": "2026-04-15T00:00:00Z",
+  "status": "published"
+}

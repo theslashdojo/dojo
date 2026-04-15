@@ -1,0 +1,216 @@
+{
+  "name": "workspace",
+  "version": "1.0.0",
+  "uri": "pnpm/workspace",
+  "type": "skill",
+  "context": "Manage pnpm monorepos with workspace protocol dependencies, filters, recursive runs, and package graph targeting",
+  "info": "This skill covers pnpm's workspace-native model: the required `pnpm-workspace.yaml` root file, the `workspace:` protocol that forbids accidental registry fallback, graph selectors used by `--filter`, recursive execution with `-r`, and the special behavior of injected workspace dependencies. It matters because autonomous agents working in pnpm monorepos must scope changes precisely or risk mutating the wrong package set.",
+  "parent": "pnpm",
+  "tags": [
+    "workspace",
+    "workspace-protocol",
+    "filtering",
+    "recursive",
+    "monorepo",
+    "why",
+    "injected"
+  ],
+  "aliases": [
+    "pnpm workspace",
+    "pnpm workspaces",
+    "workspace protocol",
+    "workspace colon",
+    "pnpm filter",
+    "pnpm recursive",
+    "pnpm why"
+  ],
+  "triggers": [
+    "work in a pnpm monorepo",
+    "add one workspace package to another",
+    "run a command in filtered workspaces",
+    "use the workspace protocol in pnpm",
+    "find why a package is installed in pnpm"
+  ],
+  "body": "# pnpm Workspace Operations\n\nA pnpm workspace is defined by `pnpm-workspace.yaml`. Once that file exists, filters and the `workspace:` protocol become the safest way to target package changes, script runs, and dependency graph traversal.\n\n```yaml\npackages:\n  - apps/*\n  - packages/*\n```\n\n```json\n{\n  \"dependencies\": {\n    \"@acme/ui\": \"workspace:*\"\n  }\n}\n```\n\nWithout `workspace:`, pnpm may fall back to the registry when a local version does not satisfy the declared range. That is often the wrong behavior for a monorepo automation task.\n",
+  "sections": [
+    {
+      "id": "workspace-protocol",
+      "title": "The workspace protocol",
+      "body": "The official workspace docs explain that `workspace:` forces pnpm to resolve only to a local workspace package. If the requested version is not present locally, installation fails instead of silently pulling from the registry. Use `workspace:*` for most internal package links and explicit versions like `workspace:1.2.3` when release coordination matters.",
+      "tags": [
+        "workspace-protocol",
+        "local-only",
+        "workspace-star"
+      ]
+    },
+    {
+      "id": "filters",
+      "title": "Filter selectors",
+      "body": "Filters are the primary blast-radius control for pnpm monorepo automation. `foo...` includes a package and its dependencies, `...foo` includes its dependents, `{packages/**}` scopes by directory, and `[origin/main]` scopes by changed packages since a ref. Combine them to target exactly the packages that should change before using add, run, exec, or deploy.",
+      "tags": [
+        "filters",
+        "selectors",
+        "dependents",
+        "dependencies"
+      ]
+    },
+    {
+      "id": "recursive-execution",
+      "title": "Recursive commands",
+      "body": "Use `-r` or `--recursive` when you intentionally want to fan out across a workspace. Pair it with `--filter` to narrow the set and `--parallel` only when topological ordering does not matter. For script and binary execution patterns built on these flags, see [[pnpm/scripts#recursive-execution]].",
+      "tags": [
+        "recursive",
+        "parallel",
+        "run",
+        "exec"
+      ]
+    },
+    {
+      "id": "injected-dependencies",
+      "title": "Injected workspace dependencies",
+      "body": "In `package.json`, `dependenciesMeta.<name>.injected` turns a local workspace dependency into a hard-linked copy in the virtual store instead of a source symlink. This is useful when different consumers need the same local package with different peer environments. The tradeoff is that updates are no longer immediately visible; a rebuild or reinstall is often required to refresh the injected copy.",
+      "tags": [
+        "injected",
+        "dependencies-meta",
+        "peers",
+        "virtual-store"
+      ]
+    }
+  ],
+  "links": [
+    {
+      "uri": "pnpm/install#workspace-targeting",
+      "context": "Install mutations should use filters or workspace-root flags"
+    },
+    {
+      "uri": "pnpm/scripts#recursive-execution",
+      "context": "Recursive runs and execs build directly on workspace selectors"
+    },
+    {
+      "uri": "pnpm/deploy#deploy-command",
+      "context": "Deploy requires a package selector in workspace repos"
+    },
+    {
+      "uri": "pnpm/config#catalogs-and-overrides",
+      "context": "Catalogs and injected metadata are part of workspace design"
+    },
+    {
+      "uri": "turbo/workspaces",
+      "context": "Turborepo workspaces frequently sit on top of pnpm"
+    }
+  ],
+  "related": [
+    {
+      "uri": "pnpm/install",
+      "relation": "see-also",
+      "note": "Filtered installs and adds are workspace operations in practice"
+    },
+    {
+      "uri": "turbo/workspaces",
+      "relation": "see-also",
+      "note": "Many JS monorepos combine pnpm workspaces with Turborepo orchestration"
+    },
+    {
+      "uri": "pnpm/config",
+      "relation": "prerequisite",
+      "note": "Workspace behavior is configured through pnpm-workspace.yaml and related settings"
+    }
+  ],
+  "scripts": [
+    {
+      "id": "manage-workspace",
+      "name": "Manage Workspace",
+      "description": "List workspace packages, run recursive scripts, add workspace dependencies, or inspect why a package exists",
+      "lang": "bash",
+      "runtime": "bash>=4",
+      "entry": "./scripts/manage-workspace.sh",
+      "env": {
+        "PNPM_HOME": {
+          "required": false,
+          "description": "Optional pnpm home directory if the binary is not on the default PATH"
+        }
+      },
+      "packages": []
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "action": {
+          "type": "string",
+          "enum": ["list", "run", "add-workspace-dep", "why", "validate"],
+          "description": "Workspace action to execute"
+        },
+        "filters": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "pnpm filter selectors"
+        },
+        "package": {
+          "type": "string",
+          "description": "Workspace package name for add-workspace-dep"
+        },
+        "dependency": {
+          "type": "string",
+          "description": "Dependency or package name used by add-workspace-dep or why"
+        },
+        "script": {
+          "type": "string",
+          "description": "Script name for recursive run"
+        },
+        "args": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Arguments forwarded after --"
+        },
+        "parallel": {
+          "type": "boolean",
+          "description": "Run recursive tasks in parallel",
+          "default": false
+        }
+      },
+      "required": ["action"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "action": {
+          "type": "string",
+          "description": "Workspace action that ran"
+        },
+        "command": {
+          "type": "string",
+          "description": "Rendered pnpm command line when applicable"
+        }
+      }
+    }
+  },
+  "depends": [
+    {
+      "uri": "pnpm/config",
+      "reason": "Workspace file and linker settings determine how packages relate to each other"
+    }
+  ],
+  "more": {
+    "docs": "https://pnpm.io/workspaces",
+    "filtering": "https://pnpm.io/filtering",
+    "why": "https://pnpm.io/cli/why"
+  },
+  "frontmatter": {
+    "created": "2026-04-12",
+    "updated": "2026-04-12",
+    "author": "dojo-community",
+    "audience": "developers, AI agents, monorepo maintainers",
+    "estimated_reading_time": "5 min",
+    "prerequisites": ["pnpm/config"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://github.com/pnpm/pnpm",
+  "created": "2026-04-12T00:00:00Z",
+  "updated": "2026-04-12T00:00:00Z",
+  "status": "published"
+}

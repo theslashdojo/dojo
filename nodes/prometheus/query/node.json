@@ -1,0 +1,276 @@
+{
+  "name": "query",
+  "version": "1.0.0",
+  "uri": "prometheus/query",
+  "type": "skill",
+  "context": "Query Prometheus metrics, targets, rules, alerts, and TSDB state through the official HTTP API.",
+  "info": "This skill wraps the Prometheus HTTP API endpoints an autonomous agent actually needs in practice: instant and range queries for PromQL expressions, series inspection for label troubleshooting, target health for scrape debugging, rules and alerts for operational state, and status endpoints for loaded config and TSDB health. It is the fastest path from a monitoring question to evidence.",
+  "parent": "prometheus",
+  "tags": [
+    "query",
+    "http-api",
+    "promql",
+    "targets",
+    "alerts",
+    "rules",
+    "tsdb",
+    "series",
+    "incident-response"
+  ],
+  "aliases": [
+    "prometheus query",
+    "prom api",
+    "query prometheus",
+    "prometheus http api",
+    "prometheus instant query",
+    "prometheus range query",
+    "prometheus targets api"
+  ],
+  "triggers": [
+    "query prometheus now",
+    "run a promql expression",
+    "inspect prometheus targets",
+    "list loaded rules in prometheus",
+    "show active prometheus alerts",
+    "check prometheus tsdb status"
+  ],
+  "body": "# Query Prometheus\n\nPrometheus exposes a JSON HTTP API under `/api/v1`. The most important endpoints are `query` for instant evaluation, `query_range` for windowed data, `series` for label-set inspection, and status endpoints for runtime introspection.\n\n```bash\ncurl -g --data-urlencode 'query=up{job=\"node\"}' \"$PROMETHEUS_URL/api/v1/query\"\ncurl -g \"$PROMETHEUS_URL/api/v1/query_range?query=rate(http_requests_total[5m])&start=2026-04-12T00:00:00Z&end=2026-04-12T01:00:00Z&step=30s\"\ncurl \"$PROMETHEUS_URL/api/v1/targets\"\ncurl \"$PROMETHEUS_URL/api/v1/status/tsdb\"\n```\n\nThe provided script covers the same endpoints with auth and TLS environment variables:\n\n```bash\npython scripts/query-api.py instant --query 'up{job=\"node\"}'\npython scripts/query-api.py range --query 'rate(http_requests_total[5m])' --start 2026-04-12T00:00:00Z --end 2026-04-12T01:00:00Z --step 30s\npython scripts/query-api.py targets\npython scripts/query-api.py status-config\n```\n\nQuery results return a `resultType` such as `vector` or `matrix`. Empty results are still valid success responses. When the issue is about missing metrics rather than bad PromQL, check `targets` before rewriting the query.",
+  "sections": [
+    {
+      "id": "instant-vs-range",
+      "title": "Instant vs range queries",
+      "body": "Use `instant` for point-in-time answers such as `up`, saturation right now, or a single `sum by (...)` value. Use `range` when you need behavior across a time window, chart data, or derivatives like `rate` over a window. The official API supports `query`, `time`, `timeout`, and `limit` for instant queries, and adds `start`, `end`, and `step` for range queries.",
+      "tags": [
+        "instant-query",
+        "range-query",
+        "query-range",
+        "step"
+      ]
+    },
+    {
+      "id": "metadata-and-health",
+      "title": "Targets, rules, alerts, and status",
+      "body": "Operational debugging often starts with non-PromQL endpoints: `/api/v1/targets` shows whether the scrape is healthy, `/api/v1/rules` shows loaded rule groups, `/api/v1/alerts` shows active alert state, `/api/v1/status/config` shows what config the server loaded, and `/api/v1/status/tsdb` exposes cardinality and head stats. Agents should inspect these before changing config blind.",
+      "tags": [
+        "targets",
+        "rules",
+        "alerts",
+        "status-config",
+        "status-tsdb"
+      ]
+    },
+    {
+      "id": "result-shapes",
+      "title": "Result shapes",
+      "body": "Prometheus JSON responses use `data.resultType` to describe what came back: `vector` for instant vectors, `matrix` for range vectors, `scalar` for a single numeric value, and `string` for a string response. Empty `data.result` arrays are not errors. When a query is valid but too broad, the server may return warnings or perform badly because the selector expands to too many series.",
+      "tags": [
+        "result-type",
+        "vector",
+        "matrix",
+        "scalar",
+        "warnings"
+      ]
+    }
+  ],
+  "links": [
+    {
+      "uri": "prometheus/promql",
+      "context": "PromQL syntax and patterns used by instant and range queries"
+    },
+    {
+      "uri": "prometheus/config",
+      "context": "Fix scrape jobs or reload config when targets are missing"
+    },
+    {
+      "uri": "prometheus/rules",
+      "context": "Promote stable, repeated queries into recording or alerting rules"
+    },
+    {
+      "uri": "prometheus/storage",
+      "context": "Interpret TSDB status and cardinality data"
+    },
+    {
+      "uri": "prometheus/auth",
+      "context": "Handle auth and TLS when the API is protected"
+    },
+    {
+      "uri": "curl/request",
+      "context": "Manual HTTP examples for debugging or shell automation"
+    },
+    {
+      "uri": "jq/query",
+      "context": "Filter and reshape Prometheus JSON responses from the shell"
+    }
+  ],
+  "related": [
+    {
+      "uri": "prometheus/promql",
+      "relation": "prerequisite",
+      "note": "PromQL is required for useful instant and range queries"
+    },
+    {
+      "uri": "prometheus/auth",
+      "relation": "prerequisite",
+      "note": "Protected deployments need auth before any API inspection works"
+    },
+    {
+      "uri": "prometheus/rules",
+      "relation": "see-also",
+      "note": "Queries that matter repeatedly should become rules instead of one-off API calls"
+    }
+  ],
+  "scripts": [
+    {
+      "id": "query-api",
+      "name": "Query Prometheus HTTP API",
+      "description": "Run instant and range queries plus status and target inspection against a Prometheus server",
+      "lang": "python",
+      "runtime": "python>=3.11",
+      "entry": "./scripts/query-api.py",
+      "env": {
+        "PROMETHEUS_URL": {
+          "required": false,
+          "description": "Prometheus base URL",
+          "default": "http://localhost:9090"
+        },
+        "PROMETHEUS_BEARER_TOKEN": {
+          "required": false,
+          "secret": true,
+          "description": "Bearer token if a proxy or auth layer requires it"
+        },
+        "PROMETHEUS_BASIC_AUTH_USERNAME": {
+          "required": false,
+          "description": "Basic auth username for protected endpoints"
+        },
+        "PROMETHEUS_BASIC_AUTH_PASSWORD": {
+          "required": false,
+          "secret": true,
+          "description": "Basic auth password for protected endpoints"
+        },
+        "PROMETHEUS_CA_BUNDLE": {
+          "required": false,
+          "description": "Custom CA bundle for HTTPS connections"
+        },
+        "PROMETHEUS_INSECURE_SKIP_VERIFY": {
+          "required": false,
+          "default": "false",
+          "description": "Skip TLS certificate verification for debugging only"
+        }
+      }
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "action": {
+          "type": "string",
+          "enum": [
+            "instant",
+            "range",
+            "series",
+            "targets",
+            "rules",
+            "alerts",
+            "status-config",
+            "status-tsdb"
+          ]
+        },
+        "query": {
+          "type": "string",
+          "description": "PromQL expression for instant or range actions"
+        },
+        "matchers": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Series selectors for the series action"
+        },
+        "time": {
+          "type": "string",
+          "description": "Evaluation time for instant queries"
+        },
+        "start": {
+          "type": "string",
+          "description": "Range or series start time"
+        },
+        "end": {
+          "type": "string",
+          "description": "Range or series end time"
+        },
+        "step": {
+          "type": "string",
+          "description": "Range query resolution step, for example 30s"
+        },
+        "timeout": {
+          "type": "string",
+          "description": "Prometheus evaluation timeout"
+        },
+        "limit": {
+          "type": "integer",
+          "description": "Optional server-side series limit"
+        }
+      },
+      "required": [
+        "action"
+      ]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "type": "string"
+        },
+        "data": {
+          "type": "object"
+        },
+        "warnings": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "errorType": {
+          "type": "string"
+        },
+        "error": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "depends": [
+    {
+      "uri": "prometheus/promql",
+      "reason": "Instant and range actions rely on valid PromQL expressions"
+    },
+    {
+      "uri": "prometheus/auth",
+      "optional": true,
+      "reason": "Protected deployments require auth or TLS setup before the API can be queried"
+    }
+  ],
+  "more": {
+    "docs": "https://prometheus.io/docs/prometheus/latest/querying/api/",
+    "basics": "https://prometheus.io/docs/prometheus/latest/querying/basics/"
+  },
+  "frontmatter": {
+    "created": "2026-04-12",
+    "updated": "2026-04-12",
+    "author": "dojo-community",
+    "audience": "ai-agents, sre, developers",
+    "estimated_reading_time": "6 min",
+    "prerequisites": [
+      "prometheus/promql"
+    ],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://github.com/prometheus/prometheus",
+  "created": "2026-04-12T00:00:00Z",
+  "updated": "2026-04-12T00:00:00Z",
+  "status": "published"
+}

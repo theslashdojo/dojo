@@ -1,0 +1,107 @@
+{
+  "name": "spec",
+  "version": "1.0.0",
+  "uri": "openapi/spec",
+  "type": "standard",
+  "context": "Understand the OpenAPI Specification object model: paths, operations, schemas, components, refs, and security.",
+  "info": "The OpenAPI Specification defines the structure and semantics of an OpenAPI Description: a set of JSON or YAML documents that describe an HTTP API. Agents use this standard node to reason about valid document shape, root fields, paths, operations, parameters, request bodies, responses, reusable components, JSON Schema dialects, references, security schemes, examples, servers, callbacks, and webhooks. Knowing the spec prevents agents from inventing invalid fields, misplacing schemas, breaking `$ref` resolution, or generating clients from ambiguous operation definitions.",
+  "parent": "openapi",
+  "tags": ["openapi-spec", "oas", "standard", "paths", "operations", "schemas", "components", "refs", "security", "json-schema"],
+  "aliases": [
+    "openapi specification",
+    "oas specification",
+    "oas 3.2",
+    "oas 3.1",
+    "swagger specification",
+    "openapi object",
+    "schema object",
+    "paths object",
+    "components object",
+    "security scheme object",
+    "operation object"
+  ],
+  "triggers": [
+    "what fields are valid in openapi",
+    "explain openapi paths",
+    "how do openapi components work",
+    "how do openapi refs resolve",
+    "define openapi security schemes",
+    "openapi schema object vs json schema",
+    "write a valid operation object",
+    "how should parameters be described",
+    "openapi request body response structure"
+  ],
+  "body": "# OpenAPI Specification\n\nAn OpenAPI Description is a machine-readable description of an HTTP API. The latest official specification line is OpenAPI 3.2.0. Practical toolchains often use 3.1.0 or 3.0.x, so an agent must know both the current model and the compatibility constraints of its validators, gateways, generators, and documentation tools.\n\n## Root Object\n\nA complete API description normally starts with the OpenAPI Object:\n\n```yaml\nopenapi: 3.1.0\ninfo:\n  title: Example API\n  version: 1.0.0\nservers:\n  - url: https://api.example.com\npaths: {}\ncomponents: {}\nsecurity: []\ntags: []\n```\n\nAt least one meaningful API surface must be described through paths, webhooks, or reusable components. `info` identifies the API, `servers` defines base URLs, `paths` defines callable operations, and `components` stores reusable definitions.\n\n## Paths and Operations\n\nThe `paths` object maps URL templates to path items. A path item can contain HTTP method operations such as `get`, `post`, `put`, `patch`, and `delete`. Each operation should have a stable `operationId`, tags, parameters, a request body when applicable, responses, and security overrides.\n\n```yaml\npaths:\n  /users/{userId}:\n    get:\n      operationId: getUser\n      parameters:\n        - name: userId\n          in: path\n          required: true\n          schema:\n            type: string\n      responses:\n        '200':\n          description: User found\n          content:\n            application/json:\n              schema:\n                $ref: '#/components/schemas/User'\n```\n\n## Schemas\n\nOpenAPI 3.1 aligns Schema Objects with JSON Schema 2020-12. Use schemas to define request and response payloads, parameters, headers, and reusable models. Prefer explicit `type`, `required`, `properties`, `items`, enum constraints, numeric bounds, string formats, and examples. Use `$ref` for shared models.\n\n## References\n\n`$ref` points to another schema or object by URI and JSON Pointer. Local references use `#/components/schemas/User`; external references can point to another file or URL. Avoid ambiguous relative references in generated artifacts by bundling with [[openapi/validate]]. Tools must guard against external-resource risk and reference cycles.\n\n## Security\n\nSecurity schemes live under `components.securitySchemes`. Global `security` applies to all operations unless an operation overrides it. Empty operation-level security means intentionally public. Common schemes are HTTP bearer tokens, API keys, OAuth 2.0, and OpenID Connect.",
+  "sections": [
+    {
+      "id": "root-object",
+      "title": "Root object",
+      "body": "The OpenAPI Object identifies the spec version with `openapi`, describes API metadata with `info`, and exposes callable surfaces through `paths` and optionally `webhooks`. `components` contains reusable definitions. `servers` gives base URLs. `security` defines default authentication requirements. Extension fields must start with `x-`.",
+      "tags": ["root", "openapi-object", "info", "servers", "extensions"]
+    },
+    {
+      "id": "paths-operations",
+      "title": "Paths and operations",
+      "body": "A path key is a URL template such as `/users/{id}`. Path-level parameters apply to every operation on that path. Operation objects are method-specific definitions with `operationId`, `summary`, `description`, `tags`, `parameters`, `requestBody`, `responses`, `callbacks`, `deprecated`, and `security`. `responses` is required and must document expected status codes or `default`.",
+      "tags": ["paths", "path-item", "operation", "operation-id", "responses"]
+    },
+    {
+      "id": "schemas",
+      "title": "Schema objects",
+      "body": "Schemas define JSON shapes and constraints. OpenAPI 3.1 Schema Objects use JSON Schema 2020-12 semantics with OpenAPI additions. Use `type`, `properties`, `required`, `items`, `enum`, `oneOf`, `anyOf`, `allOf`, `format`, `minimum`, `maximum`, `minLength`, and `maxLength` intentionally. For generated clients, favor discriminator-backed `oneOf` over ambiguous unions.",
+      "tags": ["schema", "json-schema", "oneof", "allof", "validation"]
+    },
+    {
+      "id": "components",
+      "title": "Components",
+      "body": "`components` stores reusable `schemas`, `responses`, `parameters`, `examples`, `requestBodies`, `headers`, `securitySchemes`, `links`, `callbacks`, and `pathItems`. Reuse improves consistency and lets agents change cross-cutting contracts such as error envelopes and auth once.",
+      "tags": ["components", "reuse", "responses", "parameters", "security-schemes"]
+    },
+    {
+      "id": "references",
+      "title": "References",
+      "body": "`$ref` is resolved as a URI plus JSON Pointer. Local refs such as `#/components/schemas/Error` are easiest for tools. External refs are useful for multi-file designs but should be bundled before SDK generation, mocking, or publishing. Avoid cycles unless the target tooling explicitly supports them.",
+      "tags": ["refs", "json-pointer", "bundle", "external-refs"]
+    },
+    {
+      "id": "security",
+      "title": "Security",
+      "body": "Define authentication mechanisms in `components.securitySchemes` and apply them with `security` requirements. `type: http` with `scheme: bearer` describes bearer tokens, `type: apiKey` describes header/query/cookie API keys, `type: oauth2` describes OAuth flows, and `type: openIdConnect` points to discovery metadata. Use operation-level `security` to override global defaults.",
+      "tags": ["security", "bearer", "api-key", "oauth2", "openid-connect"]
+    }
+  ],
+  "links": [
+    { "uri": "openapi", "context": "Parent ecosystem for OpenAPI workflows" },
+    { "uri": "openapi/author", "context": "Apply the spec model when writing API descriptions" },
+    { "uri": "openapi/validate", "context": "Check whether a document conforms to the spec and local rules" },
+    { "uri": "zod", "context": "TypeScript schemas that can feed or mirror OpenAPI Schema Objects" },
+    { "uri": "curl", "context": "Exercise operations defined under paths" }
+  ],
+  "related": [
+    { "uri": "openapi/author", "relation": "see-also", "note": "Authoring applies the standard to real API descriptions" },
+    { "uri": "openapi/validate", "relation": "see-also", "note": "Validation catches structural and governance mistakes against the spec" },
+    { "uri": "database/sql", "relation": "similar", "note": "Both are declarative languages that describe a structured interface for tools" }
+  ],
+  "more": {
+    "spec": "https://spec.openapis.org/oas/latest.html",
+    "learn": "https://learn.openapis.org/",
+    "repository": "https://github.com/OAI/OpenAPI-Specification"
+  },
+  "content_type": "reference",
+  "frontmatter": {
+    "created": "2026-04-15",
+    "updated": "2026-04-15",
+    "author": "dojo-community",
+    "audience": "API designers, backend engineers, AI agents",
+    "estimated_reading_time": "8 min",
+    "prerequisites": ["curl"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://github.com/OAI/OpenAPI-Specification",
+  "created": "2026-04-15T00:00:00Z",
+  "updated": "2026-04-15T00:00:00Z",
+  "status": "published"
+}

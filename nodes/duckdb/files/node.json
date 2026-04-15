@@ -1,0 +1,124 @@
+{
+  "name": "files",
+  "version": "1.0.0",
+  "uri": "duckdb/files",
+  "type": "context",
+  "content_type": "guide",
+  "context": "Read, inspect, join, and export CSV, Parquet, JSON, globs, partitions, and remote files with DuckDB",
+  "info": "DuckDB's file readers are the fastest path from raw data to useful SQL: agents can query CSV, Parquet, JSON, newline-delimited JSON, compressed files, HTTPS URLs, S3-style paths, file lists, and globs without loading data into a server first. This node covers `read_csv`, `read_parquet`, `read_json_auto`, filename and partition columns, `union_by_name`, `COPY` exports, and format-conversion workflows. Use it with [[duckdb/cli]] for shell automation, [[duckdb/python]] for DataFrame workflows, [[duckdb/secrets]] for object storage credentials, and [[duckdb/performance]] for large datasets.",
+  "parent": "duckdb",
+  "tags": [
+    "duckdb",
+    "files",
+    "csv",
+    "parquet",
+    "json",
+    "copy",
+    "globs",
+    "partitioning",
+    "s3",
+    "httpfs"
+  ],
+  "aliases": [
+    "duckdb files",
+    "duckdb csv",
+    "duckdb parquet",
+    "duckdb json",
+    "duckdb copy",
+    "read_csv",
+    "read_parquet",
+    "read_json_auto",
+    "csv to parquet",
+    "parquet to csv",
+    "duckdb glob",
+    "hive partitioning"
+  ],
+  "triggers": [
+    "query a csv file",
+    "query a parquet file",
+    "read json lines with duckdb",
+    "convert csv to parquet",
+    "combine parquet files",
+    "read files with different schemas",
+    "load a folder of csv files",
+    "export query result to csv",
+    "export duckdb table to parquet",
+    "read partitioned parquet",
+    "query s3 parquet with duckdb"
+  ],
+  "body": "# DuckDB Files\n\nDuckDB makes files look like tables. This is the core workflow for local analysis, research datasets, CI data checks, and one-off conversions.\n\n## Direct Reads\n\n```sql\n-- Shorthand works for common formats\nSELECT * FROM 'events.parquet' LIMIT 10;\nSELECT * FROM 'users.csv' LIMIT 10;\n\n-- Explicit readers expose options\nSELECT * FROM read_csv('users.csv', header = true, union_by_name = true);\nSELECT * FROM read_parquet('events/*.parquet');\nSELECT * FROM read_json_auto('logs.ndjson');\n```\n\n## Multiple Files and Globs\n\n```sql\n-- All Parquet files under a tree\nSELECT count(*) FROM read_parquet('warehouse/events/**/*.parquet');\n\n-- Multiple folders\nSELECT * FROM read_parquet(['a/*.parquet', 'b/*.parquet']);\n\n-- CSV files with schema drift\nSELECT *\nFROM read_csv(['jan.csv', 'feb.csv'], union_by_name = true, filename = true);\n```\n\nUse `union_by_name = true` when files may have columns in different orders or a subset of columns. Add `filename = true` when provenance matters.\n\n## Partitioned Data\n\n```sql\nSELECT region, count()\nFROM read_parquet('s3://bucket/events/year=*/month=*/*.parquet', hive_partitioning = true)\nWHERE year = 2026 AND month = 4\nGROUP BY ALL\nORDER BY ALL;\n```\n\nHive-style partition paths such as `year=2026/month=04/file.parquet` can become columns. Filter on partition columns early for cheaper scans.\n\n## COPY Import and Export\n\n```sql\n-- Persist a file scan into a DuckDB table\nCREATE OR REPLACE TABLE events AS\nSELECT * FROM read_parquet('events/*.parquet');\n\n-- Export a query to Parquet\nCOPY (\n  SELECT status, count() AS n\n  FROM events\n  GROUP BY status\n  ORDER BY status\n) TO 'status_counts.parquet' (FORMAT parquet);\n\n-- Export CSV with header\nCOPY events TO 'events.csv' (HEADER, DELIMITER ',');\n```\n\n## Format Conversion\n\n```sql\n-- CSV to Parquet\nCOPY (\n  SELECT * FROM read_csv('raw.csv', union_by_name = true)\n) TO 'clean.parquet' (FORMAT parquet, COMPRESSION zstd);\n\n-- JSON Lines to Parquet\nCOPY (\n  SELECT * FROM read_json_auto('logs.ndjson')\n) TO 'logs.parquet' (FORMAT parquet);\n```\n\n## Remote Files\n\nHTTPS and S3-compatible reads use [[duckdb/extensions#httpfs]] and [[duckdb/secrets]]. Core extensions can autoload, but explicit setup is clearer in scripts.\n\n```sql\nINSTALL httpfs;\nLOAD httpfs;\n\nSELECT count()\nFROM read_parquet('https://example.com/data/events.parquet');\n```\n",
+  "sections": [
+    {
+      "id": "csv",
+      "title": "CSV reads",
+      "body": "Use `read_csv` for delimited files. Important options include `header`, `delim` or `sep`, `columns` for explicit schema, `types` or `dtype` depending on surface, `sample_size`, `ignore_errors`, `nullstr`, `dateformat`, `timestampformat`, `union_by_name`, and `filename`. CSV auto-detection is useful but should be pinned for production pipelines.",
+      "tags": ["csv", "read-csv", "schema", "sample-size", "header"]
+    },
+    {
+      "id": "parquet",
+      "title": "Parquet reads",
+      "body": "Use `read_parquet` or direct `'file.parquet'` scans for columnar data. Parquet supports column pruning, predicate pushdown, row groups, compression, globs, lists of files, and remote reads through httpfs. Prefer Parquet for repeated analytics and large intermediate outputs.",
+      "tags": ["parquet", "column-pruning", "predicate-pushdown", "row-groups"]
+    },
+    {
+      "id": "json",
+      "title": "JSON and JSON Lines",
+      "body": "Use `read_json_auto` or `read_json` for regular JSON, arrays of objects, newline-delimited JSON, and compressed JSON files. Inspect inferred nested types before flattening. For unstable JSON, project only needed fields and cast deliberately.",
+      "tags": ["json", "jsonl", "ndjson", "nested", "read-json-auto"]
+    },
+    {
+      "id": "multiple-files",
+      "title": "Multiple files and schema drift",
+      "body": "DuckDB accepts glob patterns like `dir/*.parquet`, recursive globs like `dir/**/*.parquet`, and file lists like `read_parquet(['a.parquet', 'b.parquet'])`. Use `union_by_name = true` when file schemas differ or column order is not guaranteed. Use `filename = true` for lineage.",
+      "tags": ["globs", "file-list", "union-by-name", "filename", "schema-drift"]
+    },
+    {
+      "id": "copy",
+      "title": "COPY imports and exports",
+      "body": "`COPY table TO 'file.csv'` exports tables; `COPY (SELECT ...) TO 'file.parquet' (FORMAT parquet)` exports query results. Use `CREATE TABLE AS SELECT` when you want persistent DuckDB tables. Prefer `COPY` to stdout only for small outputs; large exports should go to files.",
+      "tags": ["copy", "export", "import", "ctas", "conversion"]
+    },
+    {
+      "id": "remote-files",
+      "title": "Remote files",
+      "body": "Remote HTTPS and S3-style paths require httpfs support and often secrets. Core extension autoload can make simple reads work, but production scripts should explicitly document `INSTALL httpfs`, `LOAD httpfs`, and `CREATE SECRET`. See [[duckdb/secrets]] for credential patterns.",
+      "tags": ["https", "s3", "httpfs", "secrets", "remote"]
+    }
+  ],
+  "links": [
+    { "uri": "duckdb/cli#file-inspection", "context": "Inspect files before transforming them" },
+    { "uri": "duckdb/sql", "context": "Write SQL over file readers" },
+    { "uri": "duckdb/python#file-ingestion", "context": "Use the same readers from Python" },
+    { "uri": "duckdb/secrets", "context": "Configure credentials for S3-compatible file reads" },
+    { "uri": "duckdb/performance#parquet-and-row-groups", "context": "Tune Parquet row groups and scan performance" },
+    { "uri": "jq", "context": "Pre-process JSON before loading when raw JSON is malformed" }
+  ],
+  "related": [
+    { "uri": "duckdb/cli", "relation": "implements", "note": "The CLI scripts use these file readers for inspection and conversion" },
+    { "uri": "duckdb/python", "relation": "implements", "note": "Python exposes the same read_csv/read_parquet/read_json capabilities" },
+    { "uri": "postgres/backup", "relation": "alternative", "note": "For database dumps and restore use database-native backup tools, not DuckDB file scans" }
+  ],
+  "more": {
+    "docs": "https://duckdb.org/docs/stable/data/overview",
+    "csv": "https://duckdb.org/docs/stable/data/csv/overview",
+    "parquet": "https://duckdb.org/docs/stable/data/parquet/overview",
+    "json": "https://duckdb.org/docs/stable/data/json/overview",
+    "multiple-files": "https://duckdb.org/docs/stable/data/multiple_files/overview",
+    "copy": "https://duckdb.org/docs/stable/sql/statements/copy"
+  },
+  "frontmatter": {
+    "created": "2026-04-15",
+    "updated": "2026-04-15",
+    "author": "dojo-community",
+    "audience": "AI agents, data engineers, analysts",
+    "estimated_reading_time": "7 min",
+    "prerequisites": ["duckdb", "duckdb/sql"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-15T00:00:00Z",
+  "updated": "2026-04-15T00:00:00Z",
+  "status": "published"
+}

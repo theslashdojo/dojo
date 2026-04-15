@@ -1,0 +1,139 @@
+{
+  "name": "promql",
+  "version": "1.0.0",
+  "uri": "prometheus/promql",
+  "type": "standard",
+  "context": "PromQL expression language for querying, aggregating, and transforming Prometheus time series.",
+  "info": "PromQL is the language that powers the Prometheus UI, HTTP query endpoints, recording rules, and alerting rules. It works across instant vectors, range vectors, scalars, and strings, and combines label matching, time selection, aggregation, and specialized functions like `rate`, `increase`, and histogram helpers. Agents need this node whenever they are turning raw metrics into incident evidence or reusable operational policy.",
+  "parent": "prometheus",
+  "tags": [
+    "promql",
+    "query-language",
+    "time-series",
+    "aggregation",
+    "selectors",
+    "rate",
+    "histogram",
+    "alerts"
+  ],
+  "aliases": [
+    "promql",
+    "prometheus query language",
+    "prom query",
+    "prometheus expression",
+    "prometheus selector syntax"
+  ],
+  "triggers": [
+    "write promql",
+    "how do i query prometheus",
+    "aggregate metrics by label",
+    "rate over a counter",
+    "promql offset example",
+    "promql at modifier"
+  ],
+  "body": "# PromQL\n\nPromQL evaluates expressions over Prometheus time series. The core mental model is the data type flowing through the expression: **instant vectors** are sets of label/value pairs at one evaluation time, **range vectors** are windows of samples per series, **scalars** are plain numbers, and **strings** are rare helper values.\n\n```promql\nup{job=\"node\"}\nrate(http_requests_total{job=\"api\"}[5m])\nsum by (job) (rate(http_requests_total[5m]))\nhistogram_quantile(0.95, sum by (le) (rate(http_request_duration_seconds_bucket[5m])))\n```\n\nMetric selectors can match exact labels, regex labels, and negative matchers. Range selectors add `[...]` windows to metrics, while time modifiers shift or pin evaluation time:\n\n```promql\nrate(http_requests_total[5m] offset 1w)\nhttp_requests_total @ 1609746000\nrate(http_requests_total[5m] @ end())\n```\n\nUse aggregations like `sum by (...)`, `max without (...)`, and `count_values(...)` when you need a service-level answer instead of one line per pod, container, or instance. If an expression is both expensive and reused, move it into [[prometheus/rules]] as a recording rule.",
+  "sections": [
+    {
+      "id": "data-types",
+      "title": "Data types",
+      "body": "PromQL works over instant vectors, range vectors, scalars, and strings. Most operational queries start from an instant vector selector like `up` or a range vector selector like `rate(http_requests_total[5m])`. Choosing the wrong type is the root cause of many query errors, especially when a function expects a range vector but receives an instant vector.",
+      "tags": [
+        "instant-vector",
+        "range-vector",
+        "scalar",
+        "string"
+      ]
+    },
+    {
+      "id": "selectors",
+      "title": "Selectors and label matching",
+      "body": "Selectors choose the input series. Exact match uses `label=\"value\"`, regex uses `label=~\"value\"`, and negative variants use `!=` or `!~`. Combine selectors deliberately to avoid scanning the full TSDB. A common incident pattern is to start broad with `up` or `scrape_samples_scraped` and then narrow on `job`, `instance`, `namespace`, or `pod`.",
+      "tags": [
+        "selectors",
+        "labels",
+        "regex",
+        "matchers",
+        "cardinality"
+      ]
+    },
+    {
+      "id": "time-modifiers",
+      "title": "Offset and @ modifiers",
+      "body": "The `offset` modifier shifts a selector relative to the evaluation time, which is useful for week-over-week comparisons. The `@` modifier pins evaluation at a specific Unix timestamp or the special `start()` and `end()` values for range queries. These modifiers must follow the selector directly, not the entire aggregated expression.",
+      "tags": [
+        "offset",
+        "at-modifier",
+        "time-travel",
+        "comparison"
+      ]
+    },
+    {
+      "id": "aggregation",
+      "title": "Aggregation and functions",
+      "body": "Use `sum by (...)` or `avg by (...)` to move from per-target telemetry to service-level answers. Counters usually need `rate` or `increase`; gauges often need `avg_over_time`, `max_over_time`, or plain aggregation; histograms need bucket-aware patterns like `histogram_quantile` over bucket rates. If the same expression appears in dashboards, alerts, and scripts, promote it into [[prometheus/rules#recording-vs-alerting]].",
+      "tags": [
+        "aggregation",
+        "rate",
+        "increase",
+        "histogram",
+        "recording-rules"
+      ]
+    }
+  ],
+  "links": [
+    {
+      "uri": "prometheus/query",
+      "context": "Run PromQL against a live Prometheus server"
+    },
+    {
+      "uri": "prometheus/rules",
+      "context": "Embed PromQL into recording and alerting rules"
+    },
+    {
+      "uri": "prometheus/storage",
+      "context": "Understand why high-cardinality selectors hurt the TSDB"
+    },
+    {
+      "uri": "prometheus/query#result-shapes",
+      "context": "Map PromQL expressions to result types returned by the HTTP API"
+    }
+  ],
+  "related": [
+    {
+      "uri": "prometheus/query",
+      "relation": "implements",
+      "note": "The query skill executes PromQL against the HTTP API"
+    },
+    {
+      "uri": "prometheus/rules",
+      "relation": "implements",
+      "note": "Rule files evaluate PromQL on a schedule"
+    },
+    {
+      "uri": "jq/query",
+      "relation": "see-also",
+      "note": "Use jq to post-process JSON query responses once PromQL returns the right series"
+    }
+  ],
+  "more": {
+    "docs": "https://prometheus.io/docs/prometheus/latest/querying/basics/",
+    "operators": "https://prometheus.io/docs/prometheus/latest/querying/operators/",
+    "functions": "https://prometheus.io/docs/prometheus/latest/querying/functions/"
+  },
+  "frontmatter": {
+    "created": "2026-04-12",
+    "updated": "2026-04-12",
+    "author": "dojo-community",
+    "audience": "ai-agents, sre, developers",
+    "estimated_reading_time": "5 min",
+    "prerequisites": [],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://github.com/prometheus/prometheus",
+  "created": "2026-04-12T00:00:00Z",
+  "updated": "2026-04-12T00:00:00Z",
+  "status": "published"
+}

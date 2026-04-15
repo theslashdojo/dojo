@@ -1,0 +1,134 @@
+{
+  "name": "generate",
+  "version": "1.0.0",
+  "uri": "openapi/generate",
+  "type": "skill",
+  "context": "Generate typed SDKs, API clients, server stubs, models, and docs assets from a validated OpenAPI contract.",
+  "info": "OpenAPI generation turns an API description into code artifacts such as TypeScript clients, Python clients, Java clients, Go clients, server skeletons, models, API docs, and test fixtures. The primary execution surface is OpenAPI Generator CLI, available through npm, Homebrew, Docker, PyPI, or JAR distribution. Agents use this skill when integrating with an API, publishing SDKs, creating server stubs from contract-first designs, or regenerating code after a spec update. Generation quality depends on the contract: stable `operationId`, clear schemas, examples, discriminators, security schemes, and validation before generation.",
+  "parent": "openapi",
+  "tags": ["openapi-generate", "sdk", "client-generation", "server-stubs", "openapi-generator", "typescript", "python", "java", "go"],
+  "aliases": [
+    "openapi generate",
+    "openapi generator",
+    "swagger codegen",
+    "generate sdk",
+    "generate api client",
+    "generate typescript client",
+    "generate server stub",
+    "openapi-generator-cli",
+    "client sdk from swagger",
+    "api code generation"
+  ],
+  "triggers": [
+    "generate a client from openapi",
+    "create a typescript sdk from swagger",
+    "generate server stubs",
+    "regenerate the api client",
+    "generate python client from openapi",
+    "list openapi generator options",
+    "customize generated sdk package name",
+    "publish generated client",
+    "generate models from api spec"
+  ],
+  "body": "# OpenAPI Code Generation\n\nGenerate code only after [[openapi/validate]] passes. Generation converts contract decisions into long-lived source code, so small spec problems become client API problems. Stable `operationId` values, reusable schemas, discriminators, and explicit auth are more important than generator flags.\n\n## Generate a Client\n\n```bash\n# Default wrapper: TypeScript fetch client\nnodes/openapi/scripts/generate-openapi.sh openapi.yaml\n\n# Explicit generator and output directory\nnodes/openapi/scripts/generate-openapi.sh openapi.yaml typescript-fetch generated/api-client\n\n# Add generator-specific properties\nOPENAPI_GENERATOR_ADDITIONAL_PROPERTIES=npmName=@acme/api-client,supportsES6=true \\\n  nodes/openapi/scripts/generate-openapi.sh openapi.yaml typescript-fetch generated/api-client\n```\n\n## Common Generators\n\n```bash\n# TypeScript\nnodes/openapi/scripts/generate-openapi.sh openapi.yaml typescript-fetch generated/ts-fetch\nnodes/openapi/scripts/generate-openapi.sh openapi.yaml typescript-axios generated/ts-axios\n\n# Python\nnodes/openapi/scripts/generate-openapi.sh openapi.yaml python generated/python-client\n\n# Go\nnodes/openapi/scripts/generate-openapi.sh openapi.yaml go generated/go-client\n\n# Server stubs\nnodes/openapi/scripts/generate-openapi.sh openapi.yaml nodejs-express-server generated/server\nnodes/openapi/scripts/generate-openapi.sh openapi.yaml spring generated/spring-server\n```\n\n## Inspect Options\n\n```bash\nnpx @openapitools/openapi-generator-cli list\nnpx @openapitools/openapi-generator-cli config-help -g typescript-fetch\nnpx @openapitools/openapi-generator-cli generate -i openapi.yaml -g typescript-fetch -o generated/client --skip-validate-spec\n```\n\nAvoid `--skip-validate-spec` unless debugging a generator issue. In normal work, validation failures should stop generation.\n\n## Generated Code Policy\n\nDecide whether generated code is committed. Commit generated clients when downstream users consume them directly from the repository or when releases package the output. Do not commit generated server stubs as application code unless the project already owns them. In CI, regenerate and compare output when generated artifacts are committed.",
+  "sections": [
+    {
+      "id": "workflow",
+      "title": "Generation workflow",
+      "body": "Validate and bundle the spec first with [[openapi/validate]]. Choose the generator target, inspect its config with `config-help`, set package names and output options, generate into a clean output directory, then run the generated package's own tests or build. Never patch generated code manually unless the project has no better extension point.",
+      "tags": ["workflow", "validate", "config-help", "generated-code"]
+    },
+    {
+      "id": "generator-choice",
+      "title": "Generator choice",
+      "body": "Pick generators by consumer ecosystem: `typescript-fetch` for small browser or Node clients with fetch, `typescript-axios` for projects standardized on axios, `python` for Python SDKs, `go` for Go clients, and server generators only for contract-first scaffolding. Inspect generated output before committing to a generator.",
+      "tags": ["typescript-fetch", "typescript-axios", "python", "go", "server"]
+    },
+    {
+      "id": "contract-quality",
+      "title": "Contract quality for generators",
+      "body": "Generated SDKs are only as usable as the spec. Use unique operation IDs, simple schema names, explicit required fields, discriminators for polymorphism, clear error models, and reusable security schemes. Avoid anonymous inline objects for important request and response bodies because generated type names can become unstable.",
+      "tags": ["operation-id", "schemas", "discriminator", "type-names"]
+    },
+    {
+      "id": "ci",
+      "title": "CI regeneration",
+      "body": "When generated code is committed, CI should validate the spec, regenerate into the committed output directory, and fail if `git diff --exit-code` reports drift. This guarantees the client package matches the contract in the same commit.",
+      "tags": ["ci", "drift", "git-diff", "regenerate"]
+    }
+  ],
+  "links": [
+    { "uri": "openapi/validate", "context": "Validate and bundle before generation" },
+    { "uri": "openapi/author", "context": "Author operation IDs and schemas that generate clean code" },
+    { "uri": "typescript", "context": "Use generated TypeScript clients in frontend or Node projects" },
+    { "uri": "python", "context": "Use generated Python clients or Schemathesis tooling" },
+    { "uri": "node/npm", "context": "Run the npm OpenAPI Generator wrapper" }
+  ],
+  "related": [
+    { "uri": "openapi/validate", "relation": "prerequisite", "note": "Generation should consume a valid, bundled contract" },
+    { "uri": "typescript", "relation": "see-also", "note": "TypeScript is a common generated client target" },
+    { "uri": "zod", "relation": "see-also", "note": "Some TypeScript projects prefer deriving runtime schemas from OpenAPI or vice versa" }
+  ],
+  "scripts": [
+    {
+      "id": "generate-openapi",
+      "name": "Generate From OpenAPI",
+      "description": "Run OpenAPI Generator CLI against a spec with configurable generator, output directory, and additional properties",
+      "lang": "bash",
+      "runtime": "node>=18 java>=11",
+      "entry": "../scripts/generate-openapi.sh",
+      "env": {
+        "OPENAPI_GENERATOR_ADDITIONAL_PROPERTIES": { "required": false, "description": "Comma-separated generator properties passed to --additional-properties" },
+        "OPENAPI_GENERATOR_GLOBAL_PROPERTIES": { "required": false, "description": "Comma-separated global properties passed to --global-property" },
+        "OPENAPI_GENERATOR_VERSION": { "required": false, "description": "Generator version selected by the npm wrapper when supported" },
+        "JAVA_HOME": { "required": false, "description": "Java runtime location for the generator JAR" }
+      },
+      "packages": ["@openapitools/openapi-generator-cli"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "spec": { "type": "string", "description": "OpenAPI file path or URL" },
+        "generator": { "type": "string", "description": "OpenAPI Generator target such as typescript-fetch", "default": "typescript-fetch" },
+        "outputDir": { "type": "string", "description": "Directory for generated output" },
+        "additionalProperties": { "type": "string", "description": "Comma-separated generator properties" }
+      },
+      "required": ["spec"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "outputDir": { "type": "string", "description": "Generated artifact directory" },
+        "generator": { "type": "string", "description": "Generator used" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "openapi/validate", "reason": "Generation should use a validated contract" },
+    { "uri": "node/npm", "reason": "The wrapper uses npx when openapi-generator-cli is not installed" }
+  ],
+  "more": {
+    "installation": "https://openapi-generator.tech/docs/installation/",
+    "usage": "https://openapi-generator.tech/docs/usage/",
+    "generators": "https://openapi-generator.tech/docs/generators/",
+    "repository": "https://github.com/OpenAPITools/openapi-generator"
+  },
+  "frontmatter": {
+    "created": "2026-04-15",
+    "updated": "2026-04-15",
+    "author": "dojo-community",
+    "audience": "SDK maintainers, backend engineers, frontend engineers, AI agents",
+    "estimated_reading_time": "7 min",
+    "prerequisites": ["openapi/validate", "node/npm"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://github.com/OpenAPITools/openapi-generator",
+  "created": "2026-04-15T00:00:00Z",
+  "updated": "2026-04-15T00:00:00Z",
+  "status": "published"
+}

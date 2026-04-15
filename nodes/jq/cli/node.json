@@ -1,0 +1,158 @@
+{
+  "version": "1.0.0",
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://github.com/jqlang/jq",
+  "created": "2026-04-12T00:00:00Z",
+  "updated": "2026-04-12T00:00:00Z",
+  "status": "published",
+  "name": "cli",
+  "uri": "jq/cli",
+  "type": "context",
+  "content_type": "guide",
+  "context": "Command-line invocation, quoting, flags, variables, and exit codes for running jq safely in scripts",
+  "info": "This guide covers the jq command-line surface that determines whether a filter works reliably in real automation: shell quoting, reading raw text versus parsed JSON, slurping multiple inputs, loading filters from files, passing named or positional variables, choosing raw versus JSON output, and using exit codes for branching. Agents should load this node before composing non-trivial jq commands because most production mistakes come from invocation details rather than filter syntax.",
+  "parent": "jq",
+  "tags": [
+    "jq",
+    "cli",
+    "flags",
+    "quoting",
+    "variables",
+    "exit-status",
+    "raw-output",
+    "slurp",
+    "from-file"
+  ],
+  "aliases": [
+    "jq cli",
+    "jq flags",
+    "jq options",
+    "jq quoting",
+    "jq command line",
+    "jq arguments",
+    "jq exit code",
+    "jq vars"
+  ],
+  "triggers": [
+    "how do i quote a jq filter",
+    "pass a variable to jq",
+    "use jq raw output",
+    "slurp input with jq",
+    "load a jq program from a file",
+    "check jq exit status",
+    "use jq in bash scripts"
+  ],
+  "body": "# jq CLI\n\nMost jq failures in automation are invocation failures: the shell eats the filter, the wrong input mode is selected, or the output format is inconvenient for the next command. This guide is the operational layer for every executable jq node in the graph.\n\n## Quoting Rules\n\nThe official manual recommends always quoting the jq program. On Unix shells that usually means single quotes around the filter. On Windows `cmd.exe`, double quotes are usually required, while PowerShell uses single quotes with escaped inner double quotes.\n\n~~~bash\njq '.\"foo\"' data.json\njq '.['\"'\"'foo'\"'\"']' data.json  # awkward shell escaping, avoid when possible\njq '.items[] | select(.state == \"open\") | .id' issues.json\n~~~\n\n## Input Modes\n\n- `-n` / `--null-input`: do not read input; run the filter once against `null`.\n- `-R` / `--raw-input`: treat each input line as a string instead of parsing JSON.\n- `-s` / `--slurp`: read all parsed inputs into one array and run once.\n- `--stream`: emit streaming path/value events for large documents.\n- `--seq`: read or write `application/json-seq` streams.\n\n~~~bash\njq -n \"{generated_at: now | floor}\"\nprintf \"a\\nb\\n\" | jq -R \".\"\njq -s \"map(.duration_ms) | add\" part-*.json\n~~~\n\n## Variables and Program Files\n\nUse `--arg` for strings, `--argjson` for already-encoded JSON values, `--slurpfile` for arrays of JSON documents from a file, and `--rawfile` for raw text content. Use `-f` to load a jq program from a file and `-L` to extend the module search path.\n\n~~~bash\njq -n --arg name \"$USER\" \"{user: $name}\"\njq --argjson limit 10 \".items[:$limit]\" data.json\njq --slurpfile patch patch.json \".config = $patch[0]\" app.json\njq --rawfile template body.txt \"{body: $template}\"\njq -L ./jq-lib -f main.jq input.json\n~~~\n\n## Output and Exit Status\n\n- `-r` writes strings without JSON quotes.\n- `-j` writes raw strings without trailing newlines.\n- `-c` keeps each output value on one line.\n- `-S` sorts object keys for stable diffs.\n- `-e` turns truthiness into shell-friendly exit codes: `0` for truthy output, `1` for `false` or `null`, and `4` when no valid result is produced.\n\n~~~bash\njq -r \".version\" package.json\njq -c \".items[]\" records.json\njq -S \".\" config.json\njq -e \".ready == true\" status.json > /dev/null\n~~~\n\n## Environment Variables\n\n- `JQ_COLORS` customizes terminal colors.\n- `NO_COLOR` disables color by default.\n\nIf you need reusable code or tests, continue to [[jq/modules]]. If you need executable wrappers, continue to [[jq/query]], [[jq/transform]], or [[jq/streaming]].",
+  "sections": [
+    {
+      "id": "quoting",
+      "title": "Quoting filters safely",
+      "body": "On Unix shells, single-quote the jq program whenever possible so the shell does not interpret brackets, pipes, dollar signs, or comparison operators before jq sees them. The official manual gives separate examples for Unix shells, PowerShell, and Windows `cmd.exe`. This matters most when filters include string comparisons, object literals, or variables.",
+      "tags": [
+        "quoting",
+        "shell",
+        "bash",
+        "powershell",
+        "windows"
+      ]
+    },
+    {
+      "id": "input-modes",
+      "title": "Choosing the right input mode",
+      "body": "Use `-n` to construct JSON without reading stdin, `-R` when the input is plain text, `-s` when multiple JSON values should be treated as one array, `--stream` for large documents, and `--seq` for `application/json-seq`. The wrong input mode is a common reason for confusing parse errors or unexpected arrays.",
+      "tags": [
+        "null-input",
+        "raw-input",
+        "slurp",
+        "stream",
+        "json-seq"
+      ]
+    },
+    {
+      "id": "args-and-vars",
+      "title": "Passing data into jq",
+      "body": "Use `--arg` for string values and `--argjson` when the caller already has JSON text. `--slurpfile` binds an array of parsed documents from a file, while `--rawfile` binds file contents as text. `--args` and `--jsonargs` expose positional arguments through `$ARGS.positional`, and named arguments are also exposed through `$ARGS.named`.",
+      "tags": [
+        "arg",
+        "argjson",
+        "slurpfile",
+        "rawfile",
+        "args",
+        "jsonargs"
+      ]
+    },
+    {
+      "id": "output-and-status",
+      "title": "Output flags and exit codes",
+      "body": "Use `-r` when the next command expects plain text rather than JSON strings, `-c` for one-value-per-line output, and `-S` for stable key ordering. `-e` is the flag that makes jq useful in `if` statements and CI checks because it maps truthy results to exit code `0`, falsey results to `1`, and missing output to `4`.",
+      "tags": [
+        "raw-output",
+        "compact-output",
+        "sort-keys",
+        "exit-status",
+        "branching"
+      ]
+    }
+  ],
+  "links": [
+    {
+      "uri": "jq/query",
+      "context": "Apply CLI flags to extraction and filtering workflows"
+    },
+    {
+      "uri": "jq/transform",
+      "context": "Apply CLI flags to mutation and rewrite workflows"
+    },
+    {
+      "uri": "jq/streaming",
+      "context": "Use stream-oriented input flags on large payloads"
+    },
+    {
+      "uri": "jq/modules",
+      "context": "Load jq programs from files and extend the library path"
+    },
+    {
+      "uri": "shell/bash",
+      "context": "Bash quoting and conditionals matter around jq commands"
+    },
+    {
+      "uri": "shell/pipes",
+      "context": "jq usually reads from stdin or writes into downstream commands"
+    }
+  ],
+  "related": [
+    {
+      "uri": "jq/query",
+      "relation": "prerequisite",
+      "note": "Extraction workflows depend on correct invocation flags and quoting"
+    },
+    {
+      "uri": "jq/transform",
+      "relation": "prerequisite",
+      "note": "Rewrite workflows depend on output format and file-safe invocation"
+    },
+    {
+      "uri": "jq/modules",
+      "relation": "see-also",
+      "note": "Program files and module libraries build on -f and -L"
+    }
+  ],
+  "more": {
+    "docs": "https://jqlang.org/manual/v1.8/",
+    "help": "https://github.com/jqlang/jq",
+    "download": "https://jqlang.org/download/"
+  },
+  "frontmatter": {
+    "created": "2026-04-12",
+    "updated": "2026-04-12",
+    "author": "dojo-community",
+    "audience": "AI agents, developers",
+    "estimated_reading_time": "6 min",
+    "status": "living",
+    "confidence": "high",
+    "prerequisites": [
+      "shell/bash"
+    ]
+  }
+}

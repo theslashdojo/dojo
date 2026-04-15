@@ -1,0 +1,192 @@
+{
+  "name": "deploy",
+  "version": "1.0.0",
+  "uri": "pnpm/deploy",
+  "type": "skill",
+  "context": "Deploy one pnpm workspace package into a self-contained target directory for servers, containers, or artifacts",
+  "info": "This skill covers `pnpm deploy`, the workspace-oriented command that copies one package and the dependencies it needs into a target directory. It matters because monorepo automation often needs to ship one application without copying the entire repository, and pnpm deploy has important requirements around filters, legacy mode, and which dependency groups are included. The skill also ties into `pnpm fetch` and offline install patterns used in Docker and CI.",
+  "parent": "pnpm",
+  "tags": [
+    "deploy",
+    "workspace",
+    "docker",
+    "prod",
+    "legacy",
+    "artifact",
+    "monorepo"
+  ],
+  "aliases": [
+    "pnpm deploy",
+    "deploy workspace package with pnpm",
+    "pnpm monorepo deploy",
+    "pnpm deploy legacy mode"
+  ],
+  "triggers": [
+    "deploy one package from a pnpm monorepo",
+    "create a deploy directory with pnpm",
+    "ship a pnpm workspace app to docker",
+    "use pnpm deploy with legacy mode"
+  ],
+  "body": "# pnpm Deploy\n\n`pnpm deploy` is for extracting one workspace package into a portable target directory. The local CLI help for pnpm 10.23.0 shows the core form clearly:\n\n```bash\npnpm --filter=<project> deploy <target-directory>\n```\n\nUseful flags include `--prod`, `--dev`, `--no-optional`, and `--legacy`. In practice, an agent should require a filter, decide whether devDependencies belong in the output, and fall back to legacy mode when the workspace is not using newer injected deployment behavior.\n",
+  "sections": [
+    {
+      "id": "deploy-command",
+      "title": "Deploy command basics",
+      "body": "The official help text for pnpm 10.x describes `pnpm --filter=<deployed project name> deploy <target directory>`. Always select the package explicitly with `--filter`. Use `--prod` for runtime output, `--dev` for build-oriented bundles, and `--no-optional` when optional dependencies should not ship. If nothing matches the selector, add `--fail-if-no-match` before deploy to make the failure explicit.",
+      "tags": [
+        "deploy",
+        "filter",
+        "prod",
+        "dev"
+      ]
+    },
+    {
+      "id": "docker-and-ci",
+      "title": "Docker and CI workflow",
+      "body": "A common pattern is to warm the store with [[pnpm/install#fetch-and-offline]], run an offline install, build the target package, and then deploy it to an output directory copied into the final image or artifact. This reduces network work inside later layers and keeps deployment scope narrow. Pair this with [[pnpm/store#caching-in-ci]] for cache placement.",
+      "tags": [
+        "docker",
+        "ci",
+        "fetch",
+        "offline"
+      ]
+    },
+    {
+      "id": "legacy-mode",
+      "title": "Legacy mode and file inclusion",
+      "body": "As newer pnpm versions evolved deploy behavior around workspace package injection, `--legacy` remains the escape hatch for older repos or setups that are not compatible with the default path. The `deployAllFiles` setting can also widen which files are copied; otherwise file inclusion follows the package's normal packlist behavior such as `files` and related manifest rules.",
+      "tags": [
+        "legacy",
+        "deploy-all-files",
+        "packlist"
+      ]
+    }
+  ],
+  "links": [
+    {
+      "uri": "pnpm/install#fetch-and-offline",
+      "context": "Warm the store before offline install and deploy"
+    },
+    {
+      "uri": "pnpm/workspace#filters",
+      "context": "Choose the exact package and graph slice to deploy"
+    },
+    {
+      "uri": "pnpm/store#caching-in-ci",
+      "context": "Store-aware caching reduces deploy build time"
+    },
+    {
+      "uri": "docker",
+      "context": "Deploy output commonly becomes the final Docker application payload"
+    }
+  ],
+  "related": [
+    {
+      "uri": "pnpm/workspace",
+      "relation": "prerequisite",
+      "note": "Deploy is a workspace-targeted command and should always start from a specific package selector"
+    },
+    {
+      "uri": "pnpm/install",
+      "relation": "see-also",
+      "note": "Fetch and offline install are common predecessors to deploy workflows"
+    }
+  ],
+  "scripts": [
+    {
+      "id": "deploy-workspace",
+      "name": "Deploy Workspace Package",
+      "description": "Run pnpm deploy for one filtered workspace package with prod, dev, and legacy controls",
+      "lang": "bash",
+      "runtime": "bash>=4",
+      "entry": "./scripts/deploy-workspace.sh",
+      "env": {
+        "PNPM_HOME": {
+          "required": false,
+          "description": "Optional pnpm home directory if the binary is not on the default PATH"
+        }
+      },
+      "packages": []
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "filter": {
+          "type": "string",
+          "description": "Workspace selector for the package being deployed"
+        },
+        "destination": {
+          "type": "string",
+          "description": "Target directory for deploy output"
+        },
+        "prod": {
+          "type": "boolean",
+          "description": "Exclude devDependencies from the output",
+          "default": false
+        },
+        "dev": {
+          "type": "boolean",
+          "description": "Include only devDependencies",
+          "default": false
+        },
+        "legacy": {
+          "type": "boolean",
+          "description": "Force the legacy deploy implementation",
+          "default": false
+        },
+        "noOptional": {
+          "type": "boolean",
+          "description": "Skip optional dependencies",
+          "default": false
+        }
+      },
+      "required": ["filter", "destination"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "filter": {
+          "type": "string",
+          "description": "Workspace selector that was deployed"
+        },
+        "destination": {
+          "type": "string",
+          "description": "Target directory passed to pnpm deploy"
+        }
+      }
+    }
+  },
+  "depends": [
+    {
+      "uri": "pnpm/workspace",
+      "reason": "Deploy depends on correct workspace selection and graph scoping"
+    },
+    {
+      "uri": "pnpm/install",
+      "reason": "Most deploy workflows are preceded by fetch, install, and build steps"
+    }
+  ],
+  "more": {
+    "docs": "https://pnpm.io/cli/deploy",
+    "ci": "https://pnpm.io/continuous-integration",
+    "fetch": "https://pnpm.io/cli/fetch"
+  },
+  "frontmatter": {
+    "created": "2026-04-12",
+    "updated": "2026-04-12",
+    "author": "dojo-community",
+    "audience": "developers, AI agents, release engineers",
+    "estimated_reading_time": "4 min",
+    "prerequisites": ["pnpm/workspace", "pnpm/install"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://github.com/pnpm/pnpm",
+  "created": "2026-04-12T00:00:00Z",
+  "updated": "2026-04-12T00:00:00Z",
+  "status": "published"
+}

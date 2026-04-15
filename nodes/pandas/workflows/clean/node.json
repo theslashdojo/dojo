@@ -1,0 +1,149 @@
+{
+  "name": "clean",
+  "version": "1.0.0",
+  "uri": "pandas/workflows/clean",
+  "type": "sub",
+  "context": "Clean pandas DataFrames: missing values, duplicates, dtype conversion, string normalization, invalid records, and data-quality checks",
+  "info": "Cleaning is the highest-risk pandas workflow because incorrect dtype inference or missing-value handling silently changes results. Agents use this node after [[pandas/workflows/io]] to normalize column names, identify missingness, convert dates and numerics, preserve identifiers as strings, remove duplicate records, standardize categorical strings, and write a typed artifact for later joins or summaries. It relies on [[pandas/dataframe]] for dtype semantics and the shared profiling and transform scripts from [[pandas/workflows]].",
+  "parent": "pandas/workflows",
+  "tags": [
+    "pandas",
+    "cleaning",
+    "missing-values",
+    "dropna",
+    "fillna",
+    "duplicates",
+    "dtypes",
+    "to-datetime",
+    "to-numeric",
+    "strings"
+  ],
+  "aliases": [
+    "pandas cleaning",
+    "clean dataframe",
+    "dropna fillna",
+    "pandas missing data",
+    "pandas dtype conversion",
+    "pandas duplicates",
+    "normalize dataframe",
+    "clean csv with pandas"
+  ],
+  "triggers": [
+    "clean this dataframe",
+    "fix missing values in pandas",
+    "convert pandas column types",
+    "remove duplicate rows",
+    "normalize string columns",
+    "parse dates in pandas",
+    "why did pandas convert ids to floats",
+    "prepare clean parquet output"
+  ],
+  "body": "# Cleaning DataFrames\n\nClean immediately after loading and before joining or aggregating. The output should have stable column names, intentional dtypes, known missing-value policy, and no accidental duplicate keys.\n\n## Basic cleaning chain\n\n```python\nimport pandas as pd\n\nraw = pd.read_csv('orders.csv', dtype={'order_id': 'string', 'user_id': 'string'})\nclean = (\n    raw\n    .rename(columns=lambda c: c.strip().lower().replace(' ', '_'))\n    .assign(\n        created_at=lambda d: pd.to_datetime(d['created_at'], errors='coerce', utc=True),\n        amount=lambda d: pd.to_numeric(d['amount'], errors='coerce'),\n        status=lambda d: d['status'].astype('string').str.strip().str.lower(),\n    )\n    .dropna(subset=['order_id', 'created_at', 'amount'])\n    .drop_duplicates(subset=['order_id'])\n)\nclean.to_parquet('orders.clean.parquet', index=False)\n```\n\n## Profile and transform scripts\n\n```bash\npython nodes/pandas/workflows/scripts/profile_dataset.py raw/orders.csv --parse-dates created_at\npython nodes/pandas/workflows/scripts/transform_dataset.py raw/orders.csv clean/orders.parquet --drop-duplicates --sort-by order_id\n```\n\nUse explicit custom Python when cleaning requires domain rules such as valid enum sets, cross-field checks, or money parsing.\n",
+  "sections": [
+    {
+      "id": "missing-values",
+      "title": "Missing values",
+      "body": "Use `isna()` to measure missingness, `dropna(subset=[...])` for required fields, `fillna()` for safe default values, and `where` or `mask` for conditional replacement. Keep a missing-value policy per column; do not fill identifiers, timestamps, or money without domain justification.",
+      "tags": ["isna", "dropna", "fillna", "pd-na", "nan"]
+    },
+    {
+      "id": "dtype-repair",
+      "title": "Dtype repair",
+      "body": "Use `astype('string')` for identifiers and text, `pd.to_numeric(..., errors='coerce')` for numbers from messy text, `pd.to_datetime(..., errors='coerce', utc=True)` for external timestamps, and `astype('category')` for repeated low-cardinality labels. Use nullable dtypes for integers and booleans with missing values.",
+      "tags": ["astype", "to-numeric", "to-datetime", "category", "nullable"]
+    },
+    {
+      "id": "duplicates",
+      "title": "Duplicates and keys",
+      "body": "Use `duplicated()` to detect repeated rows or repeated business keys before joins. `drop_duplicates(subset=['id'])` is safe only when the selected survivor is intentional. For join keys, assert uniqueness on the one-side before using [[pandas/workflows/join]] with `validate='many_to_one'` or `one_to_one`.",
+      "tags": ["duplicates", "keys", "drop-duplicates", "join-validation"]
+    },
+    {
+      "id": "string-normalization",
+      "title": "String normalization",
+      "body": "Normalize categorical text with `.str.strip()`, `.str.lower()`, `.str.replace()`, and explicit maps. Standardize empty strings to missing values when they mean unknown. Preserve case for identifiers, codes, SKUs, and user-facing names unless the domain permits normalization.",
+      "tags": ["strings", "strip", "lower", "replace", "category"]
+    }
+  ],
+  "links": [
+    { "uri": "pandas/workflows/clean#dtype-repair", "context": "Section on explicit dtype conversion and nullable dtypes" },
+    { "uri": "pandas/dataframe", "context": "Dtypes, missing values, and safe assignment semantics" },
+    { "uri": "pandas/workflows/io", "context": "Read raw data with explicit dtype and date controls" },
+    { "uri": "pandas/workflows/transform", "context": "Apply row and column transformations after cleaning" },
+    { "uri": "pandas/workflows/join", "context": "Validate cleaned keys before merging" },
+    { "uri": "testing", "context": "Add regression tests for data cleaning edge cases" }
+  ],
+  "related": [
+    { "uri": "pandas/dataframe", "relation": "prerequisite", "note": "Cleaning relies on understanding dtypes and assignment semantics" },
+    { "uri": "pandas/workflows/transform", "relation": "see-also", "note": "Cleaning and transformation are usually part of the same pipeline" },
+    { "uri": "testing", "relation": "see-also", "note": "Data cleaning rules should be tested against edge-case fixtures" }
+  ],
+  "scripts": [
+    {
+      "id": "profile-dataset",
+      "name": "Profile Dataset",
+      "description": "Inspect missing values, duplicates, dtypes, and samples before writing cleaning logic",
+      "lang": "python",
+      "runtime": "python>=3.10",
+      "entry": "../scripts/profile_dataset.py",
+      "packages": ["pandas", "pyarrow", "openpyxl"]
+    },
+    {
+      "id": "transform-dataset",
+      "name": "Transform Dataset",
+      "description": "Apply safe cleaning-adjacent transforms such as renaming, filtering, sorting, and deduplication",
+      "lang": "python",
+      "runtime": "python>=3.10",
+      "entry": "../scripts/transform_dataset.py",
+      "packages": ["pandas", "pyarrow", "openpyxl"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "input_path": { "type": "string" },
+        "required_columns": { "type": "array", "items": { "type": "string" } },
+        "dtype_rules": { "type": "object", "description": "Column to dtype or conversion rule mapping" },
+        "dedupe_keys": { "type": "array", "items": { "type": "string" } },
+        "output_path": { "type": "string" }
+      },
+      "required": ["input_path"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "clean_rows": { "type": "integer" },
+        "dropped_rows": { "type": "integer" },
+        "missing_report": { "type": "object" },
+        "output_path": { "type": "string" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "pandas/workflows", "reason": "Uses shared profiling and transformation scripts" },
+    { "uri": "pandas/dataframe", "reason": "Cleaning decisions depend on DataFrame dtype semantics" }
+  ],
+  "more": {
+    "docs": "https://pandas.pydata.org/docs/user_guide/missing_data.html",
+    "dtypes": "https://pandas.pydata.org/docs/user_guide/basics.html#dtypes",
+    "dropna": "https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.dropna.html",
+    "to-datetime": "https://pandas.pydata.org/docs/reference/api/pandas.to_datetime.html"
+  },
+  "frontmatter": {
+    "created": "2026-04-15",
+    "updated": "2026-04-15",
+    "author": "dojo-community",
+    "audience": "AI agents, data engineers",
+    "estimated_reading_time": "6 min",
+    "prerequisites": ["pandas/dataframe", "pandas/workflows/io"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://github.com/pandas-dev/pandas",
+  "created": "2026-04-15T00:00:00Z",
+  "updated": "2026-04-15T00:00:00Z",
+  "status": "published"
+}

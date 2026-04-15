@@ -1,0 +1,151 @@
+{
+  "version": "1.0.0",
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://github.com/jqlang/jq",
+  "created": "2026-04-12T00:00:00Z",
+  "updated": "2026-04-12T00:00:00Z",
+  "status": "published",
+  "name": "jq",
+  "uri": "jq",
+  "type": "ecosystem",
+  "context": "jq ecosystem for querying, reshaping, validating, and streaming JSON in shell-based automation",
+  "info": "jq is the command-line JSON processor agents reach for when API responses, CLI outputs, config files, or logs need to become structured inputs for the next action. This ecosystem covers the execution surface that matters in practice: safe CLI invocation and quoting, extraction and filtering, in-place-style transformations for JSON files, incremental processing for large payloads, and reusable jq program files and modules. jq fits naturally beside [[curl/request]], [[shell/pipes]], and [[shell/files]] because it turns verbose JSON into IDs, URLs, flags, and normalized objects that downstream commands can consume.",
+  "parent": null,
+  "tags": [
+    "jq",
+    "json",
+    "cli",
+    "filter",
+    "transform",
+    "query",
+    "streaming",
+    "modules",
+    "shell",
+    "automation"
+  ],
+  "aliases": [
+    "jq",
+    "jqlang",
+    "json query tool",
+    "json processor",
+    "json cli parser",
+    "jq command",
+    "jq filter language",
+    "parse json in shell"
+  ],
+  "triggers": [
+    "parse json with jq",
+    "extract a field from json",
+    "transform json in the shell",
+    "rewrite a json file",
+    "stream a large json document",
+    "run a jq program file",
+    "test jq modules"
+  ],
+  "body": "# jq\n\njq is the shell-native way to work with structured JSON data without writing a throwaway script in another language. It sits between JSON-producing tools and the action you actually want to take.\n\n## Mental Model\n\nA jq program is a filter: it consumes one input value and produces zero, one, or many output values. That makes jq useful for both one-shot lookups like `jq -r \".version\"` and richer pipelines like `jq \".items[] | select(.state == \\\"open\\\") | {id, title}\"`.\n\n## Core Agent Jobs\n\n- **[[jq/query]]** extracts IDs, URLs, versions, booleans, and filtered subsets from API and CLI output.\n- **[[jq/transform]]** rewrites JSON objects and arrays with assignment operators, path helpers, and reducers.\n- **[[jq/streaming]]** handles very large inputs with `--stream`, `--seq`, `reduce`, and `foreach`.\n- **[[jq/modules]]** packages reusable jq code into `.jq` files, imports libraries with `-L`, and runs tests with `--run-tests`.\n- **[[jq/cli]]** explains quoting, input modes, variables, output flags, and exit codes that every jq workflow depends on.\n\n## Typical Command Shapes\n\n~~~bash\ncurl -s https://api.github.com/repos/jqlang/jq | jq \"{name, stargazers_count, open_issues_count}\"\njq -r \".version\" package.json\njq -e \".status == \\\"ok\\\"\" health.json > /dev/null\njq \".items[] | select(.kind == \\\"error\\\")\" logs.json\n~~~\n\n## Installation Surface\n\nThe official jq download page covers package-manager installs, prebuilt binaries, source builds, and the GitHub Container Registry image. The current manual is published at `jqlang.org/manual/v1.8/`, while the download page currently lists jq 1.8.1 binaries and source archives.\n\n~~~bash\nsudo apt-get install jq\nbrew install jq\ndocker run --rm -i ghcr.io/jqlang/jq:latest < package.json \".version\"\njq --version\n~~~\n\nUse jq when the input is JSON and the next step needs something smaller, flatter, safer, or easier to branch on.",
+  "sections": [
+    {
+      "id": "mental-model",
+      "title": "Filter mental model",
+      "body": "jq programs are filters, not imperative scripts. Every expression receives an input value and may emit zero, one, or many outputs. That is why field access (`.id`), filtering (`select(...)`), and aggregation (`reduce`) compose cleanly. Load [[jq/query]] when the goal is extraction, [[jq/transform]] when the goal is mutation or reshaping, and [[jq/streaming]] when the input is too large to materialize comfortably.",
+      "tags": [
+        "filters",
+        "mental-model",
+        "composition",
+        "json"
+      ]
+    },
+    {
+      "id": "agent-jobs",
+      "title": "Agent jobs",
+      "body": "Agents mainly use jq in four modes: extract a single value for branching or interpolation, normalize JSON into a smaller object for downstream tools, patch a JSON file safely, or stream over a large document without loading the whole value into memory. The graph is organized around those jobs rather than around every builtin in the manual.",
+      "tags": [
+        "automation",
+        "query",
+        "transform",
+        "streaming",
+        "files"
+      ]
+    },
+    {
+      "id": "install-and-run",
+      "title": "Install and run",
+      "body": "Official installation paths include system package managers, prebuilt binaries, source builds, and `ghcr.io/jqlang/jq`. Verify availability with `jq --version`. jq has no runtime dependencies, which makes it a reliable default in CI, container images, and remote shells. See the official download page in `more.download` for platform-specific commands.",
+      "tags": [
+        "install",
+        "download",
+        "docker",
+        "version"
+      ]
+    }
+  ],
+  "links": [
+    {
+      "uri": "jq/cli",
+      "context": "CLI flags, quoting, variables, and exit status"
+    },
+    {
+      "uri": "jq/query",
+      "context": "Extract and filter values from JSON"
+    },
+    {
+      "uri": "jq/transform",
+      "context": "Rewrite and reshape JSON values and files"
+    },
+    {
+      "uri": "jq/streaming",
+      "context": "Process very large JSON incrementally"
+    },
+    {
+      "uri": "jq/modules",
+      "context": "Reuse jq code from files and modules"
+    },
+    {
+      "uri": "curl/request",
+      "context": "jq is commonly piped after curl responses"
+    },
+    {
+      "uri": "shell/pipes",
+      "context": "jq is most effective inside shell pipelines"
+    },
+    {
+      "uri": "shell/files",
+      "context": "Use temp-file rewrite patterns around jq output"
+    }
+  ],
+  "related": [
+    {
+      "uri": "shell/bash",
+      "relation": "prerequisite",
+      "note": "jq commands execute inside a shell context"
+    },
+    {
+      "uri": "curl/request",
+      "relation": "see-also",
+      "note": "curl plus jq is a common API automation pairing"
+    },
+    {
+      "uri": "shell/pipes",
+      "relation": "see-also",
+      "note": "jq output is usually piped into other shell tools or vice versa"
+    }
+  ],
+  "more": {
+    "docs": "https://jqlang.org/manual/v1.8/",
+    "download": "https://jqlang.org/download/",
+    "repo": "https://github.com/jqlang/jq",
+    "releases": "https://github.com/jqlang/jq/releases",
+    "playground": "https://play.jqlang.org/"
+  },
+  "frontmatter": {
+    "created": "2026-04-12",
+    "updated": "2026-04-12",
+    "author": "dojo-community",
+    "audience": "AI agents, developers, shell users",
+    "estimated_reading_time": "4 min",
+    "status": "living",
+    "confidence": "high",
+    "prerequisites": []
+  }
+}

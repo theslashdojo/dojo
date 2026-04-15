@@ -1,0 +1,132 @@
+{
+  "name": "author",
+  "version": "1.0.0",
+  "uri": "openapi/author",
+  "type": "skill",
+  "context": "Author OpenAPI contracts with stable operation IDs, reusable components, examples, errors, and security.",
+  "info": "OpenAPI authoring is the skill of creating and maintaining a contract that humans, agents, validators, mocks, tests, and code generators can all rely on. The execution surface is a YAML or JSON document, usually `openapi.yaml`, plus scripts that scaffold a baseline document and validation tools that keep it correct. Agents use this node to design new HTTP APIs, document existing ones, normalize framework-generated specs, add examples, define common error envelopes, describe authentication, and make generated SDK output stable by choosing durable operation IDs and schemas.",
+  "parent": "openapi",
+  "tags": ["openapi-authoring", "api-design", "contract-first", "operation-id", "components", "examples", "errors", "security", "yaml"],
+  "aliases": [
+    "write openapi",
+    "author openapi",
+    "create swagger",
+    "create api spec",
+    "contract first api",
+    "api design",
+    "swagger authoring",
+    "openapi yaml authoring",
+    "operation ids",
+    "api documentation"
+  ],
+  "triggers": [
+    "create an openapi file",
+    "write an api contract",
+    "document this endpoint in openapi",
+    "add request response schemas",
+    "define reusable openapi components",
+    "add examples to the api spec",
+    "describe bearer auth in openapi",
+    "make generated client method names stable",
+    "add pagination to openapi",
+    "standardize error responses"
+  ],
+  "body": "# OpenAPI Authoring\n\nAuthoring turns an HTTP API design into a durable contract. Write the contract as if downstream tools will be strict: generated SDK names come from `operationId`, test inputs come from schemas, mock responses come from examples and schema constraints, and documentation renders exactly what the description says.\n\n## Scaffold\n\n```bash\nnodes/openapi/scripts/scaffold-openapi.mjs --out openapi.yaml --title Billing --version 1.0.0 --server http://localhost:3000\n```\n\nThen validate immediately:\n\n```bash\nnodes/openapi/scripts/validate-openapi.sh openapi.yaml\n```\n\n## Authoring Checklist\n\n1. Set `openapi`, `info.title`, `info.version`, and `servers`.\n2. Add paths with concrete HTTP methods and stable `operationId` values.\n3. Define every path, query, header, and cookie parameter with `name`, `in`, `required`, and `schema`.\n4. Define request bodies for methods that accept payloads.\n5. Define responses for success, validation errors, auth errors, not found, rate limits, and default failures.\n6. Move shared schemas, responses, parameters, request bodies, examples, and security schemes into `components`.\n7. Add examples that match schemas.\n8. Run [[openapi/validate]] and fix warnings before using [[openapi/generate]], [[openapi/mock]], or [[openapi/contract-test]].\n\n## Stable Operation IDs\n\nUse names that describe the API action, not framework internals:\n\n```yaml\npaths:\n  /customers/{customerId}/invoices:\n    get:\n      operationId: listCustomerInvoices\n    post:\n      operationId: createCustomerInvoice\n```\n\nBad operation IDs include `CustomerController_index`, `get`, `apiV1CustomersInvoicesGet`, and names that change when routes move between files.\n\n## Reusable Components\n\n```yaml\ncomponents:\n  parameters:\n    CustomerId:\n      name: customerId\n      in: path\n      required: true\n      schema:\n        type: string\n  responses:\n    NotFound:\n      description: Resource not found\n      content:\n        application/json:\n          schema:\n            $ref: '#/components/schemas/Error'\n  schemas:\n    Error:\n      type: object\n      required: [code, message]\n      properties:\n        code: { type: string }\n        message: { type: string }\n        requestId: { type: string }\n```\n\n## Security\n\nDefine auth once, then apply globally or per operation:\n\n```yaml\ncomponents:\n  securitySchemes:\n    bearerAuth:\n      type: http\n      scheme: bearer\n      bearerFormat: JWT\nsecurity:\n  - bearerAuth: []\n```\n\nUse `security: []` on a specific operation only when it is intentionally public.",
+  "sections": [
+    {
+      "id": "workflow",
+      "title": "Authoring workflow",
+      "body": "Start from a scaffold or existing service behavior. Define the public contract first: resources, methods, request bodies, responses, pagination, auth, and errors. Keep operation IDs stable. Reuse components. Add examples. Validate after each meaningful edit with [[openapi/validate]]. Generate or mock only after validation is clean.",
+      "tags": ["workflow", "contract-first", "validation"]
+    },
+    {
+      "id": "operation-ids",
+      "title": "Stable operation IDs",
+      "body": "`operationId` should be unique, stable, language-friendly, and action-oriented. Good examples: `listInvoices`, `createPayment`, `getCustomer`, `cancelSubscription`. Generated SDKs use these names for methods, so changing them is a client-facing breaking change even when URL paths stay the same.",
+      "tags": ["operation-id", "sdk", "naming"]
+    },
+    {
+      "id": "components-first",
+      "title": "Components-first reuse",
+      "body": "Move repeated schemas, responses, parameters, request bodies, headers, examples, and security schemes into `components`. This reduces drift and lets agents update common API behavior once. Error envelopes, pagination parameters, IDs, auth schemes, and standard rate-limit responses should almost always be components.",
+      "tags": ["components", "reuse", "schemas", "responses"]
+    },
+    {
+      "id": "examples",
+      "title": "Examples",
+      "body": "Examples are executable documentation: mock servers use them, docs render them, and agents inspect them to infer intended behavior. Keep examples small, realistic, non-secret, and schema-valid. Prefer named examples for important variants such as success, validation failure, empty page, and unauthorized.",
+      "tags": ["examples", "mocking", "documentation"]
+    },
+    {
+      "id": "errors",
+      "title": "Error responses",
+      "body": "Define one reusable `Error` schema and reusable responses for common status codes. At minimum describe 400, 401, 403, 404, 409, 422, 429, 500, and `default` when relevant. Generated clients and contract tests are more useful when failure shapes are explicit.",
+      "tags": ["errors", "responses", "status-codes"]
+    }
+  ],
+  "links": [
+    { "uri": "openapi/spec", "context": "Object model and field semantics needed to write valid OpenAPI" },
+    { "uri": "openapi/validate", "context": "Validate and bundle the authored contract" },
+    { "uri": "openapi/mock", "context": "Use examples and schemas to run a mock server" },
+    { "uri": "openapi/generate", "context": "Generate clients and server stubs from stable operations" },
+    { "uri": "zod", "context": "Zod schemas can be a TypeScript source for OpenAPI schemas" }
+  ],
+  "related": [
+    { "uri": "openapi/spec", "relation": "prerequisite", "note": "Authoring depends on understanding OpenAPI objects and schema semantics" },
+    { "uri": "openapi/validate", "relation": "see-also", "note": "Every authored contract should be linted and bundled before use" },
+    { "uri": "openapi/generate", "relation": "see-also", "note": "Generated code quality depends heavily on authoring discipline" }
+  ],
+  "scripts": [
+    {
+      "id": "scaffold-openapi",
+      "name": "Scaffold OpenAPI Contract",
+      "description": "Create a minimal OpenAPI YAML or JSON document with health endpoint, schemas, examples, and reusable error response",
+      "lang": "javascript",
+      "runtime": "node>=18",
+      "entry": "../scripts/scaffold-openapi.mjs",
+      "env": {}
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "out": { "type": "string", "description": "Output path such as openapi.yaml or docs/openapi.json", "default": "openapi.yaml" },
+        "title": { "type": "string", "description": "API title" },
+        "version": { "type": "string", "description": "API version string", "default": "1.0.0" },
+        "server": { "type": "string", "description": "Initial server URL", "default": "http://localhost:3000" },
+        "openapi": { "type": "string", "description": "OpenAPI version to write", "default": "3.1.0" }
+      }
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "path": { "type": "string", "description": "Created OpenAPI document path" },
+        "format": { "type": "string", "enum": ["yaml", "json"], "description": "Created document format" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "openapi/spec", "reason": "Authoring must follow the OpenAPI object model" },
+    { "uri": "node", "optional": false, "reason": "The scaffold script runs on Node.js" }
+  ],
+  "more": {
+    "docs": "https://learn.openapis.org/",
+    "spec": "https://spec.openapis.org/oas/latest.html"
+  },
+  "frontmatter": {
+    "created": "2026-04-15",
+    "updated": "2026-04-15",
+    "author": "dojo-community",
+    "audience": "API designers, backend engineers, AI agents",
+    "estimated_reading_time": "7 min",
+    "prerequisites": ["openapi/spec"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-15T00:00:00Z",
+  "updated": "2026-04-15T00:00:00Z",
+  "status": "published"
+}

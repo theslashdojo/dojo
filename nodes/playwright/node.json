@@ -1,0 +1,80 @@
+{
+  "name": "playwright",
+  "version": "1.0.0",
+  "uri": "playwright",
+  "type": "ecosystem",
+  "context": "Automate real browsers for testing, research, screenshots, auth flows, scraping, network inspection, API checks, and agent page control.",
+  "info": "Playwright is a cross-browser automation ecosystem for Chromium, Firefox, and WebKit. Its execution surface spans the @playwright/test runner, the standalone playwright library, browser binary management, code generation, trace/debug tooling, request contexts for API testing, and a coding-agent CLI that exposes page snapshots with element references. This matters for autonomous agents because many real-world engineering and research tasks require the behavior of an actual browser: login flows, dynamic SPAs, downloads, screenshots, accessibility-backed locators, network interception, visual regression, and CI-safe end-to-end verification.",
+  "parent": null,
+  "tags": ["playwright", "browser-automation", "e2e", "testing", "screenshots", "scraping", "chromium", "firefox", "webkit", "network", "auth", "agent-cli"],
+  "aliases": ["playwright", "playwright test", "playwright browser", "browser automation", "headless browser", "e2e testing", "end to end testing", "web automation", "chromium automation", "firefox automation", "webkit automation", "playwright cli", "coding agent browser"],
+  "triggers": ["automate a website", "drive a browser", "take a screenshot of this page", "write playwright tests", "run browser tests", "inspect a web app", "scrape a dynamic page", "login with playwright", "mock network requests", "debug with trace viewer", "use playwright cli", "test an api with playwright"],
+  "body": "# Playwright Ecosystem\n\nPlaywright gives agents a reliable browser execution layer. Use it when HTTP alone is not enough: JavaScript-rendered apps, authentication flows, screenshots, downloads, accessibility-backed element targeting, network interception, visual checks, and full end-to-end tests.\n\n## Tree\n\n- [[playwright/install]] - install packages and browser binaries for tests, scripts, or agent CLI use.\n- [[playwright/browser-automation]] - run standalone browser scripts for research, screenshots, scraping, and scripted workflows.\n- [[playwright/agent-cli]] - control browser sessions with snapshot refs optimized for coding agents.\n- [[playwright/locators]] - choose resilient selectors and avoid fragile CSS/XPath when possible.\n- [[playwright/auth]] - persist and reuse cookies/localStorage safely with storage state.\n- [[playwright/network]] - inspect, wait for, mock, modify, or block network requests.\n- [[playwright/screenshots]] - capture full-page, element, and visual-regression screenshots.\n- [[playwright/downloads]] - handle browser downloads and save artifacts deterministically.\n- [[playwright/api-testing]] - use request contexts for API checks and authenticated setup.\n- [[playwright/trace-debugging]] - collect traces, videos, screenshots, and reports for failures.\n- [[playwright/ci]] - install browsers and run Playwright reliably in CI.\n\n## Fast Path\n\n```bash\nnodes/playwright/scripts/install-playwright.sh test chromium firefox webkit\nnodes/playwright/scripts/run-tests.sh\nnodes/playwright/scripts/browser-capture.mjs https://example.com --screenshot artifacts/example.png --html artifacts/example.html\nnodes/playwright/scripts/api-request.mjs https://api.example.com/health --fail\nnodes/playwright/scripts/playwright-agent-cli.sh open https://example.com --headed\n```\n\nPick `@playwright/test` for test suites, `playwright` for standalone automation, and `@playwright/cli` when an agent needs to keep an interactive browser session alive across commands.",
+  "sections": [
+    {
+      "id": "execution-surfaces",
+      "title": "Execution surfaces",
+      "body": "`@playwright/test` is the default for end-to-end tests because it includes fixtures, projects, assertions, retries, reporting, traces, screenshots, and CI behavior. The `playwright` package is better for one-off or reusable automation scripts where you explicitly launch a browser, create a context, open a page, and close resources. `@playwright/cli` exposes browser state through command-line page snapshots and element refs, which is useful when an agent needs iterative control without dumping raw HTML.",
+      "tags": ["test-runner", "library", "cli", "fixtures", "agent"]
+    },
+    {
+      "id": "agent-workflow",
+      "title": "Agent workflow",
+      "body": "Start at [[playwright/install]] to ensure packages and browser binaries exist. For test suites, inspect `playwright.config.*`, run [[playwright/ci]]-compatible commands, and use [[playwright/trace-debugging]] on failures. For research or scraping, use [[playwright/browser-automation]] with deterministic output files. For interactive page manipulation, use [[playwright/agent-cli]] snapshots, then translate stable steps into library scripts or tests.",
+      "tags": ["workflow", "agents", "browser-context", "artifacts"]
+    },
+    {
+      "id": "security",
+      "title": "Security posture",
+      "body": "Storage state files can contain live cookies and localStorage tokens, so treat `playwright/.auth/*.json` like secrets. Do not commit screenshots or HTML dumps from authenticated pages unless reviewed. Be careful with `page.evaluate()` against untrusted sites because it executes code in the page context. When routing requests, avoid logging authorization headers unless explicitly needed for debugging.",
+      "tags": ["security", "storage-state", "secrets", "auth", "artifacts"]
+    },
+    {
+      "id": "official-tooling",
+      "title": "Official tooling",
+      "body": "Official documentation covers installation, library mode, browser management, locators, actionability, authentication, network interception, screenshots, downloads, API testing, traces, and CI. This node stores durable workflows, but agents should consult official docs before adopting newly released CLI flags or browser-install behavior.",
+      "tags": ["docs", "official", "browser-install", "cli"]
+    }
+  ],
+  "sub": ["playwright/install", "playwright/browser-automation", "playwright/agent-cli", "playwright/locators", "playwright/auth", "playwright/network", "playwright/screenshots", "playwright/downloads", "playwright/api-testing", "playwright/trace-debugging", "playwright/ci"],
+  "links": [
+    { "uri": "playwright/install", "context": "Install packages and browser binaries before running automation" },
+    { "uri": "playwright/browser-automation", "context": "Use browser scripts for research, scraping, and screenshots" },
+    { "uri": "playwright/agent-cli", "context": "Control live browser sessions from coding agents" },
+    { "uri": "testing/playwright", "context": "Existing testing-focused Playwright node for end-to-end test patterns" },
+    { "uri": "testing/ci", "context": "General CI practices that complement browser execution" },
+    { "uri": "node/npm", "context": "Run npx, npm scripts, and package installation commands" },
+    { "uri": "typescript", "context": "Most Playwright tests and configs are TypeScript" }
+  ],
+  "related": [
+    { "uri": "testing/playwright", "relation": "extends", "note": "This ecosystem broadens the existing testing node into browser automation, research, and agent control." },
+    { "uri": "testing/ci", "relation": "see-also", "note": "Playwright test suites usually run as CI quality gates." },
+    { "uri": "node/npm", "relation": "prerequisite", "note": "Playwright is installed and invoked through Node package managers." },
+    { "uri": "frontend/testing", "relation": "see-also", "note": "Playwright validates user-visible frontend behavior." },
+    { "uri": "curl", "relation": "alternative", "note": "Use curl for simple HTTP; use Playwright when page JavaScript or browser state matters." }
+  ],
+  "more": {
+    "docs": "https://playwright.dev/docs/intro",
+    "library": "https://playwright.dev/docs/library",
+    "agent-cli": "https://playwright.dev/docs/getting-started-cli",
+    "api": "https://playwright.dev/docs/api/class-playwright",
+    "repo": "https://github.com/microsoft/playwright",
+    "skills": "https://github.com/agentskills/agentskills"
+  },
+  "frontmatter": {
+    "created": "2026-04-15",
+    "updated": "2026-04-15",
+    "author": "dojo-community",
+    "audience": "developers, QA engineers, automation engineers, researchers, AI agents",
+    "estimated_reading_time": "8 min",
+    "prerequisites": ["node/npm"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://github.com/microsoft/playwright",
+  "created": "2026-04-15T00:00:00Z",
+  "updated": "2026-04-15T00:00:00Z",
+  "status": "published"
+}

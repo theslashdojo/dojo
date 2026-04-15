@@ -1,0 +1,216 @@
+{
+  "name": "find",
+  "version": "1.0.0",
+  "uri": "mongodb/crud/find",
+  "type": "sub",
+  "context": "Query MongoDB collections with filters, projections, sort, skip, limit, and cursor-aware reads",
+  "info": "This sub-skill focuses on read paths: `find()` and `findOne()`, how filters select documents, how projections and sort shape the response, and how cursor-based iteration differs from pulling everything into memory. Agents use it for targeted inspection, audits, pagination, and export jobs where query shape matters as much as the result.",
+  "parent": "mongodb/crud",
+  "tags": [
+    "find",
+    "findone",
+    "query",
+    "projection",
+    "sort",
+    "limit",
+    "cursor"
+  ],
+  "aliases": [
+    "mongodb find",
+    "mongo find",
+    "query mongodb documents",
+    "findOne mongodb"
+  ],
+  "triggers": [
+    "query mongodb documents",
+    "find records in mongodb",
+    "sort and limit mongodb results",
+    "return specific fields from mongodb"
+  ],
+  "body": "# Find Documents\n\n`find()` returns a cursor. That is the first mental model to keep. You can add sort, skip, limit, hint, and projection before you materialize results.\n\n```javascript\nconst cursor = db.collection(\"orders\").find(\n  { status: \"paid\", total: { $gte: 100 } },\n  { projection: { customerId: 1, total: 1, createdAt: 1 } }\n);\n\nconst docs = await cursor.sort({ createdAt: -1 }).limit(50).toArray();\n```\n\nFor a single document, use `findOne()` with the same filter and options surface:\n\n```javascript\nconst newest = await db.collection(\"orders\").findOne(\n  { status: \"paid\" },\n  { sort: { createdAt: -1 }, projection: { _id: 0, customerId: 1, total: 1 } }\n);\n```\n\nUse `limit()` aggressively on exploratory reads. For long-running data scans, iterate the cursor rather than calling `toArray()` on an unbounded query.",
+  "sections": [
+    {
+      "id": "filters-and-projection",
+      "title": "Filters and projection",
+      "body": "Filters determine which documents match. Projection determines which fields are returned. Combining both keeps reads precise and cheap. This is especially important when documents are large or contain nested arrays that the caller does not need.",
+      "tags": [
+        "filters",
+        "projection",
+        "payload-size"
+      ]
+    },
+    {
+      "id": "sort-skip-limit",
+      "title": "Sort, skip, and limit",
+      "body": "Sort before limit when you need deterministic top-N results. Use skip for offset pagination only on modest result sets; it becomes expensive at high offsets. For high-volume pagination, prefer a stable range query on an indexed field such as `_id` or `createdAt`.",
+      "tags": [
+        "sort",
+        "skip",
+        "limit",
+        "pagination"
+      ]
+    },
+    {
+      "id": "cursor-behavior",
+      "title": "Cursor behavior",
+      "body": "A cursor streams results from the server. `toArray()` is convenient when the result set is bounded. For exports or scans, iterate the cursor and process incrementally so the agent does not load the entire collection into memory at once.",
+      "tags": [
+        "cursor",
+        "toarray",
+        "streaming",
+        "memory"
+      ]
+    }
+  ],
+  "links": [
+    {
+      "uri": "mongodb/crud",
+      "context": "Parent CRUD skill for the broader document lifecycle"
+    },
+    {
+      "uri": "mongodb/indexes",
+      "context": "Add or inspect indexes when reads are slow or use sort frequently"
+    },
+    {
+      "uri": "mongodb/aggregation",
+      "context": "Escalate to aggregation when query-time reshaping becomes complex"
+    }
+  ],
+  "related": [
+    {
+      "uri": "mongodb/indexes",
+      "relation": "see-also",
+      "note": "Good query performance depends on indexes that support the filter and sort shape"
+    },
+    {
+      "uri": "mongodb/aggregation",
+      "relation": "see-also",
+      "note": "Use aggregation when a plain find no longer expresses the read task cleanly"
+    }
+  ],
+  "scripts": [
+    {
+      "id": "find-documents",
+      "name": "Find documents",
+      "description": "Run a focused MongoDB read query with filter, projection, sort, skip, limit, and hint options",
+      "lang": "javascript",
+      "runtime": "node>=18",
+      "entry": "./scripts/find-documents.js",
+      "env": {
+        "MONGODB_URI": {
+          "required": true,
+          "secret": true,
+          "description": "MongoDB connection string"
+        },
+        "FIND_INPUT_JSON": {
+          "required": false,
+          "description": "Extended JSON payload. If omitted, the script reads JSON from stdin."
+        }
+      },
+      "packages": [
+        "mongodb",
+        "bson"
+      ]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "database": {
+          "type": "string"
+        },
+        "collection": {
+          "type": "string"
+        },
+        "mode": {
+          "type": "string",
+          "enum": [
+            "many",
+            "one"
+          ],
+          "default": "many"
+        },
+        "filter": {
+          "type": "object",
+          "description": "Query filter"
+        },
+        "projection": {
+          "type": "object",
+          "description": "Projection document"
+        },
+        "sort": {
+          "type": "object",
+          "description": "Sort document"
+        },
+        "skip": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "hint": {
+          "type": [
+            "string",
+            "object"
+          ],
+          "description": "Optional index hint"
+        },
+        "maxTimeMS": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "required": [
+        "database",
+        "collection"
+      ]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "mode": {
+          "type": "string"
+        },
+        "count": {
+          "type": "integer"
+        },
+        "documents": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "document": {
+          "type": "object",
+          "description": "Single-document result when mode=one"
+        }
+      }
+    }
+  },
+  "more": {
+    "docs": "https://www.mongodb.com/docs/drivers/node/current/crud/query/retrieve/",
+    "manual": "https://www.mongodb.com/docs/manual/tutorial/query-documents/"
+  },
+  "frontmatter": {
+    "created": "2026-04-12",
+    "updated": "2026-04-12",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "4 min",
+    "prerequisites": [
+      "mongodb/auth",
+      "mongodb/crud"
+    ],
+    "status": "living",
+    "confidence": "high"
+  },
+  "repository": "https://github.com/mongodb/node-mongodb-native",
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-12T00:00:00Z",
+  "updated": "2026-04-12T00:00:00Z",
+  "status": "published"
+}

@@ -1,0 +1,239 @@
+{
+  "name": "mongosh",
+  "version": "1.0.0",
+  "uri": "mongodb/mongosh",
+  "type": "skill",
+  "context": "Use mongosh for interactive inspection, scripted admin tasks, and ad hoc MongoDB troubleshooting",
+  "info": "This skill packages the official MongoDB Shell workflow: connect to Atlas or self-managed deployments, run JavaScript with `--eval` or `--file`, start with `--nodb` when the script performs its own connection, and use the shell to inspect collections, run commands, or apply targeted maintenance. It matters because mongosh is the fastest path from a live question to a real answer when an agent needs direct observability rather than a full driver-based program.",
+  "parent": "mongodb",
+  "tags": [
+    "mongosh",
+    "shell",
+    "cli",
+    "eval",
+    "file",
+    "nodb",
+    "inspection",
+    "admin"
+  ],
+  "aliases": [
+    "mongosh",
+    "mongo shell",
+    "mongodb shell",
+    "run mongosh",
+    "mongosh script"
+  ],
+  "triggers": [
+    "open mongosh",
+    "run a mongosh script",
+    "inspect a mongodb collection from the shell",
+    "execute mongodb javascript from cli",
+    "connect to atlas with mongosh"
+  ],
+  "body": "# mongosh\n\n`mongosh` is the official MongoDB shell. Use it when you need fast inspection, scripted maintenance, or a verified shell-side reproduction of a problem before writing driver code.\n\n## Connect and Inspect\n\n```bash\nmongosh \"$MONGODB_URI\" --quiet\nmongosh \"$MONGODB_URI\" --apiVersion 1 --username \"$MONGODB_USERNAME\"\n```\n\nInside the shell:\n\n```javascript\nshow dbs\nuse app\ndb.users.find({ role: \"admin\" }).limit(5)\ndb.runCommand({ ping: 1 })\n```\n\n## Execute a Script File\n\n```bash\nmongosh \"$MONGODB_URI\" --file ./scripts/audit-users.js\nmongosh --nodb --file ./scripts/connect-inside-script.js\n```\n\nWhen a script performs its own `connect()` call, use `--nodb` so mongosh does not attempt an implicit local connection first.\n\n## Execute Inline JavaScript\n\n```bash\nmongosh \"$MONGODB_URI\" --quiet --eval \"db.getSiblingDB(\"app\").users.countDocuments({ active: true })\"\n```\n\nUse [[mongodb/crud]] for structured read/write automation and [[mongodb/aggregation]] for complex reporting flows. Use `mongosh` when you need direct shell affordances, admin commands, or a quick confirmatory check against live data.",
+  "sections": [
+    {
+      "id": "connect-and-switch-db",
+      "title": "Connect and select a database",
+      "body": "Connect with `mongosh \"$MONGODB_URI\"` and then use `db.getSiblingDB(\"name\")` or `use name` in interactive mode. For Atlas, SRV URIs are typical. For self-managed deployments, a standard URI may include multiple hosts, `replicaSet`, and `authSource`. See [[mongodb/auth#connection-uris]].",
+      "tags": [
+        "connect",
+        "database",
+        "uri",
+        "atlas"
+      ]
+    },
+    {
+      "id": "run-files-and-eval",
+      "title": "Run files and inline code",
+      "body": "Use `--file` for reusable scripts and `--eval` for short shell expressions. If the script contains its own `connect()` call, pass `--nodb`. Inside a running shell you can load another file with `load(\"./script.js\")`. This makes mongosh suitable for deterministic CI checks and one-off admin actions.",
+      "tags": [
+        "file",
+        "eval",
+        "load",
+        "nodb",
+        "ci"
+      ]
+    },
+    {
+      "id": "inspection-workflow",
+      "title": "Inspection workflow",
+      "body": "A reliable shell workflow is: `ping`, switch DB, sample documents with `find().limit()`, inspect indexes with `getIndexes()`, then run a focused command or aggregation. This sequence avoids writing code before you understand the current state of the deployment.",
+      "tags": [
+        "inspection",
+        "ping",
+        "sample",
+        "indexes"
+      ]
+    }
+  ],
+  "links": [
+    {
+      "uri": "mongodb/auth",
+      "context": "Connection strings and auth setup for mongosh"
+    },
+    {
+      "uri": "mongodb/crud",
+      "context": "Move from shell exploration to structured CRUD automation"
+    },
+    {
+      "uri": "mongodb/indexes",
+      "context": "Inspect and troubleshoot indexes after connecting"
+    }
+  ],
+  "related": [
+    {
+      "uri": "mongodb/auth",
+      "relation": "prerequisite",
+      "note": "mongosh still needs a valid URI, reachable deployment, and correct role bindings"
+    },
+    {
+      "uri": "mongodb/crud",
+      "relation": "see-also",
+      "note": "Use the driver skill when you need machine-friendly JSON input and output rather than ad hoc shell work"
+    }
+  ],
+  "scripts": [
+    {
+      "id": "run-command",
+      "name": "Run mongosh command or file",
+      "description": "Execute an inline expression or a script file through mongosh using environment variables for the connection and mode",
+      "lang": "bash",
+      "runtime": "mongosh>=2",
+      "entry": "./scripts/run-command.sh",
+      "env": {
+        "MONGODB_URI": {
+          "required": false,
+          "secret": true,
+          "description": "MongoDB connection string. Optional only when MONGOSH_NODB=1."
+        },
+        "MONGOSH_EVAL": {
+          "required": false,
+          "description": "Inline JavaScript expression to execute with --eval"
+        },
+        "MONGOSH_FILE": {
+          "required": false,
+          "description": "Path to a JavaScript file to execute with --file"
+        },
+        "MONGOSH_NODB": {
+          "required": false,
+          "default": "0",
+          "description": "Set to 1 to start with --nodb because the script handles connect() itself"
+        },
+        "MONGOSH_QUIET": {
+          "required": false,
+          "default": "1",
+          "description": "Set to 0 to keep shell startup noise enabled"
+        },
+        "MONGOSH_JSON": {
+          "required": false,
+          "description": "Optional mongosh --json mode such as canonical or relaxed"
+        },
+        "MONGOSH_API_VERSION": {
+          "required": false,
+          "default": "1",
+          "description": "Optional Stable API version flag for Atlas or API-stable workloads"
+        }
+      }
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "uri": {
+          "type": "string",
+          "description": "MongoDB connection string. Optional when mode uses --nodb and the script connects internally."
+        },
+        "eval": {
+          "type": "string",
+          "description": "Inline JavaScript to run with --eval"
+        },
+        "file": {
+          "type": "string",
+          "description": "Path to a JavaScript file to run with --file"
+        },
+        "nodb": {
+          "type": "boolean",
+          "default": false,
+          "description": "Start without an implicit connection because the script calls connect() itself"
+        },
+        "quiet": {
+          "type": "boolean",
+          "default": true,
+          "description": "Suppress the shell banner and connection chatter"
+        },
+        "jsonMode": {
+          "type": "string",
+          "enum": [
+            "canonical",
+            "relaxed"
+          ],
+          "description": "Optional JSON formatting mode for mongosh output"
+        }
+      },
+      "anyOf": [
+        {
+          "required": [
+            "eval"
+          ]
+        },
+        {
+          "required": [
+            "file"
+          ]
+        }
+      ]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": [
+            "eval",
+            "file"
+          ],
+          "description": "Which mongosh execution path was used"
+        },
+        "exitCode": {
+          "type": "integer",
+          "description": "Process exit code from mongosh"
+        },
+        "stdout": {
+          "type": "string",
+          "description": "Shell output emitted by the command or script"
+        }
+      }
+    }
+  },
+  "depends": [
+    {
+      "uri": "mongodb/auth",
+      "reason": "URI structure, roles, and TLS settings must be correct before invoking mongosh"
+    }
+  ],
+  "more": {
+    "docs": "https://www.mongodb.com/docs/mongodb-shell/",
+    "scripts": "https://www.mongodb.com/docs/mongodb-shell/write-scripts/",
+    "connect": "https://www.mongodb.com/docs/mongodb-shell/connect/"
+  },
+  "frontmatter": {
+    "created": "2026-04-12",
+    "updated": "2026-04-12",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "4 min",
+    "prerequisites": [
+      "mongodb/auth"
+    ],
+    "status": "living",
+    "confidence": "high"
+  },
+  "repository": "https://github.com/mongodb-js/mongosh",
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-12T00:00:00Z",
+  "updated": "2026-04-12T00:00:00Z",
+  "status": "published"
+}

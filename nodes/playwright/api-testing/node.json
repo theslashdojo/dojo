@@ -1,0 +1,115 @@
+{
+  "name": "api-testing",
+  "version": "1.0.0",
+  "uri": "playwright/api-testing",
+  "type": "skill",
+  "context": "Use Playwright request contexts for API checks, setup, authenticated calls, response assertions, and browser-test integration.",
+  "info": "Playwright API testing uses request contexts to make HTTP calls from the same test runner ecosystem as browser tests. It supports setup and teardown calls, authenticated API checks, direct endpoint validation, storage-state-assisted sessions, and shared reporting with end-to-end tests. This skill teaches when to use Playwright requests instead of curl or browser routing, how to pass headers and bodies, how to fail on non-2xx responses, and how to pair API setup with UI verification. Agents use it to create data before browser tests, validate health endpoints, test authenticated APIs, and debug backend responses alongside UI flows.",
+  "parent": "playwright",
+  "tags": ["playwright", "api-testing", "request", "http", "authenticated-api", "setup", "teardown", "headers", "json"],
+  "aliases": ["playwright api testing", "playwright request", "request.newContext", "api request context", "test api with playwright", "playwright http client"],
+  "triggers": ["call api with playwright", "test endpoint in playwright", "use request fixture", "create data before playwright test", "authenticated api check", "api setup for e2e", "assert response ok playwright"],
+  "body": "# Playwright API Testing\n\nUse Playwright request contexts when API calls belong in the same workflow as browser tests or need shared auth/reporting.\n\n```bash\nnodes/playwright/scripts/api-request.mjs https://api.example.com/v1/me \\\n  -H \"Authorization: Bearer $API_TOKEN\" \\\n  --fail \\\n  -o artifacts/me.json\n```\n\n```typescript\nimport { test, expect } from '@playwright/test';\n\ntest('health endpoint', async ({ request }) => {\n  const response = await request.get('/api/health');\n  await expect(response).toBeOK();\n  expect(await response.json()).toMatchObject({ status: 'ok' });\n});\n```\n\nUse [[curl/request]] for quick shell checks. Use Playwright request contexts when the result feeds browser tests, shared auth, setup, teardown, or traceable test reports.",
+  "sections": [
+    {
+      "id": "request-fixture",
+      "title": "Request fixture",
+      "body": "In `@playwright/test`, the `request` fixture provides an APIRequestContext. Use `request.get`, `post`, `put`, `patch`, and `delete` with `headers`, `data`, `params`, and `timeout`. The result exposes `status()`, `ok()`, `headers()`, `json()`, `text()`, and body helpers.",
+      "tags": ["request-fixture", "methods", "json", "headers"]
+    },
+    {
+      "id": "setup-data",
+      "title": "Setup and teardown",
+      "body": "Create test data through API calls before the browser navigates, then delete it in cleanup. This is faster and less flaky than driving admin UI for every setup step. Keep one UI coverage test for critical setup flows if those flows are user-facing requirements.",
+      "tags": ["setup", "teardown", "fixtures", "test-data"]
+    },
+    {
+      "id": "auth",
+      "title": "Authentication",
+      "body": "Pass bearer tokens in headers, use basic auth when supported, or create request contexts with storage state when cookies/localStorage are the source of session identity. Keep tokens in environment variables and avoid printing full headers in CI logs.",
+      "tags": ["auth", "bearer", "storage-state", "headers", "secrets"]
+    },
+    {
+      "id": "browser-integration",
+      "title": "Browser integration",
+      "body": "Pair API and UI checks when the API creates state and the browser verifies rendering. For example: create an order with `request.post`, navigate to `/orders`, and assert the order appears. Use [[playwright/network]] instead when you need to intercept or mock traffic made by the page itself.",
+      "tags": ["browser", "integration", "network", "ui"]
+    }
+  ],
+  "links": [
+    { "uri": "playwright/auth", "context": "Share authenticated state between API and browser flows" },
+    { "uri": "playwright/network", "context": "Intercept browser-originated requests instead of direct API calls" },
+    { "uri": "curl/request", "context": "Use curl for quick direct HTTP checks" },
+    { "uri": "openapi/contract-test", "context": "Use schema-driven tests when an OpenAPI contract exists" },
+    { "uri": "testing/patterns", "context": "Organize setup and assertions cleanly" }
+  ],
+  "related": [
+    { "uri": "curl/request", "relation": "alternative", "note": "curl is lighter for ad hoc endpoint calls." },
+    { "uri": "openapi/contract-test", "relation": "see-also", "note": "Contract tests verify APIs against an OpenAPI description." },
+    { "uri": "playwright/network", "relation": "see-also", "note": "Network routing controls requests made by the browser page." }
+  ],
+  "scripts": [
+    {
+      "id": "api-request",
+      "name": "Playwright API Request",
+      "description": "Send an HTTP request through Playwright's APIRequestContext with headers, body, storage state, output capture, and optional failure on non-2xx.",
+      "lang": "javascript",
+      "runtime": "node>=18",
+      "entry": "../scripts/api-request.mjs",
+      "env": {
+        "API_TOKEN": { "required": false, "secret": true, "description": "Bearer token or other auth value passed via headers." },
+        "HTTPS_PROXY": { "required": false, "description": "Proxy used for API calls when Node honors proxy configuration." }
+      },
+      "packages": ["@playwright/test"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "url": { "type": "string", "description": "URL or path to request." },
+        "method": { "type": "string", "default": "GET" },
+        "headers": { "type": "object", "additionalProperties": { "type": "string" } },
+        "data": { "type": "string", "description": "Request body." },
+        "output": { "type": "string", "description": "Optional output path for response body." },
+        "storageState": { "type": "string", "description": "Optional Playwright storage state file." },
+        "fail": { "type": "boolean", "description": "Exit non-zero on non-2xx/3xx response." }
+      },
+      "required": ["url"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "url": { "type": "string" },
+        "status": { "type": "integer" },
+        "ok": { "type": "boolean" },
+        "headers": { "type": "object" },
+        "output": { "type": ["string", "null"] },
+        "bodyPreview": { "type": "string" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "playwright/install", "reason": "@playwright/test provides the API request context." }
+  ],
+  "more": {
+    "docs": "https://playwright.dev/docs/api-testing",
+    "api": "https://playwright.dev/docs/api/class-apirequestcontext",
+    "auth": "https://playwright.dev/docs/auth"
+  },
+  "frontmatter": {
+    "created": "2026-04-15",
+    "updated": "2026-04-15",
+    "author": "dojo-community",
+    "audience": "developers, QA engineers, AI agents",
+    "estimated_reading_time": "7 min",
+    "prerequisites": ["playwright/install"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-15T00:00:00Z",
+  "updated": "2026-04-15T00:00:00Z",
+  "status": "published"
+}

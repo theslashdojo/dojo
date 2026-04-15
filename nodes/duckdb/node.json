@@ -1,0 +1,125 @@
+{
+  "name": "duckdb",
+  "version": "1.0.0",
+  "uri": "duckdb",
+  "type": "ecosystem",
+  "context": "DuckDB embedded OLAP database for local SQL analytics over CSV, Parquet, JSON, DataFrames, and object storage",
+  "info": "DuckDB is an embedded analytical database engine: agents run it in-process from Python or as a single CLI binary, query local and remote files directly, and persist results to a portable `.duckdb` file without managing a server. It matters for autonomous engineering and research because it turns messy CSV, Parquet, JSON, Arrow, Pandas, and S3/HTTPS datasets into SQL tables quickly enough for exploratory analysis, data quality checks, report generation, and reproducible automation. Use [[duckdb/cli]] for shell execution, [[duckdb/sql]] for DuckDB's analytical SQL dialect, [[duckdb/files]] for direct file reads and exports, [[duckdb/python]] for DataFrame workflows, [[duckdb/extensions]] and [[duckdb/secrets]] for optional capabilities, and [[duckdb/performance]] when data volume or memory pressure matters.",
+  "parent": null,
+  "sub": [
+    "duckdb/cli",
+    "duckdb/sql",
+    "duckdb/python",
+    "duckdb/files",
+    "duckdb/extensions",
+    "duckdb/secrets",
+    "duckdb/performance",
+    "duckdb/troubleshooting"
+  ],
+  "tags": [
+    "duckdb",
+    "olap",
+    "sql",
+    "analytics",
+    "embedded-database",
+    "parquet",
+    "csv",
+    "json",
+    "dataframes",
+    "local-first"
+  ],
+  "aliases": [
+    "duckdb",
+    "duck db",
+    "duckdb sql",
+    "duckdb database",
+    "duckdb cli",
+    "duckdb python",
+    "embedded olap",
+    "local analytics database",
+    "parquet sql engine",
+    "csv sql engine",
+    "datalake sql",
+    "duck database",
+    "duck db cli"
+  ],
+  "triggers": [
+    "query a parquet file",
+    "analyze csv with sql",
+    "inspect a dataset locally",
+    "run sql without a database server",
+    "use duckdb",
+    "convert csv to parquet",
+    "query pandas with sql",
+    "analyze s3 parquet files",
+    "profile a local dataset",
+    "join csv and parquet",
+    "create a portable analytics database"
+  ],
+  "body": "# DuckDB\n\nDuckDB is the agent-friendly database for local analytical work. It is embedded like [[sqlite]], but optimized for OLAP scans, columnar execution, vectorized processing, and file-oriented analytics rather than high-concurrency transactional workloads.\n\n## Mental Model\n\n- Use DuckDB when the data is already in files, DataFrames, Arrow objects, or a local `.duckdb` database.\n- Use `duckdb` CLI commands in shell automation when a result needs to flow into files or pipes. See [[duckdb/cli]].\n- Use Python when the workflow starts or ends in Pandas, Polars, Arrow, notebooks, or application code. See [[duckdb/python]].\n- Use direct file scans for CSV, Parquet, JSON, globs, HTTPS URLs, and S3-style object storage. See [[duckdb/files]] and [[duckdb/secrets]].\n- Use persistent `.duckdb` files when repeated analysis needs cached tables, views, macros, or reproducible intermediate results.\n\n## Fast Start\n\n```bash\n# Query a Parquet file without importing it\nduckdb -c \"SELECT status, count(*) FROM 'events.parquet' GROUP BY ALL ORDER BY ALL;\"\n\n# Create a persistent analytics database\nduckdb warehouse.duckdb -c \"CREATE TABLE events AS SELECT * FROM read_parquet('data/events/*.parquet');\"\n\n# Export a query result\nduckdb warehouse.duckdb -c \"COPY (SELECT * FROM events WHERE status = 'paid') TO 'paid.csv' (HEADER, DELIMITER ',');\"\n\n# JSON output for agents\nduckdb -json -c \"SELECT count(*) AS rows FROM 'input.csv';\"\n```\n\n```python\nimport duckdb\n\ncon = duckdb.connect('analysis.duckdb')\ncon.execute(\"CREATE OR REPLACE TABLE events AS SELECT * FROM read_parquet('data/*.parquet')\")\nprint(con.sql(\"SELECT date_trunc('day', ts) AS day, count() FROM events GROUP BY ALL ORDER BY ALL\").df())\n```\n\n## When To Choose It\n\n| Task | DuckDB fit |\n|------|------------|\n| Explore unknown CSV/Parquet/JSON files | Excellent |\n| Join local files and DataFrames | Excellent |\n| Convert file formats | Excellent |\n| Reproducible research queries | Excellent |\n| Embedded analytics inside Python apps | Excellent |\n| OLTP app backend with many concurrent writers | Prefer [[postgres]] or [[sqlite]] |\n| Network database service for many clients | Prefer [[postgres]] |\n| Cache/key-value workloads | Prefer [[redis]] |\n\n## Core Nodes\n\n1. [[duckdb/cli]] - deterministic command-line execution and shell scripts.\n2. [[duckdb/sql]] - analytical SQL, friendly SQL features, macros, and query patterns.\n3. [[duckdb/files]] - CSV, Parquet, JSON, COPY, globs, partitioned files, and format conversion.\n4. [[duckdb/python]] - DB-API, relations, replacement scans, DataFrames, Arrow, and result fetching.\n5. [[duckdb/extensions]] - INSTALL/LOAD, httpfs, spatial, full-text search, ICU, community extensions.\n6. [[duckdb/secrets]] - credentials for S3/R2/GCS/Azure and remote file reads.\n7. [[duckdb/performance]] - threads, memory, temp directories, row groups, EXPLAIN, profiling.\n8. [[duckdb/troubleshooting]] - parser errors, type inference, OOMs, extension failures, and locks.\n\n## Environment\n\n| Name | Purpose |\n|------|---------|\n| `duckdb` | CLI binary used by [[duckdb/cli]] scripts |\n| `DUCKDB_DATABASE` | Optional convention for default database path in local scripts |\n| `DUCKDB_MEMORY_LIMIT` | Optional convention mapped to `SET memory_limit` by wrappers |\n| `DUCKDB_THREADS` | Optional convention mapped to `SET threads` by wrappers |\n| `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` / `AWS_SESSION_TOKEN` | Used by [[duckdb/secrets]] for S3-compatible reads |\n\n## Safety Rules\n\n- Prefer read-only mode when inspecting user-supplied `.duckdb` files: `duckdb -readonly file.duckdb`.\n- Do not concatenate untrusted strings into SQL. Whitelist table names and use parameters in Python.\n- Treat extension repositories as executable supply chain. Use core extensions by default and document any community repository use.\n- For remote object storage, create scoped secrets and avoid writing credentials into SQL committed to git.\n- Add `ORDER BY` for deterministic reports; DuckDB may reorder unordered results for performance.\n",
+  "sections": [
+    {
+      "id": "use-cases",
+      "title": "High-value agent use cases",
+      "body": "Agents use DuckDB for local data inspection, research analysis, file conversion, reproducible reports, joining mismatched CSV/Parquet/JSON sources, sampling large files before loading them elsewhere, and building temporary analytical databases inside a workspace. It is especially useful when there is no running database service and the data source is a file tree.",
+      "tags": ["agents", "research", "analytics", "files", "local"]
+    },
+    {
+      "id": "execution-surfaces",
+      "title": "Execution surfaces",
+      "body": "The two primary surfaces are the `duckdb` CLI and the Python package. The CLI is best for shell pipelines, CI checks, and deterministic scripts. Python is best for notebooks, DataFrames, Arrow, application embedding, and parameterized queries. Both surfaces run the same SQL engine and can read the same local or remote files.",
+      "tags": ["cli", "python", "dbapi", "automation"]
+    },
+    {
+      "id": "file-first-analytics",
+      "title": "File-first analytics",
+      "body": "DuckDB can query CSV, Parquet, and JSON files directly with shorthand like `FROM 'data.parquet'` or explicit readers such as `read_csv`, `read_parquet`, and `read_json_auto`. Globs and file lists let a directory of files behave like one table. Use [[duckdb/files]] for import, export, and conversion patterns.",
+      "tags": ["csv", "parquet", "json", "globs", "copy"]
+    },
+    {
+      "id": "boundaries",
+      "title": "Boundaries",
+      "body": "DuckDB is not a multi-tenant database server. It shines for analytical scans and embedded workflows, but write concurrency and long-lived network service patterns belong in [[postgres]] or another server database. Treat a `.duckdb` file as a local artifact and design multi-process writes carefully.",
+      "tags": ["olap", "oltp", "concurrency", "database"]
+    }
+  ],
+  "links": [
+    { "uri": "duckdb/cli", "context": "Run DuckDB from shell scripts and inspect files" },
+    { "uri": "duckdb/sql", "context": "Write analytical SQL with DuckDB dialect features" },
+    { "uri": "duckdb/files", "context": "Read and write CSV, Parquet, JSON, globs, and remote files" },
+    { "uri": "duckdb/python", "context": "Embed DuckDB in Python and query DataFrames" },
+    { "uri": "duckdb/extensions", "context": "Install and load optional extension capabilities" },
+    { "uri": "duckdb/performance", "context": "Tune memory, threads, row groups, and profiling" },
+    { "uri": "database/sql", "context": "General SQL concepts shared with other databases" },
+    { "uri": "sqlite", "context": "Embedded transactional database alternative" }
+  ],
+  "related": [
+    { "uri": "sqlite", "relation": "alternative", "note": "SQLite is also embedded and single-file, but targets transactional local storage more than OLAP analytics" },
+    { "uri": "postgres", "relation": "alternative", "note": "PostgreSQL is the better fit for networked multi-client transactional database services" },
+    { "uri": "python", "relation": "see-also", "note": "DuckDB's Python package is a common way to query DataFrames and Arrow objects" },
+    { "uri": "database/sql", "relation": "implements", "note": "DuckDB implements SQL with analytical and convenience extensions" },
+    { "uri": "shell/bash", "relation": "see-also", "note": "The CLI works well in shell pipelines and CI automation" }
+  ],
+  "more": {
+    "docs": "https://duckdb.org/docs/",
+    "repo": "https://github.com/duckdb/duckdb",
+    "cli": "https://duckdb.org/docs/stable/clients/cli/overview",
+    "python": "https://duckdb.org/docs/stable/clients/python/overview",
+    "data": "https://duckdb.org/docs/stable/data/overview",
+    "extensions": "https://duckdb.org/docs/stable/extensions/overview"
+  },
+  "frontmatter": {
+    "created": "2026-04-15",
+    "updated": "2026-04-15",
+    "author": "dojo-community",
+    "audience": "AI agents, data engineers, software engineers",
+    "estimated_reading_time": "5 min",
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-15T00:00:00Z",
+  "updated": "2026-04-15T00:00:00Z",
+  "status": "published"
+}

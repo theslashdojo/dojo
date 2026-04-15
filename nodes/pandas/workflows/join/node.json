@@ -1,0 +1,142 @@
+{
+  "name": "join",
+  "version": "1.0.0",
+  "uri": "pandas/workflows/join",
+  "type": "sub",
+  "context": "Combine pandas DataFrames with merge, join, concat, cardinality validation, suffixes, indicators, and unmatched-row audits",
+  "info": "Joining is where pandas workflows most often create silent data errors through many-to-many row multiplication, mismatched key dtypes, duplicate keys, and unexpected null-key behavior. Agents use this node to choose `merge`, `join`, or `concat`, validate cardinality with `validate=`, inspect unmatched rows with `indicator=True`, align dtypes before combining, and preserve columns with suffixes. The shared `join_datasets.py` script provides a deterministic file-to-file merge path for CSV, JSON, Excel, and Parquet inputs.",
+  "parent": "pandas/workflows",
+  "tags": [
+    "pandas",
+    "join",
+    "merge",
+    "concat",
+    "cardinality",
+    "validate",
+    "indicator",
+    "suffixes",
+    "keys",
+    "unmatched-rows"
+  ],
+  "aliases": [
+    "pandas merge",
+    "pd.merge",
+    "DataFrame.merge",
+    "pandas join",
+    "pandas concat",
+    "join csv files",
+    "left join in pandas",
+    "many to one merge",
+    "merge indicator"
+  ],
+  "triggers": [
+    "join two csv files",
+    "merge dataframes on a key",
+    "left join in pandas",
+    "concatenate pandas dataframes",
+    "validate merge cardinality",
+    "find unmatched rows after merge",
+    "fix pandas merge duplicate rows",
+    "why did merge create more rows"
+  ],
+  "body": "# Joining DataFrames\n\nUse `merge` for relational joins, `join` for index-oriented joins, and `concat` for stacking rows or columns. Always inspect keys before merging. For SQL-shaped joins, compare [[database/sql]] and [[duckdb/sql]].\n\n## Safe merge\n\n```python\nleft['user_id'] = left['user_id'].astype('string')\nright['user_id'] = right['user_id'].astype('string')\n\njoined = left.merge(\n    right,\n    on='user_id',\n    how='left',\n    validate='many_to_one',\n    indicator=True,\n    suffixes=('', '_user'),\n)\n\nunmatched = joined.loc[joined['_merge'].eq('left_only')]\n```\n\n## Concatenate\n\n```python\nall_months = pd.concat([jan, feb, mar], ignore_index=True)\nwide = pd.concat([features, labels], axis=1)\n```\n\n## CLI join\n\n```bash\npython nodes/pandas/workflows/scripts/join_datasets.py users.csv orders.csv joined.parquet --on user_id --how left --validate one_to_many --indicator\n```\n",
+  "sections": [
+    {
+      "id": "merge-vs-join-vs-concat",
+      "title": "Merge vs join vs concat",
+      "body": "`merge` is the general relational join API for columns or indexes. `join` is convenient for index-based joins. `concat` stacks objects along rows or columns and does not match relational keys unless the index is meaningful. Use `ignore_index=True` when stacking row partitions that should get a fresh RangeIndex.",
+      "tags": ["merge", "join", "concat", "index"]
+    },
+    {
+      "id": "cardinality",
+      "title": "Cardinality validation",
+      "body": "Use `validate='one_to_one'`, `one_to_many`, `many_to_one`, or `many_to_many` to make row multiplication explicit. Before a many-to-one merge, assert the right key is unique. Before one-to-one, assert both sides are unique. If validation fails, inspect duplicate keys with `df[df.duplicated(keys, keep=False)]`.",
+      "tags": ["validate", "one-to-one", "many-to-one", "duplicates"]
+    },
+    {
+      "id": "unmatched",
+      "title": "Unmatched row audit",
+      "body": "Pass `indicator=True` to add `_merge` with `left_only`, `right_only`, or `both`. Count these values after outer or left joins to detect lost records. Keep an unmatched report when the join feeds financial, billing, or compliance outputs.",
+      "tags": ["indicator", "left-only", "right-only", "audit"]
+    },
+    {
+      "id": "key-hygiene",
+      "title": "Key hygiene",
+      "body": "Normalize join key dtypes and whitespace before merging. Treat IDs as strings to preserve leading zeros. Beware null keys; decide whether missing keys should be excluded before the merge. Use suffixes to make overlapping non-key columns explicit.",
+      "tags": ["keys", "dtypes", "nulls", "suffixes"]
+    }
+  ],
+  "links": [
+    { "uri": "pandas/workflows/join#cardinality", "context": "Section on validating join cardinality" },
+    { "uri": "pandas/workflows/clean", "context": "Clean and type join keys before merging" },
+    { "uri": "pandas/workflows/io", "context": "Read input tables and write joined artifacts" },
+    { "uri": "pandas/workflows/groupby", "context": "Aggregate joined data after validating rows" },
+    { "uri": "database/sql", "context": "Relational join concepts and SQL equivalents" },
+    { "uri": "duckdb/sql", "context": "Use SQL joins for larger file-based datasets" }
+  ],
+  "related": [
+    { "uri": "database/sql", "relation": "equivalent", "note": "Pandas merge maps closely to SQL joins" },
+    { "uri": "duckdb/sql", "relation": "alternative", "note": "DuckDB is often better for large joins over CSV or Parquet files" },
+    { "uri": "pandas/workflows/clean", "relation": "prerequisite", "note": "Join keys must be cleaned and typed before merging" }
+  ],
+  "scripts": [
+    {
+      "id": "join-datasets",
+      "name": "Join Datasets",
+      "description": "Merge two tabular files with key selection, join type, validation, suffixes, and optional _merge indicator",
+      "lang": "python",
+      "runtime": "python>=3.10",
+      "entry": "../scripts/join_datasets.py",
+      "packages": ["pandas", "pyarrow", "openpyxl"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "left_path": { "type": "string" },
+        "right_path": { "type": "string" },
+        "output_path": { "type": "string" },
+        "on": { "type": "array", "items": { "type": "string" } },
+        "how": { "type": "string", "enum": ["inner", "left", "right", "outer", "cross"] },
+        "validate": { "type": "string", "enum": ["one_to_one", "one_to_many", "many_to_one", "many_to_many"] }
+      },
+      "required": ["left_path", "right_path", "output_path"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "left_rows": { "type": "integer" },
+        "right_rows": { "type": "integer" },
+        "output_rows": { "type": "integer" },
+        "output_path": { "type": "string" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "pandas/workflows", "reason": "Uses the shared join script" },
+    { "uri": "pandas/workflows/clean", "reason": "Join keys should be cleaned before merging" }
+  ],
+  "more": {
+    "docs": "https://pandas.pydata.org/docs/user_guide/merging.html",
+    "merge-api": "https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.merge.html",
+    "concat-api": "https://pandas.pydata.org/docs/reference/api/pandas.concat.html",
+    "join-api": "https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.join.html"
+  },
+  "frontmatter": {
+    "created": "2026-04-15",
+    "updated": "2026-04-15",
+    "author": "dojo-community",
+    "audience": "AI agents, data engineers",
+    "estimated_reading_time": "6 min",
+    "prerequisites": ["pandas/workflows/clean"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://github.com/pandas-dev/pandas",
+  "created": "2026-04-15T00:00:00Z",
+  "updated": "2026-04-15T00:00:00Z",
+  "status": "published"
+}

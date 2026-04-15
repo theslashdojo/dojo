@@ -1,0 +1,155 @@
+{
+  "name": "apt",
+  "version": "1.0.0",
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://salsa.debian.org/apt-team/apt",
+  "created": "2026-04-12T00:00:00Z",
+  "updated": "2026-04-12T00:00:00Z",
+  "status": "published",
+  "uri": "apt",
+  "type": "ecosystem",
+  "context": "APT package management on Debian and Ubuntu hosts: install, inspect, upgrade, repair, and control repositories",
+  "info": "The APT ecosystem is the operational package layer on Debian-family systems. It resolves metadata from configured repositories, verifies signed Release data, downloads .deb archives, and coordinates with dpkg to unpack and configure packages. Agents use APT to provision build dependencies, enable vendor repositories, apply upgrades, inspect dependency graphs, and recover from broken package state without leaving the shell. The high-level `apt` command is suited to interactive use, while `apt-get` and `apt-cache` provide the stable execution surface preferred in scripts and automation.",
+  "parent": null,
+  "tags": [
+    "apt",
+    "apt-get",
+    "apt-cache",
+    "debian",
+    "ubuntu",
+    "packages",
+    "package-manager",
+    "repositories",
+    "deb822",
+    "dpkg",
+    "linux"
+  ],
+  "aliases": [
+    "apt",
+    "advanced package tool",
+    "apt-get",
+    "apt cache",
+    "ubuntu package manager",
+    "debian package manager",
+    "linux package manager"
+  ],
+  "triggers": [
+    "install a package on ubuntu",
+    "use apt-get in a script",
+    "manage packages on debian",
+    "add an apt repository",
+    "repair broken packages",
+    "upgrade packages with apt"
+  ],
+  "sections": [
+    {
+      "id": "interactive-vs-scripted",
+      "title": "Interactive vs scripted usage",
+      "body": "`apt` is a high-level end-user interface and can change behavior between versions. For repeatable automation, prefer `apt-get` for package state changes and `apt-cache` for inspection. This keeps non-interactive scripts stable while still preserving the same repository and dependency model.",
+      "tags": [
+        "interactive",
+        "automation",
+        "apt",
+        "apt-get",
+        "apt-cache"
+      ]
+    },
+    {
+      "id": "sources-and-trust",
+      "title": "Sources and trust model",
+      "body": "APT reads repository definitions from `/etc/apt/sources.list` and `/etc/apt/sources.list.d/`. Modern systems increasingly use deb822 `.sources` files. Repository authentication is enforced through signed Release metadata and explicit `Signed-By` keyrings. Use [[apt/repositories]] for safe source management.",
+      "tags": [
+        "sources",
+        "trust",
+        "signed-by",
+        "deb822",
+        "repositories"
+      ]
+    },
+    {
+      "id": "state-and-cache",
+      "title": "State and cache directories",
+      "body": "Package metadata lives under `/var/lib/apt/lists/`, downloaded archives under `/var/cache/apt/archives/`, and package install state under `dpkg`'s database. These directories explain most operational failures: stale indexes, corrupted downloads, or half-configured packages. Use [[apt/repair]] when the solver or `dpkg` state diverges from expectations.",
+      "tags": [
+        "state",
+        "cache",
+        "lists",
+        "archives",
+        "dpkg"
+      ]
+    }
+  ],
+  "links": [
+    {
+      "uri": "apt/install",
+      "context": "Install, reinstall, remove, or purge packages"
+    },
+    {
+      "uri": "apt/search",
+      "context": "Inspect package metadata, dependencies, and policy"
+    },
+    {
+      "uri": "apt/repositories#deb822",
+      "context": "Use deb822 source files and Signed-By keyrings"
+    },
+    {
+      "uri": "apt/repositories/ppa",
+      "context": "Manage Launchpad PPAs on Ubuntu hosts"
+    },
+    {
+      "uri": "apt/upgrade#held-back",
+      "context": "Understand upgrades and kept-back packages"
+    },
+    {
+      "uri": "apt/repair",
+      "context": "Recover from broken dependency state and lock contention"
+    },
+    {
+      "uri": "apt/pinning",
+      "context": "Control version preference and hold behavior"
+    },
+    {
+      "uri": "apt/troubleshooting",
+      "context": "Diagnose common package-management failures"
+    },
+    {
+      "uri": "shell/scripting",
+      "context": "Package management is often embedded in host setup scripts"
+    },
+    {
+      "uri": "docker/best-practices",
+      "context": "APT cleanup and --no-install-recommends matter in container builds"
+    }
+  ],
+  "related": [
+    {
+      "uri": "shell/scripting",
+      "relation": "see-also",
+      "note": "APT is commonly orchestrated from Bash provisioning and CI scripts"
+    },
+    {
+      "uri": "docker/best-practices",
+      "relation": "see-also",
+      "note": "Container images often use APT for system dependencies and must clean caches aggressively"
+    }
+  ],
+  "more": {
+    "docs": "https://manpages.debian.org/testing/apt/apt.8.en.html",
+    "apt-get": "https://manpages.debian.org/testing/apt/apt-get.8.en.html",
+    "ubuntu": "https://ubuntu.com/server/docs/how-to/software/package-management/",
+    "sources": "https://manpages.debian.org/trixie/apt/sources.list.5.en.html",
+    "repo": "https://salsa.debian.org/apt-team/apt"
+  },
+  "frontmatter": {
+    "created": "2026-04-12",
+    "updated": "2026-04-12",
+    "author": "dojo-community",
+    "status": "living",
+    "confidence": "high",
+    "audience": "developers, sre, ai agents",
+    "estimated_reading_time": "5 min",
+    "prerequisites": []
+  },
+  "body": "# APT Ecosystem\n\nAPT is the package management layer used on Debian, Ubuntu, and related systems. It resolves package metadata from configured repositories, downloads package archives, verifies repository signatures, and asks `dpkg` to unpack and configure packages. For autonomous agents it is the default control plane for provisioning system dependencies, enabling vendor repositories, applying safe upgrades, and recovering from broken package state.\n\n## Mental model\n\n- `apt` is the human-facing command for interactive work.\n- `apt-get` and `apt-cache` are the automation-stable back-end tools. See [[apt/install]] and [[apt/search]].\n- Repository definitions live in `/etc/apt/sources.list` and `/etc/apt/sources.list.d/`. Newer Ubuntu releases default to deb822 `.sources` files such as `/etc/apt/sources.list.d/ubuntu.sources`. See [[apt/repositories]].\n- `apt update` refreshes metadata only. Installation and upgrade commands act on the local cache after that refresh. See [[apt/upgrade]].\n- Package policy is controlled by repository metadata, target releases, pinning rules, and hold state. See [[apt/pinning]].\n\n## Agent jobs\n\n- Use [[apt/install]] to install, reinstall, remove, or purge packages with automation-safe flags.\n- Use [[apt/search]] to inspect availability, versions, dependencies, reverse dependencies, and candidate selection.\n- Use [[apt/repositories]] to add or remove vendor repositories and PPAs without falling back to deprecated `apt-key` patterns.\n- Use [[apt/upgrade]] to refresh indexes, apply upgrades, and clean caches.\n- Use [[apt/repair]] when `dpkg` is half-configured, dependencies are broken, or locks block progress.\n\n## Core commands\n\n```bash\n# Interactive human workflow\nsudo apt update\nsudo apt install ripgrep\nsudo apt remove ripgrep\nsudo apt upgrade\n\n# Script-safe equivalents\nsudo apt-get update\nsudo DEBIAN_FRONTEND=noninteractive apt-get -y install ripgrep\nsudo apt-cache policy ripgrep\nsudo apt-get check\n```\n\n## Files and state\n\n- `/etc/apt/sources.list.d/*.sources` or `*.list` define repositories.\n- `/etc/apt/preferences` and `/etc/apt/preferences.d/*` define pinning policy. See [[apt/pinning]].\n- `/var/lib/apt/lists/` stores repository indexes.\n- `/var/cache/apt/archives/` stores downloaded package archives.\n- `/var/lib/dpkg/status` is the package state database managed by `dpkg`."
+}

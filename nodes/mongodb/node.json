@@ -1,0 +1,146 @@
+{
+  "name": "mongodb",
+  "version": "1.0.0",
+  "uri": "mongodb",
+  "type": "ecosystem",
+  "context": "MongoDB ecosystem for document databases, mongosh scripting, aggregation, indexing, and ACID transactions",
+  "info": "The MongoDB ecosystem covers secure connectivity, BSON document modeling, shell automation with mongosh, CRUD work through the Node.js driver, aggregation pipelines, query-plan-aware indexing, schema validation, and replica-set or sharded-cluster transactions. Agents use this tree when they need to inspect data, run maintenance scripts, build reporting pipelines, optimize query performance, or execute multi-step changes safely against MongoDB Atlas or self-managed deployments.",
+  "parent": null,
+  "tags": [
+    "mongodb",
+    "document-database",
+    "bson",
+    "mongosh",
+    "atlas",
+    "aggregation",
+    "indexes",
+    "transactions",
+    "node-driver"
+  ],
+  "aliases": [
+    "mongodb",
+    "mongo",
+    "mongo db",
+    "mongodb atlas",
+    "mongodb driver",
+    "mongosh",
+    "document database"
+  ],
+  "triggers": [
+    "connect to mongodb",
+    "query a mongodb collection",
+    "run a mongosh script",
+    "build a mongodb aggregation pipeline",
+    "create a mongodb index",
+    "run a mongodb transaction",
+    "validate mongodb documents"
+  ],
+  "body": "# MongoDB Ecosystem\n\nMongoDB is a document database built around BSON documents, flexible schemas, indexed queries, aggregation pipelines, and replica-set or sharded-cluster deployments. For an autonomous agent the practical jobs are consistent: connect safely, inspect data, read and write documents, summarize or reshape data with aggregation, tune performance with indexes, and only use multi-document transactions when the deployment and data model truly require them.\n\n## Core Nodes\n\n- **[[mongodb/auth]]** — connection strings, authentication mechanisms, TLS, Atlas connectivity, and secret handling\n- **[[mongodb/mongosh]]** — interactive shell work and deterministic script execution with `--eval`, `--file`, and `--nodb`\n- **[[mongodb/crud]]** — read and write documents with filters, projections, update operators, and bulk writes\n- **[[mongodb/aggregation]]** — build pipelines with `$match`, `$group`, `$project`, `$lookup`, `$unwind`, `$sort`, and materialization stages\n- **[[mongodb/indexes]]** — create, inspect, and troubleshoot single-field, compound, multikey, unique, TTL, and text indexes\n- **[[mongodb/transactions]]** — wrap multiple operations in a session-backed ACID transaction\n- **[[mongodb/schema-validation]]** — apply `$jsonSchema` validators and decide whether invalid writes should error or warn\n\n## Execution Surface\n\nMongoDB agents usually operate through two official surfaces:\n\n- **Node.js driver** — `MongoClient`, `db()`, `collection()`, `find()`, `aggregate()`, `createIndex()`, `withTransaction()`\n- **mongosh** — shell inspection, admin commands, and repeatable scripts that can run locally, in CI, or against Atlas\n\nUse `MONGODB_URI` as the canonical secret. Prefer the narrowest-possible role, keep secrets out of logs, and load the specific workflow node instead of keeping all MongoDB behavior in one oversized playbook.",
+  "sections": [
+    {
+      "id": "document-model",
+      "title": "Document model and BSON",
+      "body": "MongoDB stores BSON documents in collections. Documents can nest objects and arrays, and fields do not need to be identical across every document unless you enforce validation. This flexibility is powerful, but it shifts responsibility to the agent to use [[mongodb/schema-validation]] when shape consistency matters and [[mongodb/indexes]] when access patterns need predictable performance.",
+      "tags": [
+        "documents",
+        "bson",
+        "collections",
+        "schema-flexibility"
+      ]
+    },
+    {
+      "id": "execution-surface",
+      "title": "How agents operate MongoDB",
+      "body": "Use [[mongodb/mongosh]] for direct inspection, administrative commands, and one-off or scripted shell tasks. Use [[mongodb/crud]], [[mongodb/aggregation]], [[mongodb/indexes]], and [[mongodb/transactions]] through the official Node.js driver when you need structured JSON input and output, retry logic, and repeatable automation.",
+      "tags": [
+        "node-driver",
+        "mongosh",
+        "automation",
+        "inspection"
+      ]
+    },
+    {
+      "id": "deployment-topologies",
+      "title": "Deployment topologies",
+      "body": "MongoDB can run in Atlas, as a self-managed replica set, or as a sharded cluster. Topology affects which operations are available and how they behave. In particular, [[mongodb/transactions]] require a replica set or sharded cluster rather than a standalone `mongod`, and connection details in [[mongodb/auth]] differ between SRV-based Atlas URIs and explicit host lists.",
+      "tags": [
+        "atlas",
+        "replica-set",
+        "sharded-cluster",
+        "topology"
+      ]
+    }
+  ],
+  "links": [
+    {
+      "uri": "mongodb/auth",
+      "context": "Set up connection strings, authentication, and TLS before executing any MongoDB workflow"
+    },
+    {
+      "uri": "mongodb/mongosh",
+      "context": "Inspect a deployment interactively or run a shell script"
+    },
+    {
+      "uri": "mongodb/crud",
+      "context": "Read and write documents in collections"
+    },
+    {
+      "uri": "mongodb/aggregation",
+      "context": "Build reporting and reshaping pipelines"
+    },
+    {
+      "uri": "mongodb/indexes",
+      "context": "Improve read performance and enforce constraints"
+    },
+    {
+      "uri": "mongodb/transactions",
+      "context": "Run multi-step ACID changes safely"
+    },
+    {
+      "uri": "mongodb/schema-validation",
+      "context": "Enforce document shape and invalid-write behavior"
+    },
+    {
+      "uri": "database",
+      "context": "Cross-database concepts and tradeoffs beyond MongoDB"
+    },
+    {
+      "uri": "database/indexing",
+      "context": "General indexing concepts that complement MongoDB-specific index behavior"
+    }
+  ],
+  "related": [
+    {
+      "uri": "database",
+      "relation": "see-also",
+      "note": "Use the generic database node when comparing MongoDB to relational or key-value systems"
+    },
+    {
+      "uri": "database/indexing",
+      "relation": "see-also",
+      "note": "MongoDB indexes follow the same high-level read-versus-write tradeoffs documented in the shared indexing node"
+    }
+  ],
+  "more": {
+    "docs": "https://www.mongodb.com/docs/manual/",
+    "driver": "https://www.mongodb.com/docs/drivers/node/current/",
+    "mongosh": "https://www.mongodb.com/docs/mongodb-shell/",
+    "atlas": "https://www.mongodb.com/docs/atlas/"
+  },
+  "frontmatter": {
+    "created": "2026-04-12",
+    "updated": "2026-04-12",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "4 min",
+    "prerequisites": [],
+    "status": "living",
+    "confidence": "high"
+  },
+  "repository": "https://github.com/mongodb/mongo",
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-12T00:00:00Z",
+  "updated": "2026-04-12T00:00:00Z",
+  "status": "published"
+}

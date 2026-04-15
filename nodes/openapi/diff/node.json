@@ -1,0 +1,127 @@
+{
+  "name": "diff",
+  "version": "1.0.0",
+  "uri": "openapi/diff",
+  "type": "skill",
+  "context": "Compare OpenAPI versions and detect breaking API changes before merge, deployment, or SDK release.",
+  "info": "OpenAPI diffing compares two API descriptions and classifies compatibility changes. The primary execution surface is oasdiff, which can run locally or in CI to detect breaking changes such as removed endpoints, removed methods, newly required request fields, narrowed response schemas, changed auth requirements, removed success responses, or type changes. Agents use this skill when reviewing pull requests, preparing releases, deciding semantic version bumps, protecting SDK consumers, and generating changelogs. Diffing complements validation: validation says a spec is internally valid, while diffing says whether the new valid spec remains compatible with the old valid spec.",
+  "parent": "openapi",
+  "tags": ["openapi-diff", "oasdiff", "breaking-changes", "api-compatibility", "changelog", "ci", "semver", "release"],
+  "aliases": [
+    "openapi diff",
+    "swagger diff",
+    "oasdiff",
+    "breaking api changes",
+    "api compatibility",
+    "contract diff",
+    "openapi changelog",
+    "swagger breaking change"
+  ],
+  "triggers": [
+    "diff two openapi specs",
+    "detect breaking api changes",
+    "check api compatibility",
+    "compare swagger files",
+    "generate openapi changelog",
+    "should this api version be major",
+    "block breaking openapi changes in ci",
+    "review api contract changes",
+    "what changed in this api spec"
+  ],
+  "body": "# OpenAPI Diffing\n\nDiffing compares a previous contract to a proposed contract. Use it during PR review and release preparation to protect existing clients.\n\n## Breaking Change Check\n\n```bash\n# Compare released contract to proposed contract\nnodes/openapi/scripts/diff-openapi.sh main-openapi.yaml pr-openapi.yaml\n```\n\nThe wrapper requires `oasdiff` on PATH and defaults to `oasdiff breaking`. A non-zero exit should block merge or trigger explicit compatibility review.\n\n## Changelog\n\n```bash\nOPENAPI_DIFF_MODE=changelog nodes/openapi/scripts/diff-openapi.sh v1.yaml v2.yaml\n```\n\nUse changelog mode for release notes after compatibility has been reviewed.\n\n## CI Pattern\n\n```yaml\nname: OpenAPI compatibility\non: [pull_request]\njobs:\n  diff:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n      - run: brew install oasdiff\n      - run: nodes/openapi/scripts/validate-openapi.sh openapi.yaml dist/openapi.yaml\n      - run: nodes/openapi/scripts/diff-openapi.sh released/openapi.yaml dist/openapi.yaml\n```\n\nIn real CI, fetch `released/openapi.yaml` from the last released tag, artifact store, package registry, or docs site.\n\n## Breaking Examples\n\n- Removing a path or HTTP method.\n- Adding a required request property or required query parameter.\n- Removing a response property clients may read.\n- Changing a response property type or enum semantics.\n- Removing a documented success status code.\n- Adding stricter authentication or scopes.\n\nNon-breaking examples usually include adding optional request fields, adding optional response fields, adding new endpoints, improving descriptions, or adding examples.",
+  "sections": [
+    {
+      "id": "workflow",
+      "title": "Compatibility workflow",
+      "body": "Validate both old and new specs, bundle them if they are multi-file, then run `nodes/openapi/scripts/diff-openapi.sh <base> <revision>`. Treat breaking results as release decisions: either change the spec or implementation to restore compatibility, explicitly approve the breaking change, or bump the major API/SDK version.",
+      "tags": ["workflow", "compatibility", "release"]
+    },
+    {
+      "id": "breaking-changes",
+      "title": "Breaking changes",
+      "body": "Breaking changes are changes that can make existing client code fail without the client changing. Examples include removing endpoints, removing methods, adding required inputs, narrowing accepted request schemas, removing response fields, changing response types, removing success codes, and adding stricter security requirements.",
+      "tags": ["breaking", "clients", "schemas", "security"]
+    },
+    {
+      "id": "semver",
+      "title": "Semantic versioning",
+      "body": "Use diff output to drive semantic version decisions. Breaking API changes generally require a major API or SDK version. Compatible additions are minor versions. Documentation-only edits and non-behavioral examples are patch-level changes. For public APIs, publish the compatibility decision with release notes.",
+      "tags": ["semver", "major", "minor", "patch", "sdk"]
+    },
+    {
+      "id": "ci",
+      "title": "CI integration",
+      "body": "A CI compatibility job needs a stable base spec, usually from the last release tag or docs artifact. Validate and bundle the PR spec, run oasdiff against the base, and upload diff output for reviewers. Do not diff against the target branch if the target branch is not the released contract clients depend on.",
+      "tags": ["ci", "base-spec", "pull-request", "release"]
+    }
+  ],
+  "links": [
+    { "uri": "openapi/validate", "context": "Validate and bundle specs before diffing" },
+    { "uri": "openapi/author", "context": "Adjust authoring to avoid accidental breaking changes" },
+    { "uri": "openapi/generate", "context": "SDK generation and versioning depend on compatibility decisions" },
+    { "uri": "github/actions", "context": "Run diff checks in pull requests" },
+    { "uri": "git", "context": "Fetch previous released specs from tags or branches" }
+  ],
+  "related": [
+    { "uri": "openapi/validate", "relation": "prerequisite", "note": "Diffs are most reliable after both specs validate and bundle cleanly" },
+    { "uri": "openapi/generate", "relation": "see-also", "note": "Breaking spec changes often require generated SDK major versions" },
+    { "uri": "git", "relation": "see-also", "note": "Git tags and branches often provide the base spec for comparison" }
+  ],
+  "scripts": [
+    {
+      "id": "diff-openapi",
+      "name": "Diff OpenAPI Contracts",
+      "description": "Run oasdiff breaking or changelog mode against two OpenAPI files or URLs",
+      "lang": "bash",
+      "runtime": "oasdiff",
+      "entry": "../scripts/diff-openapi.sh",
+      "env": {
+        "OPENAPI_DIFF_MODE": { "required": false, "default": "breaking", "description": "oasdiff mode: breaking or changelog" },
+        "OPENAPI_DIFF_FORMAT": { "required": false, "default": "text", "description": "Output format passed to oasdiff when supported" }
+      }
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "baseSpec": { "type": "string", "description": "Previous released OpenAPI file or URL" },
+        "revisionSpec": { "type": "string", "description": "New OpenAPI file or URL to review" },
+        "mode": { "type": "string", "enum": ["breaking", "changelog"], "default": "breaking" },
+        "format": { "type": "string", "description": "Output format such as text, yaml, json, or junit", "default": "text" }
+      },
+      "required": ["baseSpec", "revisionSpec"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "breaking": { "type": "boolean", "description": "Whether breaking changes were detected" },
+        "summary": { "type": "string", "description": "Human-readable diff summary" }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "openapi/validate", "reason": "Both specs should validate before diffing" },
+    { "uri": "git", "optional": true, "reason": "Base specs are often fetched from tags, branches, or release commits" }
+  ],
+  "more": {
+    "oasdiff": "https://www.oasdiff.com/",
+    "repository": "https://github.com/oasdiff/oasdiff"
+  },
+  "frontmatter": {
+    "created": "2026-04-15",
+    "updated": "2026-04-15",
+    "author": "dojo-community",
+    "audience": "API reviewers, SDK maintainers, release engineers, AI agents",
+    "estimated_reading_time": "6 min",
+    "prerequisites": ["openapi/validate"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://github.com/oasdiff/oasdiff",
+  "created": "2026-04-15T00:00:00Z",
+  "updated": "2026-04-15T00:00:00Z",
+  "status": "published"
+}

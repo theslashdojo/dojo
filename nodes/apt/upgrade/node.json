@@ -1,0 +1,228 @@
+{
+  "name": "upgrade",
+  "version": "1.0.0",
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://salsa.debian.org/apt-team/apt",
+  "created": "2026-04-12T00:00:00Z",
+  "updated": "2026-04-12T00:00:00Z",
+  "status": "published",
+  "uri": "apt/upgrade",
+  "type": "skill",
+  "parent": "apt",
+  "context": "Refresh package indexes, apply upgrades, clean caches, and explain kept-back packages on Debian and Ubuntu hosts",
+  "info": "This skill covers the system-wide maintenance workflow of APT: refreshing indexes with `apt-get update`, applying conservative upgrades, using `dist-upgrade` when dependency changes are expected, and cleaning stale package archives afterward. It also explains why packages may be kept back, including Ubuntu phased updates and dependency changes, so agents do not mistake safe behavior for a failure. Use it for patching hosts, preparing base images, and assessing whether a change requires a wider system upgrade.",
+  "tags": [
+    "apt",
+    "upgrade",
+    "update",
+    "dist-upgrade",
+    "full-upgrade",
+    "autoremove",
+    "autoclean",
+    "phased-updates"
+  ],
+  "aliases": [
+    "apt upgrade",
+    "apt-get upgrade",
+    "apt update",
+    "dist-upgrade",
+    "full-upgrade",
+    "patch the system"
+  ],
+  "triggers": [
+    "upgrade packages on ubuntu",
+    "refresh apt indexes",
+    "apply all package updates",
+    "clean apt cache",
+    "why are packages kept back",
+    "run dist-upgrade safely"
+  ],
+  "sections": [
+    {
+      "id": "refresh",
+      "title": "Refresh metadata before upgrades",
+      "body": "`apt-get update` resynchronizes local package indexes from configured sources. Debian documents it as the step that should always happen before `upgrade` or `dist-upgrade`. Without it, upgrade decisions are based on stale metadata.",
+      "tags": [
+        "update",
+        "indexes",
+        "metadata"
+      ]
+    },
+    {
+      "id": "upgrade-vs-dist-upgrade",
+      "title": "Upgrade vs dist-upgrade",
+      "body": "`upgrade` never removes installed packages, so it is conservative. `dist-upgrade` can remove or install packages to satisfy dependency transitions. Use `upgrade` for routine patching and `dist-upgrade` only when changed dependencies are acceptable and reviewed.",
+      "tags": [
+        "upgrade",
+        "dist-upgrade",
+        "full-upgrade",
+        "dependencies"
+      ]
+    },
+    {
+      "id": "cleanup",
+      "title": "Cleaning package and index caches",
+      "body": "`autoremove` prunes unneeded automatic dependencies. `autoclean` removes stale cached package files. `clean` removes all downloaded package archives. `distclean` removes nearly all list files under `/var/lib/apt/lists/` and is useful when producing redistributable images.",
+      "tags": [
+        "autoremove",
+        "autoclean",
+        "clean",
+        "distclean"
+      ]
+    },
+    {
+      "id": "held-back",
+      "title": "Held-back packages and phased updates",
+      "body": "Ubuntu documents that packages kept back during `apt upgrade` are often the result of phased updates and can usually be left alone. Security updates are not phased. Use `apt policy <package>` to distinguish phased rollout behavior from pinning, third-party repository conflicts, or dependency changes that require deeper review.",
+      "tags": [
+        "held-back",
+        "phased-updates",
+        "policy",
+        "ubuntu"
+      ]
+    }
+  ],
+  "links": [
+    {
+      "uri": "apt/search#policy",
+      "context": "Explain candidate versions or phased updates before forcing changes"
+    },
+    {
+      "uri": "apt/repair",
+      "context": "Repair a system if the solver reports broken dependencies during upgrade"
+    },
+    {
+      "uri": "apt/pinning",
+      "context": "Review persistent preferences when the wrong source wins"
+    },
+    {
+      "uri": "apt/repositories",
+      "context": "Audit third-party sources before running broad upgrades"
+    }
+  ],
+  "related": [
+    {
+      "uri": "apt/search",
+      "relation": "see-also",
+      "note": "Use apt-cache policy to explain why a package is held back or selected from a specific source"
+    }
+  ],
+  "scripts": [
+    {
+      "id": "upgrade-system",
+      "name": "Refresh and upgrade system packages",
+      "description": "Run update, upgrade, dist-upgrade, and cleanup actions with apt-get",
+      "lang": "bash",
+      "runtime": "bash, apt>=2",
+      "entry": "./scripts/upgrade-system.sh",
+      "env": {
+        "APT_UPGRADE_ACTION": {
+          "required": true,
+          "description": "Upgrade action: update, preview, upgrade, dist-upgrade, autoremove, autoclean, clean, or distclean"
+        },
+        "APT_ASSUME_YES": {
+          "required": false,
+          "default": "true",
+          "description": "Set to true to pass -y to apt-get where supported"
+        },
+        "APT_SKIP_UPDATE": {
+          "required": false,
+          "default": "false",
+          "description": "Set to true to skip apt-get update before upgrade or dist-upgrade"
+        },
+        "APT_SIMULATE": {
+          "required": false,
+          "default": "false",
+          "description": "Set to true to simulate state-changing actions with -s"
+        },
+        "APT_QUIET": {
+          "required": false,
+          "default": "false",
+          "description": "Set to true to add -q for quieter logging"
+        },
+        "DEBIAN_FRONTEND": {
+          "required": false,
+          "default": "noninteractive",
+          "description": "Frontend for package configuration prompts"
+        }
+      },
+      "packages": [
+        "apt",
+        "sudo"
+      ]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "action": {
+          "type": "string",
+          "enum": [
+            "update",
+            "preview",
+            "upgrade",
+            "dist-upgrade",
+            "autoremove",
+            "autoclean",
+            "clean",
+            "distclean"
+          ],
+          "description": "Upgrade or cleanup action to execute"
+        },
+        "assumeYes": {
+          "type": "boolean",
+          "description": "Automatically confirm apt prompts"
+        },
+        "skipUpdate": {
+          "type": "boolean",
+          "description": "Skip index refresh before upgrade actions"
+        },
+        "simulate": {
+          "type": "boolean",
+          "description": "Simulate the action without modifying package state"
+        }
+      },
+      "required": [
+        "action"
+      ]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "action": {
+          "type": "string",
+          "description": "Action that ran"
+        },
+        "exitCode": {
+          "type": "integer",
+          "description": "Process exit code"
+        }
+      }
+    }
+  },
+  "depends": [
+    {
+      "uri": "apt/search",
+      "optional": true,
+      "reason": "Inspection is useful when upgrades are held back or when source precedence is unclear"
+    }
+  ],
+  "more": {
+    "docs": "https://manpages.debian.org/testing/apt/apt-get.8.en.html",
+    "ubuntu": "https://ubuntu.com/server/docs/how-to/software/package-management/",
+    "phased": "https://ubuntu.com/server/docs/explanation/software/about-apt-upgrade-and-phased-updates/"
+  },
+  "frontmatter": {
+    "created": "2026-04-12",
+    "updated": "2026-04-12",
+    "author": "dojo-community",
+    "status": "living",
+    "confidence": "high",
+    "audience": "developers, sre, ai agents",
+    "estimated_reading_time": "6 min",
+    "prerequisites": []
+  },
+  "body": "# Refreshing and Upgrading Systems\n\nUse this node when the task is wider than a single package. APT separates metadata refresh from package changes, so upgrade workflows almost always start with `apt-get update`.\n\n## Standard upgrade flow\n\n```bash\nsudo apt-get update\nsudo DEBIAN_FRONTEND=noninteractive apt-get -y upgrade\n```\n\n`upgrade` installs newer versions of already installed packages but will not remove existing packages. On Ubuntu, this is the default host-patching path.\n\n## Full dependency-changing upgrade\n\n```bash\nsudo apt-get update\nsudo DEBIAN_FRONTEND=noninteractive apt-get -y dist-upgrade\n```\n\n`dist-upgrade` can add or remove packages to satisfy changed dependencies. Use it when a package transition, kernel update, or release preparation requires solver flexibility. Review the plan first with `-s` in automation-sensitive environments.\n\n## Cleanup\n\n```bash\nsudo apt-get autoremove --purge\nsudo apt-get autoclean\nsudo apt-get clean\n```\n\n- `autoremove` removes automatically installed packages that are no longer needed.\n- `autoclean` removes cached package files that can no longer be downloaded.\n- `clean` removes all cached package files.\n- `distclean` removes most index files under `/var/lib/apt/lists/` and is mainly useful when finalizing images.\n\n## Kept-back packages\n\nOn Ubuntu, `apt upgrade` may report packages as kept back because of phased updates. This is often normal and temporary, not a repair condition. Use [[apt/search#policy]] to inspect the version table and phasing information before forcing a package-specific install.\n\n```bash\napt policy libglapi-mesa\n```\n\nIf a package is kept back for a reason other than phasing, check repository policy in [[apt/pinning]] or solver state in [[apt/repair]]."
+}

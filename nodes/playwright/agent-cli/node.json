@@ -1,0 +1,110 @@
+{
+  "name": "agent-cli",
+  "version": "1.0.0",
+  "uri": "playwright/agent-cli",
+  "type": "skill",
+  "context": "Control live browser sessions from coding agents with Playwright CLI snapshots, element refs, persistent state, network logs, and screenshots.",
+  "info": "The Playwright coding-agent CLI provides a command-line browser control surface optimized for agents. Instead of dumping raw DOM or writing full scripts for every step, it opens browser sessions, returns YAML page snapshots with stable element refs, and exposes commands for click, fill, type, key presses, screenshots, storage state, network logs, tracing, video, tabs, and session management. Agents use it for exploratory web work, manual-flow reproduction, accessibility inspection, and turning live interactions into repeatable Playwright scripts or tests.",
+  "parent": "playwright",
+  "tags": ["playwright", "agent-cli", "coding-agents", "browser-session", "snapshots", "element-refs", "screenshots", "network", "storage-state"],
+  "aliases": ["playwright cli", "playwright agent cli", "playwright-cli", "coding agents playwright", "browser cli", "page snapshot refs", "interactive playwright"],
+  "triggers": ["control browser from agent", "use playwright-cli", "open persistent browser session", "click element ref", "get page snapshot", "save storage state with cli", "inspect browser network from cli", "take screenshot from cli"],
+  "body": "# Playwright Agent CLI\n\nUse the coding-agent CLI when an agent needs an iterative browser session. The CLI prints page snapshots with element refs, then commands use those refs to act on the page.\n\n## Basic Session\n\n```bash\nnodes/playwright/scripts/playwright-agent-cli.sh open https://demo.playwright.dev/todomvc/ --headed\nnodes/playwright/scripts/playwright-agent-cli.sh snapshot\nnodes/playwright/scripts/playwright-agent-cli.sh fill e21 \"Buy groceries\"\nnodes/playwright/scripts/playwright-agent-cli.sh press Enter\nnodes/playwright/scripts/playwright-agent-cli.sh screenshot --filename=todo.png\n```\n\n## Named Persistent Session\n\n```bash\nPLAYWRIGHT_CLI_SESSION=research nodes/playwright/scripts/playwright-agent-cli.sh open https://example.com --persistent\nPLAYWRIGHT_CLI_SESSION=research nodes/playwright/scripts/playwright-agent-cli.sh state-save .auth/research.json\nPLAYWRIGHT_CLI_SESSION=research nodes/playwright/scripts/playwright-agent-cli.sh network\nPLAYWRIGHT_CLI_SESSION=research nodes/playwright/scripts/playwright-agent-cli.sh close\n```\n\nUse [[playwright/browser-automation]] after exploration to encode the workflow as a repeatable script.",
+  "sections": [
+    {
+      "id": "snapshot-refs",
+      "title": "Snapshot refs",
+      "body": "Run `playwright-cli snapshot` after navigation or actions. The CLI returns page metadata and an accessibility-oriented snapshot where interactive elements have refs such as `e15`. Use those refs with `click`, `fill`, `check`, `select`, `hover`, or `screenshot`. Re-run snapshot after DOM changes because refs are tied to current page state.",
+      "tags": ["snapshot", "refs", "accessibility", "click", "fill"]
+    },
+    {
+      "id": "sessions",
+      "title": "Sessions",
+      "body": "The CLI keeps an in-memory browser profile for a session. Use `--persistent` to save profile data to disk. Use `PLAYWRIGHT_CLI_SESSION=name` or `-s=name` to isolate multiple browser sessions. Use `list`, `close-all`, `kill-all`, and `delete-data` to clean up state when a task ends.",
+      "tags": ["session", "persistent", "profile", "cleanup"]
+    },
+    {
+      "id": "inspection",
+      "title": "Inspection commands",
+      "body": "Use `network` for request history, `console` for browser console messages, `eval` for JavaScript evaluation against the page, `state-save` and `state-load` for cookies/localStorage, `screenshot` and `pdf` for visual artifacts, and `tracing-start`/`tracing-stop` when actions need a trace for later debugging.",
+      "tags": ["network", "console", "eval", "state", "tracing", "screenshot"]
+    },
+    {
+      "id": "translation",
+      "title": "Translate to code",
+      "body": "Treat CLI interaction as exploration. Once a flow is understood, translate stable actions into Playwright test or library code using [[playwright/locators]] rather than preserving volatile element refs. Save state files only when needed, and store them outside version control if authenticated.",
+      "tags": ["workflow", "locators", "scripts", "tests", "auth"]
+    }
+  ],
+  "links": [
+    { "uri": "playwright/install", "context": "Install @playwright/cli before using the wrapper" },
+    { "uri": "playwright/browser-automation", "context": "Convert explored flows into reusable scripts" },
+    { "uri": "playwright/locators", "context": "Replace element refs with resilient locators in final code" },
+    { "uri": "playwright/auth", "context": "Save and load storage state safely" },
+    { "uri": "playwright/network", "context": "Understand requests discovered through CLI network output" }
+  ],
+  "related": [
+    { "uri": "playwright/browser-automation", "relation": "alternative", "note": "Library scripts are better for repeatable workflows; CLI is better for live exploration." },
+    { "uri": "mcp/client", "relation": "similar", "note": "Both expose tool-like surfaces for agents to interact with external state." },
+    { "uri": "playwright/trace-debugging", "relation": "see-also", "note": "CLI sessions can record traces for later inspection." }
+  ],
+  "scripts": [
+    {
+      "id": "playwright-agent-cli",
+      "name": "Run Playwright Agent CLI",
+      "description": "Invoke playwright-cli from PATH or npx, preserving arguments for browser session control.",
+      "lang": "bash",
+      "runtime": "node>=18 bash",
+      "entry": "../scripts/playwright-agent-cli.sh",
+      "env": {
+        "PLAYWRIGHT_CLI_SESSION": { "required": false, "description": "Named browser session for the CLI." },
+        "PLAYWRIGHT_BROWSERS_PATH": { "required": false, "description": "Custom browser binary cache path." }
+      },
+      "packages": ["@playwright/cli"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "command": { "type": "string", "description": "CLI command such as open, snapshot, click, fill, network, or screenshot." },
+        "args": { "type": "array", "items": { "type": "string" }, "description": "Arguments passed through to playwright-cli." },
+        "session": { "type": "string", "description": "Optional named session." },
+        "persistent": { "type": "boolean", "description": "Whether to persist browser profile data." }
+      },
+      "required": ["command"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "stdout": { "type": "string", "description": "CLI snapshot, command result, or artifact path." },
+        "session": { "type": "string" },
+        "artifacts": { "type": "array", "items": { "type": "string" } }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "playwright/install", "reason": "The agent CLI package and browser runtime must be installed." }
+  ],
+  "more": {
+    "docs": "https://playwright.dev/docs/getting-started-cli",
+    "library": "https://playwright.dev/docs/library",
+    "auth": "https://playwright.dev/docs/auth",
+    "trace": "https://playwright.dev/docs/trace-viewer-intro"
+  },
+  "frontmatter": {
+    "created": "2026-04-15",
+    "updated": "2026-04-15",
+    "author": "dojo-community",
+    "audience": "AI agents, automation engineers",
+    "estimated_reading_time": "6 min",
+    "prerequisites": ["playwright/install"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-15T00:00:00Z",
+  "updated": "2026-04-15T00:00:00Z",
+  "status": "published"
+}

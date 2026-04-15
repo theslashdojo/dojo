@@ -1,0 +1,248 @@
+{
+  "name": "indexes",
+  "version": "1.0.0",
+  "uri": "mongodb/indexes",
+  "type": "skill",
+  "context": "Create, inspect, and troubleshoot MongoDB indexes for performance, uniqueness, and TTL behavior",
+  "info": "Indexes are the main lever for MongoDB read performance and certain constraints. This skill covers creating single-field and compound indexes, unique and TTL indexes, listing existing indexes, dropping obsolete ones, and confirming query plans with `explain()` so the agent can see whether the server is using `IXSCAN` rather than scanning the entire collection. It matters because slow MongoDB workloads are often query-shape and index-shape problems rather than raw hardware problems.",
+  "parent": "mongodb",
+  "tags": [
+    "indexes",
+    "createindex",
+    "compound",
+    "unique",
+    "ttl",
+    "explain",
+    "ixscan",
+    "hint"
+  ],
+  "aliases": [
+    "mongodb indexes",
+    "mongo index",
+    "create mongodb index",
+    "explain mongodb query"
+  ],
+  "triggers": [
+    "create a mongodb index",
+    "speed up a mongodb query",
+    "list mongodb indexes",
+    "drop an old mongodb index",
+    "explain a mongodb query plan"
+  ],
+  "body": "# MongoDB Indexes\n\nIndexes speed up reads and can enforce constraints, but they also consume storage and add work to writes. An agent should add indexes intentionally, verify them with `explain()`, and remove unused ones when they no longer reflect the actual query shape.\n\n## Common Examples\n\n```javascript\nawait db.collection(\"users\").createIndex({ email: 1 }, { unique: true });\nawait db.collection(\"sessions\").createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 });\nawait db.collection(\"orders\").createIndex({ customerId: 1, createdAt: -1 });\n```\n\nMongoDB automatically creates a unique `_id` index for every collection. Everything else should be justified by real filter, sort, and retention patterns.\n\n## Verify with `explain()`\n\n```javascript\nconst plan = await db.collection(\"orders\")\n  .find({ customerId: 42 })\n  .sort({ createdAt: -1 })\n  .explain(\"executionStats\");\n```\n\nLook for index scans such as `IXSCAN` or related optimized plans instead of full collection scans. Then compare the chosen index to the actual query pattern you care about.",
+  "sections": [
+    {
+      "id": "index-types",
+      "title": "Index types that matter most",
+      "body": "Use single-field indexes for one dominant filter or sort key. Use compound indexes when the query repeatedly filters or sorts on the same field combination. Use `unique` to enforce identity or business-key constraints. Use TTL indexes on date fields for data that should expire automatically, such as sessions, temporary tokens, or ephemeral job state.",
+      "tags": [
+        "single-field",
+        "compound",
+        "unique",
+        "ttl"
+      ]
+    },
+    {
+      "id": "query-plan-verification",
+      "title": "Verify with query plans",
+      "body": "Never assume an index helps just because it exists. Run `explain(\"executionStats\")` on the exact query or sort shape and check whether the planner picked the index. If it still scans too much data, revisit field order, query selectivity, and whether the sort can be satisfied by the same index.",
+      "tags": [
+        "explain",
+        "executionstats",
+        "ixscan",
+        "query-plan"
+      ]
+    },
+    {
+      "id": "index-lifecycle",
+      "title": "Index lifecycle",
+      "body": "Indexes should evolve with the application. Add them when a stable read pattern emerges, monitor whether they are still used, and drop obsolete ones to reduce write amplification and storage overhead. This matters most for high-write collections where every extra index taxes inserts and updates.",
+      "tags": [
+        "lifecycle",
+        "dropindex",
+        "write-overhead",
+        "storage"
+      ]
+    }
+  ],
+  "links": [
+    {
+      "uri": "mongodb/crud/find",
+      "context": "Read queries tell you which indexes are worth creating"
+    },
+    {
+      "uri": "mongodb/aggregation",
+      "context": "Aggregation performance often improves when early stages can use indexes"
+    },
+    {
+      "uri": "database/indexing",
+      "context": "General indexing strategy and tradeoffs"
+    }
+  ],
+  "related": [
+    {
+      "uri": "mongodb/crud/find",
+      "relation": "see-also",
+      "note": "A slow find path is often the reason this node becomes relevant"
+    },
+    {
+      "uri": "mongodb/aggregation",
+      "relation": "see-also",
+      "note": "Pipelines with early match and sort stages can often reuse normal collection indexes"
+    },
+    {
+      "uri": "database/indexing",
+      "relation": "see-also",
+      "note": "Use the shared indexing node for broader concepts like cardinality and read-write tradeoffs"
+    }
+  ],
+  "scripts": [
+    {
+      "id": "manage-indexes",
+      "name": "Manage indexes",
+      "description": "Create, list, drop, or explain MongoDB indexes and query plans using Extended JSON input",
+      "lang": "javascript",
+      "runtime": "node>=18",
+      "entry": "./scripts/manage-indexes.js",
+      "env": {
+        "MONGODB_URI": {
+          "required": true,
+          "secret": true,
+          "description": "MongoDB connection string"
+        },
+        "INDEX_INPUT_JSON": {
+          "required": false,
+          "description": "Extended JSON payload. If omitted, the script reads JSON from stdin."
+        }
+      },
+      "packages": [
+        "mongodb",
+        "bson"
+      ]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "database": {
+          "type": "string"
+        },
+        "collection": {
+          "type": "string"
+        },
+        "action": {
+          "type": "string",
+          "enum": [
+            "create",
+            "createMany",
+            "list",
+            "drop",
+            "dropAll",
+            "explainFind"
+          ]
+        },
+        "keys": {
+          "type": "object",
+          "description": "Index key document for create"
+        },
+        "indexes": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          },
+          "description": "Index definitions for createMany"
+        },
+        "options": {
+          "type": "object",
+          "description": "Index creation options such as unique, sparse, or expireAfterSeconds"
+        },
+        "name": {
+          "type": "string",
+          "description": "Index name for drop"
+        },
+        "filter": {
+          "type": "object",
+          "description": "Query filter for explainFind"
+        },
+        "sort": {
+          "type": "object",
+          "description": "Sort document for explainFind"
+        },
+        "projection": {
+          "type": "object",
+          "description": "Projection for explainFind"
+        },
+        "hint": {
+          "type": [
+            "string",
+            "object"
+          ],
+          "description": "Optional hint for explainFind"
+        }
+      },
+      "required": [
+        "database",
+        "collection",
+        "action"
+      ]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "action": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string",
+          "description": "Index name created or dropped"
+        },
+        "indexes": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          },
+          "description": "List of indexes when action=list"
+        },
+        "explain": {
+          "type": "object",
+          "description": "Explain result when action=explainFind"
+        }
+      }
+    }
+  },
+  "depends": [
+    {
+      "uri": "mongodb/auth",
+      "reason": "Index DDL and explain operations still require a working connection and adequate privileges"
+    },
+    {
+      "uri": "mongodb/crud/find",
+      "optional": true,
+      "reason": "Real index design starts from stable query shapes rather than abstract fields"
+    }
+  ],
+  "more": {
+    "docs": "https://www.mongodb.com/docs/drivers/node/current/indexes/",
+    "optimization": "https://www.mongodb.com/docs/manual/core/aggregation-pipeline-optimization/",
+    "manual": "https://www.mongodb.com/docs/manual/indexes/"
+  },
+  "frontmatter": {
+    "created": "2026-04-12",
+    "updated": "2026-04-12",
+    "author": "dojo-community",
+    "audience": "developers, AI agents",
+    "estimated_reading_time": "6 min",
+    "prerequisites": [
+      "mongodb/auth"
+    ],
+    "status": "living",
+    "confidence": "high"
+  },
+  "repository": "https://github.com/mongodb/node-mongodb-native",
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-12T00:00:00Z",
+  "updated": "2026-04-12T00:00:00Z",
+  "status": "published"
+}

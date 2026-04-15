@@ -1,0 +1,262 @@
+{
+  "name": "collector",
+  "version": "1.0.0",
+  "uri": "opentelemetry/collector",
+  "type": "skill",
+  "context": "Configure, validate, run, and troubleshoot OpenTelemetry Collector receivers, processors, exporters, and pipelines.",
+  "info": "The OpenTelemetry Collector is a vendor-neutral telemetry agent or gateway. It receives traces, metrics, and logs from SDKs and infrastructure sources; processes telemetry with batching, memory limiting, filtering, enrichment, and sampling; then exports to one or more backends. Agents use this skill to generate collector configs, validate pipeline shape, expose OTLP endpoints, add debug output, configure gateway or agent patterns, and inspect internal telemetry before production rollout.",
+  "parent": "opentelemetry",
+  "tags": [
+    "collector",
+    "otelcol",
+    "receivers",
+    "processors",
+    "exporters",
+    "pipelines",
+    "otlp",
+    "gateway",
+    "agent",
+    "debug-exporter"
+  ],
+  "aliases": [
+    "otel collector",
+    "opentelemetry collector",
+    "otelcol",
+    "otelcol-contrib",
+    "collector pipeline",
+    "telemetry gateway",
+    "collector config",
+    "collector receiver",
+    "collector exporter",
+    "collector processor"
+  ],
+  "triggers": [
+    "configure the otel collector",
+    "create collector config",
+    "validate otelcol config",
+    "receive otlp telemetry",
+    "send telemetry to multiple backends",
+    "add debug exporter",
+    "configure tail sampling",
+    "deploy collector gateway",
+    "why is collector dropping data"
+  ],
+  "body": "# OpenTelemetry Collector\n\nThe Collector is the operational control plane for telemetry. It is commonly deployed as an agent near workloads, as a central gateway, or as a two-tier agent-to-gateway setup.\n\n## Config Shape\n\nCollector config has top-level component definitions and a `service` section that activates components.\n\n```yaml\nreceivers:\n  otlp:\n    protocols:\n      grpc:\n        endpoint: 0.0.0.0:4317\n      http:\n        endpoint: 0.0.0.0:4318\nprocessors:\n  memory_limiter:\n    check_interval: 1s\n    limit_mib: 512\n  batch:\nexporters:\n  debug:\n    verbosity: detailed\nservice:\n  extensions: [health_check]\n  pipelines:\n    traces:\n      receivers: [otlp]\n      processors: [memory_limiter, batch]\n      exporters: [debug]\n    metrics:\n      receivers: [otlp]\n      processors: [memory_limiter, batch]\n      exporters: [debug]\n```\n\nA component is not active merely because it is defined. It must be referenced by `service.pipelines` or `service.extensions`.\n\n## Generate a Baseline Config\n\n```bash\npython3 nodes/opentelemetry/collector/scripts/collector-config.py render --out otelcol.yaml --debug\notelcol validate --config=otelcol.yaml\notelcol --config=otelcol.yaml\n```\n\n## Pipeline Components\n\n| Component | Role |\n| --- | --- |\n| Receiver | Gets telemetry into the Collector, for example `otlp`, `prometheus`, `hostmetrics`, `filelog` |\n| Processor | Mutates, batches, limits, filters, samples, enriches, or redacts telemetry |\n| Exporter | Sends telemetry out, for example `debug`, `otlp`, `otlphttp`, Prometheus exporter, vendor exporters |\n| Connector | Connects pipelines, for example span-derived metrics |\n| Extension | Adds operational features like health checks, auth, pprof, zpages |\n\n## Deployment Patterns\n\nUse an agent pattern when each host or pod needs local collection or metadata enrichment. Use a gateway pattern when applications need a stable regional endpoint, centralized sampling, fan-out, or egress control. For tail sampling at scale, keep all spans for a trace on the same collector instance.",
+  "sections": [
+    {
+      "id": "config-shape",
+      "title": "Config shape",
+      "body": "Define receivers, processors, exporters, connectors, and extensions at the top level. Activate them in `service.pipelines` and `service.extensions`. Each pipeline is signal-specific: `traces`, `metrics`, or `logs`. The order is receiver -> processors -> exporters.",
+      "tags": [
+        "config",
+        "service",
+        "pipelines",
+        "components"
+      ]
+    },
+    {
+      "id": "otlp-receiver",
+      "title": "OTLP receiver",
+      "body": "The `otlp` receiver is the normal SDK ingress. Enable `grpc` on `0.0.0.0:4317` and `http` on `0.0.0.0:4318` when you want both transports. Point SDKs at this receiver with [[opentelemetry/otlp]] environment variables.",
+      "tags": [
+        "otlp",
+        "receiver",
+        "grpc",
+        "http",
+        "4317",
+        "4318"
+      ]
+    },
+    {
+      "id": "processors",
+      "title": "Processors",
+      "body": "Use `memory_limiter` early to protect the process, `batch` near the end for efficient export, `resource` or `attributes` for enrichment/redaction, `filter` to drop unwanted telemetry, and `tail_sampling` for policy-based trace retention. Processor availability depends on Collector distribution.",
+      "tags": [
+        "processors",
+        "memory-limiter",
+        "batch",
+        "filter",
+        "tail-sampling"
+      ]
+    },
+    {
+      "id": "health-and-debug",
+      "title": "Health and debug",
+      "body": "Enable `health_check` for readiness, inspect Collector logs, and expose internal metrics on the Collector telemetry endpoint. Add the `debug` exporter while verifying app instrumentation and pipeline shape. Remove or lower verbose debug output before high-volume production traffic.",
+      "tags": [
+        "health",
+        "debug",
+        "internal-metrics",
+        "readiness"
+      ]
+    }
+  ],
+  "links": [
+    {
+      "uri": "opentelemetry/otlp",
+      "context": "OTLP receiver and exporter endpoint behavior"
+    },
+    {
+      "uri": "opentelemetry/nodejs",
+      "context": "Node.js SDKs commonly send OTLP to the Collector"
+    },
+    {
+      "uri": "opentelemetry/sampling",
+      "context": "Tail sampling is configured as a Collector processor"
+    },
+    {
+      "uri": "opentelemetry/troubleshooting",
+      "context": "Diagnose missing telemetry and collector failures"
+    },
+    {
+      "uri": "prometheus/exporters",
+      "context": "Collector can scrape or expose Prometheus-style metrics"
+    },
+    {
+      "uri": "kubernetes/deployments",
+      "context": "Gateway collectors often run as Kubernetes Deployments"
+    },
+    {
+      "uri": "kubernetes/pods",
+      "context": "Agent collectors commonly run near pods or nodes"
+    },
+    {
+      "uri": "docker/compose",
+      "context": "Run a local app plus Collector for development verification"
+    }
+  ],
+  "related": [
+    {
+      "uri": "opentelemetry/otlp",
+      "relation": "implements",
+      "note": "The Collector implements OTLP receivers and exporters"
+    },
+    {
+      "uri": "opentelemetry/sampling",
+      "relation": "implements",
+      "note": "Tail sampling is usually done in the Collector"
+    },
+    {
+      "uri": "kubernetes",
+      "relation": "see-also",
+      "note": "Production Collector deployments commonly use Kubernetes"
+    },
+    {
+      "uri": "prometheus",
+      "relation": "see-also",
+      "note": "Collector metrics can feed Prometheus and the Collector exposes its own metrics"
+    }
+  ],
+  "scripts": [
+    {
+      "id": "collector-config",
+      "name": "Render or Validate Collector Config",
+      "description": "Render a baseline OpenTelemetry Collector config with OTLP receivers, health check, memory limiter, batch processor, debug exporter, and optional OTLP backend exporter; optionally run otelcol validate",
+      "lang": "python",
+      "runtime": "python>=3.9",
+      "entry": "./scripts/collector-config.py",
+      "env": {
+        "OTELCOL_BIN": {
+          "required": false,
+          "default": "otelcol",
+          "description": "Collector binary used for the validate action"
+        },
+        "OTEL_EXPORTER_OTLP_ENDPOINT": {
+          "required": false,
+          "description": "Optional backend OTLP endpoint for rendered exporter config"
+        }
+      }
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "action": {
+          "type": "string",
+          "enum": [
+            "render",
+            "validate"
+          ],
+          "description": "Render a config or validate an existing config with otelcol"
+        },
+        "out": {
+          "type": "string",
+          "description": "Output path for rendered YAML"
+        },
+        "config": {
+          "type": "string",
+          "description": "Config path for validation"
+        },
+        "backendEndpoint": {
+          "type": "string",
+          "description": "Optional OTLP backend endpoint for exporter"
+        },
+        "debug": {
+          "type": "boolean",
+          "description": "Include a debug exporter"
+        }
+      },
+      "required": [
+        "action"
+      ]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "configPath": {
+          "type": "string",
+          "description": "Rendered or validated config path"
+        },
+        "pipelines": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Pipeline names included in the config"
+        },
+        "valid": {
+          "type": "boolean",
+          "description": "Validation result when action is validate"
+        }
+      }
+    }
+  },
+  "depends": [
+    {
+      "uri": "opentelemetry/otlp",
+      "reason": "The baseline Collector config receives telemetry through OTLP"
+    },
+    {
+      "uri": "opentelemetry/semantic-conventions",
+      "reason": "Processors often enrich or filter resource attributes"
+    }
+  ],
+  "more": {
+    "docs": "https://opentelemetry.io/docs/collector/",
+    "configuration": "https://opentelemetry.io/docs/collector/configuration/",
+    "components": "https://opentelemetry.io/docs/collector/components/",
+    "management": "https://opentelemetry.io/docs/collector/management/",
+    "gateway": "https://opentelemetry.io/docs/collector/deploy/gateway/",
+    "repo": "https://github.com/open-telemetry/opentelemetry-collector"
+  },
+  "frontmatter": {
+    "created": "2026-04-15",
+    "updated": "2026-04-15",
+    "author": "dojo-community",
+    "audience": "ai-agents, sre, platform-engineers",
+    "estimated_reading_time": "8 min",
+    "prerequisites": [
+      "opentelemetry/otlp",
+      "opentelemetry/signals"
+    ],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://github.com/open-telemetry/opentelemetry-collector",
+  "created": "2026-04-15T00:00:00Z",
+  "updated": "2026-04-15T00:00:00Z",
+  "status": "published"
+}

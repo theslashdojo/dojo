@@ -1,0 +1,119 @@
+{
+  "name": "storage",
+  "version": "1.0.0",
+  "uri": "prometheus/storage",
+  "type": "context",
+  "content_type": "guide",
+  "context": "Understand Prometheus local TSDB retention, WAL, compaction, and remote write tradeoffs.",
+  "info": "Prometheus stores samples in a local time-series database with a write-ahead log, two-hour blocks, background compaction, and configurable retention by time or size. This makes Prometheus fast and simple, but also means a single server is not a long-term archive by itself. Agents use this node when cardinality grows unexpectedly, when disk pressure threatens retention, or when deciding whether data belongs in remote storage.",
+  "parent": "prometheus",
+  "tags": [
+    "storage",
+    "tsdb",
+    "wal",
+    "retention",
+    "compaction",
+    "remote-write",
+    "cardinality",
+    "disk"
+  ],
+  "aliases": [
+    "prometheus storage",
+    "prometheus tsdb",
+    "prometheus retention",
+    "prometheus wal",
+    "prometheus remote write"
+  ],
+  "triggers": [
+    "why is prometheus disk usage growing",
+    "check prometheus cardinality",
+    "configure retention time",
+    "prometheus remote write decision",
+    "what is the prometheus wal"
+  ],
+  "body": "# Prometheus Storage\n\nPrometheus writes incoming samples to the **write-ahead log** first and then compacts them into TSDB blocks. Initial blocks cover two hours of data and are compacted into longer ranges in the background. Retention can be limited by time or size with the server flags for TSDB retention.\n\n```bash\nprometheus           --storage.tsdb.path=/var/lib/prometheus           --storage.tsdb.retention.time=15d           --storage.tsdb.retention.size=100GB\n```\n\nThe local TSDB is excellent for recent operational data and fast queries, but it is not a clustered long-term warehouse. When teams need durable long-range retention or cross-cluster aggregation, they usually add remote write to a dedicated backend rather than expecting one Prometheus node to keep everything forever.\n\nFor live inspection, `/api/v1/status/tsdb` exposes head-series counts and cardinality information. That endpoint is often the fastest signal for whether a bad label or discovery rule is about to become a disk problem.",
+  "sections": [
+    {
+      "id": "tsdb-layout",
+      "title": "WAL, head block, and compaction",
+      "body": "Samples land in the WAL and the TSDB head before being compacted into persistent blocks. The storage docs note that initial blocks span two hours and later compact into larger blocks, up to 10% of retention or 31 days, whichever is smaller. This explains why disk usage moves in steps rather than a perfectly smooth curve.",
+      "tags": [
+        "wal",
+        "head",
+        "blocks",
+        "compaction"
+      ]
+    },
+    {
+      "id": "retention",
+      "title": "Retention controls",
+      "body": "Use `--storage.tsdb.retention.time` to cap age and `--storage.tsdb.retention.size` to cap on-disk footprint. If both are set, the first one hit wins in practice. Agents diagnosing missing historical data should check these flags before assuming samples were never scraped.",
+      "tags": [
+        "retention-time",
+        "retention-size",
+        "disk-pressure"
+      ]
+    },
+    {
+      "id": "remote-write",
+      "title": "When to use remote write",
+      "body": "Remote write is the usual answer for long-term retention, multi-cluster aggregation, or shipping samples to another system. It is not a substitute for keeping local queries healthy; agents should still keep cardinality under control and use recording rules for expensive repeated queries. See [[prometheus/config]] for how remote storage settings enter the main config file.",
+      "tags": [
+        "remote-write",
+        "long-term-retention",
+        "aggregation",
+        "cardinality"
+      ]
+    }
+  ],
+  "links": [
+    {
+      "uri": "prometheus/query",
+      "context": "Inspect `/api/v1/status/tsdb` when storage or cardinality looks suspicious"
+    },
+    {
+      "uri": "prometheus/config",
+      "context": "Retention and remote storage settings are part of server configuration"
+    },
+    {
+      "uri": "prometheus/rules",
+      "context": "Recording rules reduce repeated expensive query work against the TSDB"
+    }
+  ],
+  "related": [
+    {
+      "uri": "prometheus/query",
+      "relation": "see-also",
+      "note": "TSDB status and series inspection reveal cardinality problems quickly"
+    },
+    {
+      "uri": "prometheus/config",
+      "relation": "prerequisite",
+      "note": "Retention and remote storage are configured at the server level"
+    },
+    {
+      "uri": "redis",
+      "relation": "alternative",
+      "note": "Redis is not a metrics TSDB, but teams sometimes confuse cache storage with observability storage responsibilities"
+    }
+  ],
+  "more": {
+    "docs": "https://prometheus.io/docs/prometheus/latest/storage/"
+  },
+  "frontmatter": {
+    "created": "2026-04-12",
+    "updated": "2026-04-12",
+    "author": "dojo-community",
+    "audience": "ai-agents, sre, platform-engineers",
+    "estimated_reading_time": "4 min",
+    "prerequisites": [],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "repository": "https://github.com/prometheus/prometheus",
+  "created": "2026-04-12T00:00:00Z",
+  "updated": "2026-04-12T00:00:00Z",
+  "status": "published"
+}

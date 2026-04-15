@@ -1,0 +1,122 @@
+{
+  "name": "trace-debugging",
+  "version": "1.0.0",
+  "uri": "playwright/trace-debugging",
+  "type": "skill",
+  "context": "Debug Playwright failures with traces, trace viewer, screenshots, videos, HTML reports, PWDEBUG, headed mode, and inspector.",
+  "info": "Playwright traces record action timelines, DOM snapshots, network activity, console logs, screenshots, and test source context. This skill covers enabling traces in configuration, opening trace.zip artifacts, collecting screenshots and videos on failure, using HTML reports, running headed or debug mode, and interpreting common failure patterns. Agents use it when a browser test flakes, a locator cannot act, a screenshot is wrong, a request fails, or CI behavior differs from local runs.",
+  "parent": "playwright",
+  "tags": ["playwright", "trace", "debugging", "trace-viewer", "screenshots", "video", "html-report", "pwdebug", "headed"],
+  "aliases": ["playwright trace", "trace viewer", "show trace", "PWDEBUG", "playwright debug", "playwright report", "test-results trace.zip"],
+  "triggers": ["debug playwright failure", "open trace viewer", "show trace zip", "playwright test failed in ci", "why did click fail", "record video playwright", "run playwright headed", "use PWDEBUG"],
+  "body": "# Trace Debugging\n\nUse traces first when a browser test fails. They show what Playwright saw and did at each step.\n\n```typescript\nuse: {\n  trace: 'on-first-retry',\n  screenshot: 'only-on-failure',\n  video: 'retain-on-failure'\n}\n```\n\n```bash\nnpx playwright test --trace on\nnodes/playwright/scripts/open-trace.sh test-results/login/trace.zip\nPWDEBUG=1 npx playwright test tests/login.spec.ts\nnpx playwright test --headed tests/login.spec.ts\nnpx playwright show-report\n```\n\nTrace viewer is more reliable than guessing from logs because it includes DOM snapshots, actions, console output, and network events.",
+  "sections": [
+    {
+      "id": "trace-policy",
+      "title": "Trace policy",
+      "body": "Use `trace: 'on-first-retry'` as the normal CI default: passing tests do not produce heavy traces, but flaky failures get enough evidence on retry. Use `trace: 'retain-on-failure'` when retries are disabled. Use `--trace on` for a focused local investigation. Avoid `trace: 'on'` across a huge suite unless storage costs are acceptable.",
+      "tags": ["trace", "on-first-retry", "retain-on-failure", "ci"]
+    },
+    {
+      "id": "viewer",
+      "title": "Trace viewer",
+      "body": "Open a trace with `npx playwright show-trace trace.zip`. Inspect the action timeline, before/after DOM snapshots, locator resolution, screenshots, network calls, console output, and source line. If a click failed, check whether the locator matched multiple elements, the element was covered, disabled, detached, or navigation occurred earlier than expected.",
+      "tags": ["show-trace", "timeline", "dom", "network", "locator"]
+    },
+    {
+      "id": "debug-modes",
+      "title": "Debug modes",
+      "body": "Use `--headed` to watch a browser, `--debug` for Playwright Inspector, and `PWDEBUG=1` for step-by-step debugging. Use `page.pause()` only during local investigation and remove it before commit. Combine with `--grep` or a test file path to keep the run small.",
+      "tags": ["headed", "debug", "PWDEBUG", "inspector", "page.pause"]
+    },
+    {
+      "id": "ci-artifacts",
+      "title": "CI artifacts",
+      "body": "Upload `playwright-report/`, `test-results/`, screenshots, videos, and traces on failure. Keep retention finite. Review artifacts from authenticated pages before sharing outside the project because traces can include URLs, DOM text, request metadata, screenshots, and localStorage-derived state.",
+      "tags": ["ci", "artifacts", "privacy", "report", "videos"]
+    }
+  ],
+  "links": [
+    { "uri": "playwright/screenshots", "context": "Screenshots complement traces for visual evidence" },
+    { "uri": "playwright/network", "context": "Network events inside traces often explain UI failures" },
+    { "uri": "playwright/locators", "context": "Locator strictness and actionability are common failure causes" },
+    { "uri": "playwright/ci", "context": "Collect and upload trace artifacts in CI" },
+    { "uri": "testing/playwright", "context": "Debug end-to-end test suites" }
+  ],
+  "related": [
+    { "uri": "playwright/ci", "relation": "see-also", "note": "CI setup determines whether traces and reports are retained." },
+    { "uri": "testing/playwright", "relation": "see-also", "note": "Most trace debugging happens in Playwright test suites." },
+    { "uri": "sentry/capture", "relation": "similar", "note": "Both collect execution evidence to diagnose failures." }
+  ],
+  "scripts": [
+    {
+      "id": "open-trace",
+      "name": "Open Playwright Trace",
+      "description": "Open a Playwright trace.zip file with the official trace viewer.",
+      "lang": "bash",
+      "runtime": "node>=18 bash",
+      "entry": "../scripts/open-trace.sh",
+      "packages": ["@playwright/test"]
+    },
+    {
+      "id": "run-tests-debuggable",
+      "name": "Run Playwright Tests With Debug Flags",
+      "description": "Run npx playwright test with environment-driven headed, UI, debug, retries, workers, grep, and snapshot-update flags.",
+      "lang": "bash",
+      "runtime": "node>=18 bash",
+      "entry": "../scripts/run-tests.sh",
+      "env": {
+        "PLAYWRIGHT_HEADED": { "required": false, "default": "0", "description": "Run with a visible browser." },
+        "PLAYWRIGHT_UI": { "required": false, "default": "0", "description": "Run Playwright UI mode." },
+        "PLAYWRIGHT_DEBUG": { "required": false, "default": "0", "description": "Run Playwright debug mode." },
+        "PLAYWRIGHT_GREP": { "required": false, "description": "Only run tests matching this pattern." },
+        "PWDEBUG": { "required": false, "description": "Enable Playwright Inspector when set to 1." }
+      },
+      "packages": ["@playwright/test"]
+    }
+  ],
+  "schema": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "trace": { "type": "string", "description": "Path to trace.zip for open-trace." },
+        "testFile": { "type": "string", "description": "Optional test file to run." },
+        "headed": { "type": "boolean" },
+        "debug": { "type": "boolean" },
+        "grep": { "type": "string" }
+      }
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "viewerStarted": { "type": "boolean" },
+        "reportPath": { "type": "string" },
+        "artifacts": { "type": "array", "items": { "type": "string" } }
+      }
+    }
+  },
+  "depends": [
+    { "uri": "playwright/install", "reason": "Trace viewer and test runner are part of Playwright tooling." }
+  ],
+  "more": {
+    "docs": "https://playwright.dev/docs/trace-viewer-intro",
+    "debugging": "https://playwright.dev/docs/debug",
+    "ci": "https://playwright.dev/docs/ci",
+    "reporters": "https://playwright.dev/docs/test-reporters"
+  },
+  "frontmatter": {
+    "created": "2026-04-15",
+    "updated": "2026-04-15",
+    "author": "dojo-community",
+    "audience": "developers, QA engineers, AI agents",
+    "estimated_reading_time": "7 min",
+    "prerequisites": ["playwright/install"],
+    "status": "living",
+    "confidence": "high"
+  },
+  "author": "dojo-community",
+  "license": "MIT",
+  "created": "2026-04-15T00:00:00Z",
+  "updated": "2026-04-15T00:00:00Z",
+  "status": "published"
+}
